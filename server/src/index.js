@@ -1,5 +1,4 @@
 import 'dotenv/config'
-import cors from 'cors'
 import express from 'express'
 import mongoose from 'mongoose'
 import path from 'path'
@@ -41,31 +40,44 @@ function parseAllowedOrigins() {
     .map(clean)
     .filter(Boolean)
   const singles = [process.env.CLIENT_URL, process.env.ADMIN_CLIENT_URL].map(clean).filter(Boolean)
-  return [...new Set([...fromList, ...singles])]
+  // Origines de prod connues (filet de sécurité si env incomplet)
+  const defaults = [
+    'https://monpermis-admin.onrender.com',
+    'https://monpermis-web.onrender.com',
+  ]
+  return [...new Set([...fromList, ...singles, ...defaults])]
 }
 
 const allowedOrigins = parseAllowedOrigins()
-console.log(
-  `CORS: ${allowedOrigins.length} origine(s) autorisée(s)`,
-  allowedOrigins.length ? allowedOrigins.join(', ') : '(aucune — mode ouvert hors production)',
-)
+console.log(`CORS origines: ${allowedOrigins.join(', ') || '(aucune)'}`)
 
-app.use(
-  cors({
-    origin(origin, callback) {
-      if (!origin) return callback(null, true)
-      if (allowedOrigins.length === 0) {
-        if (process.env.NODE_ENV !== 'production') return callback(null, true)
-        console.warn(`CORS refusé (ALLOWED_ORIGINS vide) pour: ${origin}`)
-        return callback(null, false)
-      }
-      if (allowedOrigins.includes(origin)) return callback(null, true)
-      console.warn(`CORS refusé pour: ${origin} | autorisées: ${allowedOrigins.join(', ')}`)
-      return callback(null, false)
-    },
-    credentials: true,
-  }),
-)
+function isOriginAllowed(origin) {
+  if (!origin) return false
+  if (allowedOrigins.includes(origin)) return true
+  // Autoriser aussi les previews Render du même compte si besoin
+  if (/^https:\/\/monpermis[\w-]*\.onrender\.com$/i.test(origin)) return true
+  return false
+}
+
+// CORS manuel — plus fiable qu’avec Express 5 + package cors sur OPTIONS
+app.use((req, res, next) => {
+  const origin = req.headers.origin
+  if (origin && isOriginAllowed(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin)
+    res.setHeader('Vary', 'Origin')
+    res.setHeader('Access-Control-Allow-Credentials', 'true')
+    res.setHeader(
+      'Access-Control-Allow-Headers',
+      req.headers['access-control-request-headers'] || 'Content-Type, Authorization',
+    )
+    res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS')
+  }
+
+  if (req.method === 'OPTIONS') {
+    return res.status(204).end()
+  }
+  return next()
+})
 // Corps brut requis pour vérifier la signature HMAC des webhooks FedaPay
 app.use(
   '/api/webhooks/fedapay',
