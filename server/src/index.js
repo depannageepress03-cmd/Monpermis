@@ -31,22 +31,28 @@ const app = express()
 const PORT = process.env.PORT || 5000
 
 function parseAllowedOrigins() {
+  const clean = (value) =>
+    String(value || '')
+      .trim()
+      .replace(/^["']|["']$/g, '')
+      .replace(/\/$/, '')
   const fromList = String(process.env.ALLOWED_ORIGINS || '')
     .split(',')
-    .map((value) => value.trim().replace(/\/$/, ''))
+    .map(clean)
     .filter(Boolean)
-  const singles = [process.env.CLIENT_URL, process.env.ADMIN_CLIENT_URL]
-    .filter(Boolean)
-    .map((value) => String(value).trim().replace(/\/$/, ''))
+  const singles = [process.env.CLIENT_URL, process.env.ADMIN_CLIENT_URL].map(clean).filter(Boolean)
   return [...new Set([...fromList, ...singles])]
 }
 
 const allowedOrigins = parseAllowedOrigins()
+console.log(
+  `CORS: ${allowedOrigins.length} origine(s) autorisée(s)`,
+  allowedOrigins.length ? allowedOrigins.join(', ') : '(aucune — mode ouvert hors production)',
+)
 
 app.use(
   cors({
     origin(origin, callback) {
-      // Requêtes sans Origin (mobile, webhooks, health checks, curl)
       if (!origin) return callback(null, true)
       if (allowedOrigins.length === 0) {
         if (process.env.NODE_ENV !== 'production') return callback(null, true)
@@ -54,7 +60,7 @@ app.use(
         return callback(null, false)
       }
       if (allowedOrigins.includes(origin)) return callback(null, true)
-      console.warn(`CORS refusé pour: ${origin}`)
+      console.warn(`CORS refusé pour: ${origin} | autorisées: ${allowedOrigins.join(', ')}`)
       return callback(null, false)
     },
     credentials: true,

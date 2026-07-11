@@ -1,9 +1,11 @@
 /** Origine de l’API (sans slash final). Vide en local → proxy Vite. */
 export function getApiOrigin(): string {
-  return String(import.meta.env.VITE_API_URL || '')
-    .trim()
-    .replace(/\/$/, '')
+  let value = String(import.meta.env.VITE_API_URL || '').trim()
+  // Corrige une coquille fréquente : https:/host → https://host
+  value = value.replace(/^https:\/(?!\/)/i, 'https://').replace(/^http:\/(?!\/)/i, 'http://')
+  return value.replace(/\/$/, '')
 }
+
 
 export function resolveMediaUrl(path?: string | null): string {
   if (!path?.trim()) return ''
