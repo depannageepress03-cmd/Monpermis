@@ -49,14 +49,13 @@ app.use(
       // Requêtes sans Origin (mobile, webhooks, health checks, curl)
       if (!origin) return callback(null, true)
       if (allowedOrigins.length === 0) {
-        // Dev local : tout autoriser tant que ALLOWED_ORIGINS n’est pas défini
         if (process.env.NODE_ENV !== 'production') return callback(null, true)
         console.warn(`CORS refusé (ALLOWED_ORIGINS vide) pour: ${origin}`)
-        return callback(new Error('Origine non autorisée'))
+        return callback(null, false)
       }
       if (allowedOrigins.includes(origin)) return callback(null, true)
       console.warn(`CORS refusé pour: ${origin}`)
-      return callback(new Error('Origine non autorisée'))
+      return callback(null, false)
     },
     credentials: true,
   }),
