@@ -13,6 +13,21 @@ dist-ssr
 *.local
 .env
 server/.env
+mobile/.env
+administration/.env
+
+# Python / outils locaux
+.venv-img/
+.venv/
+__pycache__/
+
+# Uploads générés (garder le dossier via .gitkeep)
+server/uploads/audio/
+server/uploads/images/
+server/uploads/vehicles/
+
+# Build info
+*.tsbuildinfo
 
 # Editor directories and files
 .vscode/*
