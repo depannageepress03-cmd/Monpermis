@@ -36,6 +36,11 @@ yarn-error.*
 # typescript
 *.tsbuildinfo
 
-# generated native folders
+# iOS généré à la demande (Android est versionné pour GitHub Actions)
 /ios
-/android
+
+# Credentials de signature — jamais sur Git
+credentials/*.keystore
+credentials/*.jks
+credentials/*.local.txt
+credentials/github-secrets.local.txt

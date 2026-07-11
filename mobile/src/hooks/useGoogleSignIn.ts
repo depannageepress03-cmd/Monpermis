@@ -5,19 +5,19 @@ import { Platform } from 'react-native'
 
 WebBrowser.maybeCompleteAuthSession()
 
-const webClientId = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID
-const iosClientId = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID
-const androidClientId = process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID
+const webClientId = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID?.trim() || ''
+const iosClientId = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID?.trim() || ''
+const androidClientId = process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID?.trim() || ''
 
 function getMissingGoogleConfigMessage() {
   if (!webClientId) {
-    return 'Ajoutez EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID dans mobile/.env'
+    return 'Connexion Google non configurée pour cette version.'
   }
-  if (Platform.OS === 'android' && !androidClientId) {
-    return 'Ajoutez EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID dans mobile/.env'
+  if (Platform.OS === 'android' && !androidClientId && !webClientId) {
+    return 'Connexion Google non configurée pour Android.'
   }
-  if (Platform.OS === 'ios' && !iosClientId) {
-    return 'Ajoutez EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID dans mobile/.env'
+  if (Platform.OS === 'ios' && !iosClientId && !webClientId) {
+    return 'Connexion Google non configurée pour iOS.'
   }
   return null
 }
@@ -26,15 +26,18 @@ export function useGoogleSignIn(onSuccess: (idToken: string) => Promise<void>) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const configError = useMemo(() => getMissingGoogleConfigMessage(), [])
+  const googleEnabled = !configError
 
+  // Toujours appeler le hook (règles React), avec un client factice si non configuré.
   const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
-    clientId: webClientId ?? 'missing-web-client-id.apps.googleusercontent.com',
-    iosClientId: iosClientId ?? webClientId ?? 'missing-ios-client-id.apps.googleusercontent.com',
-    androidClientId: androidClientId ?? webClientId ?? 'missing-android-client-id.apps.googleusercontent.com',
+    clientId: webClientId || '000000000000-disabled.apps.googleusercontent.com',
+    iosClientId: iosClientId || webClientId || '000000000000-disabled.apps.googleusercontent.com',
+    androidClientId:
+      androidClientId || webClientId || '000000000000-disabled.apps.googleusercontent.com',
   })
 
   useEffect(() => {
-    if (!response) return
+    if (!googleEnabled || !response) return
 
     if (response.type === 'dismiss' || response.type === 'cancel') {
       setLoading(false)
@@ -61,7 +64,7 @@ export function useGoogleSignIn(onSuccess: (idToken: string) => Promise<void>) {
         setError(err instanceof Error ? err.message : 'Connexion Google échouée')
       })
       .finally(() => setLoading(false))
-  }, [response, onSuccess])
+  }, [response, onSuccess, googleEnabled])
 
   const signInWithGoogle = async () => {
     if (configError) {
@@ -84,6 +87,6 @@ export function useGoogleSignIn(onSuccess: (idToken: string) => Promise<void>) {
     signInWithGoogle,
     loading,
     error,
-    disabled: !request || !!configError,
+    disabled: !googleEnabled || !request,
   }
 }

@@ -15,9 +15,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    let cancelled = false
     getStoredUser()
-      .then(setUser)
-      .finally(() => setLoading(false))
+      .then((stored) => {
+        if (!cancelled) setUser(stored)
+      })
+      .catch((error) => {
+        console.warn('Session locale illisible, réinitialisation:', error)
+        void clearSession()
+        if (!cancelled) setUser(null)
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   const signIn = useCallback(async (token: string, nextUser: AuthUser) => {

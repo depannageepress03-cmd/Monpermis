@@ -1,0 +1,91 @@
+name: Build Android APK
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Tag de release (ex: v1.0.6-preview)'
+        required: true
+        default: 'v1.0.6-preview'
+
+permissions:
+  contents: write
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install JS dependencies
+        run: npm ci
+
+      - name: Decode release keystore
+        working-directory: ${{ github.workspace }}
+        run: |
+          mkdir -p mobile/credentials
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > mobile/credentials/monpermis-release.keystore
+          test -s mobile/credentials/monpermis-release.keystore
+
+      - name: Build release APK
+        env:
+          EXPO_PUBLIC_API_URL: https://monpermis-api.onrender.com
+          MYAPP_UPLOAD_STORE_FILE: ${{ github.workspace }}/mobile/credentials/monpermis-release.keystore
+          MYAPP_UPLOAD_STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          MYAPP_UPLOAD_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          MYAPP_UPLOAD_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon
+
+      - name: Locate APK
+        id: apk
+        run: |
+          APK_PATH=$(find android/app/build/outputs/apk/release -name '*.apk' | head -n 1)
+          if [ -z "$APK_PATH" ]; then
+            echo "APK introuvable"
+            exit 1
+          fi
+          DEST="monpermis-${{ inputs.version }}.apk"
+          cp "$APK_PATH" "$DEST"
+          echo "path=$DEST" >> "$GITHUB_OUTPUT"
+          ls -lh "$DEST"
+
+      - name: Create GitHub Release + attach APK
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.version }}
+          name: Monpermis ${{ inputs.version }}
+          body: |
+            APK Android Monpermis.bj (${{ inputs.version }})
+
+            API: `https://monpermis-api.onrender.com`
+
+            **À tester en priorité :** paiement FedaPay, connexion Google (SHA-1 release).
+          files: mobile/${{ steps.apk.outputs.path }}
+          draft: false
+          prerelease: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
