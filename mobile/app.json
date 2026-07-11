@@ -3,14 +3,14 @@
     "name": "Monpermis.bj",
     "slug": "monpermis",
     "scheme": "monpermis",
-    "version": "1.0.2",
+    "version": "1.0.5",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "splash": {
       "image": "./assets/logo.png",
       "resizeMode": "contain",
-      "backgroundColor": "#00B050"
+      "backgroundColor": "#FFFFFF"
     },
     "ios": {
       "supportsTablet": false,
@@ -18,9 +18,9 @@
     },
     "android": {
       "package": "com.monpermis.app",
-      "versionCode": 3,
+      "versionCode": 6,
       "adaptiveIcon": {
-        "backgroundColor": "#00B050",
+        "backgroundColor": "#FFFFFF",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"

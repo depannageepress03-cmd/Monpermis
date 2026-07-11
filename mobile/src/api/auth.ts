@@ -61,7 +61,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     })
   } catch {
     throw new AuthError(
-      "Impossible de joindre le serveur. Lancez l'API (npm run dev:server) et vérifiez EXPO_PUBLIC_API_URL dans mobile/.env",
+      'Impossible de joindre le serveur. Vérifiez votre connexion internet.',
     )
   }
 
@@ -127,6 +127,7 @@ export async function getStoredUser(): Promise<AuthUser | null> {
   try {
     return JSON.parse(raw) as AuthUser
   } catch {
+    await AsyncStorage.multiRemove([TOKEN_KEY, USER_KEY])
     return null
   }
 }

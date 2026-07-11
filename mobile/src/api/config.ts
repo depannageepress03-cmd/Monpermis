@@ -22,6 +22,11 @@ export function getApiBase(): string {
     return envUrl.endsWith('/api') ? envUrl : `${envUrl.replace(/\/$/, '')}/api`
   }
 
+  // Filet de sécurité : jamais localhost dans un binaire release.
+  if (typeof __DEV__ !== 'undefined' && !__DEV__) {
+    return 'https://monpermis-api.onrender.com/api'
+  }
+
   const expoDevApi = getExpoDevApiBase()
   if (expoDevApi) {
     return expoDevApi

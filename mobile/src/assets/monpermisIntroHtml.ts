@@ -1,4 +1,4 @@
-/** Contenu de monpermis-animation — splash d’entrée de l’app. */
+/** Animation d’intro Monpermis.bj — fond blanc/crème, logo vectoriel. */
 export const MONPERMIS_INTRO_HTML = `<!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -201,7 +201,6 @@ export const MONPERMIS_INTRO_HTML = `<!DOCTYPE html>
     }
   }
 
-  // Fin de révélation ≈ 1.6 + (lettres × 0.04) + 1s → fondu puis signal RN
   const doneAt = 1600 + i * 40 + 1100;
   setTimeout(function () {
     document.body.style.transition = 'opacity .45s ease';

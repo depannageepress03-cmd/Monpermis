@@ -16,6 +16,12 @@ server/.env
 mobile/.env
 administration/.env
 
+# Android signing (never commit)
+*.keystore
+!mobile/android/app/debug.keystore
+mobile/credentials/*.local.txt
+
+
 # Python / outils locaux
 .venv-img/
 .venv/

@@ -3,6 +3,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack'
 import * as Linking from 'expo-linking'
 import { StatusBar } from 'expo-status-bar'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
+import { AppErrorBoundary } from '../components/AppErrorBoundary'
 import { AuthProvider } from '../context/AuthContext'
 import type { RootStackParamList } from './types'
 import { IntroScreen } from '../screens/IntroScreen'
@@ -107,12 +108,14 @@ function AppNavigator() {
 export function RootNavigator() {
   return (
     <SafeAreaProvider>
-      <AuthProvider>
-        <NavigationContainer linking={linking}>
-          <StatusBar style="dark" />
-          <AppNavigator />
-        </NavigationContainer>
-      </AuthProvider>
+      <AppErrorBoundary>
+        <AuthProvider>
+          <NavigationContainer linking={linking}>
+            <StatusBar style="dark" />
+            <AppNavigator />
+          </NavigationContainer>
+        </AuthProvider>
+      </AppErrorBoundary>
     </SafeAreaProvider>
   )
 }
