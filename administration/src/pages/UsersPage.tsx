@@ -339,7 +339,7 @@ export function UsersPage() {
               <thead>
                 <tr>
                   <th>Apprenant</th>
-                  <th>Contact</th>
+                  <th>Téléphone</th>
                   <th>Inscription</th>
                   <th>Statut</th>
                   <th />
@@ -376,7 +376,7 @@ export function UsersPage() {
                             </div>
                           </div>
                         </td>
-                        <td className="muted">{user.email || user.phone || '—'}</td>
+                        <td className="muted">{user.phone || '—'}</td>
                         <td className="muted">{formatDate(user.createdAt)}</td>
                         <td>
                           <div className="users-status-cell">
