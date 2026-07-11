@@ -1,0 +1,48 @@
+{
+  "expo": {
+    "name": "Monpermis.bj",
+    "slug": "monpermis",
+    "scheme": "monpermis",
+    "version": "1.0.1",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/logo.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#00B050"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.monpermis.app"
+    },
+    "android": {
+      "package": "com.monpermis.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#00B050",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-web-browser",
+      "expo-video",
+      "expo-audio"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "6240fc12-3075-4149-bef9-8e6c9ddcb3c8"
+      }
+    },
+    "owner": "marc2"
+  }
+}

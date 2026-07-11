@@ -1,0 +1,28 @@
+{
+  "name": "monpermis-server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch src/index.js",
+    "start": "node src/index.js",
+    "test:email": "node scripts/test-email.js",
+    "verify:user": "node scripts/verify-user.js",
+    "seed:admin": "node scripts/seed-admin.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.2",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^5.1.0",
+    "fedapay": "^1.2.5",
+    "google-auth-library": "^10.9.0",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.19.1",
+    "multer": "^2.2.0",
+    "nodemailer": "^9.0.3"
+  }
+}
