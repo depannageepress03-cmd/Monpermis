@@ -45,3 +45,7 @@ server/uploads/vehicles/
 *.njsproj
 *.sln
 *.sw?
+
+# APK locaux (ne pas committer)
+*.apk
+!mobile/android/**/*.apk
