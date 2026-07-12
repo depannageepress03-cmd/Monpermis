@@ -7,29 +7,6 @@ import { AppErrorBoundary } from '../components/AppErrorBoundary'
 import { AuthProvider } from '../context/AuthContext'
 import type { RootStackParamList } from './types'
 import { IntroScreen } from '../screens/IntroScreen'
-import { LoginScreen } from '../screens/LoginScreen'
-import { RegisterScreen } from '../screens/RegisterScreen'
-import { RegisterPasswordScreen } from '../screens/RegisterPasswordScreen'
-import { TermsOfUseScreen } from '../screens/TermsOfUseScreen'
-import { HomeScreen } from '../screens/HomeScreen'
-import { AbonnementScreen } from '../screens/AbonnementScreen'
-import { CodeRouteScreen } from '../screens/CodeRouteScreen'
-import { ConduiteScreen } from '../screens/ConduiteScreen'
-import { RevisionChapitresScreen } from '../screens/code-route/RevisionChapitresScreen'
-import { ChapterCoursesScreen } from '../screens/code-route/ChapterCoursesScreen'
-import { CourseDetailScreen } from '../screens/code-route/CourseDetailScreen'
-import { ChapterQuestionsScreen } from '../screens/code-route/ChapterQuestionsScreen'
-import {
-  ChapterQuestionsListScreen,
-  ChapterTestSubjectScreen,
-} from '../screens/code-route/ChapterSectionScreens'
-import { ExamensTestScreen, ExamensTestTakeScreen } from '../screens/code-route/ExamensTestScreen'
-import { MesNotesScreen } from '../screens/code-route/MesNotesScreen'
-import { ECodePermisScreen } from '../screens/code-route/ECodePermisScreen'
-import { LeconsChapitresScreen } from '../screens/conduite/LeconsChapitresScreen'
-import { LeconsCoursesScreen } from '../screens/conduite/LeconsCoursesScreen'
-import { LeconDetailScreen } from '../screens/conduite/LeconDetailScreen'
-import { ReservationFlowScreen } from '../screens/conduite/ReservationFlowScreen'
 
 const Stack = createNativeStackNavigator<RootStackParamList>()
 
@@ -73,34 +50,94 @@ function AppNavigator() {
       <Stack.Screen name="Intro" component={IntroScreen} options={{ animation: 'none' }} />
       <Stack.Screen
         name="Login"
-        component={LoginScreen}
+        getComponent={() => require('../screens/LoginScreen').LoginScreen}
         options={{ animation: 'fade', animationDuration: 480 }}
       />
       <Stack.Screen
         name="Home"
-        component={HomeScreen}
+        getComponent={() => require('../screens/HomeScreen').HomeScreen}
         options={{ animation: 'fade', animationDuration: 480 }}
       />
-      <Stack.Screen name="Register" component={RegisterScreen} />
-      <Stack.Screen name="RegisterPassword" component={RegisterPasswordScreen} />
-      <Stack.Screen name="TermsOfUse" component={TermsOfUseScreen} />
-      <Stack.Screen name="Abonnement" component={AbonnementScreen} />
-      <Stack.Screen name="CodeRoute" component={CodeRouteScreen} />
-      <Stack.Screen name="RevisionChapitres" component={RevisionChapitresScreen} />
-      <Stack.Screen name="ChapterCourses" component={ChapterCoursesScreen} />
-      <Stack.Screen name="CourseDetail" component={CourseDetailScreen} />
-      <Stack.Screen name="ChapterQuestionsList" component={ChapterQuestionsListScreen} />
-      <Stack.Screen name="ChapterTestSubject" component={ChapterTestSubjectScreen} />
-      <Stack.Screen name="ChapterQuestions" component={ChapterQuestionsScreen} />
-      <Stack.Screen name="ExamensTest" component={ExamensTestScreen} />
-      <Stack.Screen name="ExamensTestTake" component={ExamensTestTakeScreen} />
-      <Stack.Screen name="MesNotes" component={MesNotesScreen} />
-      <Stack.Screen name="ECodePermis" component={ECodePermisScreen} />
-      <Stack.Screen name="Conduite" component={ConduiteScreen} />
-      <Stack.Screen name="ReservationFlow" component={ReservationFlowScreen} />
-      <Stack.Screen name="LeconsChapitres" component={LeconsChapitresScreen} />
-      <Stack.Screen name="LeconsCourses" component={LeconsCoursesScreen} />
-      <Stack.Screen name="LeconDetail" component={LeconDetailScreen} />
+      <Stack.Screen
+        name="Register"
+        getComponent={() => require('../screens/RegisterScreen').RegisterScreen}
+      />
+      <Stack.Screen
+        name="RegisterPassword"
+        getComponent={() => require('../screens/RegisterPasswordScreen').RegisterPasswordScreen}
+      />
+      <Stack.Screen
+        name="TermsOfUse"
+        getComponent={() => require('../screens/TermsOfUseScreen').TermsOfUseScreen}
+      />
+      <Stack.Screen
+        name="Abonnement"
+        getComponent={() => require('../screens/AbonnementScreen').AbonnementScreen}
+      />
+      <Stack.Screen
+        name="CodeRoute"
+        getComponent={() => require('../screens/CodeRouteScreen').CodeRouteScreen}
+      />
+      <Stack.Screen
+        name="RevisionChapitres"
+        getComponent={() => require('../screens/code-route/RevisionChapitresScreen').RevisionChapitresScreen}
+      />
+      <Stack.Screen
+        name="ChapterCourses"
+        getComponent={() => require('../screens/code-route/ChapterCoursesScreen').ChapterCoursesScreen}
+      />
+      <Stack.Screen
+        name="CourseDetail"
+        getComponent={() => require('../screens/code-route/CourseDetailScreen').CourseDetailScreen}
+      />
+      <Stack.Screen
+        name="ChapterQuestionsList"
+        getComponent={() => require('../screens/code-route/ChapterSectionScreens').ChapterQuestionsListScreen}
+      />
+      <Stack.Screen
+        name="ChapterTestSubject"
+        getComponent={() => require('../screens/code-route/ChapterSectionScreens').ChapterTestSubjectScreen}
+      />
+      <Stack.Screen
+        name="ChapterQuestions"
+        getComponent={() => require('../screens/code-route/ChapterQuestionsScreen').ChapterQuestionsScreen}
+      />
+      <Stack.Screen
+        name="ExamensTest"
+        getComponent={() => require('../screens/code-route/ExamensTestScreen').ExamensTestScreen}
+      />
+      <Stack.Screen
+        name="ExamensTestTake"
+        getComponent={() => require('../screens/code-route/ExamensTestScreen').ExamensTestTakeScreen}
+      />
+      <Stack.Screen
+        name="MesNotes"
+        getComponent={() => require('../screens/code-route/MesNotesScreen').MesNotesScreen}
+      />
+      <Stack.Screen
+        name="ECodePermis"
+        getComponent={() => require('../screens/code-route/ECodePermisScreen').ECodePermisScreen}
+      />
+      <Stack.Screen
+        name="Conduite"
+        getComponent={() => require('../screens/ConduiteScreen').ConduiteScreen}
+      />
+      <Stack.Screen
+        name="ReservationFlow"
+        getComponent={() => require('../screens/conduite/ReservationFlowScreen').ReservationFlowScreen}
+      />
+      <Stack.Screen
+        name="LeconsChapitres"
+        getComponent={() => require('../screens/conduite/LeconsChapitresScreen').LeconsChapitresScreen}
+      />
+      <Stack.Screen
+        name="LeconsCourses"
+        getComponent={() => require('../screens/conduite/LeconsCoursesScreen').LeconsCoursesScreen}
+      />
+      <Stack.Screen
+        name="LeconDetail"
+        getComponent={() => require('../screens/conduite/LeconDetailScreen').LeconDetailScreen}
+      />
     </Stack.Navigator>
   )
 }
