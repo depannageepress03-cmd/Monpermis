@@ -1,0 +1,101 @@
+name: Build iOS IPA
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Tag de release (ex: v1.0.8-preview)'
+        required: true
+        default: 'v1.0.8-preview'
+
+permissions:
+  contents: write
+
+jobs:
+  build-ios:
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: mobile
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+
+      - name: Install JS dependencies
+        run: npm ci
+
+      - name: Generate iOS project
+        run: npx expo prebuild --platform ios --no-install
+
+      - name: Install CocoaPods
+        run: |
+          cd ios
+          pod install
+
+      - name: Build iOS archive
+        env:
+          EXPO_PUBLIC_API_URL: https://monpermis-api.onrender.com
+        run: |
+          cd ios
+          if [ -d Monpermisbj.xcworkspace ]; then
+            XCODE_ARGS=(-workspace Monpermisbj.xcworkspace)
+          else
+            XCODE_ARGS=(-project Monpermisbj.xcodeproj)
+          fi
+          xcodebuild \
+            "${XCODE_ARGS[@]}" \
+            -scheme Monpermisbj \
+            -configuration Release \
+            -sdk iphoneos \
+            -archivePath "$RUNNER_TEMP/Monpermis.xcarchive" \
+            archive \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            PROVISIONING_PROFILE_SPECIFIER=""
+
+      - name: Export IPA (unsigned — pour signature manuelle)
+        run: |
+          mkdir -p "$RUNNER_TEMP/Payload"
+          APP_PATH=$(find "$RUNNER_TEMP/Monpermis.xcarchive/Products/Applications" -name '*.app' | head -n 1)
+          if [ -z "$APP_PATH" ]; then
+            echo "Application .app introuvable dans l'archive"
+            exit 1
+          fi
+          cp -R "$APP_PATH" "$RUNNER_TEMP/Payload/"
+          cd "$RUNNER_TEMP"
+          zip -qr "monpermis-${{ inputs.version }}.ipa" Payload
+          ls -lh "monpermis-${{ inputs.version }}.ipa"
+
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: monpermis-ios-${{ inputs.version }}
+          path: ${{ runner.temp }}/monpermis-${{ inputs.version }}.ipa
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Create GitHub Release + attach IPA
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.version }}-ios
+          name: Monpermis iOS ${{ inputs.version }}
+          body: |
+            IPA iOS Monpermis.bj (${{ inputs.version }})
+
+            API: `https://monpermis-api.onrender.com`
+
+            **Note :** build sans signature Apple. Pour installer sur iPhone, re-signer avec un compte développeur Apple (Xcode / TestFlight).
+          files: ${{ runner.temp }}/monpermis-${{ inputs.version }}.ipa
+          draft: false
+          prerelease: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
