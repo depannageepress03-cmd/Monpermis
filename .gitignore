@@ -49,3 +49,6 @@ server/uploads/vehicles/
 # APK locaux (ne pas committer)
 *.apk
 !mobile/android/**/*.apk
+
+# Artefacts locaux générés
+build-output/
