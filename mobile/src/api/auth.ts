@@ -106,6 +106,13 @@ export function loginWithGoogle(idToken: string) {
   })
 }
 
+export function forgotPassword(email: string) {
+  return request<{ message: string }>('/auth/forgot-password', {
+    method: 'POST',
+    body: JSON.stringify({ email }),
+  })
+}
+
 export async function saveSession(token: string, user: AuthUser) {
   await AsyncStorage.multiSet([
     [TOKEN_KEY, token],

@@ -7,11 +7,9 @@ import {
   Layers,
   Lock,
 } from 'lucide-react-native'
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import {
   ActivityIndicator,
-  Animated,
-  Easing,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -22,51 +20,15 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { fetchCourseProgress } from '../../api/revision'
 import { PageNavbar } from '../../components/PageNavbar'
 import { ScreenLoader } from '../../components/ScreenLoader'
+import { FadeUp } from '../../components/FadeUp'
+import { AccentBar } from '../../components/AccentBar'
 import { useRequireAuth } from '../../hooks/useRequireAuth'
 import type { RootStackParamList } from '../../navigation/types'
-import { brand, colors } from '../../theme'
+import { brand, colors, typography } from '../../theme'
 import { formatChapterHeading, formatCourseHeading } from '../../utils/chapterLabel'
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'ChapterCourses'>
 type Route = RouteProp<RootStackParamList, 'ChapterCourses'>
-
-function FadeUp({
-  delay = 0,
-  children,
-  style,
-}: {
-  delay?: number
-  children: ReactNode
-  style?: object
-}) {
-  const opacity = useRef(new Animated.Value(0)).current
-  const translateY = useRef(new Animated.Value(14)).current
-
-  useEffect(() => {
-    Animated.parallel([
-      Animated.timing(opacity, {
-        toValue: 1,
-        duration: 480,
-        delay,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }),
-      Animated.timing(translateY, {
-        toValue: 0,
-        duration: 480,
-        delay,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }),
-    ]).start()
-  }, [delay, opacity, translateY])
-
-  return (
-    <Animated.View style={[style, { opacity, transform: [{ translateY }] }]}>
-      {children}
-    </Animated.View>
-  )
-}
 
 export function ChapterCoursesScreen() {
   const navigation = useNavigation<Nav>()
@@ -76,7 +38,6 @@ export function ChapterCoursesScreen() {
 
   const [completedIds, setCompletedIds] = useState<Set<string>>(new Set())
   const [progressLoading, setProgressLoading] = useState(true)
-  const accentScale = useRef(new Animated.Value(0.25)).current
 
   const loadProgress = useCallback(async () => {
     setProgressLoading(true)
@@ -95,16 +56,6 @@ export function ChapterCoursesScreen() {
       if (user) void loadProgress()
     }, [user, loadProgress]),
   )
-
-  useEffect(() => {
-    Animated.spring(accentScale, {
-      toValue: 1,
-      friction: 6,
-      tension: 60,
-      delay: 160,
-      useNativeDriver: true,
-    }).start()
-  }, [accentScale])
 
   const isCourseUnlocked = (index: number) => {
     if (index === 0) return true
@@ -130,13 +81,7 @@ export function ChapterCoursesScreen() {
           showsVerticalScrollIndicator={false}
         >
           <FadeUp delay={100} style={styles.header}>
-            <Animated.View
-              style={[styles.accentRow, { transform: [{ scaleX: accentScale }] }]}
-            >
-              <View style={[styles.accent, styles.accentGreen]} />
-              <View style={[styles.accent, styles.accentGold]} />
-              <View style={[styles.accent, styles.accentNavy]} />
-            </Animated.View>
+            <AccentBar />
             <Text style={styles.subtitle}>
               Parcourez les cours dans l’ordre. Chaque leçon validée ouvre la suivante pour
               construire vos bases solidement.
@@ -239,41 +184,14 @@ const styles = StyleSheet.create({
   header: {
     marginBottom: 28,
   },
-  accentRow: {
-    flexDirection: 'row',
-    gap: 6,
-    marginBottom: 16,
-    alignSelf: 'flex-start',
-  },
-  accent: {
-    height: 4,
-    borderRadius: 999,
-  },
-  accentGreen: {
-    width: 28,
-    backgroundColor: brand.green,
-  },
-  accentGold: {
-    width: 18,
-    backgroundColor: brand.gold,
-  },
-  accentNavy: {
-    width: 12,
-    backgroundColor: brand.navy,
-  },
   subtitle: {
-    fontSize: 18,
-    lineHeight: 26,
-    fontWeight: '600',
-    color: brand.navy,
-    maxWidth: 360,
-    marginBottom: 10,
+    ...typography.bodySmall,
+    color: brand.navyMuted,
+    maxWidth: 340,
   },
   detail: {
-    fontSize: 16,
-    lineHeight: 24,
+    ...typography.bodySmall,
     color: brand.navyMuted,
-    maxWidth: 360,
   },
   card: {
     flexDirection: 'row',
@@ -311,17 +229,16 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   cardIndex: {
-    fontSize: 13,
+    ...typography.caption,
     fontWeight: '700',
-    color: '#B8860B',
-    marginBottom: 3,
-    textTransform: 'uppercase',
-    letterSpacing: 0.6,
+    color: brand.navyMuted,
+    marginBottom: 2,
   },
   cardTitle: {
-    fontSize: 17,
-    fontWeight: '700',
+    ...typography.bodySemiBold,
+    fontSize: 13,
     color: brand.navy,
+    marginBottom: 2,
   },
   lockHint: {
     fontSize: 13,
@@ -365,15 +282,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   emptyTitle: {
-    fontSize: 17,
-    fontWeight: '700',
+    ...typography.h4,
     color: brand.navy,
     marginBottom: 8,
     textAlign: 'center',
   },
   emptyText: {
-    fontSize: 14,
-    lineHeight: 20,
+    ...typography.bodySmall,
     color: brand.navyMuted,
     textAlign: 'center',
   },

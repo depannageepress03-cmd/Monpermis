@@ -8,6 +8,7 @@ import { Moniteur } from '../models/Moniteur.js'
 import { Reservation } from '../models/Reservation.js'
 import { Creneau } from '../models/Creneau.js'
 import { Admin } from '../models/Admin.js'
+import { formatLocalDate } from '../utils/localDate.js'
 
 const router = Router()
 router.use(requireAdminAuth)
@@ -30,7 +31,7 @@ router.get('/summary', async (_req, res) => {
       Question.countDocuments(),
       Moniteur.find().select('active'),
       Reservation.find().select('status paymentStatus'),
-      Creneau.countDocuments({ status: 'libre' }),
+      Creneau.countDocuments({ status: 'libre', date: { $gte: formatLocalDate() } }),
       Admin.countDocuments(),
     ])
 

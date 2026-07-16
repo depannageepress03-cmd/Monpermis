@@ -2,7 +2,10 @@ import 'dotenv/config'
 import express from 'express'
 import mongoose from 'mongoose'
 import path from 'path'
+import helmet from 'helmet'
 import { fileURLToPath } from 'url'
+import rateLimit from 'express-rate-limit'
+import { logger } from './utils/logger.js'
 import authRoutes from './routes/auth.js'
 import adminAuthRoutes from './routes/adminAuth.js'
 import adminRevisionRoutes from './routes/adminRevision.js'
@@ -13,16 +16,20 @@ import adminUsersRoutes from './routes/adminUsers.js'
 import adminDashboardRoutes from './routes/adminDashboard.js'
 import contentRoutes from './routes/content.js'
 import practiceExamsRoutes from './routes/practiceExams.js'
+import ecodepermisExamsRoutes from './routes/ecodepermisExams.js'
 import contentConduiteRoutes from './routes/contentConduite.js'
 import reservationsRoutes from './routes/reservations.js'
 import adminPracticeExamsRoutes from './routes/adminPracticeExams.js'
+import adminEcodepermisExamsRoutes from './routes/adminEcodepermisExams.js'
 import adminSubscriptionsRoutes from './routes/adminSubscriptions.js'
 import subscriptionsRoutes from './routes/subscriptions.js'
 import fedapayWebhooksRoutes from './routes/fedapayWebhooks.js'
 import { ensureReservationIndexes } from './models/Reservation.js'
 import {
   ensureDefaultPlans,
+  expireDueSubscriptions,
   grantGraceToUsersWithoutSubscription,
+  notifyExpiringSubscriptions,
 } from './utils/subscriptions.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -49,13 +56,11 @@ function parseAllowedOrigins() {
 }
 
 const allowedOrigins = parseAllowedOrigins()
-console.log(`CORS origines: ${allowedOrigins.join(', ') || '(aucune)'}`)
+logger.info('CORS origines', { origins: allowedOrigins })
 
 function isOriginAllowed(origin) {
   if (!origin) return false
   if (allowedOrigins.includes(origin)) return true
-  // Autoriser aussi les previews Render du même compte si besoin
-  if (/^https:\/\/monpermis[\w-]*\.onrender\.com$/i.test(origin)) return true
   return false
 }
 
@@ -78,6 +83,24 @@ app.use((req, res, next) => {
   }
   return next()
 })
+// Security headers
+app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }))
+
+// Rate limiting
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: { success: false, error: 'Trop de tentatives. R\u00e9essayez dans 15 minutes.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+})
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 120,
+  message: { success: false, error: 'Trop de requêtes. Réessayez dans 15 minutes.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+})
 // Corps brut requis pour vérifier la signature HMAC des webhooks FedaPay
 app.use(
   '/api/webhooks/fedapay',
@@ -92,66 +115,92 @@ app.get('/api/health', (_req, res) => {
   res.status(dbReady ? 200 : 503).json({
     success: dbReady,
     message: dbReady
-      ? 'API Monpermis.bj opérationnelle'
-      : 'API démarrée, mais MongoDB Atlas est inaccessible',
+      ? 'API Monpermis.bj op\u00e9rationnelle'
+      : 'Service temporairement indisponible',
     db: dbReady ? 'connected' : 'disconnected',
   })
 })
 
-app.use('/api/auth', authRoutes)
-app.use('/api/admin/auth', adminAuthRoutes)
-app.use('/api/admin/revision', adminQuestionsRoutes)
-app.use('/api/admin/revision', adminRevisionRoutes)
-app.use('/api/admin/revision', adminPracticeExamsRoutes)
-app.use('/api/admin/conduite', adminConduiteRoutes)
-app.use('/api/admin/conduite', adminReservationsRoutes)
-app.use('/api/admin/users', adminUsersRoutes)
-app.use('/api/admin/dashboard', adminDashboardRoutes)
-app.use('/api/admin/subscriptions', adminSubscriptionsRoutes)
-app.use('/api/subscriptions', subscriptionsRoutes)
-app.use('/api/content/revision', contentRoutes)
-app.use('/api/content/revision', practiceExamsRoutes)
-app.use('/api/content/conduite', contentConduiteRoutes)
-app.use('/api/reservations', reservationsRoutes)
+app.use('/api/auth', authLimiter, authRoutes)
+app.use('/api/admin/auth', authLimiter, adminAuthRoutes)
+app.use('/api/admin/revision', apiLimiter, adminRevisionRoutes)
+app.use('/api/admin/revision', apiLimiter, adminQuestionsRoutes)
+app.use('/api/admin/revision', apiLimiter, adminPracticeExamsRoutes)
+app.use('/api/admin/ecodepermis', apiLimiter, adminEcodepermisExamsRoutes)
+app.use('/api/admin/conduite', apiLimiter, adminConduiteRoutes)
+app.use('/api/admin/conduite', apiLimiter, adminReservationsRoutes)
+app.use('/api/admin/users', apiLimiter, adminUsersRoutes)
+app.use('/api/admin/dashboard', apiLimiter, adminDashboardRoutes)
+app.use('/api/admin/subscriptions', apiLimiter, adminSubscriptionsRoutes)
+app.use('/api/subscriptions', apiLimiter, subscriptionsRoutes)
+app.use('/api/content/revision', apiLimiter, contentRoutes)
+app.use('/api/content/revision', apiLimiter, practiceExamsRoutes)
+app.use('/api/content/ecodepermis', apiLimiter, ecodepermisExamsRoutes)
+app.use('/api/content/conduite', apiLimiter, contentConduiteRoutes)
+app.use('/api/reservations', apiLimiter, reservationsRoutes)
 
 async function connectMongo() {
   await mongoose.connect(process.env.MONGODB_URI, {
     serverSelectionTimeoutMS: 8000,
   })
-  console.log('Connecté à MongoDB Atlas')
+  logger.info('Connecté à MongoDB Atlas')
   await ensureReservationIndexes()
   try {
     await ensureDefaultPlans()
     const grace = await grantGraceToUsersWithoutSubscription()
     if (grace.granted > 0) {
-      console.log(`Période de grâce attribuée à ${grace.granted} apprenant(s)`)
+      logger.info(`Période de grâce attribuée à ${grace.granted} apprenant(s)`)
     }
+    await expireDueSubscriptions()
+    const expiring = await notifyExpiringSubscriptions()
+    if (expiring.sent > 0) {
+      logger.info(`Avertissements expiration envoyés à ${expiring.sent} apprenant(s)`)
+    }
+    setInterval(async () => {
+      try {
+        await expireDueSubscriptions()
+        const result = await notifyExpiringSubscriptions()
+        if (result.sent > 0) logger.info(`Avertissements expiration envoyés à ${result.sent} apprenant(s)`)
+      } catch (e) {
+        logger.error('Erreur vérification expirations', { error: e.message })
+      }
+    }, 15 * 60 * 1000)
   } catch (err) {
-    console.error('Initialisation abonnements:', err.message)
+    logger.error('Initialisation abonnements', { error: err.message })
   }
 }
 
 async function start() {
   app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Serveur démarré sur http://localhost:${PORT}`)
+    logger.info(`Serveur démarré sur http://localhost:${PORT}`)
   })
 
   try {
     await connectMongo()
   } catch (error) {
-    console.error('MongoDB inaccessible au démarrage:', error.message)
+    logger.error('MongoDB inaccessible au démarrage', { error: error.message })
     if (error?.name === 'MongooseServerSelectionError') {
-      console.error(
-        '→ Autorisez votre IP actuelle dans MongoDB Atlas : Network Access → Add IP Address (ou 0.0.0.0/0 en local)',
+      logger.error(
+        '→ Autorisez votre IP actuelle dans MongoDB Atlas',
       )
     }
-    console.error('Nouvelle tentative de connexion dans 15s…')
-    setInterval(() => {
-      if (mongoose.connection.readyState === 1) return
-      connectMongo().catch((err) => {
-        console.error('Nouvelle tentative MongoDB échouée:', err.message)
-      })
-    }, 15000)
+    logger.info('Nouvelle tentative de connexion dans 15s')
+    let retryTimer
+    function scheduleRetry() {
+      retryTimer = setTimeout(async () => {
+        if (mongoose.connection.readyState === 1) {
+          clearTimeout(retryTimer)
+          return
+        }
+        try {
+          await connectMongo()
+        } catch (err) {
+          logger.error('Nouvelle tentative MongoDB échouée', { error: err.message })
+          scheduleRetry()
+        }
+      }, 15000)
+    }
+    scheduleRetry()
   }
 }
 

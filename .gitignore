@@ -52,3 +52,6 @@ server/uploads/vehicles/
 
 # Artefacts locaux générés
 build-output/
+
+# Config locale d'outils (Claude Code, etc.)
+.claude/

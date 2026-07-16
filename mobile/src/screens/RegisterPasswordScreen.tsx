@@ -1,11 +1,11 @@
 import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
+import { LinearGradient } from 'expo-linear-gradient'
 import { ChevronLeft } from 'lucide-react-native'
 import { useState } from 'react'
 import {
   Image,
   KeyboardAvoidingView,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -15,10 +15,11 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { registerUser } from '../api/auth'
 import { AuthInput } from '../components/AuthInput'
+import { Bouncy } from '../components/Bouncy'
 import { BrandName } from '../components/BrandName'
 import { useAuth } from '../context/AuthContext'
 import type { RootStackParamList } from '../navigation/types'
-import { brand, colors } from '../theme'
+import { brand, colors, gradients } from '../theme'
 import { validatePassword } from '../utils/validation'
 import { showAuthError } from '../utils/showAuthError'
 
@@ -88,7 +89,7 @@ export function RegisterPasswordScreen() {
 
         <KeyboardAvoidingView
           style={styles.flex}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          behavior="padding"
         >
           <ScrollView
             contentContainerStyle={styles.scroll}
@@ -131,19 +132,18 @@ export function RegisterPasswordScreen() {
 
             <Text style={styles.hint}>Minimum 8 caractères</Text>
 
-            <Pressable
-              style={({ pressed }) => [
-                styles.submitBtn,
-                (pressed || loading) && styles.pressed,
-                loading && styles.disabled,
-              ]}
-              onPress={handleSubmit}
-              disabled={loading}
-            >
-              <Text style={styles.submitText}>
-                {loading ? 'Inscription en cours…' : "S'inscrire"}
-              </Text>
-            </Pressable>
+            <Bouncy onPress={handleSubmit} disabled={loading} scaleTo={0.97} style={loading && styles.disabled}>
+              <LinearGradient
+                colors={gradients.green}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.submitBtn}
+              >
+                <Text style={styles.submitText}>
+                  {loading ? 'Inscription en cours…' : "S'inscrire"}
+                </Text>
+              </LinearGradient>
+            </Bouncy>
           </ScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>
@@ -223,7 +223,6 @@ const styles = StyleSheet.create({
     width: '100%',
     minHeight: 52,
     borderRadius: 999,
-    backgroundColor: brand.green,
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 16,

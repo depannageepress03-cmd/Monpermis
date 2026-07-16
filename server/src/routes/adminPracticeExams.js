@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { PracticeExam } from '../models/PracticeExam.js'
 import { PracticeExamAttempt } from '../models/PracticeExamAttempt.js'
+import { Question } from '../models/Question.js'
 import { User } from '../models/User.js'
 import { requireAdminAuth } from '../middleware/adminAuth.js'
 import {
@@ -88,6 +89,44 @@ router.post('/practice-exams/generate', async (_req, res) => {
   } catch (error) {
     console.error('Erreur génération examens test:', error)
     res.status(500).json({ success: false, error: 'Génération impossible' })
+  }
+})
+
+router.get('/practice-exams/:examId', async (req, res) => {
+  try {
+    const exam = await PracticeExam.findById(req.params.examId)
+    if (!exam) {
+      return res.status(404).json({ success: false, error: 'Examen introuvable' })
+    }
+    const questions = await Question.find({ _id: { $in: exam.questionIds } })
+    res.json({
+      success: true,
+      data: { exam: exam.toAdminJSON(questions) },
+    })
+  } catch (error) {
+    console.error('Erreur détail examen test:', error)
+    res.status(500).json({ success: false, error: 'Chargement impossible' })
+  }
+})
+
+router.patch('/practice-exams/:examId', async (req, res) => {
+  try {
+    const exam = await PracticeExam.findById(req.params.examId)
+    if (!exam) {
+      return res.status(404).json({ success: false, error: 'Examen introuvable' })
+    }
+    if (req.body.published !== undefined) {
+      exam.published = Boolean(req.body.published)
+    }
+    await exam.save()
+    const questions = await Question.find({ _id: { $in: exam.questionIds } })
+    res.json({
+      success: true,
+      data: { exam: exam.toAdminJSON(questions) },
+    })
+  } catch (error) {
+    console.error('Erreur mise à jour examen test:', error)
+    res.status(500).json({ success: false, error: 'Mise à jour impossible' })
   }
 })
 

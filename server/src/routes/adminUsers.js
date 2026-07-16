@@ -1,7 +1,9 @@
 import { Router } from 'express'
 import { User } from '../models/User.js'
 import { requireAdminAuth } from '../middleware/adminAuth.js'
+import { audit } from '../middleware/audit.js'
 import { buildLearnerJourney } from '../utils/learnerJourney.js'
+import { logger } from '../utils/logger.js'
 
 const router = Router()
 router.use(requireAdminAuth)
@@ -18,18 +20,63 @@ function normalizePhone(phone) {
   return local.slice(0, 10)
 }
 
-router.get('/', async (_req, res) => {
+router.get('/', async (req, res) => {
   try {
-    const users = await User.find().sort({ createdAt: -1 })
+    const page = Math.max(1, parseInt(req.query.page) || 1)
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 50))
+    const skip = (page - 1) * limit
+    const search = String(req.query.q || '').trim()
+
+    const filter = {}
+    if (search) {
+      const regex = new RegExp(search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i')
+      filter.$or = [
+        { firstName: regex },
+        { lastName: regex },
+        { email: regex },
+        { phone: regex },
+      ]
+    }
+
+    const [users, total] = await Promise.all([
+      User.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit),
+      User.countDocuments(filter),
+    ])
+
     res.json({
       success: true,
       data: {
         users: users.map((user) => user.toAdminJSON()),
+        pagination: { page, limit, total, pages: Math.ceil(total / limit) },
       },
     })
   } catch (error) {
-    console.error('Erreur liste utilisateurs:', error)
+    logger.error('Erreur liste utilisateurs', { error: error.message })
     res.status(500).json({ success: false, error: 'Chargement impossible' })
+  }
+})
+
+router.get('/search', async (req, res) => {
+  try {
+    const q = String(req.query.q || '').trim()
+    if (!q || q.length < 2) {
+      return res.json({ success: true, data: { users: [] } })
+    }
+
+    const regex = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i')
+    const users = await User.find({
+      $or: [{ firstName: regex }, { lastName: regex }, { email: regex }, { phone: regex }],
+    })
+      .limit(20)
+      .sort({ createdAt: -1 })
+
+    res.json({
+      success: true,
+      data: { users: users.map((user) => user.toAdminJSON()) },
+    })
+  } catch (error) {
+    logger.error('Erreur recherche utilisateurs', { error: error.message })
+    res.status(500).json({ success: false, error: 'Recherche impossible' })
   }
 })
 
@@ -49,12 +96,12 @@ router.get('/:userId/progress', async (req, res) => {
       },
     })
   } catch (error) {
-    console.error('Erreur progression apprenant:', error)
+    logger.error('Erreur progression apprenant', { error: error.message })
     res.status(500).json({ success: false, error: 'Progression indisponible' })
   }
 })
 
-router.post('/', async (req, res) => {
+router.post('/', audit('create', 'user'), async (req, res) => {
   try {
     const { firstName, lastName, email, phone, password } = req.body ?? {}
 
@@ -102,12 +149,12 @@ router.post('/', async (req, res) => {
       data: { user: user.toAdminJSON() },
     })
   } catch (error) {
-    console.error('Erreur création utilisateur:', error)
+    logger.error('Erreur création utilisateur', { error: error.message })
     res.status(500).json({ success: false, error: 'Création impossible' })
   }
 })
 
-router.patch('/:userId', async (req, res) => {
+router.patch('/:userId', audit('update', 'user'), async (req, res) => {
   try {
     const user = await User.findById(req.params.userId)
     if (!user) {
@@ -156,12 +203,12 @@ router.patch('/:userId', async (req, res) => {
       data: { user: user.toAdminJSON() },
     })
   } catch (error) {
-    console.error('Erreur mise à jour utilisateur:', error)
+    logger.error('Erreur mise à jour utilisateur', { error: error.message })
     res.status(500).json({ success: false, error: 'Mise à jour impossible' })
   }
 })
 
-router.delete('/:userId', async (req, res) => {
+router.delete('/:userId', audit('delete', 'user'), async (req, res) => {
   try {
     const user = await User.findByIdAndDelete(req.params.userId)
     if (!user) {
@@ -173,7 +220,7 @@ router.delete('/:userId', async (req, res) => {
       data: { deleted: true, id: String(user._id) },
     })
   } catch (error) {
-    console.error('Erreur suppression utilisateur:', error)
+    logger.error('Erreur suppression utilisateur', { error: error.message })
     res.status(500).json({ success: false, error: 'Suppression impossible' })
   }
 })

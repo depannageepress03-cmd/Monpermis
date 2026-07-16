@@ -8,6 +8,7 @@ export type RegisterProfileParams = {
 export type RootStackParamList = {
   Intro: undefined
   Login: { message?: string } | undefined
+  ForgotPassword: undefined
   Register: undefined
   RegisterPassword: RegisterProfileParams
   TermsOfUse: undefined
@@ -85,6 +86,7 @@ export type RootStackParamList = {
   ExamensTestTake: { examNumber: number }
   MesNotes: undefined
   ECodePermis: undefined
+  ECodePermisTake: { examNumber: number }
   Conduite: undefined
   ReservationFlow: undefined
   LeconsChapitres: undefined

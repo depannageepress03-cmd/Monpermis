@@ -8,6 +8,8 @@ import {
   getUserAccess,
   expireDueSubscriptions,
   getPendingSubscription,
+  activateSubscription,
+  hasUsedFreeOffer,
 } from '../utils/subscriptions.js'
 import { startSubscriptionPayment, syncPaymentFromProvider } from '../utils/payments.js'
 import { configureFedaPay, getFedaPayPublicKey } from '../services/fedapay.js'
@@ -65,7 +67,6 @@ router.get('/me', requireUserAuth, async (req, res) => {
 
 router.post('/subscribe', requireUserAuth, async (req, res) => {
   try {
-    configureFedaPay()
     const { planId } = req.body ?? {}
     const plan = await SubscriptionPlan.findOne({
       _id: planId,
@@ -74,6 +75,15 @@ router.post('/subscribe', requireUserAuth, async (req, res) => {
     })
     if (!plan) {
       return res.status(404).json({ success: false, error: 'Offre introuvable ou inactive' })
+    }
+
+    const isFreePlan = (Number(plan.price) || 0) <= 0
+
+    if (isFreePlan && (await hasUsedFreeOffer(req.user._id))) {
+      return res.status(403).json({
+        success: false,
+        error: 'Vous avez déjà utilisé une offre gratuite. Une seule offre gratuite est autorisée par compte.',
+      })
     }
 
     let subscription = await getPendingSubscription(req.user._id)
@@ -86,10 +96,36 @@ router.post('/subscribe', requireUserAuth, async (req, res) => {
     if (!subscription) {
       subscription = await createPendingSubscription(req.user._id, plan, {
         source: 'purchase',
-        paymentNote: 'Paiement FedaPay en cours',
+        paymentNote: isFreePlan ? 'Offre gratuite' : 'Paiement FedaPay en cours',
       })
     }
 
+    if (isFreePlan) {
+      await activateSubscription(subscription)
+      const payment = await PaymentTransaction.create({
+        userId: req.user._id,
+        subscriptionId: subscription._id,
+        planId: plan._id,
+        amount: 0,
+        currency: plan.currency || 'XOF',
+        description: `Abonnement ${plan.name} — Monpermis.bj`,
+        status: 'approved',
+        activatedAt: new Date(),
+      })
+
+      const access = await getUserAccess(req.user._id)
+      return res.status(201).json({
+        success: true,
+        data: {
+          subscription: subscription.toPublicJSON(),
+          payment: payment.toPublicJSON(),
+          access,
+          message: 'Offre gratuite activée. Votre abonnement est maintenant actif.',
+        },
+      })
+    }
+
+    configureFedaPay()
     const payment = await startSubscriptionPayment({
       user: req.user,
       subscription,

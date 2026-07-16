@@ -40,3 +40,7 @@ export function loginAdmin(phone: string, password: string) {
 export function fetchAdminMe(token: string) {
   return apiFetch<{ admin: AdminUser }>('/api/admin/auth/me', {}, token)
 }
+
+export function fetchRegistrationStatus(token: string) {
+  return apiFetch<{ allowed: boolean }>('/api/admin/auth/registration-status', {}, token)
+}

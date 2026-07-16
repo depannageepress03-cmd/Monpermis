@@ -1,6 +1,6 @@
-import { FormEvent, useState } from 'react'
-import { KeyRound, Phone, UserPlus, UserRound } from 'lucide-react'
-import { createAdmin } from '../api/auth'
+import { FormEvent, useEffect, useState } from 'react'
+import { KeyRound, Phone, ShieldAlert, UserPlus, UserRound } from 'lucide-react'
+import { createAdmin, fetchRegistrationStatus } from '../api/auth'
 import { getAdminToken, isAuthError } from '../context/AdminAuthContext'
 import {
   normalizePhone,
@@ -18,6 +18,15 @@ export function CreateAdminPage() {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [registrationAllowed, setRegistrationAllowed] = useState<boolean | null>(null)
+
+  useEffect(() => {
+    const token = getAdminToken()
+    if (!token) return
+    fetchRegistrationStatus(token)
+      .then(({ allowed }) => setRegistrationAllowed(allowed))
+      .catch(() => setRegistrationAllowed(null))
+  }, [])
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
@@ -80,12 +89,21 @@ export function CreateAdminPage() {
         </p>
       </div>
 
+      {registrationAllowed === false ? (
+        <p className="form-error" role="alert" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <ShieldAlert size={16} />
+          La création d'administrateurs est désactivée sur ce serveur (variable
+          ALLOW_ADMIN_REGISTRATION). Activez-la dans la configuration du serveur pour
+          créer un nouveau compte.
+        </p>
+      ) : null}
+
       <section className="admin-section">
         <div className="admin-section-head">
           <h3 className="admin-section-label">Informations du compte</h3>
         </div>
         <div className="admin-section-body">
-          <form onSubmit={handleSubmit} className="create-admin-form">
+          <form onSubmit={handleSubmit} className="create-admin-form" aria-disabled={registrationAllowed === false}>
             <div className="create-admin-grid">
               <div className="create-admin-field">
                 <label htmlFor="fullName">
@@ -158,7 +176,11 @@ export function CreateAdminPage() {
             {error ? <p className="form-error" role="alert">{error}</p> : null}
             {success ? <p className="form-success" role="status">{success}</p> : null}
 
-            <button type="submit" disabled={submitting} className="btn-primary btn-primary-inline">
+            <button
+              type="submit"
+              disabled={submitting || registrationAllowed === false}
+              className="btn-primary btn-primary-inline"
+            >
               <UserPlus size={18} />
               {submitting ? 'Création…' : "Créer l'administrateur"}
             </button>

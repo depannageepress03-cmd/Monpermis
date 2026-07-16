@@ -16,6 +16,8 @@ const userSchema = new mongoose.Schema(
     isActive: { type: Boolean, default: true },
     emailVerificationToken: { type: String, select: false },
     emailVerificationExpires: { type: Date, select: false },
+    passwordResetToken: { type: String, select: false },
+    passwordResetExpires: { type: Date, select: false },
     /** Solde d'heures de conduite restantes (achetées / créditées). */
     soldeHeures: { type: Number, default: 0, min: 0 },
     /** Heures de conduite déjà effectuées. */

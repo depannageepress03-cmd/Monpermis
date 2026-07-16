@@ -8,6 +8,7 @@ import {
   deactivateSubscriptionPlan,
   fetchSubscriptionLearners,
   fetchSubscriptionPlans,
+  type CustomDurationUnit,
   type DurationType,
   type LearnerSubscription,
   type SubscriptionPlan,
@@ -42,6 +43,7 @@ function blankPlan(order: number): SubscriptionPlanPayload {
     name: '',
     description: '',
     durationType: 'monthly',
+    customUnit: 'days',
     price: 0,
     accessCode: true,
     accessConduite: false,
@@ -58,6 +60,7 @@ function planPayload(plan: SubscriptionPlan): SubscriptionPlanPayload {
     description: plan.description ?? '',
     durationType: plan.durationType,
     ...(plan.customDays ? { customDays: plan.customDays } : {}),
+    customUnit: plan.customUnit || 'days',
     price: plan.price,
     accessCode: plan.accessCode,
     accessConduite: plan.accessConduite,
@@ -299,7 +302,15 @@ export function SubscriptionsPage() {
                 <label>Nom<input value={planForm.name} onChange={(event) => setPlanForm({ ...planForm, name: event.target.value })} required /></label>
                 <label>Prix (FCFA)<input type="number" min="0" value={planForm.price} onChange={(event) => setPlanForm({ ...planForm, price: Number(event.target.value) })} required /></label>
                 <label>Durée<select value={planForm.durationType} onChange={(event) => setPlanForm({ ...planForm, durationType: event.target.value as DurationType })}>{durationOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
-                {planForm.durationType === 'custom' ? <label>Nombre de jours<input type="number" min="1" value={planForm.customDays ?? ''} onChange={(event) => setPlanForm({ ...planForm, customDays: Number(event.target.value) })} required /></label> : null}
+                {planForm.durationType === 'custom' ? (
+                  <>
+                    <label>Durée personnalisée<input type="number" min="1" value={planForm.customDays ?? ''} onChange={(event) => setPlanForm({ ...planForm, customDays: Number(event.target.value) })} required /></label>
+                    <label>Unité<select value={planForm.customUnit ?? 'days'} onChange={(event) => setPlanForm({ ...planForm, customUnit: event.target.value as CustomDurationUnit })}>
+                      <option value="days">Jours</option>
+                      <option value="months">Mois</option>
+                    </select></label>
+                  </>
+                ) : null}
                 <label>Heures de conduite incluses<input type="number" min="0" value={planForm.heuresIncluses} onChange={(event) => setPlanForm({ ...planForm, heuresIncluses: Number(event.target.value) })} /></label>
                 <label>Ordre d’affichage<input type="number" min="0" value={planForm.order} onChange={(event) => setPlanForm({ ...planForm, order: Number(event.target.value) })} /></label>
                 <label className="subscriptions-full-field">Description<textarea value={planForm.description ?? ''} onChange={(event) => setPlanForm({ ...planForm, description: event.target.value })} rows={2} /></label>

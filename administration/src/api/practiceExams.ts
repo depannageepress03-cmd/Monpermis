@@ -42,3 +42,19 @@ export function generateAdminPracticeExams(token: string) {
     exams: { id: string; examNumber: number; questionCount: number; published: boolean }[]
   }>('/api/admin/revision/practice-exams/generate', { method: 'POST', body: JSON.stringify({}) }, token)
 }
+
+export function fetchAdminPracticeExamById(token: string, examId: string) {
+  return apiFetch<{ exam: AdminPracticeExamOverview['exams'][0] & { questions: any[] } }>(
+    `/api/admin/revision/practice-exams/${examId}`,
+    {},
+    token,
+  )
+}
+
+export function updateAdminPracticeExam(token: string, examId: string, payload: { published: boolean }) {
+  return apiFetch<{ exam: AdminPracticeExamOverview['exams'][0] & { questions: any[] } }>(
+    `/api/admin/revision/practice-exams/${examId}`,
+    { method: 'PATCH', body: JSON.stringify(payload) },
+    token,
+  )
+}

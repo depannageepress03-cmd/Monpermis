@@ -261,6 +261,7 @@ export function ChapterTestSubjectPanel({ chapterId }: { chapterId: string }) {
 
                   {expanded ? (
                     <div className="revision-course-body">
+                      {question.prompt.text ? <p>{question.prompt.text}</p> : null}
                       {question.prompt.audioUrl ? (
                         <audio controls src={resolveMediaUrl(question.prompt.audioUrl)} />
                       ) : null}
@@ -275,7 +276,7 @@ export function ChapterTestSubjectPanel({ chapterId }: { chapterId: string }) {
                         {question.answers.map((answer) => (
                           <li key={`${question.id}-${answer.label}`}>
                             <span className={answer.isCorrect ? 'is-correct' : undefined}>
-                              {answer.label.toUpperCase()}. Audio
+                              {answer.label.toUpperCase()}. {answer.text || 'Audio'}
                               {answer.isCorrect ? ' ✓' : ''}
                             </span>
                           </li>

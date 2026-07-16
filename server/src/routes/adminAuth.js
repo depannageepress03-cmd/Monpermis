@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken'
 import mongoose from 'mongoose'
 import { Admin } from '../models/Admin.js'
 import { requireAdminAuth } from '../middleware/adminAuth.js'
+import { logger } from '../utils/logger.js'
 
 const router = Router()
 
@@ -18,13 +19,20 @@ function normalizePhone(phone) {
 }
 
 function createAdminToken(adminId) {
-  return jwt.sign({ adminId, scope: 'admin' }, process.env.JWT_SECRET, { expiresIn: '8h' })
+  return jwt.sign({ adminId, scope: 'admin' }, process.env.JWT_SECRET, {
+    expiresIn: '8h',
+    algorithm: 'HS256',
+  })
 }
 
 function isRegistrationAllowed() {
-  if (process.env.ALLOW_ADMIN_REGISTRATION === 'false') return false
-  return true
+  if (process.env.ALLOW_ADMIN_REGISTRATION === 'true') return true
+  return false
 }
+
+router.get('/registration-status', requireAdminAuth, (req, res) => {
+  res.json({ success: true, data: { allowed: isRegistrationAllowed() } })
+})
 
 router.post('/register', requireAdminAuth, async (req, res) => {
   try {
@@ -51,6 +59,13 @@ router.post('/register', requireAdminAuth, async (req, res) => {
       return res.status(400).json({ success: false, error: 'Mot de passe : minimum 8 caractères' })
     }
 
+    if (!/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/\d/.test(password)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Mot de passe : doit contenir majuscule, minuscule et chiffre',
+      })
+    }
+
     if (password !== confirmPassword) {
       return res.status(400).json({ success: false, error: 'Les mots de passe ne correspondent pas' })
     }
@@ -73,7 +88,7 @@ router.post('/register', requireAdminAuth, async (req, res) => {
       },
     })
   } catch (error) {
-    console.error('Erreur création admin:', error)
+    logger.error('Erreur création admin:', error)
     res.status(500).json({ success: false, error: 'Création impossible' })
   }
 })
@@ -117,7 +132,7 @@ router.post('/login', async (req, res) => {
       },
     })
   } catch (error) {
-    console.error('Erreur connexion admin:', error)
+    logger.error('Erreur connexion admin:', error)
     const dbDown =
       error?.name === 'MongooseServerSelectionError' ||
       error?.name === 'MongoServerSelectionError' ||
@@ -125,8 +140,7 @@ router.post('/login', async (req, res) => {
     if (dbDown) {
       return res.status(503).json({
         success: false,
-        error:
-          'Base de données inaccessible. Vérifiez que votre IP est autorisée dans MongoDB Atlas (Network Access).',
+        error: 'Service temporairement indisponible. R\u00e9essayez plus tard.',
       })
     }
     res.status(500).json({ success: false, error: 'Connexion impossible' })

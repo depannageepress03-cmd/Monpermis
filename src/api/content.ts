@@ -372,3 +372,46 @@ export function fetchPracticeExamScores() {
     scores: PracticeExamScore[]
   }>('/content/revision/practice-exams/scores', { auth: true })
 }
+
+export function fetchECodePermisExams() {
+  return request<PracticeExamsOverview>('/content/ecodepermis/exams', { auth: true })
+}
+
+export function startECodePermisExam(examNumber: number) {
+  return request<{ attempt: PracticeExamAttempt }>(
+    `/content/ecodepermis/exams/${examNumber}/start`,
+    { method: 'POST', body: JSON.stringify({}), auth: true },
+  )
+}
+
+export function fetchECodePermisExamAttempt(attemptId: string) {
+  return request<{ attempt: PracticeExamAttempt }>(
+    `/content/ecodepermis/exams/attempts/${attemptId}`,
+    { auth: true },
+  )
+}
+
+export function checkECodePermisAnswer(
+  attemptId: string,
+  questionId: string,
+  answerIds: string[],
+) {
+  return request<{
+    isCorrect: boolean
+    correctAnswerIds: string[]
+    answeredCount: number
+    total: number
+    liveCorrect: number
+  }>(`/content/ecodepermis/exams/attempts/${attemptId}/check`, {
+    method: 'POST',
+    body: JSON.stringify({ questionId, answerIds }),
+    auth: true,
+  })
+}
+
+export function completeECodePermisExam(attemptId: string) {
+  return request<{ attempt: PracticeExamScore }>(
+    `/content/ecodepermis/exams/attempts/${attemptId}/complete`,
+    { method: 'POST', body: JSON.stringify({}), auth: true },
+  )
+}

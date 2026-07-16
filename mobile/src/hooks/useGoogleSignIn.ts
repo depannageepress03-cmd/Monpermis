@@ -30,10 +30,10 @@ export function useGoogleSignIn(onSuccess: (idToken: string) => Promise<void>) {
 
   // Toujours appeler le hook (règles React), avec un client factice si non configuré.
   const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
-    clientId: webClientId || '000000000000-disabled.apps.googleusercontent.com',
-    iosClientId: iosClientId || webClientId || '000000000000-disabled.apps.googleusercontent.com',
+    clientId: webClientId || '',
+    iosClientId: iosClientId || webClientId || '',
     androidClientId:
-      androidClientId || webClientId || '000000000000-disabled.apps.googleusercontent.com',
+      androidClientId || webClientId || '',
   })
 
   useEffect(() => {

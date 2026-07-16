@@ -22,7 +22,7 @@ import { PageNavbar } from '../../components/PageNavbar'
 import { ScreenLoader } from '../../components/ScreenLoader'
 import { useRequireAuth } from '../../hooks/useRequireAuth'
 import type { RootStackParamList } from '../../navigation/types'
-import { brand, colors } from '../../theme'
+import { brand, colors, typography } from '../../theme'
 import {
   isChapterQuestionsUnlocked,
   isChapterQuizUnlocked,
@@ -315,8 +315,7 @@ const styles = StyleSheet.create({
     backgroundColor: brand.navy,
   },
   subtitle: {
-    fontSize: 15,
-    lineHeight: 22,
+    ...typography.bodySmall,
     color: brand.navyMuted,
     maxWidth: 340,
     marginBottom: 8,
@@ -347,7 +346,7 @@ const styles = StyleSheet.create({
     borderColor: `${brand.green}30`,
   },
   cardNumber: {
-    fontSize: 15,
+    ...typography.subtitle,
     fontWeight: '800',
     color: brand.green,
   },
@@ -355,14 +354,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   cardTitle: {
+    ...typography.bodySemiBold,
     fontSize: 14,
-    fontWeight: '700',
     color: brand.navy,
     marginBottom: 1,
   },
   cardSubtitle: {
-    fontSize: 11,
-    lineHeight: 15,
+    ...typography.caption,
     color: brand.navyMuted,
   },
   actions: {
@@ -397,7 +395,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#eef1f5',
   },
   actionLabel: {
-    fontSize: 11,
+    ...typography.caption,
     fontWeight: '700',
     color: brand.navy,
   },
@@ -407,20 +405,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   emptyTitle: {
-    fontSize: 17,
-    fontWeight: '700',
+    ...typography.h4,
     color: brand.navy,
     marginBottom: 8,
     textAlign: 'center',
   },
   emptyText: {
-    fontSize: 14,
-    lineHeight: 20,
+    ...typography.bodySmall,
     color: brand.navyMuted,
     textAlign: 'center',
   },
   errorText: {
-    fontSize: 14,
+    ...typography.bodySmall,
     color: colors.error,
     textAlign: 'center',
     marginBottom: 12,
@@ -432,9 +428,8 @@ const styles = StyleSheet.create({
     backgroundColor: brand.green,
   },
   retryText: {
+    ...typography.buttonSmall,
     color: colors.white,
-    fontWeight: '700',
-    fontSize: 14,
   },
   pressed: {
     opacity: 0.88,

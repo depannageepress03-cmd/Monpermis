@@ -1,4 +1,5 @@
 import { Router } from 'express'
+import mongoose from 'mongoose'
 import { Moniteur } from '../models/Moniteur.js'
 import { Creneau } from '../models/Creneau.js'
 import { Reservation } from '../models/Reservation.js'
@@ -17,7 +18,15 @@ import {
 
 const router = Router()
 const withConduiteAccess = [requireUserAuth, requireSubscriptionAccess('conduite')]
-const LOCK_MS = 15 * 60 * 1000 // 15 min hold during checkout
+const LOCK_MS = 15 * 60 * 1000
+
+function asObjectId(value) {
+  if (!value) return null
+  if (mongoose.Types.ObjectId.isValid(value)) {
+    return new mongoose.Types.ObjectId(value)
+  }
+  return null
+}
 
 function slotDateTime(date, time) {
   return new Date(`${date}T${time}:00`)
@@ -128,16 +137,19 @@ router.get('/moniteurs', ...withConduiteAccess, async (req, res) => {
 
 router.get('/creneaux', ...withConduiteAccess, async (req, res) => {
   try {
-    const from = String(req.query.from || formatLocalDate())
+    const from = String(req.query.from || formatLocalDate()).slice(0, 20)
     const to = addLocalDays(from, Number(req.query.days) || 14) || from
     const vehicleType = normalizeVehicleType(req.query.vehicleType, '')
-    const moniteurId = req.query.moniteurId ? String(req.query.moniteurId) : null
+    const moniteurId = req.query.moniteurId ? String(req.query.moniteurId).slice(0, 30) : null
 
     const filter = {
       date: { $gte: from, $lte: to },
     }
     if (vehicleType.length >= 2) filter.vehicleType = vehicleType
-    if (moniteurId) filter.moniteurId = moniteurId
+    if (moniteurId) {
+      const oid = asObjectId(moniteurId)
+      if (oid) filter.moniteurId = oid
+    }
 
     // Libère les verrous expirés
     await Creneau.updateMany(
@@ -435,9 +447,12 @@ router.post('/reservations/:id/cancel', ...withConduiteAccess, async (req, res) 
 })
 
 /** Job manuel / cron : rappels WhatsApp 2 h avant. */
-router.post('/reminders/run', ...withConduiteAccess, async (_req, res) => {
+router.post('/reminders/run', async (req, res) => {
   try {
-    // Endpoint protégé user pour démo ; en prod → cron admin/secret
+    const apiKey = req.headers['x-api-key']
+    if (apiKey !== process.env.CRON_API_KEY) {
+      return res.status(401).json({ success: false, error: 'Non autoris\u00e9' })
+    }
     const now = Date.now()
     const inTwoHours = now + 2 * 60 * 60 * 1000
     const windowStart = now + 1.5 * 60 * 60 * 1000
