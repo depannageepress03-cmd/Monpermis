@@ -115,6 +115,11 @@ export function LoginPage() {
             <button type="submit" className="signin-btn-continue signin-btn-continue--compact" disabled={loading || googleLoading}>
                 {loading ? 'Connexion...' : 'Continuer'}
               </button>
+              <p style={{ textAlign: 'right', marginTop: 8 }}>
+                <Link to="/mot-de-passe-oublie" style={{ fontSize: 13, color: '#6b7280' }}>
+                  Mot de passe oublié ?
+                </Link>
+              </p>
             </form>
 
             <p className="signin-divider">ou</p>

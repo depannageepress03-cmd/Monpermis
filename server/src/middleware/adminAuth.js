@@ -9,7 +9,7 @@ export async function requireAdminAuth(req, res, next) {
     }
 
     const token = header.slice(7)
-    const payload = jwt.verify(token, process.env.JWT_SECRET)
+    const payload = jwt.verify(token, process.env.JWT_SECRET, { algorithms: ['HS256'] })
 
     if (payload.scope !== 'admin' || !payload.adminId) {
       return res.status(403).json({ success: false, error: 'Accès refusé' })

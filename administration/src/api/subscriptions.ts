@@ -1,6 +1,7 @@
 import { apiFetch } from './client'
 
 export type DurationType = 'monthly' | 'quarterly' | 'semiannual' | 'yearly' | 'custom'
+export type CustomDurationUnit = 'days' | 'months'
 export type SubscriptionStatus = 'active' | 'pending_payment' | 'expired' | 'cancelled' | 'none'
 
 export interface SubscriptionPlan {
@@ -9,6 +10,7 @@ export interface SubscriptionPlan {
   description: string | null
   durationType: DurationType
   customDays: number | null
+  customUnit: CustomDurationUnit
   durationDays: number
   durationLabel: string
   price: number
@@ -19,6 +21,7 @@ export interface SubscriptionPlan {
   heuresIncluses: number
   active: boolean
   isGracePlan: boolean
+  isFreeOffer: boolean
   order: number
 }
 
@@ -27,6 +30,7 @@ export interface SubscriptionPlanPayload {
   description?: string
   durationType: DurationType
   customDays?: number
+  customUnit?: CustomDurationUnit
   price: number
   accessCode: boolean
   accessConduite: boolean

@@ -1,7 +1,7 @@
 import type { ComponentType, ReactNode } from 'react'
 import { ChevronLeft } from 'lucide-react-native'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
-import { brand, colors } from '../theme'
+import { brand, colors, radii, shadows, typography } from '../theme'
 
 type IconProps = { size?: number; color?: string }
 
@@ -54,11 +54,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: 10,
-    paddingHorizontal: 16,
-    paddingTop: 4,
-    paddingBottom: 12,
+    paddingHorizontal: 20,
+    paddingTop: 6,
+    paddingBottom: 14,
     borderBottomWidth: 1,
-    borderBottomColor: `${brand.navy}10`,
+    borderBottomColor: `${brand.navy}08`,
   },
   navbarSlot: {
     paddingBottom: 0,
@@ -66,46 +66,43 @@ const styles = StyleSheet.create({
   navLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 12,
     flex: 1,
     minWidth: 0,
   },
   navIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+    width: 42,
+    height: 42,
+    borderRadius: radii.md,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: brand.greenLight,
     borderWidth: 1,
-    borderColor: `${brand.green}35`,
+    borderColor: `${brand.green}30`,
     flexShrink: 0,
   },
   navIconDrive: {
     backgroundColor: brand.goldLight,
-    borderColor: `${brand.gold}55`,
+    borderColor: `${brand.gold}50`,
   },
   navTitle: {
     flexShrink: 1,
-    fontSize: 18,
-    fontWeight: '800',
+    ...typography.h4,
     color: brand.navy,
-    letterSpacing: -0.3,
   },
   navBack: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 2,
+    gap: 3,
     paddingVertical: 8,
-    paddingHorizontal: 6,
+    paddingHorizontal: 8,
     flexShrink: 0,
   },
   navBackText: {
     color: brand.navy,
-    fontSize: 15,
-    fontWeight: '600',
+    ...typography.buttonSmall,
   },
   pressed: {
-    opacity: 0.88,
+    opacity: 0.8,
   },
 })

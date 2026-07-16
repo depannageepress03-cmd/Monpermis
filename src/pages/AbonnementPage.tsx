@@ -175,11 +175,14 @@ export function AbonnementPage() {
       const result = await subscribeToPlan(planId)
       setAccess(result.access)
       setSuccess(result.message)
-      if (result.payment?.id) {
+      if (result.payment?.status === 'approved') {
+        setTrackingPaymentId(null)
+        sessionStorage.removeItem('pendingPaymentId')
+      } else if (result.payment?.id) {
         setTrackingPaymentId(result.payment.id)
         sessionStorage.setItem('pendingPaymentId', result.payment.id)
+        openCheckout(result.payment.paymentUrl || '')
       }
-      openCheckout(result.payment?.paymentUrl || '')
     } catch (err) {
       setError(err instanceof SubscriptionError ? err.message : 'Souscription impossible')
     } finally {
@@ -314,6 +317,7 @@ export function AbonnementPage() {
                 <div className="subscription-plan-list">
                   {plans.map((plan) => {
                     const isCurrentPending = pending && String(pending.planId) === String(plan.id)
+                    const freeOfferBlocked = plan.isFreeOffer && access?.freeOfferUsed && !isCurrentPending
                     return (
                       <article className="subscription-plan" key={plan.id}>
                         <div>
@@ -332,19 +336,30 @@ export function AbonnementPage() {
                             <li><Check size={15} /> {plan.heuresIncluses} h de conduite</li>
                           ) : null}
                         </ul>
+                        {freeOfferBlocked ? (
+                          <p className="subscription-free-used">Offre gratuite déjà utilisée</p>
+                        ) : null}
                         <button
                           type="button"
                           className="btn-primary"
-                          disabled={Boolean(active) || subscribingPlanId !== null}
+                          disabled={Boolean(active) || subscribingPlanId !== null || freeOfferBlocked}
                           onClick={() => void subscribe(plan.id)}
                         >
                           {subscribingPlanId === plan.id
-                            ? 'Ouverture du paiement…'
-                            : isCurrentPending
-                              ? paymentFailed
-                                ? 'Réessayer le paiement'
-                                : 'Payer'
-                              : 'Payer'}
+                            ? plan.isFreeOffer
+                              ? 'Activation…'
+                              : 'Ouverture du paiement…'
+                            : freeOfferBlocked
+                              ? 'Offre gratuite déjà utilisée'
+                              : isCurrentPending
+                                ? paymentFailed
+                                  ? 'Réessayer le paiement'
+                                  : plan.isFreeOffer
+                                    ? 'Essayer l’offre gratuite'
+                                    : 'Payer'
+                                : plan.isFreeOffer
+                                  ? 'Essayer l’offre gratuite'
+                                  : 'Payer'}
                         </button>
                       </article>
                     )

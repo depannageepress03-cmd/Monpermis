@@ -26,7 +26,10 @@ const userSubscriptionSchema = new mongoose.Schema(
     accessConduite: { type: Boolean, default: false },
     accessECodepermis: { type: Boolean, default: false },
     heuresIncluses: { type: Number, default: 0, min: 0 },
+    /** Snapshot figé : ce plan était une offre gratuite (prix 0, hors grâce) au moment de la souscription. */
+    isFreeOffer: { type: Boolean, default: false },
     hoursCredited: { type: Boolean, default: false },
+    expiryWarningSent: { type: Boolean, default: false },
     startAt: { type: Date, default: null },
     endAt: { type: Date, default: null, index: true },
     activatedAt: { type: Date, default: null },
@@ -61,6 +64,7 @@ userSubscriptionSchema.methods.toPublicJSON = function toPublicJSON() {
     accessConduite: Boolean(this.accessConduite),
     accessECodepermis: Boolean(this.accessECodepermis),
     heuresIncluses: this.heuresIncluses || 0,
+    isFreeOffer: Boolean(this.isFreeOffer),
     startAt: this.startAt,
     endAt: this.endAt,
     activatedAt: this.activatedAt,
@@ -88,6 +92,7 @@ userSubscriptionSchema.methods.toAdminJSON = function toAdminJSON(user) {
       : null,
     activatedByAdminId: this.activatedByAdminId,
     hoursCredited: Boolean(this.hoursCredited),
+    expiryWarningSent: Boolean(this.expiryWarningSent),
     updatedAt: this.updatedAt,
   }
 }

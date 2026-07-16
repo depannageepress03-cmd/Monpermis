@@ -1,18 +1,20 @@
 import { useNavigation } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
-import { Lock, LogOut, User, X } from 'lucide-react-native'
+import { LinearGradient } from 'expo-linear-gradient'
+import { Lock, LogOut, Sparkles, User, X } from 'lucide-react-native'
 import { useEffect, useState } from 'react'
 import {
   Image,
   Modal,
-  Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { fetchSubscriptionMe, type SubscriptionAccess } from '../api/subscriptions'
+import { Bouncy } from '../components/Bouncy'
 import { BrandName } from '../components/BrandName'
 import { HomeBottomAnimation } from '../components/HomeBottomAnimation'
 import { InfiniteImageMarquee } from '../components/InfiniteImageMarquee'
@@ -21,7 +23,7 @@ import { ScreenLoader } from '../components/ScreenLoader'
 import { useAuth } from '../context/AuthContext'
 import { useRequireAuth } from '../hooks/useRequireAuth'
 import type { RootStackParamList } from '../navigation/types'
-import { brand, colors } from '../theme'
+import { brand, colors, gradients, play, typography } from '../theme'
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'Home'>
 
@@ -50,7 +52,7 @@ export function HomeScreen() {
   return (
     <View style={styles.root}>
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-        <View style={styles.body}>
+        <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
           <View style={styles.brandBar}>
             <View style={styles.brandLeft}>
               <Image
@@ -70,6 +72,11 @@ export function HomeScreen() {
           </View>
 
           <InfiniteImageMarquee compact />
+
+          <View style={styles.greetingChip}>
+            <Sparkles size={13} color={play.xp} />
+            <Text style={styles.greetingChipText}>Prêt pour aujourd’hui ?</Text>
+          </View>
 
           <Text style={styles.guideLine} numberOfLines={2}>
             <Text style={styles.guideName}>{user.firstName}</Text>
@@ -120,64 +127,70 @@ export function HomeScreen() {
             </Text>
 
             <View style={styles.cards}>
-              <Pressable
-                style={({ pressed }) => [
-                  styles.pathCard,
-                  styles.pathCode,
-                  subscription?.accessCode === false && styles.pathLocked,
-                  pressed && styles.pressed,
-                ]}
+              <Bouncy
+                style={styles.pathCardWrap}
+                scaleTo={0.95}
                 onPress={() =>
                   navigation.navigate(
                     subscription?.accessCode === false ? 'Abonnement' : 'CodeRoute',
                   )
                 }
               >
-                <View style={[styles.pathIcon, styles.pathIconCode]}>
-                  {subscription?.accessCode === false ? (
-                    <Lock size={28} color={brand.navyMuted} />
-                  ) : (
-                    <CodeModuleIcon size={36} />
-                  )}
-                </View>
-                <Text style={styles.pathTitle}>Code</Text>
-                <Text style={styles.pathDesc}>
-                  {subscription?.accessCode === false ? 'Abonnement requis' : 'Cours & QCM'}
-                </Text>
-              </Pressable>
+                <LinearGradient
+                  colors={subscription?.accessCode === false ? ['#E5E9EF', '#D6DCE5'] : gradients.green}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.pathCard}
+                >
+                  <View style={styles.pathIcon}>
+                    {subscription?.accessCode === false ? (
+                      <Lock size={28} color={brand.navyMuted} />
+                    ) : (
+                      <CodeModuleIcon size={36} />
+                    )}
+                  </View>
+                  <Text style={[styles.pathTitle, subscription?.accessCode !== false && styles.pathTitleOnColor]}>Code</Text>
+                  <Text style={[styles.pathDesc, subscription?.accessCode !== false && styles.pathDescOnColor]}>
+                    {subscription?.accessCode === false ? 'Abonnement requis' : 'Cours & QCM'}
+                  </Text>
+                </LinearGradient>
+              </Bouncy>
 
-              <Pressable
-                style={({ pressed }) => [
-                  styles.pathCard,
-                  styles.pathDrive,
-                  subscription?.accessConduite === false && styles.pathLocked,
-                  pressed && styles.pressed,
-                ]}
+              <Bouncy
+                style={styles.pathCardWrap}
+                scaleTo={0.95}
                 onPress={() =>
                   navigation.navigate(
                     subscription?.accessConduite === false ? 'Abonnement' : 'Conduite',
                   )
                 }
               >
-                <View style={[styles.pathIcon, styles.pathIconDrive]}>
-                  {subscription?.accessConduite === false ? (
-                    <Lock size={28} color={brand.navyMuted} />
-                  ) : (
-                    <DriveModuleIcon size={36} />
-                  )}
-                </View>
-                <Text style={styles.pathTitle}>Conduite</Text>
-                <Text style={styles.pathDesc}>
-                  {subscription?.accessConduite === false ? 'Abonnement requis' : 'Leçons'}
-                </Text>
-              </Pressable>
+                <LinearGradient
+                  colors={subscription?.accessConduite === false ? ['#E5E9EF', '#D6DCE5'] : gradients.gold}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.pathCard}
+                >
+                  <View style={styles.pathIcon}>
+                    {subscription?.accessConduite === false ? (
+                      <Lock size={28} color={brand.navyMuted} />
+                    ) : (
+                      <DriveModuleIcon size={36} />
+                    )}
+                  </View>
+                  <Text style={styles.pathTitle}>Conduite</Text>
+                  <Text style={styles.pathDesc}>
+                    {subscription?.accessConduite === false ? 'Abonnement requis' : 'Leçons'}
+                  </Text>
+                </LinearGradient>
+              </Bouncy>
             </View>
           </View>
 
           <View style={styles.bottomAnim}>
             <HomeBottomAnimation compact />
           </View>
-        </View>
+        </ScrollView>
       </SafeAreaView>
 
       <Modal
@@ -279,20 +292,13 @@ const styles = StyleSheet.create({
   guideLine: {
     marginTop: 4,
     marginBottom: 10,
-    fontSize: 18,
-    lineHeight: 24,
+    ...typography.h4,
     color: brand.navyMuted,
     textAlign: 'center',
-    fontFamily: Platform.select({
-      ios: 'AvenirNext-DemiBold',
-      android: 'sans-serif-medium',
-      default: 'System',
-    }),
-    fontWeight: '700',
-    letterSpacing: -0.2,
   },
   guideName: {
     color: brand.navy,
+    fontFamily: typography.h2.fontFamily,
     fontWeight: '800',
     textTransform: 'capitalize',
   },
@@ -313,14 +319,13 @@ const styles = StyleSheet.create({
   },
   subscriptionTitle: {
     color: brand.navy,
-    fontSize: 13,
+    ...typography.caption,
     fontWeight: '800',
     marginBottom: 2,
   },
   subscriptionDetail: {
     color: brand.navyMuted,
-    fontSize: 11,
-    lineHeight: 15,
+    ...typography.caption,
   },
   subscriptionButton: {
     backgroundColor: brand.green,
@@ -352,11 +357,9 @@ const styles = StyleSheet.create({
     marginTop: 0,
     marginBottom: 0,
     paddingHorizontal: 6,
-    fontSize: 16,
-    lineHeight: 23,
+    ...typography.body,
     color: brand.navyMuted,
     textAlign: 'center',
-    fontWeight: '500',
   },
   cards: {
     flexDirection: 'row',
@@ -364,55 +367,63 @@ const styles = StyleSheet.create({
     width: '100%',
     gap: 10,
   },
-  pathCard: {
+  pathCardWrap: {
     flex: 1,
-    borderRadius: 14,
-    paddingVertical: 12,
+  },
+  pathCard: {
+    borderRadius: 18,
+    paddingVertical: 16,
     paddingHorizontal: 10,
-    borderWidth: 1,
     alignItems: 'center',
-  },
-  pathCode: {
-    backgroundColor: brand.greenLight,
-    borderColor: `${brand.green}28`,
-  },
-  pathDrive: {
-    backgroundColor: brand.goldLight,
-    borderColor: `${brand.gold}55`,
-  },
-  pathLocked: {
-    opacity: 0.58,
+    shadowColor: brand.navy,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.14,
+    shadowRadius: 12,
+    elevation: 4,
   },
   pathIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
+    width: 52,
+    height: 52,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.white,
-    marginBottom: 8,
+    backgroundColor: 'rgba(255,255,255,0.92)',
+    marginBottom: 10,
     overflow: 'hidden',
   },
-  pathIconCode: {
-    borderWidth: 1,
-    borderColor: `${brand.green}30`,
-  },
-  pathIconDrive: {
-    borderWidth: 1,
-    borderColor: `${brand.gold}60`,
-  },
   pathTitle: {
-    fontSize: 14,
-    fontWeight: '800',
+    ...typography.bodySemiBold,
+    fontSize: 15,
     color: brand.navy,
     marginBottom: 2,
     textAlign: 'center',
   },
+  pathTitleOnColor: {
+    color: colors.white,
+  },
   pathDesc: {
-    fontSize: 11,
-    lineHeight: 14,
+    ...typography.caption,
     color: brand.navyMuted,
     textAlign: 'center',
+  },
+  pathDescOnColor: {
+    color: 'rgba(255,255,255,0.85)',
+  },
+  greetingChip: {
+    alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 6,
+    paddingVertical: 5,
+    paddingHorizontal: 12,
+    borderRadius: 999,
+    backgroundColor: play.xpLight,
+  },
+  greetingChipText: {
+    ...typography.caption,
+    color: '#8a6400',
+    fontWeight: '800',
   },
   bottomAnim: {
     marginTop: 10,
@@ -458,18 +469,13 @@ const styles = StyleSheet.create({
     backgroundColor: `${brand.navy}08`,
   },
   modalTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    letterSpacing: 0.6,
-    textTransform: 'uppercase',
+    ...typography.label,
     color: brand.navyMuted,
     marginBottom: 6,
   },
   modalName: {
-    fontSize: 22,
-    fontWeight: '800',
+    ...typography.h3,
     color: brand.navy,
-    letterSpacing: -0.3,
     marginBottom: 18,
   },
   modalRows: {
@@ -482,14 +488,13 @@ const styles = StyleSheet.create({
     paddingTop: 12,
   },
   modalLabel: {
-    fontSize: 12,
+    ...typography.caption,
     fontWeight: '600',
     color: brand.navyMuted,
     marginBottom: 4,
   },
   modalValue: {
-    fontSize: 15,
-    fontWeight: '600',
+    ...typography.subtitle,
     color: brand.navy,
   },
   modalLogout: {
@@ -502,8 +507,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
   },
   modalLogoutText: {
+    ...typography.button,
     color: colors.white,
-    fontSize: 15,
-    fontWeight: '700',
   },
 })

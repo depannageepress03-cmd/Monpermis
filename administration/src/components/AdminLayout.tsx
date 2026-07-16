@@ -127,7 +127,7 @@ export function AdminLayout() {
       <aside
         className={`admin-sidebar${isMobile && !mobileOpen ? ' is-closed' : ''}`}
         aria-label="Navigation"
-        aria-hidden={isMobile && !mobileOpen}
+        inert={isMobile && !mobileOpen ? true : undefined}
       >
           <div className="sidebar-brand">
             <img src={logoUrl} alt={SITE_NAME} className="sidebar-logo" />

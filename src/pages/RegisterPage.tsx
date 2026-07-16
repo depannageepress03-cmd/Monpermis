@@ -197,7 +197,12 @@ export function RegisterPage() {
                     checked={acceptTerms}
                     onChange={(e) => setAcceptTerms(e.target.checked)}
                   />
-                  <span>J'accepte les conditions d'utilisation</span>
+                  <span>
+                    J'accepte les{' '}
+                    <Link to="/conditions-utilisation" target="_blank" rel="noopener noreferrer">
+                      conditions d'utilisation
+                    </Link>
+                  </span>
                 </label>
                 {errors.terms && <span className="auth-input-error-text signin-terms-error">{errors.terms}</span>}
               </div>

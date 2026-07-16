@@ -1,15 +1,26 @@
 import { Router } from 'express'
+import mongoose from 'mongoose'
 import { Moniteur } from '../models/Moniteur.js'
 import { Creneau } from '../models/Creneau.js'
 import { Reservation } from '../models/Reservation.js'
 import { User } from '../models/User.js'
 import { requireAdminAuth } from '../middleware/adminAuth.js'
-import { imageUpload } from '../middleware/upload.js'
+import { audit } from '../middleware/audit.js'
+import { imageUpload, writeFile } from '../middleware/upload.js'
+import { logger } from '../utils/logger.js'
 import {
   formatLocalDate,
   normalizeVehicleType,
   parseLocalDate,
 } from '../utils/localDate.js'
+
+function asObjectId(value) {
+  if (!value) return null
+  if (mongoose.Types.ObjectId.isValid(value)) {
+    return new mongoose.Types.ObjectId(value)
+  }
+  return null
+}
 
 const router = Router()
 router.use(requireAdminAuth)
@@ -34,7 +45,7 @@ router.get('/moniteurs', async (_req, res) => {
       data: { moniteurs: moniteurs.map((item) => item.toJSONSafe()) },
     })
   } catch (error) {
-    console.error('Erreur liste moniteurs:', error)
+    logger.error('Erreur liste moniteurs', { error: error.message })
     res.status(500).json({ success: false, error: 'Chargement impossible' })
   }
 })
@@ -86,7 +97,7 @@ router.post('/moniteurs', async (req, res) => {
 
     res.status(201).json({ success: true, data: { moniteur: moniteur.toJSONSafe() } })
   } catch (error) {
-    console.error('Erreur création moniteur:', error)
+    logger.error('Erreur création moniteur:', error)
     res.status(500).json({ success: false, error: 'Création impossible' })
   }
 })
@@ -136,7 +147,7 @@ router.patch('/moniteurs/:id', async (req, res) => {
     await moniteur.save()
     res.json({ success: true, data: { moniteur: moniteur.toJSONSafe() } })
   } catch (error) {
-    console.error('Erreur maj moniteur:', error)
+    logger.error('Erreur maj moniteur:', error)
     res.status(500).json({ success: false, error: 'Mise à jour impossible' })
   }
 })
@@ -147,9 +158,10 @@ router.delete('/moniteurs/:id', async (req, res) => {
     if (!moniteur) {
       return res.status(404).json({ success: false, error: 'Moniteur introuvable' })
     }
+    await Creneau.deleteMany({ moniteurId: moniteur._id, status: 'libre' })
     res.json({ success: true, data: { deleted: true } })
   } catch (error) {
-    console.error('Erreur suppression moniteur:', error)
+    logger.error('Erreur suppression moniteur:', error)
     res.status(500).json({ success: false, error: 'Suppression impossible' })
   }
 })
@@ -234,7 +246,7 @@ router.post('/creneaux/generate', async (req, res) => {
       data: { createdCount: created.length, creneaux: created },
     })
   } catch (error) {
-    console.error('Erreur génération créneaux:', error)
+    logger.error('Erreur génération créneaux:', error)
     res.status(500).json({ success: false, error: 'Génération impossible' })
   }
 })
@@ -242,12 +254,15 @@ router.post('/creneaux/generate', async (req, res) => {
 router.get('/creneaux', async (req, res) => {
   try {
     const filter = {}
-    if (req.query.date) filter.date = String(req.query.date)
+    if (req.query.date) filter.date = String(req.query.date).slice(0, 20)
     if (req.query.from && req.query.to) {
-      filter.date = { $gte: String(req.query.from), $lte: String(req.query.to) }
+      filter.date = { $gte: String(req.query.from).slice(0, 20), $lte: String(req.query.to).slice(0, 20) }
     }
-    if (req.query.moniteurId) filter.moniteurId = req.query.moniteurId
-    if (req.query.status) filter.status = String(req.query.status)
+    if (req.query.moniteurId) {
+      const oid = asObjectId(req.query.moniteurId)
+      if (oid) filter.moniteurId = oid
+    }
+    if (req.query.status) filter.status = String(req.query.status).slice(0, 30)
 
     const creneaux = await Creneau.find(filter).sort({ date: 1, startTime: 1 }).limit(500)
     res.json({
@@ -255,7 +270,7 @@ router.get('/creneaux', async (req, res) => {
       data: { creneaux: creneaux.map((item) => item.toJSONSafe()) },
     })
   } catch (error) {
-    console.error('Erreur liste créneaux:', error)
+    logger.error('Erreur liste créneaux:', error)
     res.status(500).json({ success: false, error: 'Chargement impossible' })
   }
 })
@@ -279,23 +294,36 @@ router.patch('/creneaux/:id', async (req, res) => {
     await creneau.save()
     res.json({ success: true, data: { creneau: creneau.toJSONSafe() } })
   } catch (error) {
-    console.error('Erreur maj créneau:', error)
+    logger.error('Erreur maj créneau:', error)
     res.status(500).json({ success: false, error: 'Mise à jour impossible' })
   }
 })
 
-router.get('/reservations', async (_req, res) => {
+router.get('/reservations', async (req, res) => {
   try {
-    const reservations = await Reservation.find()
+    const page = Math.max(1, parseInt(req.query.page) || 1)
+    const limit = Math.min(200, Math.max(1, parseInt(req.query.limit) || 50))
+    const skip = (page - 1) * limit
+
+    const filter = {}
+    if (req.query.status) filter.status = String(req.query.status).slice(0, 30)
+    if (req.query.paymentStatus) filter.paymentStatus = String(req.query.paymentStatus).slice(0, 30)
+    if (req.query.moniteurId) filter.moniteurtId = req.query.moniteurtId
+    if (req.query.userId) filter.userId = req.query.userId
+
+    const reservations = await Reservation.find(filter)
       .sort({ createdAt: -1 })
-      .limit(500)
+      .skip(skip)
+      .limit(limit)
       .populate('userId', 'firstName lastName phone email')
       .populate('moniteurId', 'firstName lastName vehicleBrand vehiclePhotoUrl')
       .populate('creneauId')
 
+    const total = await Reservation.countDocuments(filter)
     res.json({
       success: true,
       data: {
+        pagination: { page, limit, total, pages: Math.ceil(total / limit) },
         reservations: reservations.map((item) => {
           const user = item.userId
           const moniteur = item.moniteurId
@@ -324,7 +352,7 @@ router.get('/reservations', async (_req, res) => {
       },
     })
   } catch (error) {
-    console.error('Erreur liste réservations:', error)
+    logger.error('Erreur liste réservations:', error)
     res.status(500).json({ success: false, error: 'Chargement impossible' })
   }
 })
@@ -352,7 +380,7 @@ router.patch('/reservations/:id/payment', async (req, res) => {
 
     res.json({ success: true, data: { reservation: reservation.toJSONSafe() } })
   } catch (error) {
-    console.error('Erreur validation paiement:', error)
+    logger.error('Erreur validation paiement:', error)
     res.status(500).json({ success: false, error: 'Mise à jour impossible' })
   }
 })
@@ -378,8 +406,52 @@ router.delete('/reservations/:id', async (req, res) => {
 
     res.json({ success: true, data: { deleted: true, id: String(reservation._id) } })
   } catch (error) {
-    console.error('Erreur suppression réservation:', error)
+    logger.error('Erreur suppression réservation:', error)
     res.status(500).json({ success: false, error: 'Suppression impossible' })
+  }
+})
+
+router.patch('/reservations/:id', async (req, res) => {
+  try {
+    const reservation = await Reservation.findById(req.params.id)
+    if (!reservation) {
+      return res.status(404).json({ success: false, error: 'Réservation introuvable' })
+    }
+
+    if (req.body.status) {
+      if (!['pending_payment', 'confirmed', 'cancelled', 'completed'].includes(req.body.status)) {
+        return res.status(400).json({ success: false, error: 'Statut invalide' })
+      }
+
+      if (req.body.status === 'completed' && reservation.status !== 'completed') {
+        const creneau = reservation.creneauId
+          ? await Creneau.findById(reservation.creneauId)
+          : null
+        const dureeHeures = creneau
+          ? (parseInt(creneau.endTime?.split(':')[0] || 0) - parseInt(creneau.startTime?.split(':')[0] || 0)) +
+            (parseInt(creneau.endTime?.split(':')[1] || 0) - parseInt(creneau.startTime?.split(':')[1] || 0)) / 60
+          : 1
+        const heures = Math.max(0.5, Math.round(dureeHeures * 2) / 2)
+
+        if (reservation.userId) {
+          await User.findByIdAndUpdate(reservation.userId, {
+            $inc: { heuresEffectuees: heures, soldeHeures: -heures },
+          })
+          logger.info('Heures auto-incrémentées', {
+            userId: String(reservation.userId),
+            heures,
+          })
+        }
+      }
+
+      reservation.status = req.body.status
+    }
+
+    await reservation.save()
+    res.json({ success: true, data: { reservation: reservation.toJSONSafe() } })
+  } catch (error) {
+    logger.error('Erreur maj réservation', { error: error.message })
+    res.status(500).json({ success: false, error: 'Mise à jour impossible' })
   }
 })
 
@@ -411,7 +483,7 @@ router.post('/reservations/:id/cancel', async (req, res) => {
 
     res.json({ success: true, data: { reservation: reservation.toJSONSafe() } })
   } catch (error) {
-    console.error('Erreur annulation admin:', error)
+    logger.error('Erreur annulation admin:', error)
     res.status(500).json({ success: false, error: 'Annulation impossible' })
   }
 })
@@ -434,7 +506,7 @@ router.patch('/users/:userId/heures', async (req, res) => {
     await user.save()
     res.json({ success: true, data: { user: user.toAdminJSON() } })
   } catch (error) {
-    console.error('Erreur maj heures:', error)
+    logger.error('Erreur maj heures:', error)
     res.status(500).json({ success: false, error: 'Mise à jour impossible' })
   }
 })
@@ -448,11 +520,12 @@ router.post('/upload-vehicle-photo', (req, res) => {
       return res.status(400).json({ success: false, error: 'Aucune photo fournie' })
     }
 
+    const saved = writeFile(req.file)
     res.status(201).json({
       success: true,
       data: {
-        imageUrl: `/uploads/images/${req.file.filename}`,
-        mediaBytes: req.file.size || 0,
+        imageUrl: `/uploads/images/${saved.filename}`,
+        mediaBytes: saved.size,
       },
     })
   })

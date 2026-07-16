@@ -1,6 +1,8 @@
 import { SubscriptionPlan, durationDaysFor } from '../models/SubscriptionPlan.js'
 import { UserSubscription } from '../models/UserSubscription.js'
 import { User } from '../models/User.js'
+import { sendSubscriptionExpiryEmail } from '../services/email.js'
+import { logger } from './logger.js'
 
 const GRACE_DAYS = Math.max(1, Number(process.env.SUBSCRIPTION_GRACE_DAYS) || 14)
 
@@ -42,15 +44,17 @@ export async function getPendingSubscription(userId) {
 }
 
 export async function getUserAccess(userId) {
-  const [active, pending] = await Promise.all([
+  const [active, pending, freeOfferUsed] = await Promise.all([
     getActiveSubscription(userId),
     getPendingSubscription(userId),
+    hasUsedFreeOffer(userId),
   ])
 
   if (!active) {
     return {
       ...emptyAccess(),
       pendingSubscription: pending ? pending.toPublicJSON() : null,
+      freeOfferUsed: Boolean(freeOfferUsed),
     }
   }
 
@@ -61,6 +65,7 @@ export async function getUserAccess(userId) {
     accessECodepermis: Boolean(active.accessECodepermis),
     subscription: active.toPublicJSON(),
     pendingSubscription: pending ? pending.toPublicJSON() : null,
+    freeOfferUsed: Boolean(freeOfferUsed),
   }
 }
 
@@ -70,13 +75,23 @@ export function snapshotFromPlan(plan) {
     accessConduite: Boolean(plan.accessConduite),
     accessECodepermis: Boolean(plan.accessECodepermis),
     heuresIncluses: Number(plan.heuresIncluses) || 0,
+    isFreeOffer: (Number(plan.price) || 0) <= 0 && !plan.isGracePlan,
     planName: plan.name,
     price: Number(plan.price) || 0,
     currency: plan.currency || 'XOF',
     durationDays: plan.getDurationDays
       ? plan.getDurationDays()
-      : durationDaysFor(plan.durationType, plan.customDays),
+      : durationDaysFor(plan.durationType, plan.customDays, plan.customUnit),
   }
+}
+
+/** Un utilisateur ne peut consommer qu'une seule offre gratuite dans sa vie (annulée = non comptée). */
+export async function hasUsedFreeOffer(userId) {
+  return UserSubscription.exists({
+    userId,
+    isFreeOffer: true,
+    status: { $ne: 'cancelled' },
+  })
 }
 
 export async function createPendingSubscription(userId, plan, { source = 'purchase', paymentNote = '' } = {}) {
@@ -231,6 +246,35 @@ export async function ensureDefaultPlans() {
 }
 
 /** Attribue une période de grâce aux utilisateurs sans abonnement (actif ou en attente). */
+/** Envoie un email d'avertissement aux abonnements expirant dans moins de 7 jours. */
+export async function notifyExpiringSubscriptions() {
+  const now = new Date()
+  const in7Days = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
+  const in1Day = new Date(now.getTime() + 1 * 24 * 60 * 60 * 1000)
+
+  const aboutToExpire = await UserSubscription.find({
+    status: 'active',
+    endAt: { $gte: now, $lte: in7Days },
+    expiryWarningSent: { $ne: true },
+  }).populate('userId', 'firstName lastName email')
+
+  let sent = 0
+  for (const sub of aboutToExpire) {
+    const user = sub.userId
+    if (!user?.email) continue
+    try {
+      await sendSubscriptionExpiryEmail(user, sub)
+      sub.expiryWarningSent = true
+      await sub.save()
+      sent += 1
+    } catch (err) {
+      logger.error("Échec envoi avertissement expiration", { error: err.message, userId: String(user._id) })
+    }
+  }
+
+  return { sent }
+}
+
 export async function grantGraceToUsersWithoutSubscription() {
   const { grace } = await ensureDefaultPlans()
   if (!grace) return { granted: 0 }

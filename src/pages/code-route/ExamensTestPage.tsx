@@ -74,7 +74,7 @@ export function ExamensTestPage() {
     <div className="auth-page">
       <div className="auth-container learner-container">
         <PageNavbar
-          title="Examens test"
+      title="Examens test"
           icon={<HelpCircle size={22} />}
           onBack={() => navigate('/code-de-la-route')}
         />

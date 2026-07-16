@@ -26,12 +26,12 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   const signOut = useCallback(() => {
-    sessionStorage.removeItem(TOKEN_KEY)
+    localStorage.removeItem(TOKEN_KEY)
     setAdmin(null)
   }, [])
 
   useEffect(() => {
-    const token = sessionStorage.getItem(TOKEN_KEY)
+    const token = localStorage.getItem(TOKEN_KEY)
     if (!token) {
       setLoading(false)
       return
@@ -39,13 +39,13 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
 
     fetchAdminMe(token)
       .then(({ admin: me }) => setAdmin(me))
-      .catch(() => sessionStorage.removeItem(TOKEN_KEY))
+      .catch(() => localStorage.removeItem(TOKEN_KEY))
       .finally(() => setLoading(false))
   }, [])
 
   const signIn = useCallback(async (phone: string, password: string) => {
     const { admin: loggedIn, token } = await loginAdmin(phone, password)
-    sessionStorage.setItem(TOKEN_KEY, token)
+    localStorage.setItem(TOKEN_KEY, token)
     setAdmin(loggedIn)
   }, [])
 
@@ -64,7 +64,7 @@ export function useAdminAuth() {
 }
 
 export function getAdminToken() {
-  return sessionStorage.getItem(TOKEN_KEY)
+  return localStorage.getItem(TOKEN_KEY)
 }
 
 export function isAuthError(error: unknown) {

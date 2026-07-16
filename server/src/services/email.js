@@ -36,6 +36,16 @@ async function sendMail({ to, subject, html, text }) {
   return info
 }
 
+function escapeHtml(text) {
+  if (typeof text !== 'string') return ''
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;')
+}
+
 function getVerifyUrl(token) {
   if (process.env.MOBILE_SCHEME) {
     return `${process.env.MOBILE_SCHEME}://verifier-email?token=${token}`
@@ -45,6 +55,7 @@ function getVerifyUrl(token) {
 
 export async function sendVerificationEmail(user, token) {
   const verifyUrl = getVerifyUrl(token)
+  const safeName = escapeHtml(user.firstName)
 
   const subject = 'Vérifiez votre adresse email — Monpermis.bj'
   const text = `Bonjour ${user.firstName},
@@ -62,7 +73,7 @@ L'équipe Monpermis.bj`
   const html = `
     <div style="font-family:Inter,Arial,sans-serif;max-width:520px;margin:0 auto;padding:24px">
       <h2 style="color:#0f4c4c">Bienvenue sur Monpermis.bj</h2>
-      <p>Bonjour <strong>${user.firstName}</strong>,</p>
+      <p>Bonjour <strong>${safeName}</strong>,</p>
       <p>Merci de vous être inscrit. Veuillez confirmer votre adresse email pour activer votre compte :</p>
       <p style="margin:28px 0">
         <a href="${verifyUrl}" style="background:#0f4c4c;color:#fff;padding:14px 24px;border-radius:999px;text-decoration:none;font-weight:600">
@@ -77,8 +88,84 @@ L'équipe Monpermis.bj`
   return sendMail({ to: user.email, subject, html, text })
 }
 
+export async function sendPasswordResetEmail(user, token) {
+  const resetUrl = `${process.env.CLIENT_URL}/reinitialiser-mot-de-passe?token=${token}`
+  const safeName = escapeHtml(user.firstName)
+
+  const subject = 'Réinitialisation de mot de passe — Monpermis.bj'
+  const text = `Bonjour ${user.firstName},
+
+Vous avez demandé la réinitialisation de votre mot de passe Monpermis.bj.
+
+Cliquez sur le lien ci-dessous pour choisir un nouveau mot de passe :
+${resetUrl}
+
+Ce lien expire dans 1 heure.
+
+Si vous n'êtes pas à l'origine de cette demande, ignorez cet email.
+
+L'équipe Monpermis.bj`
+
+  const html = `
+    <div style="font-family:Inter,Arial,sans-serif;max-width:520px;margin:0 auto;padding:24px">
+      <h2 style="color:#0f4c4c">Réinitialisation de mot de passe</h2>
+      <p>Bonjour <strong>${safeName}</strong>,</p>
+      <p>Cliquez sur le bouton ci-dessous pour réinitialiser votre mot de passe :</p>
+      <p style="margin:28px 0">
+        <a href="${resetUrl}" style="background:#0f4c4c;color:#fff;padding:14px 24px;border-radius:999px;text-decoration:none;font-weight:600">
+          Réinitialiser mon mot de passe
+        </a>
+      </p>
+      <p style="color:#6b7280;font-size:14px">Ce lien expire dans 1 heure.</p>
+      <p style="color:#9ca3af;font-size:12px">Si le bouton ne fonctionne pas, copiez ce lien :<br>${resetUrl}</p>
+    </div>
+  `
+
+  return sendMail({ to: user.email, subject, html, text })
+}
+
+export async function sendSubscriptionExpiryEmail(user, subscription) {
+  const safeName = escapeHtml(user.firstName)
+  const expiryDate = subscription.endAt
+    ? new Date(subscription.endAt).toLocaleDateString('fr-FR', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+      })
+    : 'bientôt'
+  const renewUrl = `${process.env.CLIENT_URL}/abonnements`
+
+  const subject = 'Votre abonnement Monpermis.bj expire bientôt'
+  const text = `Bonjour ${user.firstName},
+
+Votre abonnement Monpermis.bj arrive à expiration le ${expiryDate}.
+
+Pour continuer à accéder à vos cours et réservations, renouvelez votre abonnement dès maintenant :
+${renewUrl}
+
+L'équipe Monpermis.bj`
+
+  const html = `
+    <div style="font-family:Inter,Arial,sans-serif;max-width:520px;margin:0 auto;padding:24px">
+      <h2 style="color:#0f4c4c">Votre abonnement expire bientôt</h2>
+      <p>Bonjour <strong>${safeName}</strong>,</p>
+      <p>Votre abonnement arrivera à expiration le <strong>${expiryDate}</strong>.</p>
+      <p>Pour ne pas perdre l'accès à vos cours et réservations, renouvelez dès maintenant :</p>
+      <p style="margin:28px 0">
+        <a href="${renewUrl}" style="background:#0f4c4c;color:#fff;padding:14px 24px;border-radius:999px;text-decoration:none;font-weight:600">
+          Renouveler mon abonnement
+        </a>
+      </p>
+      <p style="color:#6b7280;font-size:14px">Merci de votre confiance.</p>
+    </div>
+  `
+
+  return sendMail({ to: user.email, subject, html, text })
+}
+
 export async function sendWelcomeEmail(user) {
   const loginUrl = `${process.env.CLIENT_URL}/`
+  const safeName = escapeHtml(user.firstName)
 
   const subject = 'Bienvenue sur Monpermis.bj !'
   const text = `Bonjour ${user.firstName},
@@ -95,7 +182,7 @@ L'équipe Monpermis.bj`
   const html = `
     <div style="font-family:Inter,Arial,sans-serif;max-width:520px;margin:0 auto;padding:24px">
       <h2 style="color:#0f4c4c">Compte activé !</h2>
-      <p>Bonjour <strong>${user.firstName}</strong>,</p>
+      <p>Bonjour <strong>${safeName}</strong>,</p>
       <p>Votre email est confirmé. Bienvenue sur <strong>Monpermis.bj</strong> !</p>
       <p>Vous pouvez maintenant accéder à vos cours, QCM et examens blancs.</p>
       <p style="margin:28px 0">

@@ -10,7 +10,7 @@ import {
   TrendingUp,
   Zap,
 } from 'lucide-react'
-import { MiniDonut, Sparkline } from '../components/AdminCharts'
+import { MiniDonut } from '../components/AdminCharts'
 import { StatusBadge } from '../components/StatusBadge'
 import { fetchDashboardSummary, type DashboardSummary } from '../api/dashboard'
 import { getAdminToken, isAuthError, useAdminAuth } from '../context/AdminAuthContext'
@@ -31,19 +31,6 @@ const emptySummary: DashboardSummary = {
   },
   admins: { total: 0 },
 }
-
-function buildSpark(end: number, steps = 9) {
-  const base = Math.max(end * 0.65, 1)
-  return Array.from({ length: steps }, (_, i) => {
-    const t = i / (steps - 1)
-    const wobble = Math.sin(i * 1.7) * end * 0.03
-    return Math.round(base + (end - base) * t + wobble)
-  })
-}
-
-const ACTIVITY_FALLBACK = [
-  { user: 'Système', action: 'Résumé du tableau de bord actualisé', time: 'à l’instant', dot: '#00B050' },
-]
 
 export function DashboardPage() {
   const { admin } = useAdminAuth()
@@ -70,16 +57,6 @@ export function DashboardPage() {
     void load()
   }, [load])
 
-  const sparkUsers = useMemo(() => buildSpark(Math.max(summary.users.active, 1)), [summary.users.active])
-  const sparkLessons = useMemo(
-    () => buildSpark(Math.max(summary.conduite.courses || summary.conduite.chapters, 1)),
-    [summary.conduite.courses, summary.conduite.chapters],
-  )
-  const sparkPay = useMemo(
-    () => buildSpark(Math.max(summary.conduite.reservationsPending, 1)),
-    [summary.conduite.reservationsPending],
-  )
-
   const codePct =
     summary.code.chapters > 0
       ? Math.round((summary.code.published / summary.code.chapters) * 100)
@@ -92,18 +69,11 @@ export function DashboardPage() {
 
   const monthLabel = new Date().toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })
 
-  const table: Array<{
-    space: string
-    indicator: string
-    tone: 'success' | 'warning' | 'danger'
-    badge: string
-    access: string
-    to: string
-  }> = [
+  const rows = useMemo(() => [
     {
       space: 'Code de la route',
       indicator: `${summary.code.chapters} chapitres · ${summary.code.questions} questions`,
-      tone: 'success',
+      tone: 'success' as const,
       badge: `${summary.code.published} publiés`,
       access: 'Publique',
       to: '/code',
@@ -111,15 +81,15 @@ export function DashboardPage() {
     {
       space: 'Conduite',
       indicator: `${summary.conduite.courses} cours · ${summary.conduite.moniteursActive} moniteurs`,
-      tone: 'success',
-      badge: 'À jour',
+      tone: summary.conduite.moniteursActive > 0 ? 'success' as const : 'warning' as const,
+      badge: summary.conduite.moniteursActive > 0 ? 'À jour' : 'Aucun moniteur actif',
       access: 'Abonnés',
       to: '/conduite',
     },
     {
       space: 'Réservations',
       indicator: `${summary.conduite.reservationsPending} paiements en attente`,
-      tone: summary.conduite.reservationsPending > 0 ? 'warning' : 'success',
+      tone: summary.conduite.reservationsPending > 0 ? 'warning' as const : 'success' as const,
       badge: summary.conduite.reservationsPending > 0 ? 'En attente' : 'À jour',
       access: 'Admin',
       to: '/conduite/reservations',
@@ -127,14 +97,14 @@ export function DashboardPage() {
     {
       space: 'Utilisateurs',
       indicator: `${summary.users.active} apprenants actifs`,
-      tone: summary.users.suspended > 0 ? 'danger' : 'success',
+      tone: summary.users.suspended > 0 ? 'danger' as const : 'success' as const,
       badge: summary.users.suspended > 0 ? `${summary.users.suspended} suspendus` : 'Actif',
       access: 'Admin',
       to: '/utilisateurs',
     },
-  ]
+  ], [summary])
 
-  const activity = [
+  const activity = useMemo(() => [
     {
       user: admin?.fullName || 'Administrateur',
       action: `${summary.users.total} comptes inscrits`,
@@ -160,16 +130,14 @@ export function DashboardPage() {
       dot: '#FFC000',
     },
     ...(summary.users.suspended > 0
-      ? [
-          {
-            user: 'Comptes',
-            action: `${summary.users.suspended} comptes suspendus`,
-            time: 'données live',
-            dot: '#dc2626',
-          },
-        ]
-      : ACTIVITY_FALLBACK),
-  ]
+      ? [{
+          user: 'Comptes',
+          action: `${summary.users.suspended} comptes suspendus`,
+          time: 'données live',
+          dot: '#dc2626',
+        }]
+      : []),
+  ], [admin, summary])
 
   return (
     <div className="dash-overview">
@@ -177,10 +145,10 @@ export function DashboardPage() {
         <header className="admin-module-header">
           <p className="admin-module-kicker">Aperçu général</p>
           <h1 className="admin-module-title">Tableau de bord</h1>
-          <div className="accent-row" aria-hidden>
-            <span className="accent accent-green" />
-            <span className="accent accent-gold" />
-            <span className="accent accent-navy" />
+          <div className="admin-module-accent-row" aria-hidden>
+            <span className="admin-module-accent is-green" />
+            <span className="admin-module-accent is-gold" />
+            <span className="admin-module-accent is-navy" />
           </div>
         </header>
         <div className="dash-page-actions">
@@ -196,10 +164,8 @@ export function DashboardPage() {
 
       {error ? <p className="form-error">{error}</p> : null}
 
-      <section className="dash-bento" aria-label="Indicateurs">
-        <div className="dash-hero">
-          <div className="dash-hero-glow-a" />
-          <div className="dash-hero-glow-b" />
+      <section className="dash-stats" aria-label="Indicateurs">
+        <div className="dash-hero-card">
           <div className="dash-hero-top">
             <div>
               <p className="dash-hero-label">Apprenants actifs</p>
@@ -210,83 +176,78 @@ export function DashboardPage() {
               {summary.users.total}
             </div>
           </div>
-          <div>
-            <Sparkline data={sparkUsers} color="#00B050" fill />
-            <div className="dash-hero-meta">
-              <div>
-                <p className="dash-hero-meta-label">Inscrits</p>
-                <p className="dash-hero-meta-value">{summary.users.total} comptes</p>
-              </div>
-              <div>
-                <p className="dash-hero-meta-label">Taux activation</p>
-                <p className="dash-hero-meta-value is-gold">{activationPct} %</p>
-              </div>
+          <div className="dash-hero-meta">
+            <div>
+              <p className="dash-hero-meta-label">Inscrits</p>
+              <p className="dash-hero-meta-value">{summary.users.total} comptes</p>
+            </div>
+            <div>
+              <p className="dash-hero-meta-label">Taux activation</p>
+              <p className="dash-hero-meta-value is-gold">{activationPct} %</p>
             </div>
           </div>
         </div>
 
-        <div className="dash-tile">
-          <div className="dash-tile-head">
-            <p className="dash-tile-label">Leçons conduite</p>
-            <div className="dash-tile-icon is-gold">
+        <div className="dash-stat-card">
+          <div className="dash-stat-head">
+            <p className="dash-stat-label">Leçons conduite</p>
+            <div className="dash-stat-icon is-gold">
               <Car size={14} strokeWidth={2} />
             </div>
           </div>
-          <p className="dash-tile-value">
-            {loading ? '…' : summary.conduite.courses || summary.conduite.chapters}
+          <p className="dash-stat-num">
+            {loading ? '…' : summary.conduite.courses}
           </p>
-          <div className="dash-tile-trend is-up">
+          <div className="dash-stat-foot is-green">
             <TrendingUp size={12} strokeWidth={2} />
             {summary.conduite.moniteursActive} moniteurs actifs
           </div>
-          <Sparkline data={sparkLessons} color="#FFC000" fill />
         </div>
 
-        <div className="dash-tile">
-          <div className="dash-tile-head">
-            <p className="dash-tile-label">Paiements en attente</p>
-            <div className="dash-tile-icon is-violet">
+        <div className="dash-stat-card">
+          <div className="dash-stat-head">
+            <p className="dash-stat-label">Paiements en attente</p>
+            <div className="dash-stat-icon is-violet">
               <CreditCard size={14} strokeWidth={2} />
             </div>
           </div>
-          <p className="dash-tile-value">
+          <p className="dash-stat-num">
             {loading ? '…' : summary.conduite.reservationsPending}
           </p>
-          <div className="dash-tile-trend is-down">
+          <div className="dash-stat-foot is-red">
             <TrendingUp size={12} strokeWidth={2} />
             {summary.conduite.reservations} réservations
           </div>
-          <Sparkline data={sparkPay} color="#7c3aed" fill />
         </div>
+      </section>
 
-        <div className="dash-tile-inline">
-          <MiniDonut pct={codePct} color="#00B050" />
+      <section className="dash-secondary" aria-label="Compléments">
+        <div className="dash-secondary-card">
+          <div className="dash-donut-wrap">
+            <MiniDonut pct={codePct} color="#00B050" />
+          </div>
           <div>
-            <p className="dash-tile-label">Chapitres code</p>
-            <p className="dash-tile-value" style={{ fontSize: 20 }}>
+            <p className="dash-stat-label">Chapitres code</p>
+            <p className="dash-secondary-num">
               {loading ? '…' : summary.code.published}
-              <span style={{ fontSize: 13, color: '#3d5a73', fontWeight: 500 }}>
-                /{summary.code.chapters}
-              </span>
+              <span className="muted">/{summary.code.chapters}</span>
             </p>
-            <p style={{ margin: '2px 0 0', fontSize: 11, color: '#00B050', fontWeight: 600 }}>
+            <p className="dash-secondary-hint">
               {Math.max(summary.code.chapters - summary.code.published, 0)} en rédaction
             </p>
           </div>
         </div>
 
-        <div className="dash-tile-live">
-          <div className="dash-tile-live-icon">
+        <div className="dash-live-card">
+          <div className="dash-live-icon">
             <Zap size={18} color="#fff" strokeWidth={2} />
           </div>
           <div>
-            <p className="dash-tile-label">Créneaux libres</p>
-            <p className="dash-tile-value" style={{ fontSize: 22 }}>
+            <p className="dash-stat-label">Créneaux libres</p>
+            <p className="dash-secondary-num">
               {loading ? '…' : summary.conduite.creneauxLibre}
             </p>
-            <p style={{ margin: '2px 0 0', fontSize: 11, color: '#0a6b3a', fontWeight: 600 }}>
-              disponibles
-            </p>
+            <p className="dash-secondary-hint">disponibles</p>
           </div>
         </div>
       </section>
@@ -313,7 +274,7 @@ export function DashboardPage() {
                 </tr>
               </thead>
               <tbody>
-                {table.map((row) => (
+                {rows.map((row) => (
                   <tr key={row.space}>
                     <td>
                       <strong style={{ fontSize: 13, fontWeight: 600 }}>{row.space}</strong>

@@ -1,10 +1,10 @@
 import { useNavigation } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
+import { LinearGradient } from 'expo-linear-gradient'
 import { useCallback, useState } from 'react'
 import {
   Image,
   KeyboardAvoidingView,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -14,12 +14,13 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { loginWithGoogle } from '../api/auth'
 import { AuthInput } from '../components/AuthInput'
+import { Bouncy } from '../components/Bouncy'
 import { BrandName } from '../components/BrandName'
 import { GoogleSignInButton } from '../components/GoogleSignInButton'
 import { useAuth } from '../context/AuthContext'
 import { useGoogleSignIn } from '../hooks/useGoogleSignIn'
 import type { RootStackParamList } from '../navigation/types'
-import { brand, colors } from '../theme'
+import { brand, colors, gradients } from '../theme'
 import {
   normalizePhone,
   PHONE_PLACEHOLDER,
@@ -96,7 +97,7 @@ export function RegisterScreen() {
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
         <KeyboardAvoidingView
           style={styles.flex}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          behavior="padding"
         >
           <ScrollView
             contentContainerStyle={styles.scroll}
@@ -180,12 +181,16 @@ export function RegisterScreen() {
             </View>
             {errors.terms ? <Text style={styles.termsError}>{errors.terms}</Text> : null}
 
-            <Pressable
-              style={({ pressed }) => [styles.submitBtn, pressed && styles.pressed]}
-              onPress={handleContinue}
-            >
-              <Text style={styles.submitText}>Continuer</Text>
-            </Pressable>
+            <Bouncy onPress={handleContinue} scaleTo={0.97}>
+              <LinearGradient
+                colors={gradients.green}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.submitBtn}
+              >
+                <Text style={styles.submitText}>Continuer</Text>
+              </LinearGradient>
+            </Bouncy>
 
             <View style={styles.dividerRow}>
               <View style={styles.dividerLine} />
@@ -310,7 +315,6 @@ const styles = StyleSheet.create({
     width: '100%',
     minHeight: 52,
     borderRadius: 999,
-    backgroundColor: brand.green,
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 16,

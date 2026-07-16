@@ -108,7 +108,7 @@ async function request<T>(path: string, options?: RequestInit & { auth?: boolean
 }
 
 export async function fetchConduiteChapters(): Promise<ConduiteChapter[]> {
-  const data = await request<{ chapters: ConduiteChapter[] }>('/content/conduite/chapters')
+  const data = await request<{ chapters: ConduiteChapter[] }>('/content/conduite/chapters', { auth: true })
   return data.chapters
 }
 

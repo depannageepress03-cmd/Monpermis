@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useNavigation } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
+import { LinearGradient } from 'expo-linear-gradient'
 import {
   BookOpen,
   CalendarPlus,
@@ -8,8 +9,6 @@ import {
 } from 'lucide-react-native'
 import {
   ActivityIndicator,
-  Animated,
-  Easing,
   Modal,
   Pressable,
   ScrollView,
@@ -27,12 +26,16 @@ import {
   ReservationError,
 } from '../api/reservations'
 import { fetchSubscriptionMe, type SubscriptionAccess } from '../api/subscriptions'
+import { Bouncy } from '../components/Bouncy'
+import { ProgressBar } from '../components/ProgressBar'
 import { DriveModuleIcon } from '../components/ModuleIcons'
 import { PageNavbar } from '../components/PageNavbar'
 import { ScreenLoader } from '../components/ScreenLoader'
+import { FadeUp } from '../components/FadeUp'
+import { AccentBar } from '../components/AccentBar'
 import { useRequireAuth } from '../hooks/useRequireAuth'
 import type { RootStackParamList } from '../navigation/types'
-import { brand, colors } from '../theme'
+import { brand, colors, gradients, typography } from '../theme'
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'Conduite'>
 
@@ -41,44 +44,6 @@ function statusLabel(item: ReservationItem) {
   if (item.paymentStatus === 'pending_validation') return 'Paiement à valider'
   if (item.status === 'pending_payment') return 'En attente'
   return item.status
-}
-
-function FadeUp({
-  delay = 0,
-  children,
-  style,
-}: {
-  delay?: number
-  children: ReactNode
-  style?: object
-}) {
-  const opacity = useRef(new Animated.Value(0)).current
-  const translateY = useRef(new Animated.Value(16)).current
-
-  useEffect(() => {
-    Animated.parallel([
-      Animated.timing(opacity, {
-        toValue: 1,
-        duration: 520,
-        delay,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }),
-      Animated.timing(translateY, {
-        toValue: 0,
-        duration: 520,
-        delay,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }),
-    ]).start()
-  }, [delay, opacity, translateY])
-
-  return (
-    <Animated.View style={[style, { opacity, transform: [{ translateY }] }]}>
-      {children}
-    </Animated.View>
-  )
 }
 
 export function ConduiteScreen() {
@@ -93,7 +58,6 @@ export function ConduiteScreen() {
   const [cancelling, setCancelling] = useState(false)
   const [subscription, setSubscription] = useState<SubscriptionAccess | null>(null)
   const [subscriptionLoading, setSubscriptionLoading] = useState(true)
-  const accentScale = useRef(new Animated.Value(0.2)).current
 
   const load = useCallback(async () => {
     setLoadingDash(true)
@@ -142,15 +106,6 @@ export function ConduiteScreen() {
     if (subscription?.accessConduite) void load()
   }, [subscription, load])
 
-  useEffect(() => {
-    Animated.spring(accentScale, {
-      toValue: 1,
-      friction: 7,
-      tension: 60,
-      useNativeDriver: true,
-    }).start()
-  }, [accentScale])
-
   if (loading || !user) return <ScreenLoader />
 
   const lockedContent = subscriptionLoading ? (
@@ -188,11 +143,7 @@ export function ConduiteScreen() {
         >
           <FadeUp delay={80}>
             <View style={styles.header}>
-              <Animated.View style={[styles.accentRow, { transform: [{ scaleX: accentScale }] }]}>
-                <View style={[styles.accent, styles.accentGreen]} />
-                <View style={[styles.accent, styles.accentGold]} />
-                <View style={[styles.accent, styles.accentNavy]} />
-              </Animated.View>
+              <AccentBar />
             </View>
           </FadeUp>
 
@@ -203,12 +154,15 @@ export function ConduiteScreen() {
             <View style={styles.topRow}>
               {progress ? (
                 <View style={styles.progressCard}>
-                  <Text style={styles.progressLabel}>
-                    Progression : {progress.heuresEffectuees} / {progress.heuresObjectif} h
-                  </Text>
-                  <View style={styles.progressTrack}>
-                    <View style={[styles.progressFill, { width: `${progress.percent}%` }]} />
+                  <View style={styles.progressHeadRow}>
+                    <Text style={styles.progressLabel}>
+                      {progress.heuresEffectuees} / {progress.heuresObjectif} h
+                    </Text>
+                    <View style={styles.progressPct}>
+                      <Text style={styles.progressPctText}>{Math.round(progress.percent)}%</Text>
+                    </View>
                   </View>
+                  <ProgressBar progress={progress.percent / 100} color={brand.green} height={10} />
                   <Text style={styles.progressMeta}>
                     Solde disponible : {progress.soldeHeures} h
                   </Text>
@@ -251,43 +205,38 @@ export function ConduiteScreen() {
 
           <FadeUp delay={170}>
             <View style={styles.actionsRow}>
-              <Pressable
-                style={({ pressed }) => [
-                  styles.actionBtn,
-                  styles.actionReserve,
-                  pressed && styles.pressed,
-                ]}
-                onPress={() => navigation.navigate('ReservationFlow')}
-              >
-                <View style={[styles.actionIcon, styles.actionIconReserve]}>
-                  <CalendarPlus size={20} color={colors.white} />
-                </View>
-                <View style={styles.actionCopy}>
-                  <Text style={styles.actionReserveTitle}>Réserver</Text>
-                  <Text style={styles.actionReserveHint}>
-                    Choisir un créneau avec un moniteur
-                  </Text>
-                </View>
-              </Pressable>
+              <Bouncy style={styles.actionBtnWrap} scaleTo={0.96} onPress={() => navigation.navigate('ReservationFlow')}>
+                <LinearGradient
+                  colors={gradients.green}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.actionBtn}
+                >
+                  <View style={[styles.actionIcon, styles.actionIconReserve]}>
+                    <CalendarPlus size={20} color={colors.white} />
+                  </View>
+                  <View style={styles.actionCopy}>
+                    <Text style={styles.actionReserveTitle}>Réserver</Text>
+                    <Text style={styles.actionReserveHint}>
+                      Choisir un créneau avec un moniteur
+                    </Text>
+                  </View>
+                </LinearGradient>
+              </Bouncy>
 
-              <Pressable
-                style={({ pressed }) => [
-                  styles.actionBtn,
-                  styles.actionLessons,
-                  pressed && styles.pressed,
-                ]}
-                onPress={() => navigation.navigate('LeconsChapitres')}
-              >
-                <View style={[styles.actionIcon, styles.actionIconLessons]}>
-                  <BookOpen size={20} color={brand.navy} />
+              <Bouncy style={styles.actionBtnWrap} scaleTo={0.96} onPress={() => navigation.navigate('LeconsChapitres')}>
+                <View style={[styles.actionBtn, styles.actionLessons]}>
+                  <View style={[styles.actionIcon, styles.actionIconLessons]}>
+                    <BookOpen size={20} color={brand.navy} />
+                  </View>
+                  <View style={styles.actionCopy}>
+                    <Text style={styles.actionLessonsTitle}>Leçons</Text>
+                    <Text style={styles.actionLessonsHint}>
+                      Manœuvres, circulation et examen
+                    </Text>
+                  </View>
                 </View>
-                <View style={styles.actionCopy}>
-                  <Text style={styles.actionLessonsTitle}>Leçons</Text>
-                  <Text style={styles.actionLessonsHint}>
-                    Manœuvres, circulation et examen
-                  </Text>
-                </View>
-              </Pressable>
+              </Bouncy>
             </View>
           </FadeUp>
 
@@ -392,17 +341,16 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   accessStateTitle: {
+    ...typography.h4,
     color: brand.navy,
-    fontSize: 21,
-    fontWeight: '800',
     textAlign: 'center',
     marginBottom: 8,
   },
   accessStateCopy: {
+    ...typography.bodySmall,
     color: brand.navyMuted,
-    fontSize: 15,
-    lineHeight: 22,
     textAlign: 'center',
+    maxWidth: 280,
   },
   accessButton: {
     marginTop: 20,
@@ -411,16 +359,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 13,
   },
-  accessButtonText: { color: colors.white, fontWeight: '800', fontSize: 15 },
-  accentRow: {
-    flexDirection: 'row',
-    gap: 6,
-    alignSelf: 'flex-start',
-  },
-  accent: { height: 4, borderRadius: 999 },
-  accentGreen: { width: 28, backgroundColor: brand.green },
-  accentGold: { width: 18, backgroundColor: brand.gold },
-  accentNavy: { width: 12, backgroundColor: brand.navy },
+  accessButtonText: { ...typography.button, color: colors.white },
   progressCard: {
     flex: 1,
     borderRadius: 16,
@@ -435,15 +374,21 @@ const styles = StyleSheet.create({
     gap: 10,
     marginBottom: 16,
   },
-  progressLabel: { fontSize: 13, fontWeight: '700', color: brand.navy, marginBottom: 10 },
-  progressTrack: {
-    height: 10,
-    borderRadius: 999,
-    backgroundColor: `${brand.navy}12`,
-    overflow: 'hidden',
+  progressHeadRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
   },
-  progressFill: { height: '100%', backgroundColor: brand.green, borderRadius: 999 },
-  progressMeta: { marginTop: 8, fontSize: 12, color: brand.navyMuted },
+  progressLabel: { fontSize: 13, fontWeight: '700', color: brand.navy },
+  progressPct: {
+    backgroundColor: brand.greenLight,
+    borderRadius: 999,
+    paddingVertical: 2,
+    paddingHorizontal: 8,
+  },
+  progressPctText: { fontSize: 11, fontWeight: '800', color: brand.green },
+  progressMeta: { marginTop: 8, ...typography.caption, color: brand.navyMuted },
   upcomingBlock: {
     flex: 1,
     marginBottom: 0,
@@ -460,7 +405,7 @@ const styles = StyleSheet.create({
     color: brand.navy,
     marginBottom: 8,
   },
-  upcomingEmpty: { fontSize: 12, color: brand.navyMuted, lineHeight: 18 },
+  upcomingEmpty: { ...typography.caption, color: brand.navyMuted, lineHeight: 18 },
   upcomingItem: {
     borderRadius: 10,
     borderWidth: 1,
@@ -503,8 +448,10 @@ const styles = StyleSheet.create({
     gap: 10,
     marginBottom: 18,
   },
-  actionBtn: {
+  actionBtnWrap: {
     flex: 1,
+  },
+  actionBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
@@ -512,6 +459,11 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 12,
     minHeight: 76,
+    shadowColor: brand.navy,
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.12,
+    shadowRadius: 10,
+    elevation: 3,
   },
   actionIcon: {
     width: 40,
@@ -521,7 +473,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   actionIconReserve: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: 'rgba(255,255,255,0.24)',
   },
   actionIconLessons: {
     backgroundColor: `${brand.gold}55`,
@@ -530,9 +482,6 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 0,
     gap: 2,
-  },
-  actionReserve: {
-    backgroundColor: brand.green,
   },
   actionReserveTitle: {
     color: colors.white,

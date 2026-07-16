@@ -1,11 +1,11 @@
 import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { LinearGradient } from 'expo-linear-gradient'
 import {
   Animated,
   Image,
   KeyboardAvoidingView,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -15,12 +15,13 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { loginUser, loginWithGoogle } from '../api/auth'
 import { AuthInput } from '../components/AuthInput'
+import { Bouncy } from '../components/Bouncy'
 import { GoogleSignInButton } from '../components/GoogleSignInButton'
 import { BrandName } from '../components/BrandName'
 import { useAuth } from '../context/AuthContext'
 import { useGoogleSignIn } from '../hooks/useGoogleSignIn'
 import type { RootStackParamList } from '../navigation/types'
-import { brand, colors } from '../theme'
+import { brand, colors, gradients, typography } from '../theme'
 import { validateEmail, validatePassword } from '../utils/validation'
 import { showAuthError } from '../utils/showAuthError'
 
@@ -107,7 +108,7 @@ export function LoginScreen() {
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
         <KeyboardAvoidingView
           style={styles.flex}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          behavior="padding"
         >
           <Animated.View
             style={[
@@ -159,23 +160,22 @@ export function LoginScreen() {
                 />
               </View>
 
-              <Pressable style={styles.forgotHit}>
+              <Pressable style={styles.forgotHit} onPress={() => navigation.navigate('ForgotPassword')}>
                 <Text style={styles.forgot}>Mot de passe oublié ?</Text>
               </Pressable>
 
-              <Pressable
-                style={({ pressed }) => [
-                  styles.submitBtn,
-                  (pressed || loading) && styles.pressed,
-                  loading && styles.disabled,
-                ]}
-                onPress={handleSubmit}
-                disabled={loading}
-              >
-                <Text style={styles.submitText}>
-                  {loading ? 'Connexion en cours…' : 'Se connecter'}
-                </Text>
-              </Pressable>
+              <Bouncy onPress={handleSubmit} disabled={loading} scaleTo={0.97} style={loading && styles.disabled}>
+                <LinearGradient
+                  colors={gradients.green}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.submitBtn}
+                >
+                  <Text style={styles.submitText}>
+                    {loading ? 'Connexion en cours…' : 'Se connecter'}
+                  </Text>
+                </LinearGradient>
+              </Bouncy>
 
               <View style={styles.dividerRow}>
                 <View style={styles.dividerLine} />
@@ -233,23 +233,20 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   title: {
-    fontSize: 24,
-    fontWeight: '700',
+    ...typography.h2,
     color: brand.navy,
-    letterSpacing: -0.3,
     textAlign: 'center',
     marginBottom: 8,
   },
   subtitle: {
-    fontSize: 14,
-    lineHeight: 20,
+    ...typography.bodySmall,
     color: brand.navyMuted,
     textAlign: 'center',
     maxWidth: 280,
   },
   info: {
     color: brand.green,
-    fontSize: 14,
+    ...typography.bodySmall,
     textAlign: 'center',
     marginBottom: 12,
     backgroundColor: brand.greenLight,
@@ -266,15 +263,13 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
   },
   forgot: {
-    fontSize: 14,
-    fontWeight: '500',
+    ...typography.bodySmall,
     color: brand.navyMuted,
   },
   submitBtn: {
     width: '100%',
     minHeight: 52,
     borderRadius: 999,
-    backgroundColor: brand.green,
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 16,
@@ -285,9 +280,8 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   submitText: {
+    ...typography.button,
     color: colors.white,
-    fontSize: 16,
-    fontWeight: '600',
   },
   dividerRow: {
     flexDirection: 'row',
@@ -301,21 +295,19 @@ const styles = StyleSheet.create({
     backgroundColor: `${brand.navy}18`,
   },
   dividerText: {
-    fontSize: 12,
-    fontWeight: '500',
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
+    ...typography.label,
     color: brand.navyMuted,
   },
   footer: {
     marginTop: 32,
     textAlign: 'center',
-    fontSize: 14,
+    ...typography.bodySmall,
     color: brand.navyMuted,
   },
   link: {
     color: brand.navy,
     fontWeight: '700',
+    ...typography.bodySmall,
     textDecorationLine: 'underline',
   },
   pressed: {

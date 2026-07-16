@@ -10,50 +10,57 @@ const audioDir = path.join(__dirname, '../../uploads/audio')
 fs.mkdirSync(imagesDir, { recursive: true })
 fs.mkdirSync(audioDir, { recursive: true })
 
-function makeStorage(destination) {
-  return multer.diskStorage({
-    destination: (_req, _file, cb) => cb(null, destination),
-    filename: (_req, file, cb) => {
-      const ext = path.extname(file.originalname).toLowerCase() || ''
-      const safeName = `${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`
-      cb(null, safeName)
-    },
+const MAGIC_BYTES = [
+  { ext: 'jpeg', bytes: [0xff, 0xd8, 0xff] },
+  { ext: 'png', bytes: [0x89, 0x50, 0x4e, 0x47] },
+  { ext: 'gif', bytes: [0x47, 0x49, 0x46, 0x38] },
+  { ext: 'webp', bytes: [0x52, 0x49, 0x46, 0x46] },
+]
+
+const AUDIO_MAGIC = [
+  { ext: 'mp3', bytes: [0x49, 0x44, 0x33] },
+  { ext: 'wav', bytes: [0x52, 0x49, 0x46, 0x46] },
+  { ext: 'ogg', bytes: [0x4f, 0x67, 0x67, 0x53] },
+]
+
+function checkMagic(buffer, signatures) {
+  return signatures.some((sig) => {
+    if (buffer.length < sig.bytes.length) return false
+    return sig.bytes.every((byte, i) => buffer[i] === byte)
   })
 }
 
-const imageMime = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif'])
-const audioMime = new Set([
-  'audio/mpeg',
-  'audio/mp3',
-  'audio/wav',
-  'audio/x-wav',
-  'audio/webm',
-  'audio/ogg',
-  'audio/mp4',
-  'audio/x-m4a',
-  'audio/aac',
-])
+function writeFile(file) {
+  const dest = file.fieldname === 'audio' ? audioDir : imagesDir
+  const ext = path.extname(file.originalname).toLowerCase() || ''
+  const safeName = `${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`
+  const fullPath = path.join(dest, safeName)
+  fs.writeFileSync(fullPath, file.buffer)
+  return { filename: safeName, path: fullPath, size: file.buffer.length }
+}
 
 export const imageUpload = multer({
-  storage: makeStorage(imagesDir),
+  storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
-    if (imageMime.has(file.mimetype)) {
-      cb(null, true)
+    if (!file.buffer || !checkMagic(file.buffer, MAGIC_BYTES)) {
+      cb(new Error('Format image non supporté (JPEG, PNG, WebP, GIF)'))
       return
     }
-    cb(new Error('Format image non supporté (JPEG, PNG, WebP, GIF)'))
+    cb(null, true)
   },
 })
 
 export const audioUpload = multer({
-  storage: makeStorage(audioDir),
+  storage: multer.memoryStorage(),
   limits: { fileSize: 15 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
-    if (audioMime.has(file.mimetype) || file.mimetype.startsWith('audio/')) {
-      cb(null, true)
+    if (!file.buffer || !checkMagic(file.buffer, AUDIO_MAGIC)) {
+      cb(new Error('Format audio non supporté (MP3, WAV, OGG)'))
       return
     }
-    cb(new Error('Format audio non supporté (MP3, WAV, WebM, OGG, M4A)'))
+    cb(null, true)
   },
 })
+
+export { writeFile }

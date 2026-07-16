@@ -1,5 +1,6 @@
 import { useNavigation } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
+import { LinearGradient } from 'expo-linear-gradient'
 import {
   ClipboardCheck,
   FileText,
@@ -7,10 +8,8 @@ import {
   List,
   Lock,
 } from 'lucide-react-native'
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import {
-  Animated,
-  Easing,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -20,12 +19,15 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { ContentError, fetchPracticeExams } from '../api/revision'
 import { fetchSubscriptionMe, type SubscriptionAccess } from '../api/subscriptions'
+import { FadeUp } from '../components/FadeUp'
+import { Bouncy } from '../components/Bouncy'
+import { AccentBar } from '../components/AccentBar'
 import { CodeModuleIcon } from '../components/ModuleIcons'
 import { PageNavbar } from '../components/PageNavbar'
 import { ScreenLoader } from '../components/ScreenLoader'
 import { useRequireAuth } from '../hooks/useRequireAuth'
 import type { RootStackParamList } from '../navigation/types'
-import { brand, colors } from '../theme'
+import { brand, colors, gradients, typography } from '../theme'
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'CodeRoute'>
 
@@ -64,48 +66,9 @@ const categories = [
   },
 ]
 
-function FadeUp({
-  delay = 0,
-  children,
-  style,
-}: {
-  delay?: number
-  children: ReactNode
-  style?: object
-}) {
-  const opacity = useRef(new Animated.Value(0)).current
-  const translateY = useRef(new Animated.Value(16)).current
-
-  useEffect(() => {
-    Animated.parallel([
-      Animated.timing(opacity, {
-        toValue: 1,
-        duration: 520,
-        delay,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }),
-      Animated.timing(translateY, {
-        toValue: 0,
-        duration: 520,
-        delay,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }),
-    ]).start()
-  }, [delay, opacity, translateY])
-
-  return (
-    <Animated.View style={[style, { opacity, transform: [{ translateY }] }]}>
-      {children}
-    </Animated.View>
-  )
-}
-
 export function CodeRouteScreen() {
   const navigation = useNavigation<Nav>()
   const { user, loading } = useRequireAuth(navigation)
-  const accentScale = useRef(new Animated.Value(0.2)).current
   const [examsUnlocked, setExamsUnlocked] = useState(false)
   const [unlockHint, setUnlockHint] = useState<string | null>(null)
   const [subscription, setSubscription] = useState<SubscriptionAccess | null>(null)
@@ -138,16 +101,6 @@ export function CodeRouteScreen() {
   useEffect(() => {
     if (subscription?.accessCode) void loadUnlock()
   }, [subscription, loadUnlock])
-
-  useEffect(() => {
-    Animated.spring(accentScale, {
-      toValue: 1,
-      friction: 6,
-      tension: 60,
-      delay: 180,
-      useNativeDriver: true,
-    }).start()
-  }, [accentScale])
 
   if (loading || !user) return <ScreenLoader />
 
@@ -184,13 +137,7 @@ export function CodeRouteScreen() {
           showsVerticalScrollIndicator={false}
         >
           <FadeUp delay={120} style={styles.header}>
-            <Animated.View
-              style={[styles.accentRow, { transform: [{ scaleX: accentScale }] }]}
-            >
-              <View style={[styles.accent, styles.accentGreen]} />
-              <View style={[styles.accent, styles.accentGold]} />
-              <View style={[styles.accent, styles.accentNavy]} />
-            </Animated.View>
+            <AccentBar delay={0} />
             <Text style={styles.subtitle}>
               Choisissez un module pour réviser, vous tester ou passer un examen blanc.
             </Text>
@@ -215,30 +162,32 @@ export function CodeRouteScreen() {
                   delay={280 + index * 90}
                   style={styles.cardWrap}
                 >
-                  <Pressable
-                    style={({ pressed }) => [
-                      styles.card,
-                      toneStyles.card,
-                      locked && styles.cardLocked,
-                      pressed && !locked && styles.pressed,
-                    ]}
+                  <Bouncy
                     disabled={locked}
+                    scaleTo={0.95}
                     onPress={() => {
                       if (!locked) navigation.navigate(category.id)
                     }}
                   >
-                    <View style={[styles.iconWrap, toneStyles.icon]}>
-                      {locked ? (
-                        <Lock size={20} color={brand.navyMuted} />
-                      ) : (
-                        <Icon size={22} color={toneStyles.iconColor} />
-                      )}
+                    <View style={[styles.card, toneStyles.card, locked && styles.cardLocked]}>
+                      <LinearGradient
+                        colors={locked ? ['#E5E9EF', '#D6DCE5'] : toneStyles.gradient}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={styles.iconWrap}
+                      >
+                        {locked ? (
+                          <Lock size={20} color={brand.navyMuted} />
+                        ) : (
+                          <Icon size={22} color={colors.white} />
+                        )}
+                      </LinearGradient>
+                      <Text style={styles.cardTitle}>{category.label}</Text>
+                      <Text style={styles.cardSubtitle}>
+                        {locked ? 'Terminez tous les cours' : category.subtitle}
+                      </Text>
                     </View>
-                    <Text style={styles.cardTitle}>{category.label}</Text>
-                    <Text style={styles.cardSubtitle}>
-                      {locked ? 'Terminez tous les cours' : category.subtitle}
-                    </Text>
-                  </Pressable>
+                  </Bouncy>
                 </FadeUp>
               )
             })}
@@ -252,18 +201,15 @@ export function CodeRouteScreen() {
 const toneMap = {
   green: {
     card: { backgroundColor: brand.greenLight, borderColor: `${brand.green}28` },
-    icon: { backgroundColor: colors.white, borderColor: `${brand.green}30` },
-    iconColor: brand.green,
+    gradient: gradients.green,
   },
   gold: {
     card: { backgroundColor: brand.goldLight, borderColor: `${brand.gold}55` },
-    icon: { backgroundColor: colors.white, borderColor: `${brand.gold}60` },
-    iconColor: '#B8860B',
+    gradient: gradients.gold,
   },
   navy: {
     card: { backgroundColor: `${brand.navy}08`, borderColor: `${brand.navy}14` },
-    icon: { backgroundColor: colors.white, borderColor: `${brand.navy}18` },
-    iconColor: brand.navy,
+    gradient: gradients.navy,
   },
 }
 
@@ -284,47 +230,21 @@ const styles = StyleSheet.create({
     marginTop: 8,
     marginBottom: 48,
   },
-  accentRow: {
-    flexDirection: 'row',
-    gap: 6,
-    marginBottom: 16,
-    alignSelf: 'flex-start',
-  },
-  accent: {
-    height: 4,
-    borderRadius: 999,
-  },
-  accentGreen: {
-    width: 28,
-    backgroundColor: brand.green,
-  },
-  accentGold: {
-    width: 18,
-    backgroundColor: brand.gold,
-  },
-  accentNavy: {
-    width: 12,
-    backgroundColor: brand.navy,
-  },
   subtitle: {
-    fontSize: 19,
-    lineHeight: 27,
-    fontWeight: '600',
+    ...typography.bodySmall,
     color: brand.navy,
     maxWidth: 360,
     marginBottom: 12,
   },
   detail: {
-    fontSize: 16,
-    lineHeight: 24,
+    ...typography.bodySmall,
     color: brand.navyMuted,
     maxWidth: 360,
   },
   lockHint: {
-    marginTop: 12,
-    fontSize: 14,
-    lineHeight: 20,
+    ...typography.caption,
     color: brand.navyMuted,
+    marginTop: 12,
     maxWidth: 360,
   },
   accessState: {
@@ -344,16 +264,14 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   accessStateTitle: {
+    ...typography.h4,
     color: brand.navy,
-    fontSize: 21,
-    fontWeight: '800',
     textAlign: 'center',
     marginBottom: 8,
   },
   accessStateCopy: {
+    ...typography.bodySmall,
     color: brand.navyMuted,
-    fontSize: 15,
-    lineHeight: 22,
     textAlign: 'center',
   },
   accessButton: {
@@ -363,7 +281,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 13,
   },
-  accessButtonText: { color: colors.white, fontWeight: '800', fontSize: 15 },
+  accessButtonText: { ...typography.button, color: colors.white },
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -388,24 +306,27 @@ const styles = StyleSheet.create({
     opacity: 0.55,
   },
   iconWrap: {
-    width: 44,
-    height: 44,
+    width: 46,
+    height: 46,
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
     marginBottom: 10,
+    shadowColor: brand.navy,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.16,
+    shadowRadius: 6,
+    elevation: 3,
   },
   cardTitle: {
+    ...typography.bodySemiBold,
     fontSize: 14,
-    fontWeight: '700',
     color: brand.navy,
     marginBottom: 4,
     textAlign: 'center',
   },
   cardSubtitle: {
-    fontSize: 11,
-    lineHeight: 15,
+    ...typography.caption,
     color: brand.navyMuted,
     textAlign: 'center',
   },

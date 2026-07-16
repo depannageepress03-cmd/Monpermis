@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import { SubscriptionPlan, DURATION_TYPES } from '../models/SubscriptionPlan.js'
+import { SubscriptionPlan, DURATION_TYPES, CUSTOM_DURATION_UNITS } from '../models/SubscriptionPlan.js'
 import { UserSubscription } from '../models/UserSubscription.js'
 import { User } from '../models/User.js'
 import { requireAdminAuth } from '../middleware/adminAuth.js'
@@ -19,6 +19,7 @@ function parsePlanBody(body = {}) {
     ? body.durationType
     : 'monthly'
   const customDays = Math.max(1, Number(body.customDays) || 30)
+  const customUnit = CUSTOM_DURATION_UNITS.includes(body.customUnit) ? body.customUnit : 'days'
   const price = Math.max(0, Number(body.price) || 0)
   const accessCode = Boolean(body.accessCode)
   const accessConduite = Boolean(body.accessConduite)
@@ -43,6 +44,7 @@ function parsePlanBody(body = {}) {
     description,
     durationType,
     customDays,
+    customUnit,
     price,
     accessCode,
     accessConduite,

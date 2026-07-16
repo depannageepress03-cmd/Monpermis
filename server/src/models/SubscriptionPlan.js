@@ -1,8 +1,9 @@
 import mongoose from 'mongoose'
 
 export const DURATION_TYPES = ['monthly', 'quarterly', 'semiannual', 'yearly', 'custom']
+export const CUSTOM_DURATION_UNITS = ['days', 'months']
 
-export function durationDaysFor(type, customDays = 0) {
+export function durationDaysFor(type, customDays = 0, customUnit = 'days') {
   switch (type) {
     case 'monthly':
       return 30
@@ -12,14 +13,16 @@ export function durationDaysFor(type, customDays = 0) {
       return 180
     case 'yearly':
       return 365
-    case 'custom':
-      return Math.max(1, Number(customDays) || 1)
+    case 'custom': {
+      const amount = Math.max(1, Number(customDays) || 1)
+      return customUnit === 'months' ? amount * 30 : amount
+    }
     default:
       return 30
   }
 }
 
-export function durationLabel(type, customDays = 0) {
+export function durationLabel(type, customDays = 0, customUnit = 'days') {
   switch (type) {
     case 'monthly':
       return 'Mensuel'
@@ -29,8 +32,12 @@ export function durationLabel(type, customDays = 0) {
       return 'Semestriel'
     case 'yearly':
       return 'Annuel'
-    case 'custom':
-      return `${Math.max(1, Number(customDays) || 1)} jour(s)`
+    case 'custom': {
+      const amount = Math.max(1, Number(customDays) || 1)
+      return customUnit === 'months'
+        ? `${amount} mois`
+        : `${amount} jour(s)`
+    }
     default:
       return type
   }
@@ -47,6 +54,7 @@ const subscriptionPlanSchema = new mongoose.Schema(
       default: 'monthly',
     },
     customDays: { type: Number, min: 1, default: 30 },
+    customUnit: { type: String, enum: CUSTOM_DURATION_UNITS, default: 'days' },
     price: { type: Number, required: true, min: 0 },
     currency: { type: String, default: 'XOF' },
     accessCode: { type: Boolean, default: false },
@@ -63,7 +71,7 @@ const subscriptionPlanSchema = new mongoose.Schema(
 )
 
 subscriptionPlanSchema.methods.getDurationDays = function getDurationDays() {
-  return durationDaysFor(this.durationType, this.customDays)
+  return durationDaysFor(this.durationType, this.customDays, this.customUnit)
 }
 
 subscriptionPlanSchema.methods.toPublicJSON = function toPublicJSON() {
@@ -73,9 +81,11 @@ subscriptionPlanSchema.methods.toPublicJSON = function toPublicJSON() {
     description: this.description,
     durationType: this.durationType,
     customDays: this.customDays,
+    customUnit: this.customUnit || 'days',
     durationDays: this.getDurationDays(),
-    durationLabel: durationLabel(this.durationType, this.customDays),
+    durationLabel: durationLabel(this.durationType, this.customDays, this.customUnit),
     price: this.price,
+    isFreeOffer: (Number(this.price) || 0) <= 0 && !this.isGracePlan,
     currency: this.currency || 'XOF',
     accessCode: Boolean(this.accessCode),
     accessConduite: Boolean(this.accessConduite),

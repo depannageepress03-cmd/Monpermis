@@ -4,6 +4,7 @@ import { Question } from '../models/Question.js'
 import { TEST_SUBJECT_SIZE, TestSubject } from '../models/TestSubject.js'
 import { requireAdminAuth } from '../middleware/adminAuth.js'
 import { audioUpload } from '../middleware/upload.js'
+import { logger } from '../utils/logger.js'
 
 const router = Router()
 router.use(requireAdminAuth)
@@ -81,16 +82,24 @@ router.get('/chapters/:chapterId/questions', async (req, res) => {
       return res.status(404).json({ success: false, error: 'Chapitre introuvable' })
     }
 
-    const questions = await Question.find({ chapterId: chapter._id }).sort({ order: 1, createdAt: 1 })
+    const page = Math.max(1, parseInt(req.query.page) || 1)
+    const limit = Math.min(200, Math.max(1, parseInt(req.query.limit) || 100))
+    const skip = (page - 1) * limit
+
+    const [questions, total] = await Promise.all([
+      Question.find({ chapterId: chapter._id }).sort({ order: 1, createdAt: 1 }).skip(skip).limit(limit),
+      Question.countDocuments({ chapterId: chapter._id }),
+    ])
     res.json({
       success: true,
       data: {
         chapter: { id: chapter._id, name: chapter.name },
+        pagination: { page, limit, total, pages: Math.ceil(total / limit) },
         questions: questions.map((question) => question.toAdminJSON()),
       },
     })
   } catch (error) {
-    console.error('Erreur liste questions:', error)
+    logger.error('Erreur liste questions:', error)
     res.status(500).json({ success: false, error: 'Chargement impossible' })
   }
 })
@@ -126,7 +135,7 @@ router.post('/chapters/:chapterId/questions', async (req, res) => {
       data: { question: question.toAdminJSON() },
     })
   } catch (error) {
-    console.error('Erreur création question:', error)
+    logger.error('Erreur création question:', error)
     res.status(500).json({ success: false, error: 'Création impossible' })
   }
 })
@@ -168,7 +177,7 @@ router.patch('/chapters/:chapterId/questions/:questionId', async (req, res) => {
     await question.save()
     res.json({ success: true, data: { question: question.toAdminJSON() } })
   } catch (error) {
-    console.error('Erreur mise à jour question:', error)
+    logger.error('Erreur mise à jour question:', error)
     res.status(500).json({ success: false, error: 'Mise à jour impossible' })
   }
 })
@@ -185,7 +194,7 @@ router.delete('/chapters/:chapterId/questions/:questionId', async (req, res) => 
 
     res.json({ success: true, data: { deleted: true, id: String(question._id) } })
   } catch (error) {
-    console.error('Erreur suppression question:', error)
+    logger.error('Erreur suppression question:', error)
     res.status(500).json({ success: false, error: 'Suppression impossible' })
   }
 })
@@ -210,7 +219,7 @@ router.get('/chapters/:chapterId/test-subjects/current', async (req, res) => {
       },
     })
   } catch (error) {
-    console.error('Erreur sujet test:', error)
+    logger.error('Erreur sujet test:', error)
     res.status(500).json({ success: false, error: 'Chargement impossible' })
   }
 })
@@ -246,7 +255,7 @@ router.post('/chapters/:chapterId/test-subjects/generate', async (req, res) => {
       },
     })
   } catch (error) {
-    console.error('Erreur génération sujet test:', error)
+    logger.error('Erreur génération sujet test:', error)
     res.status(500).json({ success: false, error: 'Génération impossible' })
   }
 })
@@ -281,7 +290,7 @@ router.patch('/chapters/:chapterId/test-subjects/:subjectId', async (req, res) =
       data: { subject: await loadSubjectWithQuestions(subject) },
     })
   } catch (error) {
-    console.error('Erreur mise à jour sujet test:', error)
+    logger.error('Erreur mise à jour sujet test:', error)
     res.status(500).json({ success: false, error: 'Mise à jour impossible' })
   }
 })
@@ -298,7 +307,7 @@ router.delete('/chapters/:chapterId/test-subjects/:subjectId', async (req, res) 
 
     res.json({ success: true, data: { deleted: true, id: String(subject._id) } })
   } catch (error) {
-    console.error('Erreur suppression sujet test:', error)
+    logger.error('Erreur suppression sujet test:', error)
     res.status(500).json({ success: false, error: 'Suppression impossible' })
   }
 })

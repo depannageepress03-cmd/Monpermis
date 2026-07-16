@@ -54,6 +54,7 @@ export interface SubscriptionPlan {
   accessConduite: boolean
   accessECodepermis: boolean
   heuresIncluses: number
+  isFreeOffer: boolean
 }
 
 export interface UserSubscription {
@@ -98,6 +99,7 @@ export interface SubscriptionAccess {
   subscription: UserSubscription | null
   pendingSubscription: UserSubscription | null
   history: UserSubscription[]
+  freeOfferUsed: boolean
   payments?: PaymentTransaction[]
   latestPayment?: PaymentTransaction | null
   fedapayPublicKey?: string

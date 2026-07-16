@@ -1,4 +1,4 @@
-import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, Navigate, useParams } from 'react-router-dom'
 import {
   ChevronDown,
@@ -82,6 +82,7 @@ export function ChapterQuestionsPage() {
 
   const [prompt, setPrompt] = useState<QuestionPrompt>(emptyPrompt())
   const [answers, setAnswers] = useState<QuestionAnswer[]>(defaultAnswers())
+  const recorderRef = useRef<MediaRecorder | null>(null)
 
   const totalPages = Math.max(1, Math.ceil(questions.length / PAGE_SIZE))
   const pageQuestions = useMemo(() => {
@@ -271,7 +272,7 @@ export function ChapterQuestionsPage() {
         }
       }
 
-      ;(window as unknown as { __questionRecorder?: MediaRecorder }).__questionRecorder = recorder
+      recorderRef.current = recorder
       recorder.start()
       setRecordingTarget(target)
       setError(null)
@@ -281,7 +282,7 @@ export function ChapterQuestionsPage() {
   }
 
   const stopRecording = () => {
-    const recorder = (window as unknown as { __questionRecorder?: MediaRecorder }).__questionRecorder
+    const recorder = recorderRef.current
     if (recorder && recorder.state !== 'inactive') {
       recorder.stop()
     }

@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigation } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
+import { LinearGradient } from 'expo-linear-gradient'
 import * as WebBrowser from 'expo-web-browser'
-import { Check, CreditCard, Lock, RefreshCw } from 'lucide-react-native'
+import { Check, CreditCard, Crown, Lock, RefreshCw } from 'lucide-react-native'
 import {
   ActivityIndicator,
   Pressable,
@@ -23,11 +24,12 @@ import {
   type SubscriptionAccess,
   type SubscriptionPlan,
 } from '../api/subscriptions'
+import { Bouncy } from '../components/Bouncy'
 import { PageNavbar } from '../components/PageNavbar'
 import { ScreenLoader } from '../components/ScreenLoader'
 import { useRequireAuth } from '../hooks/useRequireAuth'
 import type { RootStackParamList } from '../navigation/types'
-import { brand, colors } from '../theme'
+import { brand, colors, gradients } from '../theme'
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'Abonnement'>
 
@@ -246,19 +248,28 @@ export function AbonnementScreen() {
               {error ? <Text style={styles.error}>{error}</Text> : null}
               {success ? <Text style={styles.success}>{success}</Text> : null}
 
+              {active ? (
+                <LinearGradient
+                  colors={gradients.greenDeep}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={[styles.statusCard, styles.statusCardActive]}
+                >
+                  <View style={styles.crownBadge}>
+                    <Crown size={16} color="#8a6400" />
+                  </View>
+                  <Text style={styles.kickerOnColor}>Abonnement actif</Text>
+                  <Text style={styles.statusTitleOnColor}>{active.planName}</Text>
+                  <Text style={styles.statusCopyOnColor}>Valable jusqu’au {formatDate(active.endAt)}.</Text>
+                  <View style={styles.rights}>
+                    {active.accessCode ? <Right label="Code" onColor /> : null}
+                    {active.accessConduite ? <Right label="Conduite" onColor /> : null}
+                    {active.accessECodepermis ? <Right label="E-Codepermis" onColor /> : null}
+                  </View>
+                </LinearGradient>
+              ) : (
               <View style={styles.statusCard}>
-                {active ? (
-                  <>
-                    <Text style={styles.kicker}>Abonnement actif</Text>
-                    <Text style={styles.statusTitle}>{active.planName}</Text>
-                    <Text style={styles.statusCopy}>Valable jusqu’au {formatDate(active.endAt)}.</Text>
-                    <View style={styles.rights}>
-                      {active.accessCode ? <Right label="Code" /> : null}
-                      {active.accessConduite ? <Right label="Conduite" /> : null}
-                      {active.accessECodepermis ? <Right label="E-Codepermis" /> : null}
-                    </View>
-                  </>
-                ) : pending ? (
+                {pending ? (
                   <>
                     <Text style={styles.kicker}>
                       {paymentPending || trackingPaymentId
@@ -278,12 +289,16 @@ export function AbonnementScreen() {
                     </Text>
                     <View style={styles.actions}>
                       {paymentPending && latestPayment?.paymentUrl ? (
-                        <Pressable
-                          style={({ pressed }) => [styles.subscribeButton, pressed && styles.pressed]}
-                          onPress={() => void resumePayment()}
-                        >
-                          <Text style={styles.subscribeText}>Reprendre le paiement</Text>
-                        </Pressable>
+                        <Bouncy onPress={() => void resumePayment()} scaleTo={0.97}>
+                          <LinearGradient
+                            colors={gradients.green}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 0 }}
+                            style={styles.subscribeButton}
+                          >
+                            <Text style={styles.subscribeText}>Reprendre le paiement</Text>
+                          </LinearGradient>
+                        </Bouncy>
                       ) : null}
                       <Pressable
                         style={({ pressed }) => [styles.outlineButton, pressed && styles.pressed]}
@@ -304,6 +319,7 @@ export function AbonnementScreen() {
                   </>
                 )}
               </View>
+              )}
 
               <Text style={styles.catalogTitle}>Nos offres</Text>
               {plans.length === 0 ? (
@@ -312,6 +328,7 @@ export function AbonnementScreen() {
                 <View style={styles.planList}>
                   {plans.map((plan) => {
                     const isCurrentPending = pending && String(pending.planId) === String(plan.id)
+                    const freeOfferBlocked = plan.isFreeOffer && access?.freeOfferUsed && !isCurrentPending
                     return (
                       <View key={plan.id} style={styles.plan}>
                         <View style={styles.planHeader}>
@@ -332,25 +349,40 @@ export function AbonnementScreen() {
                             <Right label={`${plan.heuresIncluses} h de conduite`} />
                           ) : null}
                         </View>
-                        <Pressable
-                          style={({ pressed }) => [
-                            styles.subscribeButton,
-                            (Boolean(active) || subscribingPlanId !== null) && styles.disabled,
-                            pressed && !active && !subscribingPlanId && styles.pressed,
-                          ]}
-                          disabled={Boolean(active) || subscribingPlanId !== null}
+                        {freeOfferBlocked ? (
+                          <Text style={styles.freeOfferUsedText}>Offre gratuite déjà utilisée</Text>
+                        ) : null}
+                        <Bouncy
+                          disabled={Boolean(active) || subscribingPlanId !== null || freeOfferBlocked}
+                          scaleTo={0.97}
+                          style={(Boolean(active) || subscribingPlanId !== null || freeOfferBlocked) && styles.disabled}
                           onPress={() => void subscribe(plan.id)}
                         >
-                          <Text style={styles.subscribeText}>
-                            {subscribingPlanId === plan.id
-                              ? 'Ouverture du paiement…'
-                              : isCurrentPending
-                                ? paymentFailed
-                                  ? 'Réessayer le paiement'
-                                  : 'Payer'
-                                : 'Payer'}
-                          </Text>
-                        </Pressable>
+                          <LinearGradient
+                            colors={gradients.green}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 0 }}
+                            style={styles.subscribeButton}
+                          >
+                            <Text style={styles.subscribeText}>
+                              {subscribingPlanId === plan.id
+                                ? plan.isFreeOffer
+                                  ? 'Activation…'
+                                  : 'Ouverture du paiement…'
+                                : freeOfferBlocked
+                                  ? 'Offre gratuite déjà utilisée'
+                                  : isCurrentPending
+                                    ? paymentFailed
+                                      ? 'Réessayer le paiement'
+                                      : plan.isFreeOffer
+                                        ? 'Essayer l’offre gratuite'
+                                        : 'Payer'
+                                    : plan.isFreeOffer
+                                      ? 'Essayer l’offre gratuite'
+                                      : 'Payer'}
+                            </Text>
+                          </LinearGradient>
+                        </Bouncy>
                       </View>
                     )
                   })}
@@ -388,11 +420,11 @@ export function AbonnementScreen() {
   )
 }
 
-function Right({ label }: { label: string }) {
+function Right({ label, onColor }: { label: string; onColor?: boolean }) {
   return (
     <View style={styles.right}>
-      <Check size={15} color={brand.green} />
-      <Text style={styles.rightText}>{label}</Text>
+      <Check size={15} color={onColor ? colors.white : brand.green} />
+      <Text style={[styles.rightText, onColor && styles.rightTextOnColor]}>{label}</Text>
     </View>
   )
 }
@@ -410,13 +442,36 @@ const styles = StyleSheet.create({
     borderRadius: 18, borderWidth: 1, borderColor: `${brand.navy}14`,
     backgroundColor: '#F8FAFC', padding: 18, marginBottom: 28,
   },
+  statusCardActive: {
+    borderWidth: 0,
+    shadowColor: brand.green,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.24,
+    shadowRadius: 18,
+    elevation: 5,
+  },
+  crownBadge: {
+    position: 'absolute',
+    top: 14,
+    right: 14,
+    width: 32,
+    height: 32,
+    borderRadius: 999,
+    backgroundColor: '#FFC000',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   kicker: { fontSize: 12, fontWeight: '800', color: brand.green, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 6 },
+  kickerOnColor: { fontSize: 12, fontWeight: '800', color: 'rgba(255,255,255,0.75)', textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 6 },
   statusTitle: { fontSize: 22, fontWeight: '800', color: brand.navy, marginBottom: 8 },
+  statusTitleOnColor: { fontSize: 22, fontWeight: '800', color: colors.white, marginBottom: 8 },
   statusCopy: { fontSize: 15, lineHeight: 22, color: brand.navyMuted },
+  statusCopyOnColor: { fontSize: 15, lineHeight: 22, color: 'rgba(255,255,255,0.85)' },
   lockIcon: { marginBottom: 12 },
   rights: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 16 },
   right: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   rightText: { fontSize: 13, fontWeight: '600', color: brand.navy },
+  rightTextOnColor: { color: colors.white },
   actions: { gap: 10, marginTop: 16 },
   catalogTitle: { fontSize: 22, fontWeight: '800', color: brand.navy, marginBottom: 14 },
   noPlans: { fontSize: 15, color: brand.navyMuted },
@@ -429,7 +484,8 @@ const styles = StyleSheet.create({
   duration: { alignSelf: 'flex-start', color: brand.navyMuted, fontSize: 12, fontWeight: '700', backgroundColor: `${brand.navy}08`, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 4, marginTop: 9 },
   price: { color: brand.navy, fontSize: 17, fontWeight: '800' },
   planRights: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 16, marginBottom: 16 },
-  subscribeButton: { alignItems: 'center', backgroundColor: brand.green, borderRadius: 12, paddingVertical: 13 },
+  freeOfferUsedText: { color: '#B91C1C', fontSize: 12, fontWeight: '700', marginBottom: 8 },
+  subscribeButton: { alignItems: 'center', borderRadius: 12, paddingVertical: 13 },
   subscribeText: { color: colors.white, fontSize: 15, fontWeight: '800' },
   outlineButton: {
     alignItems: 'center',

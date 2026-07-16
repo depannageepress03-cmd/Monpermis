@@ -628,6 +628,14 @@
   grid-column: 1 / -1;
 }
 
+.subscription-free-used {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: #B91C1C;
+  font-size: 12px;
+  font-weight: 700;
+}
+
 .subscription-spinner {
   animation: subscription-spin 0.8s linear infinite;
 }
