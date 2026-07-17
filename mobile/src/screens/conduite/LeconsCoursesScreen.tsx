@@ -8,13 +8,13 @@ import {
 } from 'lucide-react-native'
 import { useCallback, useState } from 'react'
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
 import { fetchCourseProgress } from '../../api/conduite'
+import { DarkScreen } from '../../components/DarkScreen'
 import { PageNavbar } from '../../components/PageNavbar'
 import { ScreenLoader } from '../../components/ScreenLoader'
 import { useRequireAuth } from '../../hooks/useRequireAuth'
 import type { RootStackParamList } from '../../navigation/types'
-import { brand, colors } from '../../theme'
+import { dark, fonts } from '../../theme'
 import { formatChapterHeading, formatCourseHeading } from '../../utils/chapterLabel'
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'LeconsCourses'>
@@ -55,8 +55,7 @@ export function LeconsCoursesScreen() {
   if (loading || !user) return <ScreenLoader />
 
   return (
-    <View style={styles.root}>
-      <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+    <DarkScreen>
         <PageNavbar
           title={formatChapterHeading(chapterName)}
           icon={BookOpen}
@@ -81,7 +80,7 @@ export function LeconsCoursesScreen() {
           </View>
 
           {progressLoading ? (
-            <ActivityIndicator color={brand.green} style={{ marginBottom: 16 }} />
+            <ActivityIndicator color={dark.green} style={{ marginBottom: 16 }} />
           ) : null}
 
           {courses.length === 0 ? (
@@ -117,11 +116,11 @@ export function LeconsCoursesScreen() {
                 >
                   <View style={[styles.iconWrap, !unlocked && styles.iconWrapLocked]}>
                     {!unlocked ? (
-                      <Lock size={20} color={brand.navyMuted} />
+                      <Lock size={20} color={dark.textMuted} />
                     ) : completed ? (
-                      <Check size={22} color={brand.green} />
+                      <Check size={22} color={dark.green} />
                     ) : (
-                      <BookOpen size={22} color="#B8860B" />
+                      <BookOpen size={22} color={dark.coral} />
                     )}
                   </View>
                   <View style={styles.cardContent}>
@@ -138,9 +137,9 @@ export function LeconsCoursesScreen() {
                     ) : null}
                   </View>
                   {unlocked ? (
-                    <ChevronRight size={20} color={brand.navyMuted} />
+                    <ChevronRight size={20} color={dark.textMuted} />
                   ) : (
-                    <Lock size={18} color={brand.navyMuted} />
+                    <Lock size={18} color={dark.textMuted} />
                   )}
                 </Pressable>
               )
@@ -149,34 +148,18 @@ export function LeconsCoursesScreen() {
 
 
         </ScrollView>
-      </SafeAreaView>
-    </View>
+      </DarkScreen>
   )
 }
 
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: colors.white,
-  },
-  safe: {
-    flex: 1,
-  },
   scroll: {
-    paddingHorizontal: 24,
+    paddingHorizontal: 22,
     paddingTop: 8,
     paddingBottom: 28,
   },
   header: {
     marginBottom: 24,
-  },
-  kicker: {
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 1.2,
-    textTransform: 'uppercase',
-    color: brand.green,
-    marginBottom: 6,
   },
   accentRow: {
     flexDirection: 'row',
@@ -189,20 +172,21 @@ const styles = StyleSheet.create({
   },
   accentGreen: {
     width: 28,
-    backgroundColor: brand.green,
+    backgroundColor: dark.green,
   },
   accentGold: {
     width: 18,
-    backgroundColor: brand.gold,
+    backgroundColor: dark.coral,
   },
   accentNavy: {
     width: 12,
-    backgroundColor: brand.navy,
+    backgroundColor: dark.textMuted,
   },
   subtitle: {
+    fontFamily: fonts.body,
     fontSize: 15,
     lineHeight: 22,
-    color: brand.navyMuted,
+    color: dark.textMuted,
     maxWidth: 340,
   },
   card: {
@@ -211,18 +195,19 @@ const styles = StyleSheet.create({
     gap: 14,
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: `${brand.gold}55`,
-    backgroundColor: brand.goldLight,
+    borderColor: dark.border,
+    backgroundColor: dark.surface,
     padding: 16,
     marginBottom: 12,
   },
   cardLocked: {
-    borderColor: `${brand.navy}12`,
-    backgroundColor: '#F4F6F8',
+    borderColor: dark.border,
+    backgroundColor: dark.surfaceRaised,
+    opacity: 0.65,
   },
   cardDone: {
-    borderColor: `${brand.green}45`,
-    backgroundColor: brand.greenLight,
+    borderColor: 'rgba(34,214,115,0.35)',
+    backgroundColor: dark.greenSoft,
   },
   iconWrap: {
     width: 48,
@@ -230,37 +215,39 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: dark.coralSoft,
     borderWidth: 1,
-    borderColor: `${brand.gold}60`,
+    borderColor: dark.border,
   },
   iconWrapLocked: {
-    borderColor: `${brand.navy}12`,
+    backgroundColor: dark.surfaceRaised,
+    borderColor: dark.border,
   },
   cardContent: {
     flex: 1,
   },
   cardIndex: {
+    fontFamily: fonts.bodyBold,
     fontSize: 12,
-    fontWeight: '700',
-    color: '#B8860B',
+    color: dark.coral,
     marginBottom: 2,
     textTransform: 'uppercase',
     letterSpacing: 0.6,
   },
   cardTitle: {
+    fontFamily: fonts.displayBold,
     fontSize: 16,
-    fontWeight: '700',
-    color: brand.navy,
+    color: dark.textPrimary,
   },
   lockHint: {
     marginTop: 4,
+    fontFamily: fonts.body,
     fontSize: 12,
     lineHeight: 16,
-    color: brand.navyMuted,
+    color: dark.textMuted,
   },
   textMuted: {
-    color: brand.navyMuted,
+    color: dark.textMuted,
   },
   centerBox: {
     alignItems: 'center',
@@ -268,16 +255,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   emptyTitle: {
+    fontFamily: fonts.displayBold,
     fontSize: 17,
-    fontWeight: '700',
-    color: brand.navy,
+    color: dark.textPrimary,
     marginBottom: 8,
     textAlign: 'center',
   },
   emptyText: {
+    fontFamily: fonts.body,
     fontSize: 14,
     lineHeight: 20,
-    color: brand.navyMuted,
+    color: dark.textMuted,
     textAlign: 'center',
   },
   pressed: {

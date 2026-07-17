@@ -18,7 +18,7 @@ import { AuthInput } from '../components/AuthInput'
 import { Bouncy } from '../components/Bouncy'
 import { BrandName } from '../components/BrandName'
 import type { RootStackParamList } from '../navigation/types'
-import { brand, colors, gradients, typography } from '../theme'
+import { dark, fonts, gradients } from '../theme'
 import { validateEmail } from '../utils/validation'
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'ForgotPassword'>
@@ -64,19 +64,19 @@ export function ForgotPasswordScreen() {
                 style={styles.logo}
                 resizeMode="contain"
               />
-              <BrandName size={22} style={styles.brand} />
+              <BrandName size={22} style={styles.brand} mainColor={dark.textPrimary} />
               <Text style={styles.title}>Mot de passe oublié</Text>
               <Text style={styles.subtitle}>
-                Saisissez votre email, nous vous enverrons un lien pour réinitialiser votre mot de passe.
+                Saisis ton email, on t’envoie un lien pour réinitialiser ton mot de passe.
               </Text>
             </View>
 
             {sent ? (
               <View style={styles.sentCard}>
-                <Text style={styles.sentTitle}>Email envoyé !</Text>
+                <Text style={styles.sentTitle}>Email envoyé</Text>
                 <Text style={styles.sentCopy}>
-                  Si un compte existe avec cette adresse, vous recevrez un lien de
-                  réinitialisation sous quelques minutes. Ouvrez-le depuis votre téléphone
+                  Si un compte existe avec cette adresse, tu recevras un lien de
+                  réinitialisation sous quelques minutes. Ouvre-le depuis ton téléphone
                   pour choisir un nouveau mot de passe.
                 </Text>
                 <Pressable onPress={() => navigation.navigate('Login')}>
@@ -125,7 +125,7 @@ export function ForgotPasswordScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.introBg },
+  root: { flex: 1, backgroundColor: dark.bg },
   safe: { flex: 1 },
   flex: { flex: 1 },
   scroll: {
@@ -138,17 +138,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 32,
   },
-  logo: { width: 120, height: 80, marginBottom: 12 },
+  logo: { width: 110, height: 74, marginBottom: 12 },
   brand: { marginBottom: 16 },
   title: {
-    ...typography.h2,
-    color: brand.navy,
+    fontFamily: fonts.displayExtraBold,
+    fontSize: 26,
+    color: dark.textPrimary,
     textAlign: 'center',
     marginBottom: 8,
+    letterSpacing: -0.4,
   },
   subtitle: {
-    ...typography.bodySmall,
-    color: brand.navyMuted,
+    fontFamily: fonts.body,
+    fontSize: 14,
+    lineHeight: 20,
+    color: dark.textMuted,
     textAlign: 'center',
     maxWidth: 300,
   },
@@ -160,23 +164,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 16,
-    shadowColor: brand.green,
+    shadowColor: dark.green,
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.22,
+    shadowOpacity: 0.3,
     shadowRadius: 16,
     elevation: 4,
   },
-  submitText: { ...typography.button, color: colors.white },
+  submitText: { fontFamily: fonts.bodyBold, fontSize: 15, color: '#0B0F1A' },
   disabled: { opacity: 0.6 },
   footer: {
     marginTop: 24,
     textAlign: 'center',
   },
   link: {
-    color: brand.navy,
-    fontWeight: '700',
-    ...typography.bodySmall,
-    textDecorationLine: 'underline',
+    color: dark.green,
+    fontFamily: fonts.bodyBold,
+    fontSize: 14,
   },
   sentCard: {
     alignItems: 'center',
@@ -184,13 +187,15 @@ const styles = StyleSheet.create({
     paddingVertical: 20,
   },
   sentTitle: {
-    ...typography.h4,
-    color: brand.green,
+    fontFamily: fonts.displayBold,
+    fontSize: 18,
+    color: dark.green,
     textAlign: 'center',
   },
   sentCopy: {
-    ...typography.bodySmall,
-    color: brand.navyMuted,
+    fontFamily: fonts.body,
+    fontSize: 14,
+    color: dark.textMuted,
     textAlign: 'center',
     lineHeight: 21,
   },

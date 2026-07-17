@@ -53,6 +53,7 @@ export interface SubscriptionPlan {
   accessCode: boolean
   accessConduite: boolean
   accessECodepermis: boolean
+  accessAiChat: boolean
   heuresIncluses: number
   isFreeOffer: boolean
 }
@@ -65,6 +66,7 @@ export interface UserSubscription {
   accessCode: boolean
   accessConduite: boolean
   accessECodepermis: boolean
+  accessAiChat: boolean
   heuresIncluses: number
   startAt: string | null
   endAt: string | null
@@ -96,6 +98,7 @@ export interface SubscriptionAccess {
   accessCode: boolean
   accessConduite: boolean
   accessECodepermis: boolean
+  accessAiChat: boolean
   subscription: UserSubscription | null
   pendingSubscription: UserSubscription | null
   history: UserSubscription[]

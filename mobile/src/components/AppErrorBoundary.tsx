@@ -1,5 +1,6 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { dark, fonts } from '../theme'
 
 type Props = { children: ReactNode }
 type State = { error: Error | null }
@@ -38,28 +39,30 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     padding: 24,
-    backgroundColor: '#fff',
+    backgroundColor: dark.bg,
   },
   title: {
+    fontFamily: fonts.displayBold,
     fontSize: 20,
-    fontWeight: '800',
-    color: '#001030',
+    color: dark.textPrimary,
     marginBottom: 10,
   },
   message: {
+    fontFamily: fonts.body,
     fontSize: 14,
-    color: '#64748b',
+    color: dark.textMuted,
     marginBottom: 20,
   },
   button: {
     alignSelf: 'flex-start',
-    backgroundColor: '#00B050',
+    backgroundColor: dark.green,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
   buttonText: {
-    color: '#fff',
-    fontWeight: '700',
+    fontFamily: fonts.bodyBold,
+    color: '#0B0F1A',
+    fontSize: 15,
   },
 })

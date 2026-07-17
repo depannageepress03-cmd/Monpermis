@@ -11,18 +11,18 @@ import {
   Text,
   View,
 } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
 import {
   ContentError,
   fetchLearnerProgress,
   fetchRevisionChapters,
   type RevisionChapter,
 } from '../../api/revision'
+import { DarkScreen } from '../../components/DarkScreen'
 import { PageNavbar } from '../../components/PageNavbar'
 import { ScreenLoader } from '../../components/ScreenLoader'
 import { useRequireAuth } from '../../hooks/useRequireAuth'
 import type { RootStackParamList } from '../../navigation/types'
-import { brand, colors, typography } from '../../theme'
+import { dark, fonts } from '../../theme'
 import {
   isChapterQuestionsUnlocked,
   isChapterQuizUnlocked,
@@ -104,43 +104,38 @@ export function RevisionChapitresScreen() {
   if (authLoading || !user) return <ScreenLoader />
 
   return (
-    <View style={styles.root}>
-      <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-        <PageNavbar
-          title="Nos chapitres"
-          icon={Layers}
-          onBack={() => navigation.navigate('CodeRoute')}
-        />
+    <DarkScreen>
+      <PageNavbar
+        title="Nos chapitres"
+        icon={Layers}
+        onBack={() => navigation.navigate('CodeRoute')}
+      />
 
-        <ScrollView
-          contentContainerStyle={styles.scroll}
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={() => {
-                setRefreshing(true)
-                void loadChapters(true)
-              }}
-              tintColor={brand.green}
-            />
-          }
-        >
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => {
+              setRefreshing(true)
+              void loadChapters(true)
+            }}
+            tintColor={dark.green}
+          />
+        }
+      >
           <View style={styles.header}>
-            <View style={styles.accentRow}>
-              <View style={[styles.accent, styles.accentGreen]} />
-              <View style={[styles.accent, styles.accentGold]} />
-              <View style={[styles.accent, styles.accentNavy]} />
-            </View>
+            <Text style={styles.heroEyebrow}>Progression</Text>
+            <Text style={styles.heroTitle}>Nos chapitres</Text>
             <Text style={styles.subtitle}>
-              Suivez chaque chapitre dans l’ordre : cours, questions, puis sujet test pour
-              progresser sereinement.
+              Suis chaque chapitre dans l’ordre : cours, questions, puis sujet test.
             </Text>
           </View>
 
           {loading ? (
             <View style={styles.centerBox}>
-              <ActivityIndicator color={brand.green} size="large" />
+              <ActivityIndicator color={dark.green} size="large" />
             </View>
           ) : null}
 
@@ -191,7 +186,7 @@ export function RevisionChapitresScreen() {
                         {chapterUnlocked ? (
                           <Text style={styles.cardNumber}>{index + 1}</Text>
                         ) : (
-                          <Lock size={15} color={brand.navyMuted} />
+                          <Lock size={15} color={dark.textMuted} />
                         )}
                       </View>
                       <View style={styles.cardContent}>
@@ -220,9 +215,9 @@ export function RevisionChapitresScreen() {
                       >
                         <View style={[styles.actionIcon, styles.actionCourses]}>
                           {chapterUnlocked ? (
-                            <BookOpen size={15} color={brand.green} />
+                            <BookOpen size={15} color={dark.green} />
                           ) : (
-                            <Lock size={13} color={brand.navyMuted} />
+                            <Lock size={13} color={dark.textMuted} />
                           )}
                         </View>
                         <Text style={styles.actionLabel}>Cours</Text>
@@ -239,9 +234,9 @@ export function RevisionChapitresScreen() {
                       >
                         <View style={[styles.actionIcon, styles.actionQuestions]}>
                           {questionsUnlocked ? (
-                            <HelpCircle size={15} color="#B8860B" />
+                            <HelpCircle size={15} color={dark.coral} />
                           ) : (
-                            <Lock size={13} color={brand.navyMuted} />
+                            <Lock size={13} color={dark.textMuted} />
                           )}
                         </View>
                         <Text style={styles.actionLabel}>Questions</Text>
@@ -258,9 +253,9 @@ export function RevisionChapitresScreen() {
                       >
                         <View style={[styles.actionIcon, styles.actionTest]}>
                           {testSubjectUnlocked ? (
-                            <ClipboardList size={15} color={brand.navy} />
+                            <ClipboardList size={15} color={dark.textPrimary} />
                           ) : (
-                            <Lock size={13} color={brand.navyMuted} />
+                            <Lock size={13} color={dark.textMuted} />
                           )}
                         </View>
                         <Text style={styles.actionLabel}>Sujet test</Text>
@@ -270,134 +265,119 @@ export function RevisionChapitresScreen() {
                 )
               })
             : null}
-        </ScrollView>
-      </SafeAreaView>
-    </View>
+      </ScrollView>
+    </DarkScreen>
   )
 }
 
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: colors.white,
-  },
-  safe: {
-    flex: 1,
-  },
   scroll: {
-    paddingHorizontal: 24,
-    paddingTop: 16,
+    paddingHorizontal: 22,
+    paddingTop: 12,
     paddingBottom: 28,
   },
   header: {
-    marginBottom: 40,
-    marginTop: 12,
+    marginBottom: 22,
   },
-  accentRow: {
-    flexDirection: 'row',
-    gap: 6,
-    marginBottom: 14,
+  heroEyebrow: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 13,
+    color: dark.green,
+    letterSpacing: 0.3,
+    marginBottom: 2,
   },
-  accent: {
-    height: 4,
-    borderRadius: 999,
-  },
-  accentGreen: {
-    width: 28,
-    backgroundColor: brand.green,
-  },
-  accentGold: {
-    width: 18,
-    backgroundColor: brand.gold,
-  },
-  accentNavy: {
-    width: 12,
-    backgroundColor: brand.navy,
+  heroTitle: {
+    fontFamily: fonts.displayExtraBold,
+    fontSize: 28,
+    lineHeight: 34,
+    color: dark.textPrimary,
+    letterSpacing: -0.5,
   },
   subtitle: {
-    ...typography.bodySmall,
-    color: brand.navyMuted,
+    marginTop: 8,
+    fontFamily: fonts.body,
+    fontSize: 14,
+    lineHeight: 20,
+    color: dark.textMuted,
     maxWidth: 340,
-    marginBottom: 8,
   },
   card: {
-    borderRadius: 14,
+    borderRadius: 18,
     borderWidth: 1,
-    borderColor: `${brand.green}28`,
-    backgroundColor: brand.greenLight,
-    padding: 10,
-    marginBottom: 8,
-    gap: 8,
-    marginTop: 4,
+    borderColor: 'rgba(34,214,115,0.28)',
+    backgroundColor: dark.surface,
+    padding: 12,
+    marginBottom: 10,
+    gap: 10,
   },
   cardTop: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 12,
   },
   iconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
+    width: 40,
+    height: 40,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.white,
-    borderWidth: 1,
-    borderColor: `${brand.green}30`,
+    backgroundColor: dark.greenSoft,
   },
   cardNumber: {
-    ...typography.subtitle,
-    fontWeight: '800',
-    color: brand.green,
+    fontFamily: fonts.displayBold,
+    fontSize: 15,
+    color: dark.green,
   },
   cardContent: {
     flex: 1,
   },
   cardTitle: {
-    ...typography.bodySemiBold,
-    fontSize: 14,
-    color: brand.navy,
-    marginBottom: 1,
+    fontFamily: fonts.displayBold,
+    fontSize: 15,
+    color: dark.textPrimary,
+    marginBottom: 2,
   },
   cardSubtitle: {
-    ...typography.caption,
-    color: brand.navyMuted,
+    fontFamily: fonts.body,
+    fontSize: 12,
+    lineHeight: 16,
+    color: dark.textMuted,
   },
   actions: {
     flexDirection: 'row',
-    gap: 6,
+    gap: 8,
   },
   actionBtn: {
     flex: 1,
     alignItems: 'center',
-    gap: 4,
-    paddingVertical: 6,
+    gap: 5,
+    paddingVertical: 9,
     paddingHorizontal: 2,
-    borderRadius: 10,
-    backgroundColor: colors.white,
+    borderRadius: 14,
+    backgroundColor: dark.surfaceRaised,
     borderWidth: 1,
-    borderColor: 'rgba(0,16,48,0.08)',
+    borderColor: dark.border,
   },
   actionIcon: {
-    width: 30,
-    height: 30,
-    borderRadius: 9,
+    width: 32,
+    height: 32,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
   },
   actionCourses: {
-    backgroundColor: brand.greenLight,
+    backgroundColor: dark.greenSoft,
   },
   actionQuestions: {
-    backgroundColor: brand.goldLight,
+    backgroundColor: dark.coralSoft,
   },
   actionTest: {
-    backgroundColor: '#eef1f5',
+    backgroundColor: 'rgba(255,255,255,0.06)',
   },
   actionLabel: {
-    ...typography.caption,
-    fontWeight: '700',
-    color: brand.navy,
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 11.5,
+    color: dark.textPrimary,
   },
   centerBox: {
     alignItems: 'center',
@@ -405,41 +385,45 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   emptyTitle: {
-    ...typography.h4,
-    color: brand.navy,
+    fontFamily: fonts.displayBold,
+    fontSize: 18,
+    color: dark.textPrimary,
     marginBottom: 8,
     textAlign: 'center',
   },
   emptyText: {
-    ...typography.bodySmall,
-    color: brand.navyMuted,
+    fontFamily: fonts.body,
+    fontSize: 14,
+    lineHeight: 20,
+    color: dark.textMuted,
     textAlign: 'center',
   },
   errorText: {
-    ...typography.bodySmall,
-    color: colors.error,
+    fontFamily: fonts.body,
+    fontSize: 14,
+    color: dark.coral,
     textAlign: 'center',
     marginBottom: 12,
   },
   retryBtn: {
     paddingHorizontal: 18,
-    paddingVertical: 10,
+    paddingVertical: 11,
     borderRadius: 999,
-    backgroundColor: brand.green,
+    backgroundColor: dark.green,
   },
   retryText: {
-    ...typography.buttonSmall,
-    color: colors.white,
+    fontFamily: fonts.bodyBold,
+    fontSize: 13,
+    color: '#0B0F1A',
   },
   pressed: {
-    opacity: 0.88,
+    opacity: 0.85,
   },
   cardLocked: {
-    opacity: 0.72,
-    backgroundColor: '#f1f5f9',
-    borderColor: 'rgba(15,23,42,0.08)',
+    opacity: 0.55,
+    borderColor: dark.border,
   },
   actionDisabled: {
-    opacity: 0.55,
+    opacity: 0.5,
   },
 })

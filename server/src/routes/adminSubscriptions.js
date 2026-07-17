@@ -7,6 +7,8 @@ import {
   activateSubscription,
   createPendingSubscription,
   expireDueSubscriptions,
+  snapshotFromPlan,
+  syncSubscriptionsToPlan,
 } from '../utils/subscriptions.js'
 
 const router = Router()
@@ -24,6 +26,7 @@ function parsePlanBody(body = {}) {
   const accessCode = Boolean(body.accessCode)
   const accessConduite = Boolean(body.accessConduite)
   const accessECodepermis = Boolean(body.accessECodepermis)
+  const accessAiChat = Boolean(body.accessAiChat)
   const heuresIncluses = Math.max(0, Number(body.heuresIncluses) || 0)
   const active = body.active !== false && body.active !== 'false'
   const order = Number(body.order) || 0
@@ -49,6 +52,7 @@ function parsePlanBody(body = {}) {
     accessCode,
     accessConduite,
     accessECodepermis,
+    accessAiChat,
     heuresIncluses,
     active,
     order,
@@ -100,7 +104,12 @@ router.patch('/plans/:planId', async (req, res) => {
     const data = parsePlanBody({ ...plan.toObject(), ...req.body })
     Object.assign(plan, data)
     await plan.save()
-    res.json({ success: true, data: { plan: plan.toAdminJSON() } })
+    // Répercuter le nom/prix/droits sur les abonnements actifs et en attente
+    const synced = await syncSubscriptionsToPlan(plan)
+    res.json({
+      success: true,
+      data: { plan: plan.toAdminJSON(), syncedSubscriptions: synced.updated },
+    })
   } catch (error) {
     res.status(error.status || 500).json({
       success: false,
@@ -232,6 +241,56 @@ router.post('/:subscriptionId/activate', async (req, res) => {
     res.status(error.status || 500).json({
       success: false,
       error: error.message || 'Activation impossible',
+    })
+  }
+})
+
+/** Admin change le type de plan d'un abonnement existant d'un élève. */
+router.post('/:subscriptionId/change-plan', async (req, res) => {
+  try {
+    const { planId } = req.body ?? {}
+    const subscription = await UserSubscription.findById(req.params.subscriptionId)
+    if (!subscription) {
+      return res.status(404).json({ success: false, error: 'Abonnement introuvable' })
+    }
+    if (subscription.status === 'cancelled' || subscription.status === 'expired') {
+      return res.status(400).json({
+        success: false,
+        error: 'Impossible de changer le plan d’un abonnement annulé ou expiré',
+      })
+    }
+    const plan = await SubscriptionPlan.findById(planId)
+    if (!plan || plan.isGracePlan) {
+      return res.status(404).json({ success: false, error: 'Modèle introuvable' })
+    }
+
+    const snap = snapshotFromPlan(plan)
+    subscription.planId = plan._id
+    subscription.planName = snap.planName
+    subscription.price = snap.price
+    subscription.currency = snap.currency
+    subscription.accessCode = snap.accessCode
+    subscription.accessConduite = snap.accessConduite
+    subscription.accessECodepermis = snap.accessECodepermis
+    subscription.heuresIncluses = snap.heuresIncluses
+    subscription.isFreeOffer = snap.isFreeOffer
+    subscription.durationDays = snap.durationDays
+
+    // Si actif, recalculer la date de fin depuis l'activation avec la nouvelle durée
+    if (subscription.status === 'active' && subscription.startAt) {
+      subscription.endAt = new Date(
+        new Date(subscription.startAt).getTime() + snap.durationDays * 24 * 60 * 60 * 1000,
+      )
+    }
+
+    await subscription.save()
+    const user = await User.findById(subscription.userId)
+    res.json({ success: true, data: { subscription: subscription.toAdminJSON(user) } })
+  } catch (error) {
+    console.error('Erreur changement de plan:', error)
+    res.status(error.status || 500).json({
+      success: false,
+      error: error.message || 'Changement de plan impossible',
     })
   }
 })

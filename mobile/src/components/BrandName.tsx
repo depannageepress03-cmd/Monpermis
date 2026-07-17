@@ -7,6 +7,8 @@ interface BrandNameProps {
   size?: number
   /** Sur fond sombre : pastille claire pour garder Monpermis en noir. */
   onDark?: boolean
+  /** Couleur du mot "Monpermis" (le ".bj" reste vert) — pratique sur fond sombre sans pastille. */
+  mainColor?: string
   /** Pour insertion dans un <Text> parent. */
   inline?: boolean
 }
@@ -17,11 +19,12 @@ export function BrandName({
   textStyle,
   size = 18,
   onDark = false,
+  mainColor,
   inline = false,
 }: BrandNameProps) {
   const content = (
     <>
-      <Text style={[styles.main, { fontSize: size }, textStyle]}>Monpermis</Text>
+      <Text style={[styles.main, mainColor ? { color: mainColor } : null, { fontSize: size }, textStyle]}>Monpermis</Text>
       <Text style={[styles.tld, { fontSize: size }, textStyle]}>.bj</Text>
     </>
   )

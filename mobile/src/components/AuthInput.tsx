@@ -8,7 +8,7 @@ import {
   View,
   type TextInputProps,
 } from 'react-native'
-import { brand, colors } from '../theme'
+import { dark, fonts } from '../theme'
 
 interface AuthInputProps extends TextInputProps {
   label: string
@@ -25,7 +25,7 @@ export function AuthInput({ label, error, secureTextEntry, style, ...props }: Au
       <View style={[styles.wrap, error ? styles.wrapError : null]}>
         <TextInput
           style={[styles.input, style]}
-          placeholderTextColor={colors.textMuted}
+          placeholderTextColor={dark.textMuted}
           secureTextEntry={isPassword && !showPassword}
           autoCapitalize="none"
           {...props}
@@ -37,9 +37,9 @@ export function AuthInput({ label, error, secureTextEntry, style, ...props }: Au
             accessibilityLabel={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
           >
             {showPassword ? (
-              <EyeOff size={18} color={brand.navyMuted} />
+              <EyeOff size={18} color={dark.textMuted} />
             ) : (
-              <Eye size={18} color={brand.navyMuted} />
+              <Eye size={18} color={dark.textMuted} />
             )}
           </Pressable>
         )}
@@ -54,29 +54,30 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   label: {
+    fontFamily: fonts.bodySemiBold,
     fontSize: 13,
-    fontWeight: '600',
-    color: brand.navy,
+    color: dark.textMuted,
     marginLeft: 2,
   },
   wrap: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 0,
+    borderWidth: 1,
+    borderColor: dark.border,
     borderRadius: 14,
-    backgroundColor: `${brand.navy}08`,
+    backgroundColor: dark.surface,
     paddingHorizontal: 16,
     minHeight: 52,
   },
   wrapError: {
-    borderWidth: 1,
-    borderColor: colors.error,
-    backgroundColor: `${colors.error}08`,
+    borderColor: dark.coral,
+    backgroundColor: dark.coralSoft,
   },
   input: {
     flex: 1,
+    fontFamily: fonts.body,
     fontSize: 15,
-    color: brand.navy,
+    color: dark.textPrimary,
     paddingVertical: 12,
   },
   toggle: {
@@ -84,7 +85,8 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
   error: {
-    color: colors.error,
+    color: dark.coral,
+    fontFamily: fonts.bodyMedium,
     fontSize: 12,
     marginLeft: 2,
   },

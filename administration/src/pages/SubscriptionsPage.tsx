@@ -2,6 +2,7 @@ import { FormEvent, useCallback, useEffect, useState } from 'react'
 import { Check, Pencil, Plus, RefreshCw, X } from 'lucide-react'
 import {
   activateSubscription,
+  changeSubscriptionPlan,
   assignSubscription,
   cancelSubscription,
   createSubscriptionPlan,
@@ -30,6 +31,14 @@ const durationOptions: { value: DurationType; label: string }[] = [
   { value: 'custom', label: 'Durée personnalisée' },
 ]
 
+/** Convertit (quantité, unité) en nombre de jours — même règle que le backend. */
+function customTotalDays(amount: number | undefined, unit: CustomDurationUnit | undefined) {
+  const qty = Math.max(1, Number(amount) || 1)
+  if (unit === 'months') return qty * 30
+  if (unit === 'weeks') return qty * 7
+  return qty
+}
+
 const statusOptions: { value: SubscriptionStatus; label: string }[] = [
   { value: 'active', label: 'Actifs' },
   { value: 'pending_payment', label: 'Paiements en attente' },
@@ -48,6 +57,7 @@ function blankPlan(order: number): SubscriptionPlanPayload {
     accessCode: true,
     accessConduite: false,
     accessECodepermis: false,
+    accessAiChat: false,
     heuresIncluses: 0,
     active: true,
     order,
@@ -65,6 +75,7 @@ function planPayload(plan: SubscriptionPlan): SubscriptionPlanPayload {
     accessCode: plan.accessCode,
     accessConduite: plan.accessConduite,
     accessECodepermis: plan.accessECodepermis,
+    accessAiChat: plan.accessAiChat,
     heuresIncluses: plan.heuresIncluses,
     active: plan.active,
     order: plan.order,
@@ -219,6 +230,23 @@ export function SubscriptionsPage() {
     }
   }
 
+  const handleChangePlan = async (subscriptionId: string, planId: string) => {
+    if (!planId) return
+    const token = getAdminToken()
+    if (!token) return setError('Session expirée. Reconnectez-vous.')
+    setBusyId(subscriptionId)
+    setError(null)
+    try {
+      await changeSubscriptionPlan(token, subscriptionId, planId)
+      setSuccess('Type d’abonnement modifié.')
+      await loadLearners()
+    } catch (err) {
+      setError(isAuthError(err) ? err.message : 'Changement impossible.')
+    } finally {
+      setBusyId(null)
+    }
+  }
+
   const handleAssign = async (event: FormEvent) => {
     event.preventDefault()
     const token = getAdminToken()
@@ -304,11 +332,19 @@ export function SubscriptionsPage() {
                 <label>Durée<select value={planForm.durationType} onChange={(event) => setPlanForm({ ...planForm, durationType: event.target.value as DurationType })}>{durationOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
                 {planForm.durationType === 'custom' ? (
                   <>
-                    <label>Durée personnalisée<input type="number" min="1" value={planForm.customDays ?? ''} onChange={(event) => setPlanForm({ ...planForm, customDays: Number(event.target.value) })} required /></label>
-                    <label>Unité<select value={planForm.customUnit ?? 'days'} onChange={(event) => setPlanForm({ ...planForm, customUnit: event.target.value as CustomDurationUnit })}>
+                    <label>Unité de durée<select value={planForm.customUnit ?? 'days'} onChange={(event) => setPlanForm({ ...planForm, customUnit: event.target.value as CustomDurationUnit })}>
                       <option value="days">Jours</option>
+                      <option value="weeks">Semaines</option>
                       <option value="months">Mois</option>
                     </select></label>
+                    <label>
+                      {planForm.customUnit === 'months' ? 'Nombre de mois' : planForm.customUnit === 'weeks' ? 'Nombre de semaines' : 'Nombre de jours'}
+                      <input type="number" min="1" value={planForm.customDays ?? ''} onChange={(event) => setPlanForm({ ...planForm, customDays: Number(event.target.value) })} required />
+                    </label>
+                    <p className="subscriptions-full-field subscriptions-duration-preview">
+                      Durée totale calculée : <strong>{customTotalDays(planForm.customDays, planForm.customUnit)} jours</strong>
+                      <span> — la date de fin sera calculée automatiquement à l’activation.</span>
+                    </p>
                   </>
                 ) : null}
                 <label>Heures de conduite incluses<input type="number" min="0" value={planForm.heuresIncluses} onChange={(event) => setPlanForm({ ...planForm, heuresIncluses: Number(event.target.value) })} /></label>
@@ -319,6 +355,7 @@ export function SubscriptionsPage() {
                 <label><input type="checkbox" checked={planForm.accessCode} onChange={(event) => setPlanForm({ ...planForm, accessCode: event.target.checked })} /> Code de la route</label>
                 <label><input type="checkbox" checked={planForm.accessConduite} onChange={(event) => setPlanForm({ ...planForm, accessConduite: event.target.checked })} /> Conduite</label>
                 <label><input type="checkbox" checked={planForm.accessECodepermis} onChange={(event) => setPlanForm({ ...planForm, accessECodepermis: event.target.checked })} /> E-Codepermis</label>
+                <label><input type="checkbox" checked={planForm.accessAiChat} onChange={(event) => setPlanForm({ ...planForm, accessAiChat: event.target.checked })} /> Chat IA tuteur (cours)</label>
                 <label><input type="checkbox" checked={planForm.active} onChange={(event) => setPlanForm({ ...planForm, active: event.target.checked })} /> Modèle actif</label>
               </div>
               <button type="submit" className="subscriptions-primary-btn" disabled={busyId === 'plan-form'}>
@@ -341,6 +378,7 @@ export function SubscriptionsPage() {
                   {plan.accessCode ? <span>Code</span> : null}
                   {plan.accessConduite ? <span>Conduite</span> : null}
                   {plan.accessECodepermis ? <span>E-Codepermis</span> : null}
+                  {plan.accessAiChat ? <span>Chat IA</span> : null}
                   {plan.heuresIncluses > 0 ? <span>{plan.heuresIncluses} h conduite</span> : null}
                 </div>
                 <div className="subscription-card-actions">
@@ -371,7 +409,30 @@ export function SubscriptionsPage() {
                       <td>{subscription?.planName ?? '—'}</td>
                       <td>{formatDate(subscription?.endAt)}</td>
                       <td><StatusBadge tone={statusTone(learner.status)}>{statusLabel(learner.status)}</StatusBadge></td>
-                      <td>{learner.pending ? <div className="subscription-row-actions"><button type="button" className="subscriptions-validate-btn" disabled={busyId === learner.pending.id} onClick={() => void handleSubscriptionAction(learner.pending!.id, 'activate')}>Valider le paiement</button><button type="button" className="btn-text-danger" disabled={busyId === learner.pending.id} onClick={() => void handleSubscriptionAction(learner.pending!.id, 'cancel')}>Annuler</button></div> : null}</td>
+                      <td>
+                        <div className="subscription-row-actions">
+                          {learner.pending ? (
+                            <>
+                              <button type="button" className="subscriptions-validate-btn" disabled={busyId === learner.pending.id} onClick={() => void handleSubscriptionAction(learner.pending!.id, 'activate')}>Valider le paiement</button>
+                              <button type="button" className="btn-text-danger" disabled={busyId === learner.pending.id} onClick={() => void handleSubscriptionAction(learner.pending!.id, 'cancel')}>Annuler</button>
+                            </>
+                          ) : null}
+                          {(learner.active || learner.pending) ? (
+                            <select
+                              className="subscription-change-plan"
+                              value=""
+                              disabled={busyId === (learner.active?.id ?? learner.pending?.id)}
+                              onChange={(event) => void handleChangePlan((learner.active?.id ?? learner.pending!.id), event.target.value)}
+                              title="Changer le type d’abonnement"
+                            >
+                              <option value="">Changer de plan…</option>
+                              {visiblePlans.filter((plan) => plan.active).map((plan) => (
+                                <option key={plan.id} value={plan.id}>{plan.name} — {formatMoney(plan.price, plan.currency)}</option>
+                              ))}
+                            </select>
+                          ) : null}
+                        </div>
+                      </td>
                     </tr>
                   }) : null}
                 </tbody>

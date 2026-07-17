@@ -5,11 +5,11 @@ import { StyleSheet, View } from 'react-native'
 import { IntroLogoMark } from '../components/IntroLogoMark'
 import { useAuth } from '../context/AuthContext'
 import type { RootStackParamList } from '../navigation/types'
+import { dark } from '../theme'
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'Intro'>
 
-/** Fond crème — même teinte que l’animation HTML d’origine. */
-const INTRO_BG = '#FAF9F6'
+const INTRO_BG = dark.bg
 
 /** Intro native uniquement : le WebView provoquait un crash natif au démarrage. */
 const INTRO_DURATION_MS = 2800

@@ -1,12 +1,12 @@
 import { useNavigation, type NavigationProp } from '@react-navigation/native'
 import { ClipboardCheck } from 'lucide-react-native'
-import { StyleSheet, Text, View } from 'react-native'
-import { AppScreenLayout } from '../../components/AppScreenLayout'
+import { ScrollView, StyleSheet, Text, View } from 'react-native'
+import { DarkScreen } from '../../components/DarkScreen'
 import { PageNavbar } from '../../components/PageNavbar'
 import { ScreenLoader } from '../../components/ScreenLoader'
 import { useRequireAuth } from '../../hooks/useRequireAuth'
 import type { RootStackParamList } from '../../navigation/types'
-import { colors, radii, shadows } from '../../theme'
+import { dark, fonts } from '../../theme'
 
 interface CategoryDetailScreenProps {
   title: string
@@ -20,40 +20,45 @@ export function CategoryDetailScreen({ title, description }: CategoryDetailScree
   if (loading || !user) return <ScreenLoader />
 
   return (
-    <AppScreenLayout
-      header={
-        <PageNavbar
-          title={title}
-          icon={ClipboardCheck}
-          onBack={() => navigation.navigate('CodeRoute')}
-          numberOfLines={2}
-        />
-      }
-    >
-      <View style={styles.card}>
-        <Text style={styles.title}>Bientôt disponible</Text>
-        <Text style={styles.subtitle}>{description}</Text>
-      </View>
-    </AppScreenLayout>
+    <DarkScreen>
+      <PageNavbar
+        title={title}
+        icon={ClipboardCheck}
+        onBack={() => navigation.navigate('CodeRoute')}
+        numberOfLines={2}
+      />
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        <View style={styles.card}>
+          <Text style={styles.title}>Bientôt disponible</Text>
+          <Text style={styles.subtitle}>{description}</Text>
+        </View>
+      </ScrollView>
+    </DarkScreen>
   )
 }
 
 const styles = StyleSheet.create({
+  scroll: {
+    paddingHorizontal: 22,
+    paddingBottom: 24,
+  },
   card: {
-    backgroundColor: colors.surface,
-    borderRadius: radii.lg,
+    backgroundColor: dark.surface,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: dark.border,
     padding: 24,
-    ...shadows.card,
   },
   title: {
+    fontFamily: fonts.displayBold,
     fontSize: 20,
-    fontWeight: '700',
-    color: colors.text,
+    color: dark.textPrimary,
     marginBottom: 8,
   },
   subtitle: {
+    fontFamily: fonts.body,
     fontSize: 14,
-    color: colors.textMuted,
+    color: dark.textMuted,
     lineHeight: 20,
   },
 })

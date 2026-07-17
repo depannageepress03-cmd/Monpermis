@@ -1,8 +1,8 @@
-import { useNavigation } from '@react-navigation/native'
+import { useFocusEffect, useNavigation } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
-import { LinearGradient } from 'expo-linear-gradient'
-import { Lock, LogOut, Sparkles, User, X } from 'lucide-react-native'
-import { useEffect, useState } from 'react'
+import { setStatusBarStyle } from 'expo-status-bar'
+import { ChevronRight, Lock, LogOut, User, X } from 'lucide-react-native'
+import { useCallback, useEffect, useState } from 'react'
 import {
   Image,
   Modal,
@@ -23,9 +23,16 @@ import { ScreenLoader } from '../components/ScreenLoader'
 import { useAuth } from '../context/AuthContext'
 import { useRequireAuth } from '../hooks/useRequireAuth'
 import type { RootStackParamList } from '../navigation/types'
-import { brand, colors, gradients, play, typography } from '../theme'
+import { colors, dark, fonts } from '../theme'
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'Home'>
+
+function greetingWord() {
+  const hour = new Date().getHours()
+  if (hour < 12) return 'Bonjour'
+  if (hour < 18) return 'Bon après-midi'
+  return 'Bonsoir'
+}
 
 export function HomeScreen() {
   const navigation = useNavigation<Nav>()
@@ -39,6 +46,13 @@ export function HomeScreen() {
     void fetchSubscriptionMe().then(setSubscription).catch(() => setSubscription(null))
   }, [user])
 
+  useFocusEffect(
+    useCallback(() => {
+      setStatusBarStyle('dark')
+      return () => setStatusBarStyle('dark')
+    }, []),
+  )
+
   const handleLogout = async () => {
     setProfileOpen(false)
     await signOut()
@@ -48,144 +62,114 @@ export function HomeScreen() {
   if (loading || !user) return <ScreenLoader />
 
   const fullName = `${user.firstName} ${user.lastName}`.trim()
+  const codeLocked = subscription?.accessCode === false
+  const conduiteLocked = subscription?.accessConduite === false
 
   return (
     <View style={styles.root}>
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
         <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
-          <View style={styles.brandBar}>
-            <View style={styles.brandLeft}>
-              <Image
-                source={require('../../assets/logo.png')}
-                style={styles.logo}
-                resizeMode="contain"
-              />
-              <BrandName size={20} />
+          {/* Top bar */}
+          <View style={styles.topBar}>
+            <View style={styles.topBarLeft}>
+              <View style={styles.logoBadge}>
+                <Image
+                  source={require('../../assets/logo.png')}
+                  style={styles.logo}
+                  resizeMode="contain"
+                />
+              </View>
+              <BrandName size={17} mainColor={dark.textPrimary} />
             </View>
             <Pressable
               style={({ pressed }) => [styles.profileBtn, pressed && styles.pressed]}
               onPress={() => setProfileOpen(true)}
               accessibilityLabel="Voir mon profil"
             >
-              <User size={20} color={brand.navy} />
+              <User size={19} color={dark.textPrimary} />
             </Pressable>
           </View>
 
-          <InfiniteImageMarquee compact />
-
-          <View style={styles.greetingChip}>
-            <Sparkles size={13} color={play.xp} />
-            <Text style={styles.greetingChipText}>Prêt pour aujourd’hui ?</Text>
-          </View>
-
-          <Text style={styles.guideLine} numberOfLines={2}>
-            <Text style={styles.guideName}>{user.firstName}</Text>
-            {', ton permis t’attend.'}
-          </Text>
-
-          <View style={styles.subscriptionCard}>
-            <View style={styles.subscriptionCopy}>
-              <Text style={styles.subscriptionTitle} numberOfLines={1}>
-                {subscription?.hasActiveSubscription
-                  ? subscription.subscription?.planName || 'Abonnement actif'
-                  : subscription?.pendingSubscription
-                    ? 'Paiement en validation'
-                    : 'Accès verrouillé'}
-              </Text>
-              <Text style={styles.subscriptionDetail} numberOfLines={1}>
-                {subscription?.hasActiveSubscription
-                  ? 'Parcours accessibles'
-                  : subscription?.pendingSubscription
-                    ? 'En attente de validation admin'
-                    : 'Souscrivez pour débloquer'}
-              </Text>
-            </View>
-            <Pressable
-              style={({ pressed }) => [
-                styles.subscriptionButton,
-                subscription?.hasActiveSubscription && styles.subscriptionButtonOutline,
-                pressed && styles.pressed,
-              ]}
-              onPress={() => navigation.navigate('Abonnement')}
-            >
-              <Text
-                style={[
-                  styles.subscriptionButtonText,
-                  subscription?.hasActiveSubscription && styles.subscriptionButtonOutlineText,
-                ]}
-              >
-                {subscription?.hasActiveSubscription ? 'Renouveler' : 'Voir les offres'}
-              </Text>
-            </Pressable>
-          </View>
-
-          <View style={styles.modulesCenter}>
-            <Text style={styles.bridgeText}>
-              Commencez par le code pour maîtriser les règles de circulation, les panneaux et les
-              priorités. Une fois vos bases solides, passez à la conduite pour vous entraîner sur la
-              route avec un moniteur.
+          {/* Hero greeting */}
+          <View style={styles.hero}>
+            <Text style={styles.heroEyebrow}>{greetingWord()}</Text>
+            <Text style={styles.heroTitle} numberOfLines={2}>
+              {user.firstName}
             </Text>
-
-            <View style={styles.cards}>
-              <Bouncy
-                style={styles.pathCardWrap}
-                scaleTo={0.95}
-                onPress={() =>
-                  navigation.navigate(
-                    subscription?.accessCode === false ? 'Abonnement' : 'CodeRoute',
-                  )
-                }
-              >
-                <LinearGradient
-                  colors={subscription?.accessCode === false ? ['#E5E9EF', '#D6DCE5'] : gradients.green}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.pathCard}
-                >
-                  <View style={styles.pathIcon}>
-                    {subscription?.accessCode === false ? (
-                      <Lock size={28} color={brand.navyMuted} />
-                    ) : (
-                      <CodeModuleIcon size={36} />
-                    )}
-                  </View>
-                  <Text style={[styles.pathTitle, subscription?.accessCode !== false && styles.pathTitleOnColor]}>Code</Text>
-                  <Text style={[styles.pathDesc, subscription?.accessCode !== false && styles.pathDescOnColor]}>
-                    {subscription?.accessCode === false ? 'Abonnement requis' : 'Cours & QCM'}
-                  </Text>
-                </LinearGradient>
-              </Bouncy>
-
-              <Bouncy
-                style={styles.pathCardWrap}
-                scaleTo={0.95}
-                onPress={() =>
-                  navigation.navigate(
-                    subscription?.accessConduite === false ? 'Abonnement' : 'Conduite',
-                  )
-                }
-              >
-                <LinearGradient
-                  colors={subscription?.accessConduite === false ? ['#E5E9EF', '#D6DCE5'] : gradients.gold}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.pathCard}
-                >
-                  <View style={styles.pathIcon}>
-                    {subscription?.accessConduite === false ? (
-                      <Lock size={28} color={brand.navyMuted} />
-                    ) : (
-                      <DriveModuleIcon size={36} />
-                    )}
-                  </View>
-                  <Text style={styles.pathTitle}>Conduite</Text>
-                  <Text style={styles.pathDesc}>
-                    {subscription?.accessConduite === false ? 'Abonnement requis' : 'Leçons'}
-                  </Text>
-                </LinearGradient>
-              </Bouncy>
-            </View>
+            <Text style={styles.heroSubtitle}>
+              Ton permis commence ici. Choisis ton parcours ci-dessous.
+            </Text>
           </View>
+
+          {/* Status strip */}
+          <Pressable
+            style={({ pressed }) => [styles.statusStrip, pressed && styles.pressed]}
+            onPress={() => navigation.navigate('Abonnement')}
+          >
+            <View
+              style={[
+                styles.statusDot,
+                subscription?.hasActiveSubscription ? styles.statusDotActive : styles.statusDotOff,
+              ]}
+            />
+            <Text style={styles.statusText} numberOfLines={1}>
+              {subscription?.hasActiveSubscription
+                ? subscription.subscription?.planName || 'Abonnement actif'
+                : subscription?.pendingSubscription
+                  ? 'Paiement en cours de validation'
+                  : 'Aucun abonnement actif'}
+            </Text>
+            <Text style={styles.statusAction}>
+              {subscription?.hasActiveSubscription ? 'Gérer' : 'Voir les offres'}
+            </Text>
+            <ChevronRight size={16} color={dark.textMuted} />
+          </Pressable>
+
+          {/* Showcase marquee */}
+          <Text style={styles.sectionLabel}>Sur la route avec Monpermis</Text>
+          <View style={styles.marqueeWrap}>
+            <InfiniteImageMarquee compact />
+          </View>
+
+          {/* Path selector */}
+          <Text style={[styles.sectionLabel, styles.pathSectionLabel]}>Choisis ton parcours</Text>
+
+          <Bouncy
+            scaleTo={0.97}
+            onPress={() => navigation.navigate(codeLocked ? 'Abonnement' : 'CodeRoute')}
+          >
+            <View style={[styles.pathCard, codeLocked ? styles.pathCardLocked : styles.pathCardGreen]}>
+              <View style={[styles.pathIcon, !codeLocked && styles.pathIconGreen]}>
+                {codeLocked ? <Lock size={24} color={dark.textMuted} /> : <CodeModuleIcon size={30} />}
+              </View>
+              <View style={styles.pathCopy}>
+                <Text style={styles.pathTitle}>Code de la route</Text>
+                <Text style={styles.pathDesc}>
+                  {codeLocked ? 'Abonnement requis' : 'Cours, QCM et examens blancs'}
+                </Text>
+              </View>
+              <ChevronRight size={20} color={codeLocked ? dark.textMuted : dark.green} />
+            </View>
+          </Bouncy>
+
+          <Bouncy
+            scaleTo={0.97}
+            style={styles.secondPath}
+            onPress={() => navigation.navigate(conduiteLocked ? 'Abonnement' : 'Conduite')}
+          >
+            <View style={[styles.pathCard, conduiteLocked ? styles.pathCardLocked : styles.pathCardCoral]}>
+              <View style={[styles.pathIcon, !conduiteLocked && styles.pathIconCoral]}>
+                {conduiteLocked ? <Lock size={24} color={dark.textMuted} /> : <DriveModuleIcon size={30} />}
+              </View>
+              <View style={styles.pathCopy}>
+                <Text style={styles.pathTitle}>Conduite</Text>
+                <Text style={styles.pathDesc}>
+                  {conduiteLocked ? 'Abonnement requis' : 'Leçons et réservations moniteur'}
+                </Text>
+              </View>
+              <ChevronRight size={20} color={conduiteLocked ? dark.textMuted : dark.coral} />
+            </View>
+          </Bouncy>
 
           <View style={styles.bottomAnim}>
             <HomeBottomAnimation compact />
@@ -203,32 +187,32 @@ export function HomeScreen() {
           <Pressable style={styles.modalCard} onPress={(e) => e.stopPropagation()}>
             <View style={styles.modalHeader}>
               <View style={styles.modalAvatar}>
-                <User size={28} color={brand.green} />
+                <User size={28} color={dark.green} />
               </View>
               <Pressable
                 style={styles.modalClose}
                 onPress={() => setProfileOpen(false)}
                 accessibilityLabel="Fermer"
               >
-                <X size={18} color={brand.navyMuted} />
+                <X size={18} color={dark.textMuted} />
               </Pressable>
             </View>
 
-            <Text style={styles.modalTitle}>Mon identité</Text>
+            <Text style={styles.modalLabel}>Mon identité</Text>
             <Text style={styles.modalName}>{fullName}</Text>
 
             <View style={styles.modalRows}>
               <View style={styles.modalRow}>
-                <Text style={styles.modalLabel}>E-mail</Text>
-                <Text style={styles.modalValue}>{user.email || '—'}</Text>
+                <Text style={styles.modalRowLabel}>E-mail</Text>
+                <Text style={styles.modalRowValue}>{user.email || '—'}</Text>
               </View>
               <View style={styles.modalRow}>
-                <Text style={styles.modalLabel}>Téléphone</Text>
-                <Text style={styles.modalValue}>{user.phone || '—'}</Text>
+                <Text style={styles.modalRowLabel}>Téléphone</Text>
+                <Text style={styles.modalRowValue}>{user.phone || '—'}</Text>
               </View>
               <View style={styles.modalRow}>
-                <Text style={styles.modalLabel}>Compte</Text>
-                <Text style={styles.modalValue}>
+                <Text style={styles.modalRowLabel}>Compte</Text>
+                <Text style={styles.modalRowValue}>
                   {user.authProvider === 'google' ? 'Google' : 'E-mail / mot de passe'}
                 </Text>
               </View>
@@ -251,198 +235,219 @@ export function HomeScreen() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: colors.white,
+    backgroundColor: dark.bg,
   },
   safe: {
     flex: 1,
   },
   body: {
-    flex: 1,
-    paddingHorizontal: 24,
-    paddingTop: 4,
-    overflow: 'hidden',
+    paddingHorizontal: 22,
+    paddingTop: 6,
+    paddingBottom: 20,
   },
-  brandBar: {
+
+  /* Top bar */
+  topBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: 10,
-    marginBottom: 12,
+    marginBottom: 22,
   },
-  brandLeft: {
+  topBarLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
     flexShrink: 1,
   },
+  logoBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: 9,
+    backgroundColor: dark.surface,
+    borderWidth: 1,
+    borderColor: dark.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 4,
+  },
   logo: {
-    width: 40,
-    height: 40,
+    width: 22,
+    height: 22,
   },
   profileBtn: {
-    width: 40,
-    height: 40,
+    width: 38,
+    height: 38,
     borderRadius: 999,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: brand.greenLight,
+    backgroundColor: dark.surfaceRaised,
     borderWidth: 1,
-    borderColor: `${brand.green}35`,
+    borderColor: dark.border,
   },
-  guideLine: {
-    marginTop: 4,
-    marginBottom: 10,
-    ...typography.h4,
-    color: brand.navyMuted,
-    textAlign: 'center',
+
+  /* Hero */
+  hero: {
+    marginBottom: 18,
   },
-  guideName: {
-    color: brand.navy,
-    fontFamily: typography.h2.fontFamily,
-    fontWeight: '800',
-    textTransform: 'capitalize',
-  },
-  subscriptionCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 14,
-    backgroundColor: '#F8FAFC',
-    borderWidth: 1,
-    borderColor: `${brand.navy}14`,
-  },
-  subscriptionCopy: {
-    flex: 1,
-    minWidth: 0,
-  },
-  subscriptionTitle: {
-    color: brand.navy,
-    ...typography.caption,
-    fontWeight: '800',
+  heroEyebrow: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 13,
+    color: dark.green,
+    letterSpacing: 0.3,
     marginBottom: 2,
   },
-  subscriptionDetail: {
-    color: brand.navyMuted,
-    ...typography.caption,
+  heroTitle: {
+    fontFamily: fonts.displayExtraBold,
+    fontSize: 34,
+    lineHeight: 40,
+    color: dark.textPrimary,
+    letterSpacing: -0.6,
+    textTransform: 'capitalize',
   },
-  subscriptionButton: {
-    backgroundColor: brand.green,
-    borderRadius: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
+  heroSubtitle: {
+    marginTop: 6,
+    fontFamily: fonts.body,
+    fontSize: 14.5,
+    lineHeight: 21,
+    color: dark.textMuted,
+    maxWidth: 320,
   },
-  subscriptionButtonOutline: {
-    backgroundColor: colors.white,
-    borderWidth: 1,
-    borderColor: `${brand.green}70`,
-  },
-  subscriptionButtonText: {
-    color: colors.white,
-    fontSize: 12,
-    fontWeight: '800',
-  },
-  subscriptionButtonOutlineText: {
-    color: brand.green,
-  },
-  modulesCenter: {
-    flex: 1,
-    justifyContent: 'center',
-    gap: 18,
-    minHeight: 0,
-    paddingBottom: 24,
-  },
-  bridgeText: {
-    marginTop: 0,
-    marginBottom: 0,
-    paddingHorizontal: 6,
-    ...typography.body,
-    color: brand.navyMuted,
-    textAlign: 'center',
-  },
-  cards: {
+
+  /* Status strip */
+  statusStrip: {
     flexDirection: 'row',
-    alignItems: 'stretch',
-    width: '100%',
-    gap: 10,
-  },
-  pathCardWrap: {
-    flex: 1,
-  },
-  pathCard: {
-    borderRadius: 18,
-    paddingVertical: 16,
-    paddingHorizontal: 10,
     alignItems: 'center',
-    shadowColor: brand.navy,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.14,
-    shadowRadius: 12,
-    elevation: 4,
+    gap: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 999,
+    backgroundColor: dark.surface,
+    borderWidth: 1,
+    borderColor: dark.border,
+    marginBottom: 24,
+  },
+  statusDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 999,
+  },
+  statusDotActive: {
+    backgroundColor: dark.green,
+  },
+  statusDotOff: {
+    backgroundColor: '#3A4358',
+  },
+  statusText: {
+    flex: 1,
+    minWidth: 0,
+    fontFamily: fonts.bodyMedium,
+    fontSize: 12.5,
+    color: dark.textPrimary,
+  },
+  statusAction: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 12,
+    color: dark.green,
+  },
+
+  /* Section labels */
+  sectionLabel: {
+    fontFamily: fonts.display,
+    fontSize: 11.5,
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    color: dark.textMuted,
+    marginBottom: 10,
+  },
+  pathSectionLabel: {
+    marginTop: 22,
+  },
+
+  marqueeWrap: {
+    borderRadius: 18,
+    overflow: 'hidden',
+  },
+
+  /* Path cards */
+  pathCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    borderRadius: 20,
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+  },
+  pathCardGreen: {
+    backgroundColor: dark.surface,
+    borderColor: 'rgba(34,214,115,0.28)',
+  },
+  pathCardCoral: {
+    backgroundColor: dark.surface,
+    borderColor: 'rgba(255,107,74,0.28)',
+  },
+  pathCardLocked: {
+    backgroundColor: dark.surface,
+    borderColor: dark.border,
+    opacity: 0.6,
+  },
+  secondPath: {
+    marginTop: 12,
   },
   pathIcon: {
-    width: 52,
-    height: 52,
+    width: 54,
+    height: 54,
     borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.92)',
-    marginBottom: 10,
-    overflow: 'hidden',
+    backgroundColor: dark.surfaceRaised,
+    flexShrink: 0,
+  },
+  pathIconGreen: {
+    backgroundColor: dark.greenSoft,
+  },
+  pathIconCoral: {
+    backgroundColor: dark.coralSoft,
+  },
+  pathCopy: {
+    flex: 1,
+    minWidth: 0,
   },
   pathTitle: {
-    ...typography.bodySemiBold,
-    fontSize: 15,
-    color: brand.navy,
-    marginBottom: 2,
-    textAlign: 'center',
-  },
-  pathTitleOnColor: {
-    color: colors.white,
+    fontFamily: fonts.displayBold,
+    fontSize: 17,
+    color: dark.textPrimary,
+    marginBottom: 3,
   },
   pathDesc: {
-    ...typography.caption,
-    color: brand.navyMuted,
-    textAlign: 'center',
+    fontFamily: fonts.body,
+    fontSize: 13,
+    color: dark.textMuted,
   },
-  pathDescOnColor: {
-    color: 'rgba(255,255,255,0.85)',
-  },
-  greetingChip: {
-    alignSelf: 'center',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 6,
-    paddingVertical: 5,
-    paddingHorizontal: 12,
-    borderRadius: 999,
-    backgroundColor: play.xpLight,
-  },
-  greetingChipText: {
-    ...typography.caption,
-    color: '#8a6400',
-    fontWeight: '800',
-  },
+
   bottomAnim: {
-    marginTop: 10,
+    marginTop: 22,
+    borderRadius: 18,
+    overflow: 'hidden',
   },
   pressed: {
-    opacity: 0.88,
+    opacity: 0.85,
   },
+
+  /* Profile modal */
   modalBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0, 16, 48, 0.45)',
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
     justifyContent: 'center',
     paddingHorizontal: 24,
   },
   modalCard: {
-    backgroundColor: colors.white,
+    backgroundColor: dark.surface,
     borderRadius: 24,
     padding: 22,
     borderWidth: 1,
-    borderColor: `${brand.navy}10`,
+    borderColor: dark.border,
   },
   modalHeader: {
     flexDirection: 'row',
@@ -456,9 +461,7 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: brand.greenLight,
-    borderWidth: 1,
-    borderColor: `${brand.green}30`,
+    backgroundColor: dark.greenSoft,
   },
   modalClose: {
     width: 32,
@@ -466,16 +469,20 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: `${brand.navy}08`,
+    backgroundColor: dark.surfaceRaised,
   },
-  modalTitle: {
-    ...typography.label,
-    color: brand.navyMuted,
+  modalLabel: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 11,
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+    color: dark.textMuted,
     marginBottom: 6,
   },
   modalName: {
-    ...typography.h3,
-    color: brand.navy,
+    fontFamily: fonts.displayBold,
+    fontSize: 22,
+    color: dark.textPrimary,
     marginBottom: 18,
   },
   modalRows: {
@@ -484,30 +491,32 @@ const styles = StyleSheet.create({
   },
   modalRow: {
     borderTopWidth: 1,
-    borderTopColor: `${brand.navy}10`,
+    borderTopColor: dark.border,
     paddingTop: 12,
   },
-  modalLabel: {
-    ...typography.caption,
-    fontWeight: '600',
-    color: brand.navyMuted,
+  modalRowLabel: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: 12,
+    color: dark.textMuted,
     marginBottom: 4,
   },
-  modalValue: {
-    ...typography.subtitle,
-    color: brand.navy,
+  modalRowValue: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 15,
+    color: dark.textPrimary,
   },
   modalLogout: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: brand.navy,
+    backgroundColor: dark.green,
     borderRadius: 14,
     paddingVertical: 14,
   },
   modalLogoutText: {
-    ...typography.button,
-    color: colors.white,
+    fontFamily: fonts.bodyBold,
+    fontSize: 15,
+    color: '#0B0F1A',
   },
 })

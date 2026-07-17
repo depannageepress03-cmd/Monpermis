@@ -1,7 +1,7 @@
 import { getUserAccess } from '../utils/subscriptions.js'
 
 /**
- * @param {'code' | 'conduite' | 'eCodepermis'} feature
+ * @param {'code' | 'conduite' | 'eCodepermis' | 'aiChat'} feature
  */
 export function requireSubscriptionAccess(feature) {
   return async function subscriptionGuard(req, res, next) {
@@ -20,11 +20,15 @@ export function requireSubscriptionAccess(feature) {
             ? access.accessConduite
             : feature === 'eCodepermis'
               ? access.accessECodepermis
-              : false
+              : feature === 'aiChat'
+                ? access.accessAiChat
+                : false
 
       if (!allowed) {
         const message = access.hasActiveSubscription
-          ? 'Votre abonnement actuel ne donne pas accès à ce contenu. Souscrivez une offre adaptée.'
+          ? feature === 'aiChat'
+            ? 'Le chat IA est réservé aux formules qui l’incluent (ex. Pack complet). Souscrivez une offre adaptée.'
+            : 'Votre abonnement actuel ne donne pas accès à ce contenu. Souscrivez une offre adaptée.'
           : access.pendingSubscription
             ? 'Votre abonnement est en attente de validation du paiement par l’administration.'
             : 'Souscrivez un abonnement pour accéder à ce contenu.'

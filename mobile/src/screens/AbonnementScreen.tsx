@@ -3,7 +3,7 @@ import { useNavigation } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { LinearGradient } from 'expo-linear-gradient'
 import * as WebBrowser from 'expo-web-browser'
-import { Check, CreditCard, Crown, Lock, RefreshCw } from 'lucide-react-native'
+import { Check, CreditCard, Crown, History, Lock, RefreshCw } from 'lucide-react-native'
 import {
   ActivityIndicator,
   Pressable,
@@ -12,7 +12,6 @@ import {
   Text,
   View,
 } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
 import {
   fetchPaymentStatus,
   fetchSubscriptionMe,
@@ -25,11 +24,12 @@ import {
   type SubscriptionPlan,
 } from '../api/subscriptions'
 import { Bouncy } from '../components/Bouncy'
+import { DarkScreen } from '../components/DarkScreen'
 import { PageNavbar } from '../components/PageNavbar'
 import { ScreenLoader } from '../components/ScreenLoader'
 import { useRequireAuth } from '../hooks/useRequireAuth'
 import type { RootStackParamList } from '../navigation/types'
-import { brand, colors, gradients } from '../theme'
+import { dark, fonts, gradients } from '../theme'
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'Abonnement'>
 
@@ -226,21 +226,28 @@ export function AbonnementScreen() {
       latestPayment.status === 'failed')
 
   return (
-    <View style={styles.root}>
-      <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+    <DarkScreen>
         <PageNavbar
           title="Mon abonnement"
           icon={CreditCard}
           onBack={() => navigation.navigate('Home')}
         />
         <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-          <Text style={styles.intro}>
-            Choisissez une formule et payez par Mobile Money (MTN ou Moov).
-          </Text>
+          <View style={styles.introRow}>
+            <Text style={styles.intro}>
+              Choisis une formule et paie par Mobile Money (MTN ou Moov).
+            </Text>
+            <Bouncy scaleTo={0.96} onPress={() => navigation.navigate('HistoriquePaiements')}>
+              <View style={styles.historyBtn}>
+                <History size={15} color={dark.green} />
+                <Text style={styles.historyBtnText}>Historique</Text>
+              </View>
+            </Bouncy>
+          </View>
 
           {loading ? (
             <View style={styles.empty}>
-              <ActivityIndicator color={brand.green} />
+              <ActivityIndicator color={dark.green} />
               <Text style={styles.emptyText}>Chargement de votre abonnement…</Text>
             </View>
           ) : (
@@ -256,7 +263,7 @@ export function AbonnementScreen() {
                   style={[styles.statusCard, styles.statusCardActive]}
                 >
                   <View style={styles.crownBadge}>
-                    <Crown size={16} color="#8a6400" />
+                    <Crown size={16} color={'#0B0F1A'} />
                   </View>
                   <Text style={styles.kickerOnColor}>Abonnement actif</Text>
                   <Text style={styles.statusTitleOnColor}>{active.planName}</Text>
@@ -265,6 +272,7 @@ export function AbonnementScreen() {
                     {active.accessCode ? <Right label="Code" onColor /> : null}
                     {active.accessConduite ? <Right label="Conduite" onColor /> : null}
                     {active.accessECodepermis ? <Right label="E-Codepermis" onColor /> : null}
+                    {active.accessAiChat ? <Right label="Chat IA" onColor /> : null}
                   </View>
                 </LinearGradient>
               ) : (
@@ -304,14 +312,14 @@ export function AbonnementScreen() {
                         style={({ pressed }) => [styles.outlineButton, pressed && styles.pressed]}
                         onPress={() => void refreshPayment()}
                       >
-                        <RefreshCw size={16} color={brand.navy} />
+                        <RefreshCw size={16} color={dark.textPrimary} />
                         <Text style={styles.outlineText}>Actualiser le statut</Text>
                       </Pressable>
                     </View>
                   </>
                 ) : (
                   <>
-                    <View style={styles.lockIcon}><Lock size={26} color={brand.navyMuted} /></View>
+                    <View style={styles.lockIcon}><Lock size={26} color={dark.textMuted} /></View>
                     <Text style={styles.statusTitle}>Vos parcours sont verrouillés</Text>
                     <Text style={styles.statusCopy}>
                       Souscrivez à une offre et payez par Mobile Money pour accéder au code et à la conduite.
@@ -345,6 +353,7 @@ export function AbonnementScreen() {
                           {plan.accessCode ? <Right label="Code" /> : null}
                           {plan.accessConduite ? <Right label="Conduite" /> : null}
                           {plan.accessECodepermis ? <Right label="E-Codepermis" /> : null}
+                          {plan.accessAiChat ? <Right label="Chat IA tuteur" /> : null}
                           {plan.heuresIncluses > 0 ? (
                             <Right label={`${plan.heuresIncluses} h de conduite`} />
                           ) : null}
@@ -390,61 +399,57 @@ export function AbonnementScreen() {
               )}
 
               {payments.length > 0 ? (
-                <View style={styles.history}>
-                  <Text style={styles.catalogTitle}>Historique des paiements</Text>
-                  {payments.map((payment) => (
-                    <View key={payment.id} style={styles.historyItem}>
-                      <View style={styles.historyRow}>
-                        <Text style={styles.historyAmount}>
-                          {formatPrice(payment.amount, payment.currency)}
-                        </Text>
-                        <Text style={styles.historyStatus}>{paymentStatusLabel(payment.status)}</Text>
-                      </View>
-                      <Text style={styles.historyMeta}>
-                        {formatDateTime(payment.createdAt)}
-                        {payment.paymentMethod ? ` · ${payment.paymentMethod}` : ' · Mobile Money'}
-                        {payment.fedapayReference ? ` · réf. ${payment.fedapayReference}` : ''}
-                      </Text>
-                      {payment.errorMessage ? (
-                        <Text style={styles.historyError}>{payment.errorMessage}</Text>
-                      ) : null}
-                    </View>
-                  ))}
-                </View>
+                <Bouncy scaleTo={0.98} style={styles.historyLinkWrap} onPress={() => navigation.navigate('HistoriquePaiements')}>
+                  <View style={styles.historyLink}>
+                    <History size={16} color={dark.green} />
+                    <Text style={styles.historyLinkText}>Voir tout l’historique des paiements</Text>
+                  </View>
+                </Bouncy>
               ) : null}
             </>
           )}
         </ScrollView>
-      </SafeAreaView>
-    </View>
+      </DarkScreen>
   )
 }
 
 function Right({ label, onColor }: { label: string; onColor?: boolean }) {
   return (
     <View style={styles.right}>
-      <Check size={15} color={onColor ? colors.white : brand.green} />
+      <Check size={15} color={onColor ? '#FFFFFF' : dark.green} />
       <Text style={[styles.rightText, onColor && styles.rightTextOnColor]}>{label}</Text>
     </View>
   )
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.white },
-  safe: { flex: 1 },
-  scroll: { padding: 24, paddingBottom: 40 },
-  intro: { fontSize: 16, lineHeight: 24, color: brand.navyMuted, marginBottom: 20 },
+  scroll: { paddingHorizontal: 22, paddingBottom: 40, paddingTop: 8 },
+  intro: {
+    flex: 1,
+    fontFamily: fonts.body,
+    fontSize: 15,
+    lineHeight: 22,
+    color: dark.textMuted,
+  },
   empty: { alignItems: 'center', gap: 12, paddingVertical: 44 },
-  emptyText: { color: brand.navyMuted, fontSize: 15 },
-  error: { color: '#B91C1C', marginBottom: 12 },
-  success: { color: '#15803D', marginBottom: 12 },
+  emptyText: {
+    color: dark.textMuted,
+    fontSize: 15,
+    fontFamily: fonts.body,
+  },
+  error: { color: dark.coral, marginBottom: 12, fontFamily: fonts.body },
+  success: { color: dark.green, marginBottom: 12, fontFamily: fonts.body },
   statusCard: {
-    borderRadius: 18, borderWidth: 1, borderColor: `${brand.navy}14`,
-    backgroundColor: '#F8FAFC', padding: 18, marginBottom: 28,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: dark.border,
+    backgroundColor: dark.surface,
+    padding: 18,
+    marginBottom: 28,
   },
   statusCardActive: {
     borderWidth: 0,
-    shadowColor: brand.green,
+    shadowColor: dark.green,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.24,
     shadowRadius: 18,
@@ -457,36 +462,128 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 999,
-    backgroundColor: '#FFC000',
+    backgroundColor: dark.coral,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  kicker: { fontSize: 12, fontWeight: '800', color: brand.green, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 6 },
-  kickerOnColor: { fontSize: 12, fontWeight: '800', color: 'rgba(255,255,255,0.75)', textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 6 },
-  statusTitle: { fontSize: 22, fontWeight: '800', color: brand.navy, marginBottom: 8 },
-  statusTitleOnColor: { fontSize: 22, fontWeight: '800', color: colors.white, marginBottom: 8 },
-  statusCopy: { fontSize: 15, lineHeight: 22, color: brand.navyMuted },
-  statusCopyOnColor: { fontSize: 15, lineHeight: 22, color: 'rgba(255,255,255,0.85)' },
+  kicker: {
+    fontFamily: fonts.displayBold,
+    fontSize: 12,
+    color: dark.green,
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+    marginBottom: 6,
+  },
+  kickerOnColor: {
+    fontFamily: fonts.displayBold,
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.75)',
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+    marginBottom: 6,
+  },
+  statusTitle: {
+    fontFamily: fonts.displayExtraBold,
+    fontSize: 22,
+    color: dark.textPrimary,
+    marginBottom: 8,
+  },
+  statusTitleOnColor: {
+    fontFamily: fonts.displayExtraBold,
+    fontSize: 22,
+    color: '#FFFFFF',
+    marginBottom: 8,
+  },
+  statusCopy: {
+    fontFamily: fonts.body,
+    fontSize: 15,
+    lineHeight: 22,
+    color: dark.textMuted,
+  },
+  statusCopyOnColor: {
+    fontFamily: fonts.body,
+    fontSize: 15,
+    lineHeight: 22,
+    color: 'rgba(255,255,255,0.85)',
+  },
   lockIcon: { marginBottom: 12 },
   rights: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 16 },
   right: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  rightText: { fontSize: 13, fontWeight: '600', color: brand.navy },
-  rightTextOnColor: { color: colors.white },
+  rightText: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 13,
+    color: dark.textPrimary,
+  },
+  rightTextOnColor: { color: '#FFFFFF' },
   actions: { gap: 10, marginTop: 16 },
-  catalogTitle: { fontSize: 22, fontWeight: '800', color: brand.navy, marginBottom: 14 },
-  noPlans: { fontSize: 15, color: brand.navyMuted },
+  catalogTitle: {
+    fontFamily: fonts.displayExtraBold,
+    fontSize: 22,
+    color: dark.textPrimary,
+    marginBottom: 14,
+  },
+  noPlans: {
+    fontFamily: fonts.body,
+    fontSize: 15,
+    color: dark.textMuted,
+  },
   planList: { gap: 14 },
-  plan: { borderRadius: 18, borderWidth: 1, borderColor: `${brand.navy}14`, padding: 16, backgroundColor: colors.white },
+  plan: {
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: dark.border,
+    padding: 16,
+    backgroundColor: dark.surface,
+  },
   planHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
   planCopy: { flex: 1 },
-  planName: { color: brand.navy, fontSize: 18, fontWeight: '800' },
-  planDescription: { color: brand.navyMuted, fontSize: 14, lineHeight: 20, marginTop: 5 },
-  duration: { alignSelf: 'flex-start', color: brand.navyMuted, fontSize: 12, fontWeight: '700', backgroundColor: `${brand.navy}08`, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 4, marginTop: 9 },
-  price: { color: brand.navy, fontSize: 17, fontWeight: '800' },
-  planRights: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 16, marginBottom: 16 },
-  freeOfferUsedText: { color: '#B91C1C', fontSize: 12, fontWeight: '700', marginBottom: 8 },
+  planName: {
+    color: dark.textPrimary,
+    fontFamily: fonts.displayBold,
+    fontSize: 18,
+  },
+  planDescription: {
+    color: dark.textMuted,
+    fontFamily: fonts.body,
+    fontSize: 14,
+    lineHeight: 20,
+    marginTop: 5,
+  },
+  duration: {
+    alignSelf: 'flex-start',
+    color: dark.textMuted,
+    fontFamily: fonts.bodyBold,
+    fontSize: 12,
+    backgroundColor: dark.surfaceRaised,
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    marginTop: 9,
+  },
+  price: {
+    color: dark.textPrimary,
+    fontFamily: fonts.displayBold,
+    fontSize: 17,
+  },
+  planRights: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginTop: 16,
+    marginBottom: 16,
+  },
+  freeOfferUsedText: {
+    color: dark.coral,
+    fontSize: 12,
+    fontFamily: fonts.bodyBold,
+    marginBottom: 8,
+  },
   subscribeButton: { alignItems: 'center', borderRadius: 12, paddingVertical: 13 },
-  subscribeText: { color: colors.white, fontSize: 15, fontWeight: '800' },
+  subscribeText: {
+    color: '#0B0F1A',
+    fontFamily: fonts.displayBold,
+    fontSize: 15,
+  },
   outlineButton: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -494,25 +591,56 @@ const styles = StyleSheet.create({
     gap: 8,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: `${brand.navy}22`,
+    borderColor: dark.border,
     paddingVertical: 12,
-    backgroundColor: colors.white,
+    backgroundColor: dark.surfaceRaised,
   },
-  outlineText: { color: brand.navy, fontSize: 14, fontWeight: '700' },
+  outlineText: {
+    color: dark.textPrimary,
+    fontFamily: fonts.bodyBold,
+    fontSize: 14,
+  },
   disabled: { opacity: 0.55 },
   pressed: { opacity: 0.88 },
-  history: { marginTop: 28 },
-  historyItem: {
+  introRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+    marginBottom: 20,
+  },
+  historyBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 999,
+    backgroundColor: dark.surface,
+    borderWidth: 1,
+    borderColor: dark.border,
+  },
+  historyBtnText: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 12.5,
+    color: dark.green,
+  },
+  historyLinkWrap: {
+    marginTop: 24,
+  },
+  historyLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: `${brand.navy}14`,
-    padding: 14,
-    marginBottom: 10,
-    backgroundColor: colors.white,
+    borderColor: dark.border,
+    backgroundColor: dark.surface,
   },
-  historyRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 12 },
-  historyAmount: { color: brand.navy, fontSize: 16, fontWeight: '800' },
-  historyStatus: { color: brand.navyMuted, fontSize: 13, fontWeight: '700' },
-  historyMeta: { color: brand.navyMuted, fontSize: 13, marginTop: 6 },
-  historyError: { color: '#B91C1C', fontSize: 13, marginTop: 4 },
+  historyLinkText: {
+    fontFamily: fonts.bodyBold,
+    fontSize: 14,
+    color: dark.textPrimary,
+  },
 })

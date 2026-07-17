@@ -16,15 +16,14 @@ import {
   Text,
   View,
 } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
 import { fetchCourseProgress } from '../../api/revision'
+import { DarkScreen } from '../../components/DarkScreen'
 import { PageNavbar } from '../../components/PageNavbar'
 import { ScreenLoader } from '../../components/ScreenLoader'
 import { FadeUp } from '../../components/FadeUp'
-import { AccentBar } from '../../components/AccentBar'
 import { useRequireAuth } from '../../hooks/useRequireAuth'
 import type { RootStackParamList } from '../../navigation/types'
-import { brand, colors, typography } from '../../theme'
+import { dark, fonts } from '../../theme'
 import { formatChapterHeading, formatCourseHeading } from '../../utils/chapterLabel'
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'ChapterCourses'>
@@ -65,34 +64,24 @@ export function ChapterCoursesScreen() {
   if (loading || !user) return <ScreenLoader />
 
   return (
-    <View style={styles.root}>
-      <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-        <FadeUp delay={0}>
-          <PageNavbar
-            title={formatChapterHeading(chapterName)}
-            icon={Layers}
-            onBack={() => navigation.navigate('RevisionChapitres')}
-            numberOfLines={2}
-          />
-        </FadeUp>
+    <DarkScreen>
+      <PageNavbar
+        title={formatChapterHeading(chapterName)}
+        icon={Layers}
+        onBack={() => navigation.navigate('RevisionChapitres')}
+        numberOfLines={2}
+      />
 
-        <ScrollView
-          contentContainerStyle={styles.scroll}
-          showsVerticalScrollIndicator={false}
-        >
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
           <FadeUp delay={100} style={styles.header}>
-            <AccentBar />
+            <Text style={styles.heroEyebrow}>Cours du chapitre</Text>
             <Text style={styles.subtitle}>
-              Parcourez les cours dans l’ordre. Chaque leçon validée ouvre la suivante pour
-              construire vos bases solidement.
-            </Text>
-            <Text style={styles.detail}>
-              Prenez le temps de bien comprendre chaque notion avant de passer à la suite.
+              Parcours les cours dans l’ordre. Chaque leçon validée ouvre la suivante.
             </Text>
           </FadeUp>
 
           {progressLoading ? (
-            <ActivityIndicator color={brand.green} style={{ marginBottom: 16 }} />
+            <ActivityIndicator color={dark.green} style={{ marginBottom: 16 }} />
           ) : null}
 
           {courses.length === 0 ? (
@@ -128,11 +117,11 @@ export function ChapterCoursesScreen() {
                   >
                     <View style={[styles.iconWrap, !unlocked && styles.iconWrapLocked]}>
                       {!unlocked ? (
-                        <Lock size={20} color={brand.navyMuted} />
+                        <Lock size={20} color={dark.textMuted} />
                       ) : completed ? (
-                        <Check size={22} color={brand.green} />
+                        <Check size={22} color={dark.green} />
                       ) : (
-                        <BookOpen size={22} color="#B8860B" />
+                        <BookOpen size={22} color={dark.coral} />
                       )}
                     </View>
                     <View style={styles.cardContent}>
@@ -153,45 +142,42 @@ export function ChapterCoursesScreen() {
                       ) : null}
                     </View>
                     {unlocked ? (
-                      <ChevronRight size={20} color={brand.navyMuted} />
+                      <ChevronRight size={20} color={dark.textMuted} />
                     ) : (
-                      <Lock size={18} color={brand.navyMuted} />
+                      <Lock size={18} color={dark.textMuted} />
                     )}
                   </Pressable>
                 </FadeUp>
               )
             })
           )}
-        </ScrollView>
-      </SafeAreaView>
-    </View>
+      </ScrollView>
+    </DarkScreen>
   )
 }
 
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: colors.white,
-  },
-  safe: {
-    flex: 1,
-  },
   scroll: {
-    paddingHorizontal: 24,
-    paddingTop: 20,
+    paddingHorizontal: 22,
+    paddingTop: 14,
     paddingBottom: 28,
   },
   header: {
-    marginBottom: 28,
+    marginBottom: 22,
+  },
+  heroEyebrow: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 13,
+    color: dark.green,
+    letterSpacing: 0.3,
+    marginBottom: 6,
   },
   subtitle: {
-    ...typography.bodySmall,
-    color: brand.navyMuted,
+    fontFamily: fonts.body,
+    fontSize: 14,
+    lineHeight: 20,
+    color: dark.textMuted,
     maxWidth: 340,
-  },
-  detail: {
-    ...typography.bodySmall,
-    color: brand.navyMuted,
   },
   card: {
     flexDirection: 'row',
@@ -199,82 +185,53 @@ const styles = StyleSheet.create({
     gap: 14,
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: `${brand.gold}55`,
-    backgroundColor: brand.goldLight,
-    padding: 16,
+    borderColor: 'rgba(255,107,74,0.28)',
+    backgroundColor: dark.surface,
+    padding: 15,
     marginBottom: 12,
   },
   cardLocked: {
-    borderColor: `${brand.navy}12`,
-    backgroundColor: '#F4F6F8',
+    borderColor: dark.border,
+    opacity: 0.6,
   },
   cardDone: {
-    borderColor: `${brand.green}45`,
-    backgroundColor: brand.greenLight,
+    borderColor: 'rgba(34,214,115,0.32)',
   },
   iconWrap: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
+    width: 50,
+    height: 50,
+    borderRadius: 15,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.white,
-    borderWidth: 1,
-    borderColor: `${brand.gold}60`,
+    backgroundColor: dark.coralSoft,
   },
   iconWrapLocked: {
-    borderColor: `${brand.navy}12`,
+    backgroundColor: dark.surfaceRaised,
   },
   cardContent: {
     flex: 1,
   },
   cardIndex: {
-    ...typography.caption,
-    fontWeight: '700',
-    color: brand.navyMuted,
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 11.5,
+    color: dark.textMuted,
     marginBottom: 2,
   },
   cardTitle: {
-    ...typography.bodySemiBold,
-    fontSize: 13,
-    color: brand.navy,
+    fontFamily: fonts.displayBold,
+    fontSize: 14,
+    color: dark.textPrimary,
     marginBottom: 2,
   },
   lockHint: {
-    fontSize: 13,
-    lineHeight: 18,
-    color: brand.navyMuted,
+    fontFamily: fonts.body,
+    fontSize: 12.5,
+    lineHeight: 17,
+    color: dark.textMuted,
     marginTop: 4,
   },
   textMuted: {
-    color: brand.navyMuted,
-  },
-  testBtn: {
-    marginTop: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    borderRadius: 18,
-    backgroundColor: brand.navy,
-    padding: 16,
-  },
-  testBtnLocked: {
-    backgroundColor: '#EEF1F4',
-    borderWidth: 1,
-    borderColor: `${brand.navy}12`,
-  },
-  testBtnContent: {
-    flex: 1,
-  },
-  testBtnTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: colors.white,
-    marginBottom: 2,
-  },
-  testBtnSubtitle: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.75)',
+    color: dark.textMuted,
   },
   centerBox: {
     alignItems: 'center',
@@ -282,14 +239,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   emptyTitle: {
-    ...typography.h4,
-    color: brand.navy,
+    fontFamily: fonts.displayBold,
+    fontSize: 18,
+    color: dark.textPrimary,
     marginBottom: 8,
     textAlign: 'center',
   },
   emptyText: {
-    ...typography.bodySmall,
-    color: brand.navyMuted,
+    fontFamily: fonts.body,
+    fontSize: 14,
+    lineHeight: 20,
+    color: dark.textMuted,
     textAlign: 'center',
   },
   pressed: {

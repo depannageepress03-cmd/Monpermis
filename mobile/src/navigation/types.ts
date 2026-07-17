@@ -14,6 +14,7 @@ export type RootStackParamList = {
   TermsOfUse: undefined
   Home: undefined
   Abonnement: undefined
+  HistoriquePaiements: undefined
   CodeRoute: undefined
   RevisionChapitres: undefined
   ChapterCourses: {
@@ -68,6 +69,11 @@ export type RootStackParamList = {
         order: number
       }[]
     }[]
+  }
+  CourseAiChat: {
+    chapterId: string
+    courseId: string
+    courseTitle: string
   }
   ChapterQuestions: {
     chapterId: string

@@ -11,7 +11,6 @@ import {
   Text,
   View,
 } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
 import {
   checkQuestionAnswers,
   fetchChapterQuestions,
@@ -19,12 +18,13 @@ import {
   markChapterTestCompleted,
   type RevisionQuestion,
 } from '../../api/revision'
+import { DarkScreen } from '../../components/DarkScreen'
 import { PageNavbar } from '../../components/PageNavbar'
 import { ScreenLoader } from '../../components/ScreenLoader'
 import { QuestionAudioSequence } from '../../components/QuestionAudioSequence'
 import { useRequireAuth } from '../../hooks/useRequireAuth'
 import type { RootStackParamList } from '../../navigation/types'
-import { brand, colors } from '../../theme'
+import { dark, fonts } from '../../theme'
 import { resolveMediaUrl } from '../../utils/mediaUrl'
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'ChapterQuestions'>
@@ -140,8 +140,7 @@ export function ChapterQuestionsScreen() {
   if (loading || !user) return <ScreenLoader />
 
   return (
-    <View style={styles.root}>
-      <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+    <DarkScreen>
         <PageNavbar
           title={chapterName}
           icon={isTest ? ClipboardList : HelpCircle}
@@ -166,7 +165,7 @@ export function ChapterQuestionsScreen() {
 
           {loadingQuestions ? (
             <View style={styles.centerBox}>
-              <ActivityIndicator color={brand.green} />
+              <ActivityIndicator color={dark.green} />
             </View>
           ) : error ? (
             <View style={styles.centerBox}>
@@ -271,9 +270,9 @@ export function ChapterQuestionsScreen() {
                   >
                     <View style={styles.answerLeft}>
                       {selected ? (
-                        <Check size={18} color={showWrong ? '#B42318' : brand.green} />
+                        <Check size={18} color={showWrong ? dark.coral : dark.green} />
                       ) : (
-                        <Circle size={18} color={brand.navyMuted} />
+                        <Circle size={18} color={dark.textMuted} />
                       )}
                       <View style={styles.answerCopy}>
                         <Text style={styles.answerLabel}>{answer.label.toUpperCase()}</Text>
@@ -282,7 +281,7 @@ export function ChapterQuestionsScreen() {
                         ) : null}
                       </View>
                     </View>
-                    {showWrong ? <X size={18} color="#B42318" /> : null}
+                    {showWrong ? <X size={18} color={dark.coral} /> : null}
                   </Pressable>
                 )
               })}
@@ -315,7 +314,7 @@ export function ChapterQuestionsScreen() {
                   onPress={() => void onValidate()}
                 >
                   {checking ? (
-                    <ActivityIndicator color={colors.white} />
+                    <ActivityIndicator color={'#0B0F1A'} />
                   ) : (
                     <Text style={styles.primaryBtnText}>Valider</Text>
                   )}
@@ -330,21 +329,13 @@ export function ChapterQuestionsScreen() {
             </View>
           ) : null}
         </ScrollView>
-      </SafeAreaView>
-    </View>
+      </DarkScreen>
   )
 }
 
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: colors.white,
-  },
-  safe: {
-    flex: 1,
-  },
   scroll: {
-    paddingHorizontal: 24,
+    paddingHorizontal: 22,
     paddingTop: 8,
     paddingBottom: 36,
   },
@@ -352,17 +343,18 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   kicker: {
+    fontFamily: fonts.bodySemiBold,
     fontSize: 12,
-    fontWeight: '700',
     letterSpacing: 1.2,
     textTransform: 'uppercase',
-    color: brand.green,
+    color: dark.green,
     marginBottom: 6,
   },
   subtitle: {
+    fontFamily: fonts.body,
     fontSize: 14,
     lineHeight: 20,
-    color: brand.navyMuted,
+    color: dark.textMuted,
     marginTop: 4,
   },
   accentRow: {
@@ -375,44 +367,44 @@ const styles = StyleSheet.create({
   },
   accentGreen: {
     width: 28,
-    backgroundColor: brand.green,
+    backgroundColor: dark.green,
   },
   accentGold: {
     width: 18,
-    backgroundColor: brand.gold,
+    backgroundColor: dark.coral,
   },
   accentNavy: {
     width: 12,
-    backgroundColor: brand.navy,
+    backgroundColor: dark.textMuted,
   },
   progress: {
+    fontFamily: fonts.bodyBold,
     fontSize: 13,
-    fontWeight: '700',
-    color: brand.navyMuted,
+    color: dark.textMuted,
     marginBottom: 12,
     letterSpacing: 0.4,
   },
   promptCard: {
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: `${brand.gold}55`,
-    backgroundColor: brand.goldLight,
+    borderColor: dark.border,
+    backgroundColor: dark.surface,
     padding: 16,
     marginBottom: 20,
     gap: 12,
   },
   promptLabel: {
+    fontFamily: fonts.bodyBold,
     fontSize: 12,
-    fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 0.8,
-    color: '#B8860B',
+    color: dark.coral,
   },
   promptText: {
+    fontFamily: fonts.bodySemiBold,
     fontSize: 16,
     lineHeight: 24,
-    fontWeight: '600',
-    color: brand.navy,
+    color: dark.textPrimary,
   },
   images: {
     gap: 10,
@@ -421,12 +413,12 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 180,
     borderRadius: 12,
-    backgroundColor: colors.white,
+    backgroundColor: dark.surfaceRaised,
   },
   answersTitle: {
+    fontFamily: fonts.bodyBold,
     fontSize: 15,
-    fontWeight: '700',
-    color: brand.navy,
+    color: dark.textPrimary,
     marginBottom: 12,
   },
   answerRow: {
@@ -435,23 +427,23 @@ const styles = StyleSheet.create({
     gap: 10,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: `${brand.navy}14`,
-    backgroundColor: '#F7F9FB',
+    borderColor: dark.border,
+    backgroundColor: dark.surfaceRaised,
     paddingVertical: 12,
     paddingHorizontal: 14,
     marginBottom: 10,
   },
   answerSelected: {
-    borderColor: `${brand.green}66`,
-    backgroundColor: brand.greenLight,
+    borderColor: 'rgba(34,214,115,0.45)',
+    backgroundColor: dark.greenSoft,
   },
   answerCorrect: {
-    borderColor: `${brand.green}88`,
-    backgroundColor: brand.greenLight,
+    borderColor: 'rgba(34,214,115,0.55)',
+    backgroundColor: dark.greenSoft,
   },
   answerWrong: {
-    borderColor: '#F97066',
-    backgroundColor: '#FEF3F2',
+    borderColor: dark.coral,
+    backgroundColor: dark.coralSoft,
   },
   answerLeft: {
     flexDirection: 'row',
@@ -464,18 +456,15 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   answerLabel: {
+    fontFamily: fonts.displayBold,
     fontSize: 16,
-    fontWeight: '800',
-    color: brand.navy,
+    color: dark.textPrimary,
   },
   answerText: {
+    fontFamily: fonts.bodyMedium,
     fontSize: 14,
     lineHeight: 20,
-    color: brand.navy,
-    fontWeight: '500',
-  },
-  answerAudio: {
-    marginLeft: 'auto',
+    color: dark.textPrimary,
   },
   feedback: {
     borderRadius: 12,
@@ -485,26 +474,26 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   feedbackOk: {
-    backgroundColor: brand.greenLight,
+    backgroundColor: dark.greenSoft,
   },
   feedbackKo: {
-    backgroundColor: '#FEF3F2',
+    backgroundColor: dark.coralSoft,
   },
   feedbackText: {
+    fontFamily: fonts.bodyBold,
     fontSize: 15,
-    fontWeight: '700',
     textAlign: 'center',
   },
   feedbackTextOk: {
-    color: brand.green,
+    color: dark.green,
   },
   feedbackTextKo: {
-    color: '#B42318',
+    color: dark.coral,
   },
   primaryBtn: {
     marginTop: 8,
     borderRadius: 14,
-    backgroundColor: brand.navy,
+    backgroundColor: dark.green,
     paddingVertical: 14,
     alignItems: 'center',
     justifyContent: 'center',
@@ -514,22 +503,23 @@ const styles = StyleSheet.create({
     opacity: 0.45,
   },
   primaryBtnText: {
-    color: colors.white,
+    color: '#0B0F1A',
+    fontFamily: fonts.displayBold,
     fontSize: 16,
-    fontWeight: '800',
   },
   secondaryBtn: {
     marginTop: 10,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: `${brand.navy}22`,
+    borderColor: dark.border,
     paddingVertical: 14,
     alignItems: 'center',
+    backgroundColor: dark.surface,
   },
   secondaryBtnText: {
-    color: brand.navy,
+    color: dark.textPrimary,
+    fontFamily: fonts.bodyBold,
     fontSize: 15,
-    fontWeight: '700',
   },
   centerBox: {
     alignItems: 'center',
@@ -537,23 +527,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   emptyTitle: {
+    fontFamily: fonts.displayBold,
     fontSize: 18,
-    fontWeight: '800',
-    color: brand.navy,
+    color: dark.textPrimary,
     marginBottom: 8,
     textAlign: 'center',
   },
   emptyText: {
+    fontFamily: fonts.body,
     fontSize: 14,
     lineHeight: 20,
-    color: brand.navyMuted,
+    color: dark.textMuted,
     textAlign: 'center',
     marginBottom: 16,
   },
   scoreText: {
+    fontFamily: fonts.displayExtraBold,
     fontSize: 22,
-    fontWeight: '800',
-    color: brand.green,
+    color: dark.green,
     marginBottom: 20,
   },
 })

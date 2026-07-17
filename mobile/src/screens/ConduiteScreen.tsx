@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigation } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
-import { LinearGradient } from 'expo-linear-gradient'
 import {
   BookOpen,
   CalendarPlus,
+  ChevronRight,
   Lock,
 } from 'lucide-react-native'
 import {
@@ -17,7 +17,6 @@ import {
   TextInput,
   View,
 } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
 import {
   cancelReservation,
   fetchDrivingDashboard,
@@ -27,15 +26,14 @@ import {
 } from '../api/reservations'
 import { fetchSubscriptionMe, type SubscriptionAccess } from '../api/subscriptions'
 import { Bouncy } from '../components/Bouncy'
+import { DarkHeader, DarkScreen } from '../components/DarkScreen'
 import { ProgressBar } from '../components/ProgressBar'
 import { DriveModuleIcon } from '../components/ModuleIcons'
-import { PageNavbar } from '../components/PageNavbar'
 import { ScreenLoader } from '../components/ScreenLoader'
 import { FadeUp } from '../components/FadeUp'
-import { AccentBar } from '../components/AccentBar'
 import { useRequireAuth } from '../hooks/useRequireAuth'
 import type { RootStackParamList } from '../navigation/types'
-import { brand, colors, gradients, typography } from '../theme'
+import { dark, fonts } from '../theme'
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'Conduite'>
 
@@ -108,165 +106,152 @@ export function ConduiteScreen() {
 
   if (loading || !user) return <ScreenLoader />
 
-  const lockedContent = subscriptionLoading ? (
-    <View style={styles.accessState}>
-      <Text style={styles.accessStateCopy}>Vérification de votre accès…</Text>
-    </View>
-  ) : !subscription?.accessConduite ? (
-    <View style={styles.accessState}>
-      <View style={styles.accessLock}><Lock size={32} color={brand.navyMuted} /></View>
-      <Text style={styles.accessStateTitle}>Le module Conduite est verrouillé</Text>
-      <Text style={styles.accessStateCopy}>
-        Votre abonnement doit inclure l’accès à la Conduite.
-      </Text>
-      <Pressable style={styles.accessButton} onPress={() => navigation.navigate('Abonnement')}>
-        <Text style={styles.accessButtonText}>Voir les offres</Text>
-      </Pressable>
-    </View>
-  ) : null
+  const header = (
+    <DarkHeader title="Conduite" icon={DriveModuleIcon} onBack={() => navigation.navigate('Home')} />
+  )
+
+  if (subscriptionLoading) {
+    return (
+      <DarkScreen>
+        {header}
+        <View style={styles.accessState}>
+          <Text style={styles.accessStateCopy}>Vérification de ton accès…</Text>
+        </View>
+      </DarkScreen>
+    )
+  }
+
+  if (!subscription?.accessConduite) {
+    return (
+      <DarkScreen>
+        {header}
+        <View style={styles.accessState}>
+          <View style={styles.accessLock}><Lock size={30} color={dark.textMuted} /></View>
+          <Text style={styles.accessStateTitle}>Module Conduite verrouillé</Text>
+          <Text style={styles.accessStateCopy}>
+            Ton abonnement doit inclure l’accès à la Conduite.
+          </Text>
+          <Bouncy scaleTo={0.97} onPress={() => navigation.navigate('Abonnement')}>
+            <View style={styles.accessButton}>
+              <Text style={styles.accessButtonText}>Voir les offres</Text>
+            </View>
+          </Bouncy>
+        </View>
+      </DarkScreen>
+    )
+  }
 
   return (
-    <View style={styles.root}>
-      <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-        <FadeUp delay={0}>
-          <PageNavbar
-            title="Conduite"
-            icon={DriveModuleIcon}
-            onBack={() => navigation.navigate('Home')}
-            tone="drive"
-          />
+    <DarkScreen>
+      {header}
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        <FadeUp delay={80} style={styles.hero}>
+          <Text style={styles.heroEyebrow}>Ton parcours</Text>
+          <Text style={styles.heroTitle}>Prends la route</Text>
+          <Text style={styles.heroSubtitle}>
+            Suis tes heures, réserve tes séances avec un moniteur et progresse jusqu’à l’examen.
+          </Text>
         </FadeUp>
 
-        {lockedContent ?? <ScrollView
-          contentContainerStyle={styles.scroll}
-          showsVerticalScrollIndicator={false}
-        >
-          <FadeUp delay={80}>
-            <View style={styles.header}>
-              <AccentBar />
+        {loadingDash ? <ActivityIndicator color={dark.green} style={{ marginBottom: 12 }} /> : null}
+        {error ? <Text style={styles.error}>{error}</Text> : null}
+
+        {progress ? (
+          <FadeUp delay={140}>
+            <View style={styles.progressCard}>
+              <View style={styles.progressHeadRow}>
+                <Text style={styles.progressLabel}>
+                  {progress.heuresEffectuees} / {progress.heuresObjectif} h de conduite
+                </Text>
+                <View style={styles.progressPct}>
+                  <Text style={styles.progressPctText}>{Math.round(progress.percent)}%</Text>
+                </View>
+              </View>
+              <ProgressBar
+                progress={progress.percent / 100}
+                color={dark.green}
+                trackColor="rgba(255,255,255,0.08)"
+                height={10}
+              />
+              <Text style={styles.progressMeta}>Solde disponible : {progress.soldeHeures} h</Text>
             </View>
           </FadeUp>
+        ) : null}
 
-          {loadingDash ? <ActivityIndicator color={brand.green} /> : null}
-          {error ? <Text style={styles.error}>{error}</Text> : null}
+        <FadeUp delay={180}>
+          <Bouncy scaleTo={0.97} onPress={() => navigation.navigate('ReservationFlow')}>
+            <View style={[styles.actionCard, styles.actionReserve]}>
+              <View style={[styles.actionIcon, styles.actionIconReserve]}>
+                <CalendarPlus size={22} color={dark.green} />
+              </View>
+              <View style={styles.actionCopy}>
+                <Text style={styles.actionTitle}>Réserver une séance</Text>
+                <Text style={styles.actionHint}>Choisir un créneau avec un moniteur</Text>
+              </View>
+              <ChevronRight size={20} color={dark.green} />
+            </View>
+          </Bouncy>
 
-          <FadeUp delay={140}>
-            <View style={styles.topRow}>
-              {progress ? (
-                <View style={styles.progressCard}>
-                  <View style={styles.progressHeadRow}>
-                    <Text style={styles.progressLabel}>
-                      {progress.heuresEffectuees} / {progress.heuresObjectif} h
-                    </Text>
-                    <View style={styles.progressPct}>
-                      <Text style={styles.progressPctText}>{Math.round(progress.percent)}%</Text>
-                    </View>
-                  </View>
-                  <ProgressBar progress={progress.percent / 100} color={brand.green} height={10} />
-                  <Text style={styles.progressMeta}>
-                    Solde disponible : {progress.soldeHeures} h
+          <Bouncy scaleTo={0.97} style={styles.secondAction} onPress={() => navigation.navigate('LeconsChapitres')}>
+            <View style={[styles.actionCard, styles.actionLessons]}>
+              <View style={[styles.actionIcon, styles.actionIconLessons]}>
+                <BookOpen size={22} color={dark.coral} />
+              </View>
+              <View style={styles.actionCopy}>
+                <Text style={styles.actionTitle}>Leçons</Text>
+                <Text style={styles.actionHint}>Manœuvres, circulation et examen</Text>
+              </View>
+              <ChevronRight size={20} color={dark.coral} />
+            </View>
+          </Bouncy>
+        </FadeUp>
+
+        <FadeUp delay={220}>
+          <Text style={styles.sectionLabel}>Mes réservations</Text>
+          {upcoming.length === 0 ? (
+            <View style={styles.emptyCard}>
+              <Text style={styles.emptyText}>Aucune séance réservée pour le moment.</Text>
+            </View>
+          ) : (
+            upcoming.map((item) => (
+              <View key={String(item.id)} style={styles.reservationItem}>
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text style={styles.reservationTitle}>
+                    {item.creneau ? `${item.creneau.date} · ${item.creneau.startTime}` : 'Séance'}
+                  </Text>
+                  <Text style={styles.reservationMeta}>
+                    {item.moniteur?.fullName || 'Moniteur'} · {statusLabel(item)}
                   </Text>
                 </View>
-              ) : null}
-
-              <View style={[styles.upcomingBlock, !progress && styles.upcomingBlockFull]}>
-                <Text style={styles.upcomingTitle}>Mes réservations</Text>
-                {upcoming.length === 0 ? (
-                  <Text style={styles.upcomingEmpty}>Aucune séance réservée pour le moment.</Text>
-                ) : (
-                  upcoming.map((item) => (
-                    <View key={String(item.id)} style={styles.upcomingItem}>
-                      <Text style={styles.upcomingItemTitle}>
-                        {item.creneau
-                          ? `${item.creneau.date} · ${item.creneau.startTime}`
-                          : 'Séance'}
-                      </Text>
-                      <Text style={styles.upcomingItemMeta}>
-                        {item.moniteur?.fullName || 'Moniteur'} · {statusLabel(item)}
-                      </Text>
-                      {item.canCancel ? (
-                        <Pressable
-                          style={styles.cancelLink}
-                          onPress={() => {
-                            setError(null)
-                            setCancelReason('')
-                            setCancelTarget(item)
-                          }}
-                        >
-                          <Text style={styles.cancelLinkText}>Annuler</Text>
-                        </Pressable>
-                      ) : null}
-                    </View>
-                  ))
-                )}
+                {item.canCancel ? (
+                  <Pressable
+                    style={styles.cancelLink}
+                    onPress={() => {
+                      setError(null)
+                      setCancelReason('')
+                      setCancelTarget(item)
+                    }}
+                  >
+                    <Text style={styles.cancelLinkText}>Annuler</Text>
+                  </Pressable>
+                ) : null}
               </View>
-            </View>
-          </FadeUp>
+            ))
+          )}
+          <Text style={styles.footNote}>
+            Tu peux annuler une séance jusqu’à 24 h avant, avec une justification transmise à
+            l’administration.
+          </Text>
+        </FadeUp>
+      </ScrollView>
 
-          <FadeUp delay={170}>
-            <View style={styles.actionsRow}>
-              <Bouncy style={styles.actionBtnWrap} scaleTo={0.96} onPress={() => navigation.navigate('ReservationFlow')}>
-                <LinearGradient
-                  colors={gradients.green}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.actionBtn}
-                >
-                  <View style={[styles.actionIcon, styles.actionIconReserve]}>
-                    <CalendarPlus size={20} color={colors.white} />
-                  </View>
-                  <View style={styles.actionCopy}>
-                    <Text style={styles.actionReserveTitle}>Réserver</Text>
-                    <Text style={styles.actionReserveHint}>
-                      Choisir un créneau avec un moniteur
-                    </Text>
-                  </View>
-                </LinearGradient>
-              </Bouncy>
-
-              <Bouncy style={styles.actionBtnWrap} scaleTo={0.96} onPress={() => navigation.navigate('LeconsChapitres')}>
-                <View style={[styles.actionBtn, styles.actionLessons]}>
-                  <View style={[styles.actionIcon, styles.actionIconLessons]}>
-                    <BookOpen size={20} color={brand.navy} />
-                  </View>
-                  <View style={styles.actionCopy}>
-                    <Text style={styles.actionLessonsTitle}>Leçons</Text>
-                    <Text style={styles.actionLessonsHint}>
-                      Manœuvres, circulation et examen
-                    </Text>
-                  </View>
-                </View>
-              </Bouncy>
-            </View>
-          </FadeUp>
-
-          <FadeUp delay={210}>
-            <View style={styles.copyBlock}>
-              <Text style={styles.copyTitle}>Votre parcours de conduite</Text>
-              <Text style={styles.copyText}>
-                Bienvenue dans l’espace conduite de Monpermis. Ici, vous suivez vos heures
-                pratiques, réservez vos séances avec un moniteur et consultez les leçons
-                pour progresser étape par étape jusqu’à l’examen.
-              </Text>
-              <Text style={styles.copyText}>
-                Vous pouvez annuler une séance jusqu’à 24 h avant, en indiquant une
-                justification. L’administration est informée du motif.
-              </Text>
-            </View>
-          </FadeUp>
-        </ScrollView>}
-      </SafeAreaView>
-
-      {subscription?.accessConduite && <Modal
+      <Modal
         visible={Boolean(cancelTarget)}
         transparent
         animationType="fade"
         onRequestClose={() => !cancelling && setCancelTarget(null)}
       >
-        <Pressable
-          style={styles.modalBackdrop}
-          onPress={() => !cancelling && setCancelTarget(null)}
-        >
+        <Pressable style={styles.modalBackdrop} onPress={() => !cancelling && setCancelTarget(null)}>
           <Pressable style={styles.modalCard} onPress={(e) => e.stopPropagation()}>
             <Text style={styles.modalTitle}>Annuler la séance</Text>
             <Text style={styles.modalMeta}>
@@ -281,49 +266,164 @@ export function ConduiteScreen() {
               value={cancelReason}
               onChangeText={setCancelReason}
               placeholder="Ex. Empêchement, maladie, transport…"
-              placeholderTextColor={brand.navyMuted}
+              placeholderTextColor={dark.textMuted}
               multiline
               maxLength={500}
               editable={!cancelling}
             />
             <View style={styles.modalActions}>
-              <Pressable
-                style={styles.modalSecondary}
-                disabled={cancelling}
-                onPress={() => setCancelTarget(null)}
-              >
+              <Pressable style={styles.modalSecondary} disabled={cancelling} onPress={() => setCancelTarget(null)}>
                 <Text style={styles.modalSecondaryText}>Fermer</Text>
               </Pressable>
               <Pressable
-                style={[
-                  styles.modalPrimary,
-                  (cancelling || cancelReason.trim().length < 5) && styles.disabled,
-                ]}
+                style={[styles.modalPrimary, (cancelling || cancelReason.trim().length < 5) && styles.disabled]}
                 disabled={cancelling || cancelReason.trim().length < 5}
                 onPress={() => void submitCancel()}
               >
-                <Text style={styles.modalPrimaryText}>
-                  {cancelling ? 'Annulation…' : 'Confirmer'}
-                </Text>
+                <Text style={styles.modalPrimaryText}>{cancelling ? 'Annulation…' : 'Confirmer'}</Text>
               </Pressable>
             </View>
           </Pressable>
         </Pressable>
-      </Modal>}
-    </View>
+      </Modal>
+    </DarkScreen>
   )
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.white },
-  safe: { flex: 1 },
   scroll: {
     flexGrow: 1,
-    paddingHorizontal: 24,
-    paddingTop: 16,
-    paddingBottom: 28,
+    paddingHorizontal: 22,
+    paddingTop: 12,
+    paddingBottom: 32,
   },
-  header: { marginBottom: 18 },
+
+  /* Hero */
+  hero: { marginBottom: 20 },
+  heroEyebrow: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 13,
+    color: dark.coral,
+    letterSpacing: 0.3,
+    marginBottom: 2,
+  },
+  heroTitle: {
+    fontFamily: fonts.displayExtraBold,
+    fontSize: 30,
+    lineHeight: 36,
+    color: dark.textPrimary,
+    letterSpacing: -0.5,
+  },
+  heroSubtitle: {
+    marginTop: 8,
+    fontFamily: fonts.body,
+    fontSize: 14.5,
+    lineHeight: 21,
+    color: dark.textMuted,
+  },
+
+  /* Progress */
+  progressCard: {
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: dark.border,
+    backgroundColor: dark.surface,
+    padding: 16,
+    marginBottom: 16,
+  },
+  progressHeadRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  progressLabel: { fontFamily: fonts.displayBold, fontSize: 14, color: dark.textPrimary },
+  progressPct: {
+    backgroundColor: dark.greenSoft,
+    borderRadius: 999,
+    paddingVertical: 3,
+    paddingHorizontal: 9,
+  },
+  progressPctText: { fontFamily: fonts.bodyBold, fontSize: 11, color: dark.green },
+  progressMeta: { marginTop: 10, fontFamily: fonts.body, fontSize: 12.5, color: dark.textMuted },
+
+  /* Actions */
+  actionCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    borderRadius: 20,
+    paddingVertical: 15,
+    paddingHorizontal: 15,
+    borderWidth: 1,
+    backgroundColor: dark.surface,
+  },
+  actionReserve: { borderColor: 'rgba(34,214,115,0.28)' },
+  actionLessons: { borderColor: 'rgba(255,107,74,0.28)' },
+  secondAction: { marginTop: 12 },
+  actionIcon: {
+    width: 52,
+    height: 52,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  actionIconReserve: { backgroundColor: dark.greenSoft },
+  actionIconLessons: { backgroundColor: dark.coralSoft },
+  actionCopy: { flex: 1, minWidth: 0 },
+  actionTitle: { fontFamily: fonts.displayBold, fontSize: 16, color: dark.textPrimary, marginBottom: 3 },
+  actionHint: { fontFamily: fonts.body, fontSize: 12.5, color: dark.textMuted },
+
+  /* Reservations */
+  sectionLabel: {
+    fontFamily: fonts.display,
+    fontSize: 11.5,
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    color: dark.textMuted,
+    marginTop: 26,
+    marginBottom: 10,
+  },
+  emptyCard: {
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: dark.border,
+    backgroundColor: dark.surface,
+    padding: 16,
+  },
+  emptyText: { fontFamily: fonts.body, fontSize: 13, color: dark.textMuted, lineHeight: 19 },
+  reservationItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: dark.border,
+    backgroundColor: dark.surface,
+    padding: 14,
+    marginBottom: 8,
+  },
+  reservationTitle: { fontFamily: fonts.displayBold, fontSize: 14, color: dark.textPrimary },
+  reservationMeta: { marginTop: 2, fontFamily: fonts.body, fontSize: 12, color: dark.textMuted },
+  cancelLink: {
+    alignSelf: 'flex-start',
+    paddingVertical: 5,
+    paddingHorizontal: 11,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: 'rgba(255,107,74,0.45)',
+  },
+  cancelLinkText: { color: dark.coral, fontFamily: fonts.bodyBold, fontSize: 11 },
+  footNote: {
+    marginTop: 12,
+    fontFamily: fonts.body,
+    fontSize: 12,
+    lineHeight: 18,
+    color: dark.textMuted,
+  },
+
+  /* Access state */
   accessState: {
     flex: 1,
     alignItems: 'center',
@@ -337,239 +437,79 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: `${brand.navy}08`,
+    backgroundColor: dark.surfaceRaised,
     marginBottom: 16,
   },
   accessStateTitle: {
-    ...typography.h4,
-    color: brand.navy,
+    fontFamily: fonts.displayBold,
+    fontSize: 19,
+    color: dark.textPrimary,
     textAlign: 'center',
     marginBottom: 8,
   },
   accessStateCopy: {
-    ...typography.bodySmall,
-    color: brand.navyMuted,
+    fontFamily: fonts.body,
+    fontSize: 14,
+    lineHeight: 21,
+    color: dark.textMuted,
     textAlign: 'center',
     maxWidth: 280,
   },
   accessButton: {
-    marginTop: 20,
-    borderRadius: 12,
-    backgroundColor: brand.green,
-    paddingHorizontal: 20,
-    paddingVertical: 13,
-  },
-  accessButtonText: { ...typography.button, color: colors.white },
-  progressCard: {
-    flex: 1,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: `${brand.navy}12`,
-    backgroundColor: '#F8FAFC',
-    padding: 14,
-  },
-  topRow: {
-    flexDirection: 'row',
-    alignItems: 'stretch',
-    gap: 10,
-    marginBottom: 16,
-  },
-  progressHeadRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 10,
-  },
-  progressLabel: { fontSize: 13, fontWeight: '700', color: brand.navy },
-  progressPct: {
-    backgroundColor: brand.greenLight,
-    borderRadius: 999,
-    paddingVertical: 2,
-    paddingHorizontal: 8,
-  },
-  progressPctText: { fontSize: 11, fontWeight: '800', color: brand.green },
-  progressMeta: { marginTop: 8, ...typography.caption, color: brand.navyMuted },
-  upcomingBlock: {
-    flex: 1,
-    marginBottom: 0,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: `${brand.navy}12`,
-    backgroundColor: '#F8FAFC',
-    padding: 14,
-  },
-  upcomingBlockFull: { flex: 1 },
-  upcomingTitle: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: brand.navy,
-    marginBottom: 8,
-  },
-  upcomingEmpty: { ...typography.caption, color: brand.navyMuted, lineHeight: 18 },
-  upcomingItem: {
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: `${brand.navy}10`,
-    backgroundColor: colors.white,
-    padding: 10,
-    marginBottom: 6,
-  },
-  upcomingItemTitle: { fontSize: 13, fontWeight: '700', color: brand.navy },
-  upcomingItemMeta: { marginTop: 2, fontSize: 11, color: brand.navyMuted },
-  cancelLink: {
-    alignSelf: 'flex-start',
-    marginTop: 8,
-    paddingVertical: 4,
-    paddingHorizontal: 10,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: 'rgba(185,28,28,0.35)',
-  },
-  cancelLinkText: { color: '#B91C1C', fontSize: 11, fontWeight: '700' },
-  copyBlock: {
-    marginBottom: 8,
-    gap: 12,
-  },
-  copyTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: brand.navy,
-    letterSpacing: -0.3,
-    marginBottom: 4,
-  },
-  copyText: {
-    fontSize: 15,
-    lineHeight: 23,
-    color: brand.navyMuted,
-  },
-  actionsRow: {
-    flexDirection: 'row',
-    alignItems: 'stretch',
-    gap: 10,
-    marginBottom: 18,
-  },
-  actionBtnWrap: {
-    flex: 1,
-  },
-  actionBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    borderRadius: 16,
+    marginTop: 22,
+    borderRadius: 14,
+    backgroundColor: dark.green,
+    paddingHorizontal: 22,
     paddingVertical: 14,
-    paddingHorizontal: 12,
-    minHeight: 76,
-    shadowColor: brand.navy,
-    shadowOffset: { width: 0, height: 5 },
-    shadowOpacity: 0.12,
-    shadowRadius: 10,
-    elevation: 3,
   },
-  actionIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  actionIconReserve: {
-    backgroundColor: 'rgba(255,255,255,0.24)',
-  },
-  actionIconLessons: {
-    backgroundColor: `${brand.gold}55`,
-  },
-  actionCopy: {
-    flex: 1,
-    minWidth: 0,
-    gap: 2,
-  },
-  actionReserveTitle: {
-    color: colors.white,
-    fontSize: 15,
-    fontWeight: '800',
-  },
-  actionReserveHint: {
-    color: 'rgba(255,255,255,0.88)',
-    fontSize: 11,
-    lineHeight: 15,
-    fontWeight: '500',
-  },
-  actionLessons: {
-    backgroundColor: brand.goldLight,
-    borderWidth: 1,
-    borderColor: `${brand.gold}55`,
-  },
-  actionLessonsTitle: {
-    color: brand.navy,
-    fontSize: 15,
-    fontWeight: '800',
-  },
-  actionLessonsHint: {
-    color: brand.navyMuted,
-    fontSize: 11,
-    lineHeight: 15,
-    fontWeight: '500',
-  },
+  accessButtonText: { fontFamily: fonts.bodyBold, fontSize: 14, color: '#0B0F1A' },
+
+  /* Modal */
   modalBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,16,48,0.45)',
+    backgroundColor: 'rgba(0,0,0,0.6)',
     justifyContent: 'center',
     padding: 20,
   },
   modalCard: {
-    backgroundColor: colors.white,
-    borderRadius: 18,
+    backgroundColor: dark.surface,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: dark.border,
     padding: 18,
   },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: brand.navy,
-    marginBottom: 6,
-  },
-  modalMeta: {
-    fontSize: 13,
-    color: brand.navyMuted,
-    marginBottom: 14,
-  },
-  modalLabel: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: brand.navy,
-    marginBottom: 6,
-  },
+  modalTitle: { fontFamily: fonts.displayBold, fontSize: 18, color: dark.textPrimary, marginBottom: 6 },
+  modalMeta: { fontFamily: fonts.body, fontSize: 13, color: dark.textMuted, marginBottom: 14 },
+  modalLabel: { fontFamily: fonts.bodySemiBold, fontSize: 13, color: dark.textPrimary, marginBottom: 6 },
   modalInput: {
     borderWidth: 1,
-    borderColor: `${brand.navy}18`,
+    borderColor: dark.border,
     borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 10,
     minHeight: 96,
     textAlignVertical: 'top',
-    color: brand.navy,
+    color: dark.textPrimary,
+    backgroundColor: dark.surfaceRaised,
+    fontFamily: fonts.body,
     marginBottom: 14,
   },
-  modalActions: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: 10,
-  },
+  modalActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 10 },
   modalSecondary: {
     borderWidth: 1,
-    borderColor: `${brand.navy}22`,
+    borderColor: dark.border,
     borderRadius: 12,
     paddingVertical: 12,
     paddingHorizontal: 14,
   },
-  modalSecondaryText: { color: brand.navy, fontWeight: '700' },
+  modalSecondaryText: { color: dark.textPrimary, fontFamily: fonts.bodyBold, fontSize: 13 },
   modalPrimary: {
-    backgroundColor: brand.green,
+    backgroundColor: dark.green,
     borderRadius: 12,
     paddingVertical: 12,
     paddingHorizontal: 14,
   },
-  modalPrimaryText: { color: colors.white, fontWeight: '800' },
-  error: { color: '#B91C1C', marginBottom: 10 },
-  pressed: { opacity: 0.88 },
-  disabled: { opacity: 0.55 },
+  modalPrimaryText: { color: '#0B0F1A', fontFamily: fonts.bodyBold, fontSize: 13 },
+  error: { color: dark.coral, fontFamily: fonts.bodyMedium, marginBottom: 10 },
+  disabled: { opacity: 0.5 },
 })

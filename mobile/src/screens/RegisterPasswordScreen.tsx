@@ -1,8 +1,9 @@
 import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { LinearGradient } from 'expo-linear-gradient'
+import { setStatusBarStyle } from 'expo-status-bar'
 import { ChevronLeft } from 'lucide-react-native'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   Image,
   KeyboardAvoidingView,
@@ -19,7 +20,7 @@ import { Bouncy } from '../components/Bouncy'
 import { BrandName } from '../components/BrandName'
 import { useAuth } from '../context/AuthContext'
 import type { RootStackParamList } from '../navigation/types'
-import { brand, colors, gradients } from '../theme'
+import { dark, fonts, gradients } from '../theme'
 import { validatePassword } from '../utils/validation'
 import { showAuthError } from '../utils/showAuthError'
 
@@ -41,6 +42,10 @@ export function RegisterPasswordScreen() {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [errors, setErrors] = useState<FormErrors>({})
   const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    setStatusBarStyle('dark')
+  }, [])
 
   const handleSubmit = async () => {
     const passwordError = validatePassword(password)
@@ -83,7 +88,7 @@ export function RegisterPasswordScreen() {
           onPress={() => navigation.goBack()}
           hitSlop={12}
         >
-          <ChevronLeft size={22} color={brand.navy} />
+          <ChevronLeft size={22} color={dark.textPrimary} />
           <Text style={styles.backText}>Retour</Text>
         </Pressable>
 
@@ -102,10 +107,10 @@ export function RegisterPasswordScreen() {
                 style={styles.logo}
                 resizeMode="contain"
               />
-              <BrandName size={22} style={styles.brand} />
-              <Text style={styles.title}>Mot de passe</Text>
+              <BrandName size={22} style={styles.brand} mainColor={dark.textPrimary} />
+              <Text style={styles.title}>Ton mot de passe</Text>
               <Text style={styles.subtitle}>
-                Choisissez un mot de passe sécurisé pour finaliser votre inscription.
+                Choisis un mot de passe sécurisé pour finaliser ton inscription.
               </Text>
             </View>
 
@@ -154,7 +159,7 @@ export function RegisterPasswordScreen() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: colors.white,
+    backgroundColor: dark.bg,
   },
   safe: {
     flex: 1,
@@ -172,9 +177,9 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   backText: {
-    color: brand.navy,
+    color: dark.textPrimary,
+    fontFamily: fonts.bodyMedium,
     fontSize: 15,
-    fontWeight: '500',
   },
   scroll: {
     flexGrow: 1,
@@ -187,25 +192,26 @@ const styles = StyleSheet.create({
     marginBottom: 28,
   },
   logo: {
-    width: 120,
-    height: 80,
+    width: 110,
+    height: 74,
     marginBottom: 12,
   },
   brand: {
     marginBottom: 16,
   },
   title: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: brand.navy,
-    letterSpacing: -0.3,
+    fontFamily: fonts.displayExtraBold,
+    fontSize: 26,
+    color: dark.textPrimary,
+    letterSpacing: -0.4,
     textAlign: 'center',
     marginBottom: 8,
   },
   subtitle: {
+    fontFamily: fonts.body,
     fontSize: 14,
     lineHeight: 20,
-    color: brand.navyMuted,
+    color: dark.textMuted,
     textAlign: 'center',
     maxWidth: 300,
   },
@@ -214,8 +220,9 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   hint: {
+    fontFamily: fonts.body,
     fontSize: 13,
-    color: brand.navyMuted,
+    color: dark.textMuted,
     marginBottom: 24,
     marginLeft: 2,
   },
@@ -226,16 +233,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 16,
-    shadowColor: brand.green,
+    shadowColor: dark.green,
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.22,
+    shadowOpacity: 0.3,
     shadowRadius: 16,
     elevation: 4,
   },
   submitText: {
-    color: colors.white,
-    fontSize: 16,
-    fontWeight: '600',
+    color: '#0B0F1A',
+    fontFamily: fonts.bodyBold,
+    fontSize: 15,
   },
   pressed: {
     opacity: 0.9,

@@ -10,7 +10,7 @@ import {
 } from 'react-native'
 import RenderHTML from 'react-native-render-html'
 import { WebView } from 'react-native-webview'
-import { brand } from '../theme'
+import { dark, fonts } from '../theme'
 import { buildEmbedHtml, resolveVideoEmbed } from '../utils/mediaEmbed'
 import { resolveMediaUrl } from '../utils/mediaUrl'
 
@@ -33,7 +33,7 @@ function stripHtml(html: string): string {
 function LoadingOverlay({ label }: { label: string }) {
   return (
     <View style={styles.overlay} pointerEvents="none">
-      <ActivityIndicator size="large" color={brand.green} />
+      <ActivityIndicator size="large" color={dark.green} />
       <Text style={styles.overlayText}>{label}</Text>
     </View>
   )
@@ -204,8 +204,8 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 18,
-    fontWeight: '800',
-    color: brand.navy,
+    fontFamily: fonts.displayBold,
+    color: dark.textPrimary,
     letterSpacing: -0.2,
     textAlign: 'center',
   },
@@ -213,11 +213,11 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: `${brand.navy}14`,
+    borderColor: dark.border,
     backgroundColor: '#0b1220',
   },
   imageFrame: {
-    backgroundColor: brand.greenLight,
+    backgroundColor: dark.surfaceRaised,
   },
   video: {
     width: '100%',
@@ -243,10 +243,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 999,
-    backgroundColor: brand.green,
+    backgroundColor: dark.green,
   },
   retryText: {
-    color: '#fff',
+    color: '#0B0F1A',
     fontSize: 13,
     fontWeight: '700',
   },
@@ -257,13 +257,13 @@ const styles = StyleSheet.create({
   text: {
     fontSize: 15,
     lineHeight: 22,
-    color: brand.navy,
+    color: dark.textPrimary,
     textAlign: 'center',
   },
   htmlBase: {
     fontSize: 15,
     lineHeight: 22,
-    color: brand.navy,
+    color: dark.textPrimary,
     textAlign: 'center',
   },
   htmlParagraph: {
@@ -273,13 +273,13 @@ const styles = StyleSheet.create({
   },
   htmlHeading: {
     fontSize: 16,
-    fontWeight: '800',
-    color: brand.navy,
+    fontFamily: fonts.displayBold,
+    color: dark.textPrimary,
     marginBottom: 8,
     textAlign: 'center',
   },
   htmlStrong: {
-    fontWeight: '800',
+    fontFamily: fonts.displayBold,
   },
   htmlEm: {
     fontStyle: 'italic',
@@ -297,7 +297,7 @@ const styles = StyleSheet.create({
   },
   empty: {
     fontSize: 14,
-    color: brand.navyMuted,
+    color: dark.textMuted,
     textAlign: 'center',
   },
 })

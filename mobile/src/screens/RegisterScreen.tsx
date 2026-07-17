@@ -1,7 +1,8 @@
 import { useNavigation } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { LinearGradient } from 'expo-linear-gradient'
-import { useCallback, useState } from 'react'
+import { setStatusBarStyle } from 'expo-status-bar'
+import { useCallback, useEffect, useState } from 'react'
 import {
   Image,
   KeyboardAvoidingView,
@@ -20,7 +21,7 @@ import { GoogleSignInButton } from '../components/GoogleSignInButton'
 import { useAuth } from '../context/AuthContext'
 import { useGoogleSignIn } from '../hooks/useGoogleSignIn'
 import type { RootStackParamList } from '../navigation/types'
-import { brand, colors, gradients } from '../theme'
+import { dark, fonts, gradients } from '../theme'
 import {
   normalizePhone,
   PHONE_PLACEHOLDER,
@@ -49,6 +50,10 @@ export function RegisterScreen() {
   const [phone, setPhone] = useState('')
   const [acceptTerms, setAcceptTerms] = useState(false)
   const [errors, setErrors] = useState<FormErrors>({})
+
+  useEffect(() => {
+    setStatusBarStyle('dark')
+  }, [])
 
   const handleGoogleSuccess = useCallback(
     async (idToken: string) => {
@@ -110,10 +115,10 @@ export function RegisterScreen() {
                 style={styles.logo}
                 resizeMode="contain"
               />
-              <BrandName size={22} style={styles.brand} />
-              <Text style={styles.title}>Inscription</Text>
+              <BrandName size={22} style={styles.brand} mainColor={dark.textPrimary} />
+              <Text style={styles.title}>Crée ton compte</Text>
               <Text style={styles.subtitle}>
-                Renseignez vos informations pour créer votre compte.
+                Quelques infos et tu démarres ta préparation au permis.
               </Text>
             </View>
 
@@ -220,7 +225,7 @@ export function RegisterScreen() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: colors.white,
+    backgroundColor: dark.bg,
   },
   safe: {
     flex: 1,
@@ -239,25 +244,26 @@ const styles = StyleSheet.create({
     marginBottom: 28,
   },
   logo: {
-    width: 120,
-    height: 80,
+    width: 110,
+    height: 74,
     marginBottom: 12,
   },
   brand: {
     marginBottom: 16,
   },
   title: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: brand.navy,
-    letterSpacing: -0.3,
+    fontFamily: fonts.displayExtraBold,
+    fontSize: 26,
+    color: dark.textPrimary,
+    letterSpacing: -0.4,
     textAlign: 'center',
     marginBottom: 8,
   },
   subtitle: {
+    fontFamily: fonts.body,
     fontSize: 14,
     lineHeight: 20,
-    color: brand.navyMuted,
+    color: dark.textMuted,
     textAlign: 'center',
     maxWidth: 300,
   },
@@ -288,26 +294,27 @@ const styles = StyleSheet.create({
     height: 20,
     borderRadius: 5,
     borderWidth: 1.5,
-    borderColor: `${brand.navy}33`,
-    backgroundColor: colors.white,
+    borderColor: dark.border,
+    backgroundColor: dark.surface,
   },
   checkboxChecked: {
-    backgroundColor: brand.green,
-    borderColor: brand.green,
+    backgroundColor: dark.green,
+    borderColor: dark.green,
   },
   checkboxLabel: {
     flex: 1,
+    fontFamily: fonts.body,
     fontSize: 14,
-    color: brand.navyMuted,
+    color: dark.textMuted,
     lineHeight: 20,
   },
   checkboxLink: {
-    color: brand.navy,
-    fontWeight: '600',
-    textDecorationLine: 'underline',
+    color: dark.green,
+    fontFamily: fonts.bodySemiBold,
   },
   termsError: {
-    color: colors.error,
+    color: dark.coral,
+    fontFamily: fonts.bodyMedium,
     fontSize: 12,
     marginBottom: 12,
   },
@@ -319,16 +326,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 16,
     marginTop: 12,
-    shadowColor: brand.green,
+    shadowColor: dark.green,
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.22,
+    shadowOpacity: 0.3,
     shadowRadius: 16,
     elevation: 4,
   },
   submitText: {
-    color: colors.white,
-    fontSize: 16,
-    fontWeight: '600',
+    color: '#0B0F1A',
+    fontFamily: fonts.bodyBold,
+    fontSize: 15,
   },
   dividerRow: {
     flexDirection: 'row',
@@ -339,25 +346,25 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: `${brand.navy}18`,
+    backgroundColor: dark.border,
   },
   dividerText: {
+    fontFamily: fonts.bodySemiBold,
     fontSize: 12,
-    fontWeight: '500',
     letterSpacing: 0.8,
     textTransform: 'uppercase',
-    color: brand.navyMuted,
+    color: dark.textMuted,
   },
   footer: {
     marginTop: 32,
     textAlign: 'center',
+    fontFamily: fonts.body,
     fontSize: 14,
-    color: brand.navyMuted,
+    color: dark.textMuted,
   },
   link: {
-    color: brand.navy,
-    fontWeight: '700',
-    textDecorationLine: 'underline',
+    color: dark.green,
+    fontFamily: fonts.bodyBold,
   },
   pressed: {
     opacity: 0.9,

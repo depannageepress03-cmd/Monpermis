@@ -10,18 +10,18 @@ import {
   Text,
   View,
 } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
 import {
   ContentError,
   fetchChapterQuestions,
   fetchChapterTestSubject,
   type RevisionQuestion,
 } from '../../api/revision'
+import { DarkScreen } from '../../components/DarkScreen'
 import { PageNavbar } from '../../components/PageNavbar'
 import { ScreenLoader } from '../../components/ScreenLoader'
 import { useRequireAuth } from '../../hooks/useRequireAuth'
 import type { RootStackParamList } from '../../navigation/types'
-import { brand, colors } from '../../theme'
+import { dark, fonts } from '../../theme'
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'ChapterQuestionsList'>
 type Route = RouteProp<RootStackParamList, 'ChapterQuestionsList'>
@@ -59,8 +59,7 @@ export function ChapterQuestionsListScreen() {
   if (loading || !user) return <ScreenLoader />
 
   return (
-    <View style={styles.root}>
-      <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+    <DarkScreen>
         <PageNavbar
           title={chapterName}
           icon={HelpCircle}
@@ -81,7 +80,7 @@ export function ChapterQuestionsListScreen() {
             </Text>
           </View>
 
-          {loadingList ? <ActivityIndicator color={brand.green} style={{ marginBottom: 16 }} /> : null}
+          {loadingList ? <ActivityIndicator color={dark.green} style={{ marginBottom: 16 }} /> : null}
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
           {!loadingList && !error && questions.length === 0 ? (
@@ -103,15 +102,15 @@ export function ChapterQuestionsListScreen() {
                   })
                 }
               >
-                <HelpCircle size={20} color={colors.white} />
+                <HelpCircle size={20} color={'#0B0F1A'} />
                 <Text style={styles.startBtnText}>Commencer l’entraînement</Text>
-                <ChevronRight size={20} color={colors.white} />
+                <ChevronRight size={20} color={'#0B0F1A'} />
               </Pressable>
 
               {questions.map((question, index) => (
                 <View key={question.id} style={styles.card}>
                   <View style={styles.iconWrap}>
-                    <HelpCircle size={20} color="#B8860B" />
+                    <HelpCircle size={20} color={dark.coral} />
                   </View>
                   <View style={styles.cardContent}>
                     <Text style={styles.cardIndex}>Question {index + 1}</Text>
@@ -126,8 +125,7 @@ export function ChapterQuestionsListScreen() {
             </>
           ) : null}
         </ScrollView>
-      </SafeAreaView>
-    </View>
+      </DarkScreen>
   )
 }
 
@@ -167,8 +165,7 @@ export function ChapterTestSubjectScreen() {
   if (loading || !user) return <ScreenLoader />
 
   return (
-    <View style={styles.root}>
-      <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+    <DarkScreen>
         <PageNavbar
           title={chapterName}
           icon={ClipboardList}
@@ -187,7 +184,7 @@ export function ChapterTestSubjectScreen() {
             <Text style={styles.subtitle}>Évaluez-vous sur ce chapitre.</Text>
           </View>
 
-          {loadingList ? <ActivityIndicator color={brand.green} style={{ marginBottom: 16 }} /> : null}
+          {loadingList ? <ActivityIndicator color={dark.green} style={{ marginBottom: 16 }} /> : null}
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
           {!loadingList && !error && questions.length === 0 ? (
@@ -200,7 +197,7 @@ export function ChapterTestSubjectScreen() {
           {!loadingList && !error && questions.length > 0 ? (
             <>
               <View style={styles.summaryCard}>
-                <ClipboardList size={22} color={brand.navy} />
+                <ClipboardList size={22} color={dark.textPrimary} />
                 <View style={{ flex: 1 }}>
                   <Text style={styles.cardTitle}>Sujet du chapitre</Text>
                   <Text style={styles.cardIndex}>
@@ -219,56 +216,63 @@ export function ChapterTestSubjectScreen() {
                   })
                 }
               >
-                <ClipboardList size={20} color={colors.white} />
+                <ClipboardList size={20} color={'#0B0F1A'} />
                 <Text style={styles.startBtnText}>Commencer le sujet test</Text>
-                <ChevronRight size={20} color={colors.white} />
+                <ChevronRight size={20} color={'#0B0F1A'} />
               </Pressable>
             </>
           ) : null}
         </ScrollView>
-      </SafeAreaView>
-    </View>
+      </DarkScreen>
   )
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.white },
-  safe: { flex: 1 },
-  scroll: { paddingHorizontal: 24, paddingTop: 8, paddingBottom: 28 },
+  scroll: { paddingHorizontal: 22, paddingTop: 8, paddingBottom: 28 },
   header: { marginBottom: 24 },
   kicker: {
+    fontFamily: fonts.bodySemiBold,
     fontSize: 12,
-    fontWeight: '700',
     letterSpacing: 1.2,
     textTransform: 'uppercase',
-    color: brand.green,
+    color: dark.green,
     marginBottom: 6,
   },
   accentRow: { flexDirection: 'row', gap: 6, marginBottom: 14 },
   accent: { height: 4, borderRadius: 999 },
-  accentGreen: { width: 28, backgroundColor: brand.green },
-  accentGold: { width: 18, backgroundColor: brand.gold },
-  accentNavy: { width: 12, backgroundColor: brand.navy },
-  subtitle: { fontSize: 15, lineHeight: 22, color: brand.navyMuted },
+  accentGreen: { width: 28, backgroundColor: dark.green },
+  accentGold: { width: 18, backgroundColor: dark.coral },
+  accentNavy: { width: 12, backgroundColor: dark.textMuted },
+  subtitle: {
+    fontFamily: fonts.body,
+    fontSize: 15,
+    lineHeight: 22,
+    color: dark.textMuted,
+  },
   startBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    backgroundColor: brand.green,
+    backgroundColor: dark.green,
     borderRadius: 16,
     paddingVertical: 14,
     paddingHorizontal: 16,
     marginBottom: 14,
   },
-  startBtnText: { flex: 1, color: colors.white, fontSize: 15, fontWeight: '700' },
+  startBtnText: {
+    flex: 1,
+    color: '#0B0F1A',
+    fontFamily: fonts.bodyBold,
+    fontSize: 15,
+  },
   card: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: `${brand.gold}55`,
-    backgroundColor: brand.goldLight,
+    borderColor: dark.border,
+    backgroundColor: dark.surface,
     padding: 14,
     marginBottom: 10,
   },
@@ -278,8 +282,8 @@ const styles = StyleSheet.create({
     gap: 12,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: `${brand.navy}14`,
-    backgroundColor: '#eef1f5',
+    borderColor: dark.border,
+    backgroundColor: dark.surfaceRaised,
     padding: 16,
     marginBottom: 14,
   },
@@ -289,14 +293,38 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: dark.coralSoft,
   },
   cardContent: { flex: 1 },
-  cardIndex: { fontSize: 12, fontWeight: '700', color: brand.navyMuted, marginBottom: 2 },
-  cardTitle: { fontSize: 15, fontWeight: '700', color: brand.navy },
+  cardIndex: {
+    fontFamily: fonts.bodyBold,
+    fontSize: 12,
+    color: dark.textMuted,
+    marginBottom: 2,
+  },
+  cardTitle: {
+    fontFamily: fonts.displayBold,
+    fontSize: 15,
+    color: dark.textPrimary,
+  },
   centerBox: { alignItems: 'center', paddingVertical: 28 },
-  emptyTitle: { fontSize: 17, fontWeight: '700', color: brand.navy, marginBottom: 8 },
-  emptyText: { fontSize: 14, lineHeight: 20, color: brand.navyMuted, textAlign: 'center' },
-  errorText: { color: colors.error, marginBottom: 12, fontWeight: '600' },
+  emptyTitle: {
+    fontFamily: fonts.displayBold,
+    fontSize: 17,
+    color: dark.textPrimary,
+    marginBottom: 8,
+  },
+  emptyText: {
+    fontFamily: fonts.body,
+    fontSize: 14,
+    lineHeight: 20,
+    color: dark.textMuted,
+    textAlign: 'center',
+  },
+  errorText: {
+    color: dark.coral,
+    marginBottom: 12,
+    fontFamily: fonts.bodySemiBold,
+  },
   pressed: { opacity: 0.88 },
 })

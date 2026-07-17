@@ -7,6 +7,10 @@ export const fonts = {
   bodyMedium: 'Inter_500Medium',
   bodySemiBold: 'Inter_600SemiBold',
   bodyBold: 'Inter_700Bold',
+  /** Titraille moderne — accueil, cartes de parcours, gros chiffres. */
+  display: 'Poppins_600SemiBold',
+  displayBold: 'Poppins_700Bold',
+  displayExtraBold: 'Poppins_800ExtraBold',
 } as const
 
 export const typography: Record<string, TextStyle> = {
@@ -103,6 +107,23 @@ export const brand = {
   goldLight: '#fff8e6',
   greenPale: '#f0fdf4',
   navyPale: '#f1f3f6',
+}
+
+/**
+ * Palette UI principale de l’app (thème clair).
+ * Conservée sous le nom `dark` pour compatibilité avec les imports existants.
+ */
+export const dark = {
+  bg: '#FFFFFF',
+  surface: '#F8FAFC',
+  surfaceRaised: '#EEF1F5',
+  border: 'rgba(0,16,48,0.10)',
+  textPrimary: '#001030',
+  textMuted: '#3d5a73',
+  green: '#00B050',
+  greenSoft: 'rgba(0,176,80,0.12)',
+  coral: '#E85D3B',
+  coralSoft: 'rgba(232,93,59,0.12)',
 }
 
 export const radii = {

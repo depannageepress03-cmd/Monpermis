@@ -11,13 +11,13 @@ import {
   Text,
   View,
 } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
 import { ContentError, fetchLearnerJourney, type LearnerJourney } from '../../api/revision'
+import { DarkScreen } from '../../components/DarkScreen'
 import { PageNavbar } from '../../components/PageNavbar'
 import { ScreenLoader } from '../../components/ScreenLoader'
 import { useRequireAuth } from '../../hooks/useRequireAuth'
 import type { RootStackParamList } from '../../navigation/types'
-import { brand, colors } from '../../theme'
+import { dark, fonts } from '../../theme'
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'MesNotes'>
 
@@ -60,8 +60,7 @@ export function MesNotesScreen() {
   if (authLoading || !user) return <ScreenLoader />
 
   return (
-    <View style={styles.root}>
-      <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+    <DarkScreen>
         <PageNavbar
           title="Mes notes & avancée"
           icon={FileText}
@@ -77,7 +76,7 @@ export function MesNotesScreen() {
                 setRefreshing(true)
                 void load(true)
               }}
-              tintColor={brand.green}
+              tintColor={dark.green}
             />
           }
         >
@@ -88,7 +87,7 @@ export function MesNotesScreen() {
             </Text>
           </View>
 
-          {loading ? <ActivityIndicator color={brand.green} /> : null}
+          {loading ? <ActivityIndicator color={dark.green} /> : null}
           {error ? <Text style={styles.error}>{error}</Text> : null}
 
           {journey ? (
@@ -171,52 +170,79 @@ export function MesNotesScreen() {
             </>
           ) : null}
         </ScrollView>
-      </SafeAreaView>
-    </View>
+      </DarkScreen>
   )
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.white },
-  safe: { flex: 1 },
-  scroll: { paddingHorizontal: 24, paddingBottom: 28 },
+  scroll: { paddingHorizontal: 22, paddingBottom: 28 },
   header: { marginBottom: 20 },
   kicker: {
+    fontFamily: fonts.bodySemiBold,
     fontSize: 12,
-    fontWeight: '700',
     letterSpacing: 1.2,
     textTransform: 'uppercase',
-    color: brand.green,
+    color: dark.green,
     marginBottom: 6,
   },
-  subtitle: { fontSize: 15, lineHeight: 22, color: brand.navyMuted },
+  subtitle: {
+    fontFamily: fonts.body,
+    fontSize: 15,
+    lineHeight: 22,
+    color: dark.textMuted,
+  },
   card: {
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: `${brand.green}28`,
-    backgroundColor: brand.greenLight,
+    borderColor: dark.border,
+    backgroundColor: dark.surface,
     padding: 16,
     marginBottom: 14,
     gap: 12,
   },
-  cardTitle: { fontSize: 17, fontWeight: '800', color: brand.navy },
+  cardTitle: {
+    fontFamily: fonts.displayBold,
+    fontSize: 17,
+    color: dark.textPrimary,
+  },
   stopBox: {
-    backgroundColor: colors.white,
+    backgroundColor: dark.surfaceRaised,
     borderRadius: 14,
     padding: 12,
     gap: 4,
+    borderWidth: 1,
+    borderColor: dark.border,
   },
-  stopLabel: { fontSize: 12, fontWeight: '700', color: brand.navyMuted },
-  stopValue: { fontSize: 15, fontWeight: '700', color: brand.navy },
-  stopMeta: { fontSize: 13, color: brand.navyMuted },
-  empty: { fontSize: 14, lineHeight: 20, color: brand.navyMuted },
+  stopLabel: {
+    fontFamily: fonts.bodyBold,
+    fontSize: 12,
+    color: dark.textMuted,
+  },
+  stopValue: {
+    fontFamily: fonts.bodyBold,
+    fontSize: 15,
+    color: dark.textPrimary,
+  },
+  stopMeta: {
+    fontFamily: fonts.body,
+    fontSize: 13,
+    color: dark.textMuted,
+  },
+  empty: {
+    fontFamily: fonts.body,
+    fontSize: 14,
+    lineHeight: 20,
+    color: dark.textMuted,
+  },
   scoreRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    backgroundColor: colors.white,
+    backgroundColor: dark.surfaceRaised,
     borderRadius: 14,
     padding: 12,
+    borderWidth: 1,
+    borderColor: dark.border,
   },
   scoreBadge: {
     minWidth: 52,
@@ -224,11 +250,22 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: brand.goldLight,
+    backgroundColor: dark.coralSoft,
   },
-  scoreBadgeText: { fontWeight: '800', color: brand.navy },
+  scoreBadgeText: {
+    fontFamily: fonts.displayBold,
+    color: dark.textPrimary,
+  },
   scoreBody: { flex: 1 },
-  scoreTitle: { fontSize: 15, fontWeight: '700', color: brand.navy },
-  scoreMeta: { fontSize: 13, color: brand.navyMuted },
-  error: { color: colors.error, marginBottom: 12 },
+  scoreTitle: {
+    fontFamily: fonts.bodyBold,
+    fontSize: 15,
+    color: dark.textPrimary,
+  },
+  scoreMeta: {
+    fontFamily: fonts.body,
+    fontSize: 13,
+    color: dark.textMuted,
+  },
+  error: { color: dark.coral, marginBottom: 12, fontFamily: fonts.body },
 })

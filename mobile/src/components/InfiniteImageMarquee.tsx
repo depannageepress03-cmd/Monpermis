@@ -7,6 +7,7 @@ import {
   View,
   type LayoutChangeEvent,
 } from 'react-native'
+import { dark } from '../theme'
 
 const IMAGES = [
   require('../../assets/i1.jpg'),
@@ -108,7 +109,7 @@ const styles = StyleSheet.create({
     height: STRIP_HEIGHT,
     overflow: 'hidden',
     marginBottom: 28,
-    backgroundColor: '#f0f2f5',
+    backgroundColor: dark.surface,
     borderRadius: 12,
   },
   wrapCompact: {

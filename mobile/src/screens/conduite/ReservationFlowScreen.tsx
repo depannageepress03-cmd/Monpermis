@@ -13,7 +13,6 @@ import {
   TextInput,
   View,
 } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
 import {
   createReservation,
   fetchAvailableCreneaux,
@@ -24,11 +23,12 @@ import {
   type MoniteurPublic,
   type ReservationSlot,
 } from '../../api/reservations'
+import { DarkScreen } from '../../components/DarkScreen'
 import { PageNavbar } from '../../components/PageNavbar'
 import { ScreenLoader } from '../../components/ScreenLoader'
 import { useRequireAuth } from '../../hooks/useRequireAuth'
 import type { RootStackParamList } from '../../navigation/types'
-import { brand, colors } from '../../theme'
+import { dark, fonts } from '../../theme'
 import { resolveMediaUrl } from '../../utils/mediaUrl'
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'ReservationFlow'>
@@ -169,8 +169,7 @@ export function ReservationFlowScreen() {
   if (loading || !user) return <ScreenLoader />
 
   return (
-    <View style={styles.root}>
-      <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+    <DarkScreen>
         <PageNavbar
           title="Nouvelle séance"
           icon={CalendarPlus}
@@ -199,7 +198,7 @@ export function ReservationFlowScreen() {
                 Touchez une carte pour la sélectionner. Elle apparaîtra en surbrillance avant
                 d’ouvrir le calendrier.
               </Text>
-              {busy ? <ActivityIndicator color={brand.green} /> : null}
+              {busy ? <ActivityIndicator color={dark.green} /> : null}
               {!busy && moniteurs.length === 0 ? (
                 <Text style={styles.empty}>
                   Aucun moniteur disponible pour le moment. Revenez plus tard ou contactez
@@ -302,7 +301,7 @@ export function ReservationFlowScreen() {
                 Affichage sur les 14 prochains jours
                 {selectedMoniteur ? ` pour ${selectedMoniteur.fullName}` : ''}.
               </Text>
-              {busy ? <ActivityIndicator color={brand.green} /> : null}
+              {busy ? <ActivityIndicator color={dark.green} /> : null}
               {days.length === 0 && !busy ? (
                 <Text style={styles.empty}>
                   Aucun créneau libre sur cette période. Changez de moniteur ou réessayez
@@ -382,7 +381,7 @@ export function ReservationFlowScreen() {
                 value={paymentRef}
                 onChangeText={setPaymentRef}
                 placeholder="Réf. Mobile Money"
-                placeholderTextColor={brand.navyMuted}
+                placeholderTextColor={dark.textMuted}
               />
               <Pressable
                 style={[styles.primaryBtn, busy && styles.disabled]}
@@ -399,7 +398,7 @@ export function ReservationFlowScreen() {
           {step === 'success' ? (
             <View style={styles.successBox}>
               <View style={styles.successIcon}>
-                <Check size={28} color={colors.white} />
+                <Check size={28} color={'#0B0F1A'} />
               </View>
               <Text style={styles.successTitle}>Séance réservée</Text>
               <Text style={styles.successText}>
@@ -429,91 +428,114 @@ export function ReservationFlowScreen() {
             </View>
           ) : null}
         </ScrollView>
-      </SafeAreaView>
-    </View>
+      </DarkScreen>
   )
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.white },
-  safe: { flex: 1 },
-  scroll: { paddingHorizontal: 24, paddingTop: 14, paddingBottom: 32 },
+  scroll: { paddingHorizontal: 22, paddingTop: 14, paddingBottom: 32 },
   introTitle: {
+    fontFamily: fonts.displayExtraBold,
     fontSize: 20,
-    fontWeight: '800',
-    color: brand.navy,
+    color: dark.textPrimary,
     letterSpacing: -0.3,
     marginBottom: 8,
   },
   introText: {
+    fontFamily: fonts.body,
     fontSize: 14,
     lineHeight: 21,
-    color: brand.navyMuted,
+    color: dark.textMuted,
     marginBottom: 10,
   },
   selectedHint: {
     marginTop: 8,
     marginBottom: 4,
+    fontFamily: fonts.body,
     fontSize: 13,
     lineHeight: 19,
-    color: brand.navyMuted,
+    color: dark.textMuted,
   },
   tipsBox: {
     marginTop: 18,
     padding: 14,
     borderRadius: 14,
-    backgroundColor: brand.greenLight,
+    backgroundColor: dark.greenSoft,
     borderWidth: 1,
-    borderColor: `${brand.green}35`,
+    borderColor: dark.border,
     gap: 6,
   },
   tipsTitle: {
+    fontFamily: fonts.displayBold,
     fontSize: 14,
-    fontWeight: '800',
-    color: brand.navy,
+    color: dark.textPrimary,
     marginBottom: 4,
   },
   tipsItem: {
+    fontFamily: fonts.body,
     fontSize: 13,
     lineHeight: 19,
-    color: brand.navyMuted,
+    color: dark.textMuted,
   },
   section: {
+    fontFamily: fonts.displayBold,
     fontSize: 15,
-    fontWeight: '800',
-    color: brand.navy,
+    color: dark.textPrimary,
     marginTop: 8,
     marginBottom: 12,
   },
   choice: {
     borderWidth: 1.5,
-    borderColor: brand.green,
+    borderColor: dark.border,
     borderRadius: 14,
     padding: 14,
     marginBottom: 10,
-    backgroundColor: colors.white,
+    backgroundColor: dark.surface,
   },
   choiceSelected: {
-    backgroundColor: brand.gold,
-    borderColor: brand.gold,
+    backgroundColor: dark.coralSoft,
+    borderColor: dark.coral,
   },
-  choiceText: { color: brand.navy, fontWeight: '700', fontSize: 15 },
-  choiceTextSelected: { color: brand.navy },
+  choiceText: {
+    color: dark.textPrimary,
+    fontFamily: fonts.bodyBold,
+    fontSize: 15,
+  },
+  choiceTextSelected: { color: dark.textPrimary },
   moniteurRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  carThumb: { width: 64, height: 48, borderRadius: 8, backgroundColor: '#EEF1F4' },
+  carThumb: {
+    width: 64,
+    height: 48,
+    borderRadius: 8,
+    backgroundColor: dark.surfaceRaised,
+  },
   carPlaceholder: {
     width: 64,
     height: 48,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: `${brand.navy}18`,
+    borderColor: dark.border,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#F8FAFC',
+    backgroundColor: dark.surfaceRaised,
   },
-  carPlaceholderText: { fontSize: 10, color: brand.navyMuted, fontWeight: '600' },
-  brandText: { marginTop: 2, fontSize: 12, color: brand.navyMuted, fontWeight: '600' },
-  typeText: { marginTop: 2, fontSize: 12, color: brand.green, fontWeight: '800' },
+  carPlaceholderText: {
+    fontSize: 10,
+    color: dark.textMuted,
+    fontFamily: fonts.bodySemiBold,
+  },
+  brandText: {
+    marginTop: 2,
+    fontSize: 12,
+    color: dark.textMuted,
+    fontFamily: fonts.bodySemiBold,
+  },
+  typeText: {
+    marginTop: 2,
+    fontSize: 12,
+    color: dark.green,
+    fontFamily: fonts.displayBold,
+  },
   recapStrip: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -521,11 +543,13 @@ const styles = StyleSheet.create({
     marginBottom: 14,
     padding: 10,
     borderRadius: 12,
-    backgroundColor: brand.greenLight,
+    backgroundColor: dark.greenSoft,
+    borderWidth: 1,
+    borderColor: dark.border,
   },
   primaryBtn: {
     marginTop: 12,
-    backgroundColor: brand.green,
+    backgroundColor: dark.green,
     borderRadius: 14,
     paddingVertical: 15,
     alignItems: 'center',
@@ -533,29 +557,36 @@ const styles = StyleSheet.create({
   calendarBtn: {
     marginTop: 16,
   },
-  primaryBtnText: { color: colors.white, fontWeight: '800', fontSize: 15 },
+  primaryBtnText: {
+    color: '#0B0F1A',
+    fontFamily: fonts.displayBold,
+    fontSize: 15,
+  },
   secondaryBtn: {
     marginTop: 10,
     borderWidth: 1,
-    borderColor: `${brand.navy}22`,
+    borderColor: dark.border,
     borderRadius: 14,
     paddingVertical: 14,
     alignItems: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: dark.surface,
   },
-  secondaryBtnText: { color: brand.navy, fontWeight: '700' },
+  secondaryBtnText: {
+    color: dark.textPrimary,
+    fontFamily: fonts.bodyBold,
+  },
   dayCard: {
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: `${brand.navy}12`,
+    borderColor: dark.border,
     padding: 12,
     marginBottom: 12,
-    backgroundColor: colors.white,
+    backgroundColor: dark.surface,
   },
   dayTitle: {
+    fontFamily: fonts.displayBold,
     fontSize: 14,
-    fontWeight: '800',
-    color: brand.navy,
+    color: dark.textPrimary,
     marginBottom: 10,
     textTransform: 'capitalize',
   },
@@ -569,59 +600,93 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   slotAvailable: {
-    borderColor: brand.green,
-    backgroundColor: colors.white,
+    borderColor: dark.green,
+    backgroundColor: dark.surfaceRaised,
   },
   slotSelected: {
-    borderColor: brand.gold,
-    backgroundColor: brand.gold,
+    borderColor: dark.coral,
+    backgroundColor: dark.coralSoft,
   },
   slotUnavailable: {
-    borderColor: `${brand.navy}18`,
-    backgroundColor: '#EEF1F4',
-    opacity: 0.55,
+    borderColor: dark.border,
+    backgroundColor: dark.surfaceRaised,
+    opacity: 0.45,
   },
-  slotText: { fontWeight: '700', color: brand.green },
-  slotTextSelected: { color: brand.navy },
-  slotTextUnavailable: { color: brand.navyMuted },
+  slotText: {
+    fontFamily: fonts.bodyBold,
+    color: dark.green,
+  },
+  slotTextSelected: { color: dark.textPrimary },
+  slotTextUnavailable: { color: dark.textMuted },
   recap: {
     borderRadius: 14,
-    backgroundColor: brand.greenLight,
+    backgroundColor: dark.greenSoft,
     borderWidth: 1,
-    borderColor: `${brand.green}35`,
+    borderColor: dark.border,
     padding: 14,
     marginBottom: 12,
   },
-  recapLine: { color: brand.navy, fontWeight: '600', marginBottom: 4 },
-  price: { marginTop: 8, fontSize: 22, fontWeight: '800', color: brand.navy },
-  hint: { fontSize: 13, color: brand.navyMuted, lineHeight: 18, marginBottom: 10 },
+  recapLine: {
+    color: dark.textPrimary,
+    fontFamily: fonts.bodySemiBold,
+    marginBottom: 4,
+  },
+  price: {
+    marginTop: 8,
+    fontFamily: fonts.displayExtraBold,
+    fontSize: 22,
+    color: dark.textPrimary,
+  },
+  hint: {
+    fontFamily: fonts.body,
+    fontSize: 13,
+    color: dark.textMuted,
+    lineHeight: 18,
+    marginBottom: 10,
+  },
   input: {
     borderWidth: 1,
-    borderColor: `${brand.navy}18`,
+    borderColor: dark.border,
     borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 12,
-    color: brand.navy,
+    color: dark.textPrimary,
+    backgroundColor: dark.surface,
     marginBottom: 8,
+    fontFamily: fonts.body,
   },
   successBox: { alignItems: 'center', paddingTop: 12 },
   successIcon: {
     width: 64,
     height: 64,
     borderRadius: 20,
-    backgroundColor: brand.green,
+    backgroundColor: dark.green,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 14,
   },
-  successTitle: { fontSize: 22, fontWeight: '800', color: brand.navy, marginBottom: 8 },
+  successTitle: {
+    fontFamily: fonts.displayExtraBold,
+    fontSize: 22,
+    color: dark.textPrimary,
+    marginBottom: 8,
+  },
   successText: {
     textAlign: 'center',
-    color: brand.navyMuted,
+    color: dark.textMuted,
     marginBottom: 16,
     lineHeight: 20,
+    fontFamily: fonts.body,
   },
-  empty: { color: brand.navyMuted, marginBottom: 12 },
-  error: { color: '#B91C1C', marginBottom: 10, fontWeight: '600' },
+  empty: {
+    color: dark.textMuted,
+    marginBottom: 12,
+    fontFamily: fonts.body,
+  },
+  error: {
+    color: dark.coral,
+    marginBottom: 10,
+    fontFamily: fonts.bodySemiBold,
+  },
   disabled: { opacity: 0.7 },
 })

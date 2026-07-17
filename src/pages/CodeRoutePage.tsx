@@ -61,7 +61,7 @@ const categories = [
     label: 'E-Codepermis',
     subtitle: '(examen blanc)',
     className: 'category-purple',
-    requiresAllCourses: false,
+    requiresAllCourses: true,
     icon: (
       <svg viewBox="0 0 64 64" aria-hidden="true">
         <rect x="14" y="12" width="36" height="40" rx="4" fill="#fff" opacity="0.95" />
@@ -97,7 +97,7 @@ export function CodeRoutePage() {
       setUnlockHint(
         data.unlocked === false
           ? data.message ||
-              'Terminez tous les cours de chaque chapitre pour débloquer les examens test.'
+              'Terminez tous les cours de chaque chapitre pour débloquer les épreuves.'
           : null,
       )
     } catch (err) {

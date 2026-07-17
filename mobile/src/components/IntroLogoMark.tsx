@@ -1,12 +1,10 @@
 import { useEffect, useRef } from 'react'
 import { Animated, Easing, Image, StyleSheet, Text, View } from 'react-native'
-import { brand } from '../theme'
+import { dark, fonts } from '../theme'
 
-const INTRO_BG = '#FAF9F6'
+const INTRO_BG = dark.bg
 
-/**
- * Fallback natif si le WebView HTML échoue — même fond crème, sans fond vert.
- */
+/** Logo d’intro — fond blanc aligné sur le reste de l’app. */
 export function IntroLogoMark() {
   const opacity = useRef(new Animated.Value(0)).current
   const translateY = useRef(new Animated.Value(10)).current
@@ -61,12 +59,12 @@ const styles = StyleSheet.create({
   },
   wordmark: {
     marginTop: 18,
+    fontFamily: fonts.displayExtraBold,
     fontSize: 28,
-    fontWeight: '700',
-    color: '#14263F',
+    color: dark.textPrimary,
     letterSpacing: 1.2,
   },
   dot: {
-    color: brand.green,
+    color: dark.green,
   },
 })

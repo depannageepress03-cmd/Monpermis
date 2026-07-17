@@ -3,18 +3,18 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { BookOpen, Check, ChevronRight } from 'lucide-react-native'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
 import {
   fetchCourseProgress,
   markCourseCompleted,
   startCourseSession,
 } from '../../api/conduite'
 import { MediaContent } from '../../components/MediaContent'
+import { DarkScreen } from '../../components/DarkScreen'
 import { PageNavbar } from '../../components/PageNavbar'
 import { ScreenLoader } from '../../components/ScreenLoader'
 import { useRequireAuth } from '../../hooks/useRequireAuth'
 import type { RootStackParamList } from '../../navigation/types'
-import { brand, colors } from '../../theme'
+import { dark, fonts } from '../../theme'
 import { formatChapterHeading, formatCourseHeading } from '../../utils/chapterLabel'
 import { formatSeconds, isCourseUnlocked } from '../../utils/unlock'
 
@@ -102,8 +102,7 @@ export function LeconDetailScreen() {
 
   if (accessBlocked) {
     return (
-      <View style={styles.root}>
-        <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+      <DarkScreen>
           <PageNavbar
             title={formatCourseHeading(courseIndex, course.title)}
             icon={BookOpen}
@@ -117,14 +116,12 @@ export function LeconDetailScreen() {
               Terminez le cours précédent pour accéder à celui-ci.
             </Text>
           </View>
-        </SafeAreaView>
-      </View>
+        </DarkScreen>
     )
   }
 
   return (
-    <View style={styles.root}>
-      <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+    <DarkScreen>
         <PageNavbar
           title={formatCourseHeading(courseIndex, course.title)}
           icon={BookOpen}
@@ -186,7 +183,7 @@ export function LeconDetailScreen() {
             </Text>
 
             {progressLoading ? (
-              <ActivityIndicator color={brand.green} style={{ marginTop: 12 }} />
+              <ActivityIndicator color={dark.green} style={{ marginTop: 12 }} />
             ) : (
               <Pressable
                 style={[
@@ -200,7 +197,7 @@ export function LeconDetailScreen() {
                 accessibilityState={{ checked: isCompleted }}
               >
                 <View style={[styles.checkbox, isCompleted && styles.checkboxChecked]}>
-                  {isCompleted ? <Check size={16} color={colors.white} strokeWidth={3} /> : null}
+                  {isCompleted ? <Check size={16} color={'#0B0F1A'} strokeWidth={3} /> : null}
                 </View>
                 <Text style={styles.checkboxLabel}>
                   {isCompleted
@@ -209,7 +206,7 @@ export function LeconDetailScreen() {
                       ? `Attendez encore ${formatSeconds(secondsRemaining)}`
                       : 'J’ai terminé ce cours et je suis prêt pour la suite'}
                 </Text>
-                {saving ? <ActivityIndicator size="small" color={brand.green} /> : null}
+                {saving ? <ActivityIndicator size="small" color={dark.green} /> : null}
               </Pressable>
             )}
 
@@ -230,7 +227,7 @@ export function LeconDetailScreen() {
                     }
                   >
                     <Text style={styles.primaryBtnText}>Cours suivant</Text>
-                    <ChevronRight size={18} color={colors.white} />
+                    <ChevronRight size={18} color={'#0B0F1A'} />
                   </Pressable>
                 ) : (
                   <Pressable
@@ -244,21 +241,13 @@ export function LeconDetailScreen() {
             ) : null}
           </View>
         </ScrollView>
-      </SafeAreaView>
-    </View>
+      </DarkScreen>
   )
 }
 
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: colors.white,
-  },
-  safe: {
-    flex: 1,
-  },
   scroll: {
-    paddingHorizontal: 24,
+    paddingHorizontal: 22,
     paddingTop: 8,
     paddingBottom: 28,
   },
@@ -266,11 +255,10 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   kicker: {
+    fontFamily: fonts.displayExtraBold,
     fontSize: 24,
-    fontWeight: '800',
     letterSpacing: -0.3,
-    textTransform: 'none',
-    color: brand.navy,
+    color: dark.textPrimary,
     marginBottom: 6,
     lineHeight: 30,
   },
@@ -284,21 +272,21 @@ const styles = StyleSheet.create({
   },
   accentGreen: {
     width: 28,
-    backgroundColor: brand.green,
+    backgroundColor: dark.green,
   },
   accentGold: {
     width: 18,
-    backgroundColor: brand.gold,
+    backgroundColor: dark.coral,
   },
   accentNavy: {
     width: 12,
-    backgroundColor: brand.navy,
+    backgroundColor: dark.textMuted,
   },
   moduleCard: {
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: `${brand.navy}14`,
-    backgroundColor: colors.white,
+    borderColor: dark.border,
+    backgroundColor: dark.surface,
     padding: 16,
     marginBottom: 14,
   },
@@ -308,36 +296,38 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   emptyTitle: {
+    fontFamily: fonts.displayBold,
     fontSize: 17,
-    fontWeight: '700',
-    color: brand.navy,
+    color: dark.textPrimary,
     marginBottom: 8,
     textAlign: 'center',
   },
   emptyText: {
+    fontFamily: fonts.body,
     fontSize: 14,
     lineHeight: 20,
-    color: brand.navyMuted,
+    color: dark.textMuted,
     textAlign: 'center',
   },
   completionCard: {
     marginTop: 8,
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: `${brand.green}40`,
-    backgroundColor: brand.greenLight,
+    borderColor: dark.border,
+    backgroundColor: dark.greenSoft,
     padding: 16,
   },
   completionTitle: {
+    fontFamily: fonts.displayBold,
     fontSize: 16,
-    fontWeight: '800',
-    color: brand.navy,
+    color: dark.textPrimary,
     marginBottom: 6,
   },
   completionHint: {
+    fontFamily: fonts.body,
     fontSize: 13,
     lineHeight: 19,
-    color: brand.navyMuted,
+    color: dark.textMuted,
   },
   checkboxRow: {
     marginTop: 14,
@@ -346,43 +336,44 @@ const styles = StyleSheet.create({
     gap: 12,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: `${brand.navy}18`,
-    backgroundColor: colors.white,
+    borderColor: dark.border,
+    backgroundColor: dark.surface,
     paddingVertical: 12,
     paddingHorizontal: 12,
   },
   checkboxRowDone: {
-    borderColor: `${brand.green}55`,
+    borderColor: 'rgba(34,214,115,0.45)',
   },
   checkboxRowLocked: {
     opacity: 0.7,
-    backgroundColor: '#f8fafc',
+    backgroundColor: dark.surfaceRaised,
   },
   checkbox: {
     width: 24,
     height: 24,
     borderRadius: 7,
     borderWidth: 2,
-    borderColor: brand.navyMuted,
+    borderColor: dark.textMuted,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: dark.surface,
   },
   checkboxChecked: {
-    borderColor: brand.green,
-    backgroundColor: brand.green,
+    borderColor: dark.green,
+    backgroundColor: dark.green,
   },
   checkboxLabel: {
     flex: 1,
+    fontFamily: fonts.bodySemiBold,
     fontSize: 14,
     lineHeight: 20,
-    fontWeight: '600',
-    color: brand.navy,
+    color: dark.textPrimary,
   },
   errorText: {
     marginTop: 10,
     fontSize: 13,
-    color: '#B42318',
+    color: dark.coral,
+    fontFamily: fonts.body,
   },
   actions: {
     marginTop: 14,
@@ -394,14 +385,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 6,
     borderRadius: 14,
-    backgroundColor: brand.green,
+    backgroundColor: dark.green,
     paddingVertical: 14,
     paddingHorizontal: 16,
   },
   primaryBtnText: {
-    color: colors.white,
+    color: '#0B0F1A',
+    fontFamily: fonts.bodyBold,
     fontSize: 15,
-    fontWeight: '700',
   },
   secondaryBtn: {
     flexDirection: 'row',
@@ -410,20 +401,14 @@ const styles = StyleSheet.create({
     gap: 8,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: `${brand.navy}22`,
-    backgroundColor: colors.white,
+    borderColor: dark.border,
+    backgroundColor: dark.surface,
     paddingVertical: 13,
     paddingHorizontal: 16,
   },
-  btnDisabled: {
-    opacity: 0.7,
-  },
   secondaryBtnText: {
-    color: brand.navy,
+    color: dark.textPrimary,
+    fontFamily: fonts.bodyBold,
     fontSize: 14,
-    fontWeight: '700',
-  },
-  secondaryBtnTextDisabled: {
-    color: brand.navyMuted,
   },
 })

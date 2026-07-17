@@ -2,6 +2,7 @@ import { useNavigation, useRoute, type RouteProp } from '@react-navigation/nativ
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { LinearGradient } from 'expo-linear-gradient'
+import { setStatusBarStyle } from 'expo-status-bar'
 import {
   Animated,
   Image,
@@ -21,7 +22,7 @@ import { BrandName } from '../components/BrandName'
 import { useAuth } from '../context/AuthContext'
 import { useGoogleSignIn } from '../hooks/useGoogleSignIn'
 import type { RootStackParamList } from '../navigation/types'
-import { brand, colors, gradients, typography } from '../theme'
+import { dark, fonts, gradients } from '../theme'
 import { validateEmail, validatePassword } from '../utils/validation'
 import { showAuthError } from '../utils/showAuthError'
 
@@ -40,6 +41,7 @@ export function LoginScreen() {
   const contentTranslate = useRef(new Animated.Value(12)).current
 
   useEffect(() => {
+    setStatusBarStyle('dark')
     Animated.parallel([
       Animated.timing(contentOpacity, {
         toValue: 1,
@@ -130,10 +132,10 @@ export function LoginScreen() {
                   style={styles.logo}
                   resizeMode="contain"
                 />
-                <BrandName size={22} style={styles.brand} />
-                <Text style={styles.title}>Connexion</Text>
+                <BrandName size={22} style={styles.brand} mainColor={dark.textPrimary} />
+                <Text style={styles.title}>Content de te revoir</Text>
                 <Text style={styles.subtitle}>
-                  Saisissez vos identifiants pour accéder à votre espace.
+                  Connecte-toi pour reprendre ta préparation au permis.
                 </Text>
               </View>
 
@@ -206,7 +208,7 @@ export function LoginScreen() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: colors.introBg,
+    backgroundColor: dark.bg,
   },
   safe: {
     flex: 1,
@@ -225,31 +227,36 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   logo: {
-    width: 120,
-    height: 80,
+    width: 110,
+    height: 74,
     marginBottom: 12,
   },
   brand: {
     marginBottom: 16,
   },
   title: {
-    ...typography.h2,
-    color: brand.navy,
+    fontFamily: fonts.displayExtraBold,
+    fontSize: 26,
+    color: dark.textPrimary,
     textAlign: 'center',
     marginBottom: 8,
+    letterSpacing: -0.4,
   },
   subtitle: {
-    ...typography.bodySmall,
-    color: brand.navyMuted,
+    fontFamily: fonts.body,
+    fontSize: 14,
+    lineHeight: 20,
+    color: dark.textMuted,
     textAlign: 'center',
     maxWidth: 280,
   },
   info: {
-    color: brand.green,
-    ...typography.bodySmall,
+    color: dark.green,
+    fontFamily: fonts.bodyMedium,
+    fontSize: 13,
     textAlign: 'center',
     marginBottom: 12,
-    backgroundColor: brand.greenLight,
+    backgroundColor: dark.greenSoft,
     borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 12,
@@ -263,8 +270,9 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
   },
   forgot: {
-    ...typography.bodySmall,
-    color: brand.navyMuted,
+    fontFamily: fonts.bodyMedium,
+    fontSize: 13,
+    color: dark.textMuted,
   },
   submitBtn: {
     width: '100%',
@@ -273,15 +281,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 16,
-    shadowColor: brand.green,
+    shadowColor: dark.green,
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.22,
+    shadowOpacity: 0.3,
     shadowRadius: 16,
     elevation: 4,
   },
   submitText: {
-    ...typography.button,
-    color: colors.white,
+    fontFamily: fonts.bodyBold,
+    fontSize: 15,
+    color: '#0B0F1A',
   },
   dividerRow: {
     flexDirection: 'row',
@@ -292,23 +301,26 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: `${brand.navy}18`,
+    backgroundColor: dark.border,
   },
   dividerText: {
-    ...typography.label,
-    color: brand.navyMuted,
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 12,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+    color: dark.textMuted,
   },
   footer: {
     marginTop: 32,
     textAlign: 'center',
-    ...typography.bodySmall,
-    color: brand.navyMuted,
+    fontFamily: fonts.body,
+    fontSize: 14,
+    color: dark.textMuted,
   },
   link: {
-    color: brand.navy,
-    fontWeight: '700',
-    ...typography.bodySmall,
-    textDecorationLine: 'underline',
+    color: dark.green,
+    fontFamily: fonts.bodyBold,
+    fontSize: 14,
   },
   pressed: {
     opacity: 0.9,

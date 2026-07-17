@@ -571,14 +571,21 @@ export function createAdminChapterRouter(Model) {
         return res.status(400).json({ success: false, error: 'Aucune image fournie' })
       }
 
-      const saved = writeFile(req.file)
-      res.status(201).json({
-        success: true,
-        data: {
-          imageUrl: `/uploads/images/${saved.filename}`,
-          mediaBytes: saved.size,
-        },
-      })
+      try {
+        const saved = writeFile(req.file)
+        res.status(201).json({
+          success: true,
+          data: {
+            imageUrl: `/uploads/images/${saved.filename}`,
+            mediaBytes: saved.size,
+          },
+        })
+      } catch (err) {
+        return res.status(err.status || 400).json({
+          success: false,
+          error: err.message || 'Enregistrement image impossible',
+        })
+      }
     })
   })
 

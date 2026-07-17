@@ -2,11 +2,11 @@ import { useNavigation } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { FileText } from 'lucide-react-native'
 import { ScrollView, StyleSheet, Text, View, Pressable } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
 import { BrandName } from '../components/BrandName'
+import { DarkScreen } from '../components/DarkScreen'
 import { PageNavbar } from '../components/PageNavbar'
 import type { RootStackParamList } from '../navigation/types'
-import { brand, colors } from '../theme'
+import { dark, fonts } from '../theme'
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'TermsOfUse'>
 
@@ -21,7 +21,7 @@ function ParagraphWithBrand({ text, style }: { text: string; style: object }) {
       {parts.map((part, index) => (
         <Text key={`${index}-${part.slice(0, 12)}`}>
           {part}
-          {index < parts.length - 1 ? <BrandName size={15} inline /> : null}
+          {index < parts.length - 1 ? <BrandName size={15} inline mainColor={dark.textPrimary} /> : null}
         </Text>
       ))}
     </Text>
@@ -109,99 +109,86 @@ export function TermsOfUseScreen() {
   const navigation = useNavigation<Nav>()
 
   return (
-    <View style={styles.root}>
-      <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-        <PageNavbar
-          title="Conditions d'utilisation"
-          icon={FileText}
-          onBack={() => navigation.goBack()}
-        />
+    <DarkScreen>
+      <PageNavbar
+        title="Conditions d'utilisation"
+        icon={FileText}
+        onBack={() => navigation.goBack()}
+      />
 
-        <ScrollView
-          contentContainerStyle={styles.scroll}
-          showsVerticalScrollIndicator={false}
-        >
-          <View style={styles.header}>
-            <View style={styles.updatedRow}>
-              <FileText size={16} color={brand.green} />
-              <Text style={styles.updated}>Dernière mise à jour : juillet 2026</Text>
-            </View>
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        <View style={styles.updatedRow}>
+          <FileText size={16} color={dark.green} />
+          <Text style={styles.updated}>Dernière mise à jour : juillet 2026</Text>
+        </View>
+
+        {SECTIONS.map((section) => (
+          <View key={section.title} style={styles.card}>
+            <Text style={styles.sectionTitle}>{section.title}</Text>
+            {section.paragraphs.map((paragraph) => (
+              <ParagraphWithBrand key={paragraph} text={paragraph} style={styles.paragraph} />
+            ))}
+            {'bullets' in section && section.bullets
+              ? section.bullets.map((bullet) => (
+                  <Text key={bullet} style={styles.bullet}>
+                    • {bullet}
+                  </Text>
+                ))
+              : null}
           </View>
+        ))}
 
-          {SECTIONS.map((section) => (
-            <View key={section.title} style={styles.card}>
-              <Text style={styles.sectionTitle}>{section.title}</Text>
-              {section.paragraphs.map((paragraph) => (
-                <ParagraphWithBrand key={paragraph} text={paragraph} style={styles.paragraph} />
-              ))}
-              {'bullets' in section && section.bullets
-                ? section.bullets.map((bullet) => (
-                    <Text key={bullet} style={styles.bullet}>
-                      • {bullet}
-                    </Text>
-                  ))
-                : null}
-            </View>
-          ))}
-
-          <Pressable style={styles.backLink} onPress={() => navigation.navigate('Register')}>
-            <Text style={styles.backLinkText}>← Retour à l'inscription</Text>
-          </Pressable>
-        </ScrollView>
-      </SafeAreaView>
-    </View>
+        <Pressable style={styles.backLink} onPress={() => navigation.navigate('Register')}>
+          <Text style={styles.backLinkText}>← Retour à l'inscription</Text>
+        </Pressable>
+      </ScrollView>
+    </DarkScreen>
   )
 }
 
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: colors.white,
-  },
-  safe: {
-    flex: 1,
-  },
   scroll: {
     paddingHorizontal: 20,
     paddingTop: 8,
     paddingBottom: 36,
   },
-  header: {
-    marginBottom: 20,
-  },
   updatedRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    marginBottom: 20,
   },
   updated: {
+    fontFamily: fonts.body,
     fontSize: 13,
-    color: brand.navyMuted,
+    color: dark.textMuted,
   },
   card: {
-    backgroundColor: colors.white,
+    backgroundColor: dark.surface,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: `${brand.navy}10`,
+    borderColor: dark.border,
     padding: 16,
     marginBottom: 12,
     gap: 8,
   },
   sectionTitle: {
+    fontFamily: fonts.displayBold,
     fontSize: 16,
-    fontWeight: '700',
-    color: brand.navy,
+    color: dark.textPrimary,
     marginBottom: 2,
   },
   paragraph: {
+    fontFamily: fonts.body,
     fontSize: 14,
     lineHeight: 21,
-    color: brand.navyMuted,
+    color: dark.textMuted,
   },
   bullet: {
+    fontFamily: fonts.body,
     fontSize: 14,
     lineHeight: 21,
-    color: brand.navyMuted,
+    color: dark.textMuted,
     paddingLeft: 4,
   },
   backLink: {
@@ -209,8 +196,8 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   backLinkText: {
+    fontFamily: fonts.bodyBold,
     fontSize: 14,
-    fontWeight: '700',
-    color: brand.green,
+    color: dark.green,
   },
 })
