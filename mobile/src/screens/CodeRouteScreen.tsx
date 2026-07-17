@@ -1,7 +1,9 @@
-import { useNavigation } from '@react-navigation/native'
+import { useFocusEffect, useNavigation } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
-import { LinearGradient } from 'expo-linear-gradient'
+import { setStatusBarStyle } from 'expo-status-bar'
 import {
+  ChevronLeft,
+  ChevronRight,
   ClipboardCheck,
   FileText,
   HelpCircle,
@@ -19,17 +21,15 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { ContentError, fetchPracticeExams } from '../api/revision'
 import { fetchSubscriptionMe, type SubscriptionAccess } from '../api/subscriptions'
-import { FadeUp } from '../components/FadeUp'
 import { Bouncy } from '../components/Bouncy'
-import { AccentBar } from '../components/AccentBar'
-import { CodeModuleIcon } from '../components/ModuleIcons'
-import { PageNavbar } from '../components/PageNavbar'
+import { FadeUp } from '../components/FadeUp'
 import { ScreenLoader } from '../components/ScreenLoader'
 import { useRequireAuth } from '../hooks/useRequireAuth'
 import type { RootStackParamList } from '../navigation/types'
-import { brand, colors, gradients, typography } from '../theme'
+import { dark, fonts } from '../theme'
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'CodeRoute'>
+type Tone = 'green' | 'coral' | 'neutral'
 
 const categories = [
   {
@@ -37,23 +37,23 @@ const categories = [
     label: 'Révision par chapitres',
     subtitle: 'Signalisation, priorités, sécurité…',
     icon: List,
-    tone: 'green' as const,
+    tone: 'green' as Tone,
     requiresAllCourses: false,
   },
   {
     id: 'ExamensTest' as const,
     label: 'Examens test',
-    subtitle: 'Auto-évaluation guidée',
+    subtitle: 'Auto-évaluation guidée, note sur 20',
     icon: HelpCircle,
-    tone: 'gold' as const,
+    tone: 'coral' as Tone,
     requiresAllCourses: true,
   },
   {
     id: 'MesNotes' as const,
     label: 'Mes notes & avancée',
-    subtitle: 'Où vous en êtes et vos notes',
+    subtitle: 'Où tu en es et tes résultats',
     icon: FileText,
-    tone: 'navy' as const,
+    tone: 'neutral' as Tone,
     requiresAllCourses: false,
   },
   {
@@ -61,10 +61,16 @@ const categories = [
     label: 'E-Codepermis',
     subtitle: 'Examen blanc en conditions réelles',
     icon: ClipboardCheck,
-    tone: 'green' as const,
-    requiresAllCourses: false,
+    tone: 'green' as Tone,
+    requiresAllCourses: true,
   },
 ]
+
+const toneMap: Record<Tone, { accent: string; soft: string; border: string }> = {
+  green: { accent: dark.green, soft: dark.greenSoft, border: 'rgba(34,214,115,0.28)' },
+  coral: { accent: dark.coral, soft: dark.coralSoft, border: 'rgba(255,107,74,0.28)' },
+  neutral: { accent: dark.textPrimary, soft: dark.surfaceRaised, border: dark.border },
+}
 
 export function CodeRouteScreen() {
   const navigation = useNavigation<Nav>()
@@ -74,6 +80,13 @@ export function CodeRouteScreen() {
   const [subscription, setSubscription] = useState<SubscriptionAccess | null>(null)
   const [subscriptionLoading, setSubscriptionLoading] = useState(true)
 
+  useFocusEffect(
+    useCallback(() => {
+      setStatusBarStyle('dark')
+      return () => setStatusBarStyle('dark')
+    }, []),
+  )
+
   const loadUnlock = useCallback(async () => {
     try {
       const data = await fetchPracticeExams()
@@ -81,7 +94,7 @@ export function CodeRouteScreen() {
       setUnlockHint(
         data.unlocked === false
           ? data.message ||
-              'Terminez tous les cours de chaque chapitre pour débloquer les examens test.'
+              'Terminez tous les cours de chaque chapitre pour débloquer les épreuves.'
           : null,
       )
     } catch (err) {
@@ -104,149 +117,279 @@ export function CodeRouteScreen() {
 
   if (loading || !user) return <ScreenLoader />
 
-  const lockedContent = subscriptionLoading ? (
-    <View style={styles.accessState}>
-      <Text style={styles.accessStateCopy}>Vérification de votre accès…</Text>
-    </View>
-  ) : !subscription?.accessCode ? (
-    <View style={styles.accessState}>
-      <View style={styles.accessLock}><Lock size={32} color={brand.navyMuted} /></View>
-      <Text style={styles.accessStateTitle}>Le module Code est verrouillé</Text>
-      <Text style={styles.accessStateCopy}>
-        Votre abonnement doit inclure l’accès au Code de la route.
-      </Text>
-      <Pressable style={styles.accessButton} onPress={() => navigation.navigate('Abonnement')}>
-        <Text style={styles.accessButtonText}>Voir les offres</Text>
+  const header = (
+    <View style={styles.topBar}>
+      <Pressable
+        style={({ pressed }) => [styles.backBtn, pressed && styles.pressed]}
+        onPress={() => navigation.navigate('Home')}
+        accessibilityLabel="Retour"
+        hitSlop={10}
+      >
+        <ChevronLeft size={22} color={dark.textPrimary} />
       </Pressable>
+      <Text style={styles.topBarTitle}>Code de la route</Text>
+      <View style={styles.backBtn} />
     </View>
-  ) : null
+  )
+
+  if (subscriptionLoading) {
+    return (
+      <View style={styles.root}>
+        <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+          {header}
+          <View style={styles.accessState}>
+            <Text style={styles.accessStateCopy}>Vérification de ton accès…</Text>
+          </View>
+        </SafeAreaView>
+      </View>
+    )
+  }
+
+  if (!subscription?.accessCode) {
+    return (
+      <View style={styles.root}>
+        <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+          {header}
+          <View style={styles.accessState}>
+            <View style={styles.accessLock}>
+              <Lock size={30} color={dark.textMuted} />
+            </View>
+            <Text style={styles.accessStateTitle}>Module Code verrouillé</Text>
+            <Text style={styles.accessStateCopy}>
+              Ton abonnement doit inclure l’accès au Code de la route.
+            </Text>
+            <Bouncy scaleTo={0.97} onPress={() => navigation.navigate('Abonnement')}>
+              <View style={styles.accessButton}>
+                <Text style={styles.accessButtonText}>Voir les offres</Text>
+              </View>
+            </Bouncy>
+          </View>
+        </SafeAreaView>
+      </View>
+    )
+  }
 
   return (
     <View style={styles.root}>
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-        <FadeUp delay={0}>
-          <PageNavbar
-            title="Code de la route"
-            icon={CodeModuleIcon}
-            onBack={() => navigation.navigate('Home')}
-          />
-        </FadeUp>
-
-        {lockedContent ?? <ScrollView
-          contentContainerStyle={styles.scroll}
-          showsVerticalScrollIndicator={false}
-        >
-          <FadeUp delay={120} style={styles.header}>
-            <AccentBar delay={0} />
-            <Text style={styles.subtitle}>
-              Choisissez un module pour réviser, vous tester ou passer un examen blanc.
+        {header}
+        <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+          <FadeUp delay={80} style={styles.hero}>
+            <Text style={styles.heroEyebrow}>4 modules</Text>
+            <Text style={styles.heroTitle}>Prépare ton code</Text>
+            <Text style={styles.heroSubtitle}>
+              Révise chapitre par chapitre, teste-toi, suis ta progression, puis passe l’examen
+              blanc en conditions réelles.
             </Text>
-            <Text style={styles.detail}>
-              Avancez à votre rythme : cours par chapitres, examens test, suivi de vos notes,
-              puis un examen blanc en conditions réelles.
-            </Text>
-            {!examsUnlocked && unlockHint ? (
-              <Text style={styles.lockHint}>{unlockHint}</Text>
-            ) : null}
           </FadeUp>
 
-          <View style={styles.grid}>
+          {!examsUnlocked && unlockHint ? (
+            <FadeUp delay={140}>
+              <View style={styles.hintCard}>
+                <Lock size={14} color={dark.coral} />
+                <Text style={styles.hintText}>{unlockHint}</Text>
+              </View>
+            </FadeUp>
+          ) : null}
+
+          <View style={styles.list}>
             {categories.map((category, index) => {
               const Icon = category.icon
-              const toneStyles = toneMap[category.tone]
+              const tone = toneMap[category.tone]
               const locked = category.requiresAllCourses && !examsUnlocked
 
               return (
-                <FadeUp
-                  key={category.id}
-                  delay={280 + index * 90}
-                  style={styles.cardWrap}
-                >
+                <FadeUp key={category.id} delay={200 + index * 80}>
                   <Bouncy
                     disabled={locked}
-                    scaleTo={0.95}
+                    scaleTo={0.97}
                     onPress={() => {
                       if (!locked) navigation.navigate(category.id)
                     }}
                   >
-                    <View style={[styles.card, toneStyles.card, locked && styles.cardLocked]}>
-                      <LinearGradient
-                        colors={locked ? ['#E5E9EF', '#D6DCE5'] : toneStyles.gradient}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 1 }}
-                        style={styles.iconWrap}
+                    <View
+                      style={[
+                        styles.card,
+                        { borderColor: locked ? dark.border : tone.border },
+                        locked && styles.cardLocked,
+                      ]}
+                    >
+                      <View style={styles.cardIndex}>
+                        <Text style={styles.cardIndexText}>{index + 1}</Text>
+                      </View>
+                      <View
+                        style={[
+                          styles.iconWrap,
+                          { backgroundColor: locked ? dark.surfaceRaised : tone.soft },
+                        ]}
                       >
                         {locked ? (
-                          <Lock size={20} color={brand.navyMuted} />
+                          <Lock size={20} color={dark.textMuted} />
                         ) : (
-                          <Icon size={22} color={colors.white} />
+                          <Icon size={22} color={tone.accent} />
                         )}
-                      </LinearGradient>
-                      <Text style={styles.cardTitle}>{category.label}</Text>
-                      <Text style={styles.cardSubtitle}>
-                        {locked ? 'Terminez tous les cours' : category.subtitle}
-                      </Text>
+                      </View>
+                      <View style={styles.cardCopy}>
+                        <Text style={styles.cardTitle}>{category.label}</Text>
+                        <Text style={styles.cardSubtitle}>
+                          {locked
+                            ? 'Finis toute la révision par chapitres pour débloquer'
+                            : category.subtitle}
+                        </Text>
+                      </View>
+                      <ChevronRight
+                        size={20}
+                        color={locked ? dark.textMuted : tone.accent}
+                      />
                     </View>
                   </Bouncy>
                 </FadeUp>
               )
             })}
           </View>
-        </ScrollView>}
+        </ScrollView>
       </SafeAreaView>
     </View>
   )
 }
 
-const toneMap = {
-  green: {
-    card: { backgroundColor: brand.greenLight, borderColor: `${brand.green}28` },
-    gradient: gradients.green,
-  },
-  gold: {
-    card: { backgroundColor: brand.goldLight, borderColor: `${brand.gold}55` },
-    gradient: gradients.gold,
-  },
-  navy: {
-    card: { backgroundColor: `${brand.navy}08`, borderColor: `${brand.navy}14` },
-    gradient: gradients.navy,
-  },
-}
-
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: colors.white,
+    backgroundColor: dark.bg,
   },
   safe: {
     flex: 1,
   },
+
+  /* Header */
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingTop: 4,
+    paddingBottom: 12,
+  },
+  backBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 999,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: dark.surface,
+    borderWidth: 1,
+    borderColor: dark.border,
+  },
+  topBarTitle: {
+    fontFamily: fonts.displayBold,
+    fontSize: 16,
+    color: dark.textPrimary,
+  },
+
   scroll: {
-    paddingHorizontal: 24,
-    paddingTop: 28,
-    paddingBottom: 28,
+    paddingHorizontal: 22,
+    paddingTop: 12,
+    paddingBottom: 32,
   },
-  header: {
+
+  /* Hero */
+  hero: {
+    marginBottom: 22,
+  },
+  heroEyebrow: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 13,
+    color: dark.green,
+    letterSpacing: 0.3,
+    marginBottom: 2,
+  },
+  heroTitle: {
+    fontFamily: fonts.displayExtraBold,
+    fontSize: 30,
+    lineHeight: 36,
+    color: dark.textPrimary,
+    letterSpacing: -0.5,
+  },
+  heroSubtitle: {
     marginTop: 8,
-    marginBottom: 48,
+    fontFamily: fonts.body,
+    fontSize: 14.5,
+    lineHeight: 21,
+    color: dark.textMuted,
   },
-  subtitle: {
-    ...typography.bodySmall,
-    color: brand.navy,
-    maxWidth: 360,
-    marginBottom: 12,
+
+  /* Hint */
+  hintCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 11,
+    paddingHorizontal: 14,
+    borderRadius: 14,
+    backgroundColor: dark.coralSoft,
+    marginBottom: 18,
   },
-  detail: {
-    ...typography.bodySmall,
-    color: brand.navyMuted,
-    maxWidth: 360,
+  hintText: {
+    flex: 1,
+    fontFamily: fonts.bodyMedium,
+    fontSize: 12.5,
+    lineHeight: 18,
+    color: dark.textPrimary,
   },
-  lockHint: {
-    ...typography.caption,
-    color: brand.navyMuted,
-    marginTop: 12,
-    maxWidth: 360,
+
+  /* Module list */
+  list: {
+    gap: 12,
   },
+  card: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    borderRadius: 20,
+    paddingVertical: 15,
+    paddingHorizontal: 15,
+    borderWidth: 1,
+    backgroundColor: dark.surface,
+  },
+  cardLocked: {
+    opacity: 0.55,
+  },
+  cardIndex: {
+    width: 22,
+    alignItems: 'center',
+  },
+  cardIndexText: {
+    fontFamily: fonts.displayBold,
+    fontSize: 13,
+    color: dark.textMuted,
+  },
+  iconWrap: {
+    width: 52,
+    height: 52,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  cardCopy: {
+    flex: 1,
+    minWidth: 0,
+  },
+  cardTitle: {
+    fontFamily: fonts.displayBold,
+    fontSize: 16,
+    color: dark.textPrimary,
+    marginBottom: 3,
+  },
+  cardSubtitle: {
+    fontFamily: fonts.body,
+    fontSize: 12.5,
+    lineHeight: 17,
+    color: dark.textMuted,
+  },
+
+  /* Access state */
   accessState: {
     flex: 1,
     alignItems: 'center',
@@ -260,77 +403,36 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: `${brand.navy}08`,
+    backgroundColor: dark.surfaceRaised,
     marginBottom: 16,
   },
   accessStateTitle: {
-    ...typography.h4,
-    color: brand.navy,
+    fontFamily: fonts.displayBold,
+    fontSize: 19,
+    color: dark.textPrimary,
     textAlign: 'center',
     marginBottom: 8,
   },
   accessStateCopy: {
-    ...typography.bodySmall,
-    color: brand.navyMuted,
+    fontFamily: fonts.body,
+    fontSize: 14,
+    lineHeight: 21,
+    color: dark.textMuted,
     textAlign: 'center',
   },
   accessButton: {
-    marginTop: 20,
-    borderRadius: 12,
-    backgroundColor: brand.green,
-    paddingHorizontal: 20,
-    paddingVertical: 13,
-  },
-  accessButtonText: { ...typography.button, color: colors.white },
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-    marginTop: 40,
-  },
-  cardWrap: {
-    width: '47.5%',
-    flexGrow: 1,
-    flexBasis: '47%',
-  },
-  card: {
-    width: '100%',
-    alignItems: 'center',
-    borderRadius: 18,
-    borderWidth: 1,
-    paddingVertical: 16,
-    paddingHorizontal: 10,
-    minHeight: 148,
-  },
-  cardLocked: {
-    opacity: 0.55,
-  },
-  iconWrap: {
-    width: 46,
-    height: 46,
+    marginTop: 22,
     borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 10,
-    shadowColor: brand.navy,
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.16,
-    shadowRadius: 6,
-    elevation: 3,
+    backgroundColor: dark.green,
+    paddingHorizontal: 22,
+    paddingVertical: 14,
   },
-  cardTitle: {
-    ...typography.bodySemiBold,
+  accessButtonText: {
+    fontFamily: fonts.bodyBold,
     fontSize: 14,
-    color: brand.navy,
-    marginBottom: 4,
-    textAlign: 'center',
-  },
-  cardSubtitle: {
-    ...typography.caption,
-    color: brand.navyMuted,
-    textAlign: 'center',
+    color: '#0B0F1A',
   },
   pressed: {
-    opacity: 0.88,
+    opacity: 0.85,
   },
 })

@@ -12,6 +12,7 @@ export function emptyAccess() {
     accessCode: false,
     accessConduite: false,
     accessECodepermis: false,
+    accessAiChat: false,
     subscription: null,
     pendingSubscription: null,
   }
@@ -63,6 +64,7 @@ export async function getUserAccess(userId) {
     accessCode: Boolean(active.accessCode),
     accessConduite: Boolean(active.accessConduite),
     accessECodepermis: Boolean(active.accessECodepermis),
+    accessAiChat: Boolean(active.accessAiChat),
     subscription: active.toPublicJSON(),
     pendingSubscription: pending ? pending.toPublicJSON() : null,
     freeOfferUsed: Boolean(freeOfferUsed),
@@ -74,6 +76,7 @@ export function snapshotFromPlan(plan) {
     accessCode: Boolean(plan.accessCode),
     accessConduite: Boolean(plan.accessConduite),
     accessECodepermis: Boolean(plan.accessECodepermis),
+    accessAiChat: Boolean(plan.accessAiChat),
     heuresIncluses: Number(plan.heuresIncluses) || 0,
     isFreeOffer: (Number(plan.price) || 0) <= 0 && !plan.isGracePlan,
     planName: plan.name,
@@ -92,6 +95,33 @@ export async function hasUsedFreeOffer(userId) {
     isFreeOffer: true,
     status: { $ne: 'cancelled' },
   })
+}
+
+/**
+ * Propage les changements d'un plan (nom, prix, droits) aux abonnements
+ * actifs et en attente qui le référencent, pour que ce soit visible partout
+ * (accueil, profil, historique). Ne recrédite pas d'heures et ne change pas
+ * la date de fin déjà calculée.
+ */
+export async function syncSubscriptionsToPlan(plan) {
+  const snap = snapshotFromPlan(plan)
+  const result = await UserSubscription.updateMany(
+    { planId: plan._id, status: { $in: ['active', 'pending_payment'] } },
+    {
+      $set: {
+        planName: snap.planName,
+        price: snap.price,
+        currency: snap.currency,
+        accessCode: snap.accessCode,
+        accessConduite: snap.accessConduite,
+        accessECodepermis: snap.accessECodepermis,
+        accessAiChat: snap.accessAiChat,
+        heuresIncluses: snap.heuresIncluses,
+        isFreeOffer: snap.isFreeOffer,
+      },
+    },
+  )
+  return { updated: result.modifiedCount || 0 }
 }
 
 export async function createPendingSubscription(userId, plan, { source = 'purchase', paymentNote = '' } = {}) {
@@ -180,12 +210,14 @@ export async function ensureDefaultPlans() {
         accessCode: true,
         accessConduite: true,
         accessECodepermis: true,
+        accessAiChat: true,
         heuresIncluses: 0,
         active: false,
         isGracePlan: true,
         order: 999,
       })
     }
+    await ensureAiChatOnEligiblePlans()
     return { created: false, grace }
   }
 
@@ -199,6 +231,7 @@ export async function ensureDefaultPlans() {
       accessCode: true,
       accessConduite: true,
       accessECodepermis: true,
+      accessAiChat: true,
       heuresIncluses: 0,
       active: false,
       isGracePlan: true,
@@ -212,6 +245,7 @@ export async function ensureDefaultPlans() {
       accessCode: true,
       accessConduite: false,
       accessECodepermis: false,
+      accessAiChat: false,
       heuresIncluses: 0,
       active: true,
       order: 1,
@@ -224,18 +258,20 @@ export async function ensureDefaultPlans() {
       accessCode: false,
       accessConduite: true,
       accessECodepermis: false,
+      accessAiChat: false,
       heuresIncluses: 4,
       active: true,
       order: 2,
     },
     {
       name: 'Pack complet mensuel',
-      description: 'Code + conduite + E-Codepermis + 4 heures',
+      description: 'Code + conduite + E-Codepermis + chat IA tuteur + 4 heures',
       durationType: 'monthly',
       price: 30000,
       accessCode: true,
       accessConduite: true,
       accessECodepermis: true,
+      accessAiChat: true,
       heuresIncluses: 4,
       active: true,
       order: 3,
@@ -243,6 +279,25 @@ export async function ensureDefaultPlans() {
   ])
 
   return { created: true, grace }
+}
+
+/**
+ * Active le chat IA sur les formules éligibles (Pack complet + grâce)
+ * et propage le droit aux abonnements actifs / en attente.
+ */
+export async function ensureAiChatOnEligiblePlans() {
+  const plans = await SubscriptionPlan.find({
+    $or: [{ isGracePlan: true }, { name: 'Pack complet mensuel' }],
+  })
+  for (const plan of plans) {
+    if (plan.accessAiChat) continue
+    plan.accessAiChat = true
+    if (plan.name === 'Pack complet mensuel' && !String(plan.description || '').includes('chat IA')) {
+      plan.description = 'Code + conduite + E-Codepermis + chat IA tuteur + 4 heures'
+    }
+    await plan.save()
+    await syncSubscriptionsToPlan(plan)
+  }
 }
 
 /** Attribue une période de grâce aux utilisateurs sans abonnement (actif ou en attente). */

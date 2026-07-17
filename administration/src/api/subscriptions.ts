@@ -1,7 +1,7 @@
 import { apiFetch } from './client'
 
 export type DurationType = 'monthly' | 'quarterly' | 'semiannual' | 'yearly' | 'custom'
-export type CustomDurationUnit = 'days' | 'months'
+export type CustomDurationUnit = 'days' | 'weeks' | 'months'
 export type SubscriptionStatus = 'active' | 'pending_payment' | 'expired' | 'cancelled' | 'none'
 
 export interface SubscriptionPlan {
@@ -18,6 +18,7 @@ export interface SubscriptionPlan {
   accessCode: boolean
   accessConduite: boolean
   accessECodepermis: boolean
+  accessAiChat: boolean
   heuresIncluses: number
   active: boolean
   isGracePlan: boolean
@@ -35,6 +36,7 @@ export interface SubscriptionPlanPayload {
   accessCode: boolean
   accessConduite: boolean
   accessECodepermis: boolean
+  accessAiChat: boolean
   heuresIncluses: number
   active: boolean
   order: number
@@ -55,6 +57,7 @@ export interface Subscription {
   accessCode: boolean
   accessConduite: boolean
   accessECodepermis: boolean
+  accessAiChat: boolean
   heuresIncluses: number
   startAt: string | null
   endAt: string | null
@@ -133,6 +136,14 @@ export function cancelSubscription(token: string, subscriptionId: string) {
   return apiFetch<{ subscription: Subscription }>(
     `/api/admin/subscriptions/${subscriptionId}/cancel`,
     { method: 'POST' },
+    token,
+  )
+}
+
+export function changeSubscriptionPlan(token: string, subscriptionId: string, planId: string) {
+  return apiFetch<{ subscription: Subscription }>(
+    `/api/admin/subscriptions/${subscriptionId}/change-plan`,
+    { method: 'POST', body: JSON.stringify({ planId }) },
     token,
   )
 }

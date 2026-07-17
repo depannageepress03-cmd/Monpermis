@@ -23,6 +23,7 @@ import adminPracticeExamsRoutes from './routes/adminPracticeExams.js'
 import adminEcodepermisExamsRoutes from './routes/adminEcodepermisExams.js'
 import adminSubscriptionsRoutes from './routes/adminSubscriptions.js'
 import subscriptionsRoutes from './routes/subscriptions.js'
+import aiTutorRoutes from './routes/aiTutor.js'
 import fedapayWebhooksRoutes from './routes/fedapayWebhooks.js'
 import { ensureReservationIndexes } from './models/Reservation.js'
 import {
@@ -64,6 +65,9 @@ function isOriginAllowed(origin) {
   return false
 }
 
+// Render / reverse-proxy : sans ça, toutes les requêtes partagent la même IP → 429 globaux
+app.set('trust proxy', 1)
+
 // CORS manuel — plus fiable qu’avec Express 5 + package cors sur OPTIONS
 app.use((req, res, next) => {
   const origin = req.headers.origin
@@ -89,14 +93,14 @@ app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }))
 // Rate limiting
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 10,
+  max: 20,
   message: { success: false, error: 'Trop de tentatives. R\u00e9essayez dans 15 minutes.' },
   standardHeaders: true,
   legacyHeaders: false,
 })
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 120,
+  max: Math.max(120, Number(process.env.API_RATE_LIMIT_MAX) || 900),
   message: { success: false, error: 'Trop de requêtes. Réessayez dans 15 minutes.' },
   standardHeaders: true,
   legacyHeaders: false,
@@ -121,23 +125,38 @@ app.get('/api/health', (_req, res) => {
   })
 })
 
+// Un seul limiteur API (évite le double comptage sur les mounts /admin/revision répétés).
+// Les routes /api/admin/* (hors login) sont déjà protégées par JWT → pas de rate-limit ici.
+app.use('/api', (req, res, next) => {
+  if (
+    req.path.startsWith('/auth') ||
+    req.path.startsWith('/admin') ||
+    req.path.startsWith('/webhooks') ||
+    req.path === '/health'
+  ) {
+    return next()
+  }
+  return apiLimiter(req, res, next)
+})
+
 app.use('/api/auth', authLimiter, authRoutes)
 app.use('/api/admin/auth', authLimiter, adminAuthRoutes)
-app.use('/api/admin/revision', apiLimiter, adminRevisionRoutes)
-app.use('/api/admin/revision', apiLimiter, adminQuestionsRoutes)
-app.use('/api/admin/revision', apiLimiter, adminPracticeExamsRoutes)
-app.use('/api/admin/ecodepermis', apiLimiter, adminEcodepermisExamsRoutes)
-app.use('/api/admin/conduite', apiLimiter, adminConduiteRoutes)
-app.use('/api/admin/conduite', apiLimiter, adminReservationsRoutes)
-app.use('/api/admin/users', apiLimiter, adminUsersRoutes)
-app.use('/api/admin/dashboard', apiLimiter, adminDashboardRoutes)
-app.use('/api/admin/subscriptions', apiLimiter, adminSubscriptionsRoutes)
-app.use('/api/subscriptions', apiLimiter, subscriptionsRoutes)
-app.use('/api/content/revision', apiLimiter, contentRoutes)
-app.use('/api/content/revision', apiLimiter, practiceExamsRoutes)
-app.use('/api/content/ecodepermis', apiLimiter, ecodepermisExamsRoutes)
-app.use('/api/content/conduite', apiLimiter, contentConduiteRoutes)
-app.use('/api/reservations', apiLimiter, reservationsRoutes)
+app.use('/api/admin/revision', adminRevisionRoutes)
+app.use('/api/admin/revision', adminQuestionsRoutes)
+app.use('/api/admin/revision', adminPracticeExamsRoutes)
+app.use('/api/admin/ecodepermis', adminEcodepermisExamsRoutes)
+app.use('/api/admin/conduite', adminConduiteRoutes)
+app.use('/api/admin/conduite', adminReservationsRoutes)
+app.use('/api/admin/users', adminUsersRoutes)
+app.use('/api/admin/dashboard', adminDashboardRoutes)
+app.use('/api/admin/subscriptions', adminSubscriptionsRoutes)
+app.use('/api/subscriptions', subscriptionsRoutes)
+app.use('/api/ai', aiTutorRoutes)
+app.use('/api/content/revision', contentRoutes)
+app.use('/api/content/revision', practiceExamsRoutes)
+app.use('/api/content/ecodepermis', ecodepermisExamsRoutes)
+app.use('/api/content/conduite', contentConduiteRoutes)
+app.use('/api/reservations', reservationsRoutes)
 
 async function connectMongo() {
   await mongoose.connect(process.env.MONGODB_URI, {

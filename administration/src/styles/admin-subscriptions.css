@@ -182,6 +182,23 @@
   grid-column: 1 / -1;
 }
 
+.subscriptions-duration-preview {
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: var(--r-sm);
+  background: var(--green-light);
+  color: var(--green-deep);
+  font-size: 14px;
+  line-height: 1.4;
+}
+.subscriptions-duration-preview strong {
+  font-weight: 800;
+}
+.subscriptions-duration-preview span {
+  color: var(--navy-muted);
+  font-weight: 400;
+}
+
 .subscriptions-checkboxes {
   display: flex;
   flex-wrap: wrap;
@@ -280,6 +297,23 @@
   align-items: center;
   flex-wrap: wrap;
   gap: 6px;
+}
+
+.subscription-change-plan {
+  height: 30px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-sm);
+  background: #fff;
+  color: var(--navy);
+  font: inherit;
+  font-size: 13px;
+  padding: 0 8px;
+  cursor: pointer;
+}
+.subscription-change-plan:focus {
+  outline: none;
+  border-color: var(--green);
+  box-shadow: 0 0 0 3px rgba(0, 176, 80, 0.12);
 }
 
 .subscription-card-actions {

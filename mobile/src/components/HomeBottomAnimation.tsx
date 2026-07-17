@@ -7,7 +7,7 @@ import {
   View,
   type LayoutChangeEvent,
 } from 'react-native'
-import { brand, colors } from '../theme'
+import { dark } from '../theme'
 
 const CAR = require('../../assets/car-clean.png')
 const CAR_WIDTH = 128
@@ -30,7 +30,7 @@ export function HomeBottomAnimation({ compact = false }: { compact?: boolean }) 
     const roadLoop = Animated.loop(
       Animated.timing(road, {
         toValue: 1,
-        duration: 500,
+        duration: 1400,
         easing: Easing.linear,
         useNativeDriver: true,
       }),
@@ -39,7 +39,7 @@ export function HomeBottomAnimation({ compact = false }: { compact?: boolean }) 
       Animated.sequence([
         Animated.timing(drive, {
           toValue: 1,
-          duration: 1600,
+          duration: 4800,
           easing: Easing.linear,
           useNativeDriver: true,
         }),
@@ -151,7 +151,9 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 18,
     borderRadius: 999,
-    backgroundColor: brand.navy,
+    backgroundColor: dark.surfaceRaised,
+    borderWidth: 1,
+    borderColor: dark.border,
     overflow: 'hidden',
     justifyContent: 'center',
   },
@@ -164,8 +166,8 @@ const styles = StyleSheet.create({
     right: 8,
     top: 3,
     height: 1.5,
-    backgroundColor: colors.white,
-    opacity: 0.55,
+    backgroundColor: dark.textMuted,
+    opacity: 0.4,
   },
   roadEdgeBottom: {
     top: undefined,
@@ -181,6 +183,6 @@ const styles = StyleSheet.create({
     width: 14,
     height: 3,
     borderRadius: 2,
-    backgroundColor: brand.gold,
+    backgroundColor: dark.green,
   },
 })

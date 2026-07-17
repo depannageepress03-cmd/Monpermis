@@ -1,10 +1,10 @@
 import { ActivityIndicator, StyleSheet, View } from 'react-native'
-import { colors } from '../theme'
+import { dark } from '../theme'
 
 export function ScreenLoader() {
   return (
     <View style={styles.container}>
-      <ActivityIndicator size="large" color={colors.primary} />
+      <ActivityIndicator size="large" color={dark.green} />
     </View>
   )
 }
@@ -14,6 +14,6 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: dark.bg,
   },
 })

@@ -1,7 +1,23 @@
 import mongoose from 'mongoose'
 
 export const DURATION_TYPES = ['monthly', 'quarterly', 'semiannual', 'yearly', 'custom']
-export const CUSTOM_DURATION_UNITS = ['days', 'months']
+export const CUSTOM_DURATION_UNITS = ['days', 'weeks', 'months', 'years']
+
+/** Nombre de jours pour un couple (quantité, unité). */
+export function daysForUnit(amount, unit) {
+  const qty = Math.max(1, Number(amount) || 1)
+  switch (unit) {
+    case 'years':
+      return qty * 365
+    case 'months':
+      return qty * 30
+    case 'weeks':
+      return qty * 7
+    case 'days':
+    default:
+      return qty
+  }
+}
 
 export function durationDaysFor(type, customDays = 0, customUnit = 'days') {
   switch (type) {
@@ -13,10 +29,8 @@ export function durationDaysFor(type, customDays = 0, customUnit = 'days') {
       return 180
     case 'yearly':
       return 365
-    case 'custom': {
-      const amount = Math.max(1, Number(customDays) || 1)
-      return customUnit === 'months' ? amount * 30 : amount
-    }
+    case 'custom':
+      return daysForUnit(customDays, customUnit)
     default:
       return 30
   }
@@ -34,9 +48,9 @@ export function durationLabel(type, customDays = 0, customUnit = 'days') {
       return 'Annuel'
     case 'custom': {
       const amount = Math.max(1, Number(customDays) || 1)
-      return customUnit === 'months'
-        ? `${amount} mois`
-        : `${amount} jour(s)`
+      if (customUnit === 'months') return `${amount} mois`
+      if (customUnit === 'weeks') return `${amount} semaine${amount > 1 ? 's' : ''}`
+      return `${amount} jour${amount > 1 ? 's' : ''}`
     }
     default:
       return type
@@ -60,6 +74,8 @@ const subscriptionPlanSchema = new mongoose.Schema(
     accessCode: { type: Boolean, default: false },
     accessConduite: { type: Boolean, default: false },
     accessECodepermis: { type: Boolean, default: false },
+    /** Chat IA tuteur sur les cours Code (ex. Pack complet). */
+    accessAiChat: { type: Boolean, default: false },
     heuresIncluses: { type: Number, default: 0, min: 0 },
     /** Visible au catalogue élève si actif et non-grâce. */
     active: { type: Boolean, default: true },
@@ -90,6 +106,7 @@ subscriptionPlanSchema.methods.toPublicJSON = function toPublicJSON() {
     accessCode: Boolean(this.accessCode),
     accessConduite: Boolean(this.accessConduite),
     accessECodepermis: Boolean(this.accessECodepermis),
+    accessAiChat: Boolean(this.accessAiChat),
     heuresIncluses: this.heuresIncluses || 0,
     active: this.active !== false,
     isGracePlan: Boolean(this.isGracePlan),

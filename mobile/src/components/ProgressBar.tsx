@@ -1,12 +1,12 @@
 import { useEffect, useRef } from 'react'
 import { Animated, StyleSheet, View } from 'react-native'
-import { brand, radii } from '../theme'
+import { dark, radii } from '../theme'
 
 /** Barre de progression animée — feedback visuel façon jeu. */
 export function ProgressBar({
   progress,
-  color = brand.green,
-  trackColor = `${brand.navy}0F`,
+  color = dark.green,
+  trackColor = 'rgba(255,255,255,0.08)',
   height = 8,
 }: {
   progress: number

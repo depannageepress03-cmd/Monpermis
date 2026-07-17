@@ -1,7 +1,7 @@
 import { Volume2 } from 'lucide-react-native'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
-import { brand } from '../theme'
+import { dark, fonts } from '../theme'
 
 type Props = {
   questionKey: string
@@ -144,7 +144,7 @@ export function QuestionAudioSequence({ questionKey, promptUri, answerUris = [] 
           }}
           hitSlop={8}
         >
-          <Volume2 size={18} color={brand.navy} />
+          <Volume2 size={18} color={dark.coral} />
           <Text style={styles.label}>Réécouter la question</Text>
         </Pressable>
       ) : null}
@@ -163,11 +163,11 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 14,
     borderRadius: 12,
-    backgroundColor: brand.goldLight,
+    backgroundColor: dark.coralSoft,
     borderWidth: 1,
-    borderColor: `${brand.gold}66`,
+    borderColor: 'rgba(255,107,74,0.28)',
   },
   btnDisabled: { opacity: 0.55 },
-  label: { fontSize: 14, fontWeight: '700', color: brand.navy },
-  status: { fontSize: 13, color: brand.navyMuted, fontWeight: '600' },
+  label: { fontSize: 14, fontFamily: fonts.bodyBold, color: dark.textPrimary },
+  status: { fontSize: 13, color: dark.textMuted, fontFamily: fonts.bodySemiBold },
 })

@@ -3,7 +3,7 @@ import { Chapter } from '../models/Chapter.js'
 import { Question } from '../models/Question.js'
 import { TEST_SUBJECT_SIZE, TestSubject } from '../models/TestSubject.js'
 import { requireAdminAuth } from '../middleware/adminAuth.js'
-import { audioUpload } from '../middleware/upload.js'
+import { audioUpload, writeFile } from '../middleware/upload.js'
 import { logger } from '../utils/logger.js'
 
 const router = Router()
@@ -321,13 +321,21 @@ router.post('/upload-audio', (req, res) => {
       return res.status(400).json({ success: false, error: 'Aucun fichier audio fourni' })
     }
 
-    res.status(201).json({
-      success: true,
-      data: {
-        audioUrl: `/uploads/audio/${req.file.filename}`,
-        mediaBytes: req.file.size || 0,
-      },
-    })
+    try {
+      const saved = writeFile(req.file)
+      res.status(201).json({
+        success: true,
+        data: {
+          audioUrl: `/uploads/audio/${saved.filename}`,
+          mediaBytes: saved.size,
+        },
+      })
+    } catch (err) {
+      return res.status(err.status || 400).json({
+        success: false,
+        error: err.message || 'Enregistrement audio impossible',
+      })
+    }
   })
 })
 

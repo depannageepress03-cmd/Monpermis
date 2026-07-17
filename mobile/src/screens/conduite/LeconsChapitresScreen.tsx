@@ -11,13 +11,13 @@ import {
   Text,
   View,
 } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
 import { ContentError, fetchConduiteChapters, type ConduiteChapter } from '../../api/conduite'
+import { DarkScreen } from '../../components/DarkScreen'
 import { PageNavbar } from '../../components/PageNavbar'
 import { ScreenLoader } from '../../components/ScreenLoader'
 import { useRequireAuth } from '../../hooks/useRequireAuth'
 import type { RootStackParamList } from '../../navigation/types'
-import { brand, colors } from '../../theme'
+import { dark, fonts } from '../../theme'
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'LeconsChapitres'>
 
@@ -50,8 +50,7 @@ export function LeconsChapitresScreen() {
   if (authLoading || !user) return <ScreenLoader />
 
   return (
-    <View style={styles.root}>
-      <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+    <DarkScreen>
         <PageNavbar
           title="Leçons de conduite"
           icon={BookOpen}
@@ -69,7 +68,7 @@ export function LeconsChapitresScreen() {
                 setRefreshing(true)
                 loadChapters(true)
               }}
-              tintColor={brand.green}
+              tintColor={dark.green}
             />
           }
         >
@@ -82,7 +81,7 @@ export function LeconsChapitresScreen() {
 
           {loading ? (
             <View style={styles.centerBox}>
-              <ActivityIndicator color={brand.green} size="large" />
+              <ActivityIndicator color={dark.green} size="large" />
             </View>
           ) : null}
 
@@ -130,26 +129,18 @@ export function LeconsChapitresScreen() {
                       {chapter.courses.length} cours
                     </Text>
                   </View>
-                  <ChevronRight size={20} color={brand.navyMuted} />
+                  <ChevronRight size={20} color={dark.textMuted} />
                 </Pressable>
               ))
             : null}
         </ScrollView>
-      </SafeAreaView>
-    </View>
+      </DarkScreen>
   )
 }
 
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: colors.white,
-  },
-  safe: {
-    flex: 1,
-  },
   scroll: {
-    paddingHorizontal: 24,
+    paddingHorizontal: 22,
     paddingTop: 14,
     paddingBottom: 28,
   },
@@ -157,9 +148,10 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   subtitle: {
+    fontFamily: fonts.body,
     fontSize: 15,
     lineHeight: 22,
-    color: brand.navyMuted,
+    color: dark.textMuted,
   },
   card: {
     flexDirection: 'row',
@@ -167,8 +159,8 @@ const styles = StyleSheet.create({
     gap: 14,
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: `${brand.green}28`,
-    backgroundColor: brand.greenLight,
+    borderColor: dark.border,
+    backgroundColor: dark.surface,
     padding: 16,
     marginBottom: 12,
   },
@@ -178,28 +170,29 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: dark.coralSoft,
     borderWidth: 1,
-    borderColor: `${brand.green}30`,
+    borderColor: dark.border,
   },
   cardNumber: {
+    fontFamily: fonts.displayExtraBold,
     fontSize: 18,
-    fontWeight: '800',
-    color: brand.green,
+    color: dark.coral,
   },
   cardContent: {
     flex: 1,
   },
   cardTitle: {
+    fontFamily: fonts.displayBold,
     fontSize: 16,
-    fontWeight: '700',
-    color: brand.navy,
+    color: dark.textPrimary,
     marginBottom: 2,
   },
   cardSubtitle: {
+    fontFamily: fonts.body,
     fontSize: 13,
     lineHeight: 18,
-    color: brand.navyMuted,
+    color: dark.textMuted,
   },
   centerBox: {
     alignItems: 'center',
@@ -207,21 +200,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   emptyTitle: {
+    fontFamily: fonts.displayBold,
     fontSize: 17,
-    fontWeight: '700',
-    color: brand.navy,
+    color: dark.textPrimary,
     marginBottom: 8,
     textAlign: 'center',
   },
   emptyText: {
+    fontFamily: fonts.body,
     fontSize: 14,
     lineHeight: 20,
-    color: brand.navyMuted,
+    color: dark.textMuted,
     textAlign: 'center',
   },
   errorText: {
+    fontFamily: fonts.body,
     fontSize: 14,
-    color: colors.error,
+    color: dark.coral,
     textAlign: 'center',
     marginBottom: 12,
   },
@@ -229,11 +224,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     paddingVertical: 10,
     borderRadius: 999,
-    backgroundColor: brand.green,
+    backgroundColor: dark.green,
   },
   retryText: {
-    color: colors.white,
-    fontWeight: '700',
+    color: '#0B0F1A',
+    fontFamily: fonts.bodyBold,
     fontSize: 14,
   },
   pressed: {

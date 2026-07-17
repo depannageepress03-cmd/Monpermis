@@ -1,5 +1,5 @@
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native'
-import { brand, colors } from '../theme'
+import { colors, dark, fonts } from '../theme'
 
 interface GoogleSignInButtonProps {
   onPress: () => void
@@ -24,7 +24,7 @@ export function GoogleSignInButton({
       accessibilityLabel="Continuer avec Google"
     >
       {loading ? (
-        <ActivityIndicator color={colors.white} />
+        <ActivityIndicator color={dark.textPrimary} />
       ) : (
         <View style={styles.content}>
           <View style={styles.iconWrap}>
@@ -44,7 +44,9 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: brand.navy,
+    backgroundColor: dark.surface,
+    borderWidth: 1,
+    borderColor: dark.border,
     paddingVertical: 14,
     paddingHorizontal: 16,
   },
@@ -73,8 +75,8 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   label: {
-    color: colors.white,
+    color: dark.textPrimary,
+    fontFamily: fonts.bodySemiBold,
     fontSize: 14,
-    fontWeight: '600',
   },
 })

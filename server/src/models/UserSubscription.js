@@ -25,6 +25,7 @@ const userSubscriptionSchema = new mongoose.Schema(
     accessCode: { type: Boolean, default: false },
     accessConduite: { type: Boolean, default: false },
     accessECodepermis: { type: Boolean, default: false },
+    accessAiChat: { type: Boolean, default: false },
     heuresIncluses: { type: Number, default: 0, min: 0 },
     /** Snapshot figé : ce plan était une offre gratuite (prix 0, hors grâce) au moment de la souscription. */
     isFreeOffer: { type: Boolean, default: false },
@@ -63,6 +64,7 @@ userSubscriptionSchema.methods.toPublicJSON = function toPublicJSON() {
     accessCode: Boolean(this.accessCode),
     accessConduite: Boolean(this.accessConduite),
     accessECodepermis: Boolean(this.accessECodepermis),
+    accessAiChat: Boolean(this.accessAiChat),
     heuresIncluses: this.heuresIncluses || 0,
     isFreeOffer: Boolean(this.isFreeOffer),
     startAt: this.startAt,

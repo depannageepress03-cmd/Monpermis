@@ -12,7 +12,6 @@ import {
   Text,
   View,
 } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
 import {
   checkPracticeExamAnswer,
   completePracticeExam,
@@ -22,12 +21,13 @@ import {
   type PracticeExamAttempt,
   type PracticeExamsOverview,
 } from '../../api/revision'
+import { DarkScreen } from '../../components/DarkScreen'
 import { PageNavbar } from '../../components/PageNavbar'
 import { QuestionAudioSequence } from '../../components/QuestionAudioSequence'
 import { ScreenLoader } from '../../components/ScreenLoader'
 import { useRequireAuth } from '../../hooks/useRequireAuth'
 import type { RootStackParamList } from '../../navigation/types'
-import { brand, colors } from '../../theme'
+import { dark, fonts } from '../../theme'
 import { resolveMediaUrl } from '../../utils/mediaUrl'
 
 type ListNav = NativeStackNavigationProp<RootStackParamList, 'ExamensTest'>
@@ -87,8 +87,7 @@ export function ExamensTestScreen() {
   if (authLoading || !user) return <ScreenLoader />
 
   return (
-    <View style={styles.root}>
-      <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+    <DarkScreen>
         <PageNavbar
           title="Examens test"
           icon={ClipboardCheck}
@@ -104,7 +103,7 @@ export function ExamensTestScreen() {
                 setRefreshing(true)
                 void load(true)
               }}
-              tintColor={brand.green}
+              tintColor={dark.green}
             />
           }
         >
@@ -115,7 +114,7 @@ export function ExamensTestScreen() {
             · moyenne {data?.passScore ?? 14}/20
           </Text>
 
-          {loading ? <ActivityIndicator color={brand.green} /> : null}
+          {loading ? <ActivityIndicator color={dark.green} /> : null}
           {error ? <Text style={styles.error}>{error}</Text> : null}
 
           {data ? (
@@ -201,8 +200,7 @@ export function ExamensTestScreen() {
             </>
           ) : null}
         </ScrollView>
-      </SafeAreaView>
-    </View>
+      </DarkScreen>
   )
 }
 
@@ -316,8 +314,7 @@ export function ExamensTestTakeScreen() {
   if (authLoading || !user) return <ScreenLoader />
 
   return (
-    <View style={styles.root}>
-      <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+    <DarkScreen>
         <PageNavbar
           title={`Examen ${examNumber}`}
           icon={ClipboardCheck}
@@ -332,7 +329,7 @@ export function ExamensTestTakeScreen() {
             {attempt?.passScore ?? 14}/20
           </Text>
 
-          {loading ? <ActivityIndicator color={brand.green} /> : null}
+          {loading ? <ActivityIndicator color={dark.green} /> : null}
           {error ? <Text style={styles.error}>{error}</Text> : null}
 
           {finished && finalScore ? (
@@ -409,73 +406,89 @@ export function ExamensTestTakeScreen() {
             </View>
           ) : null}
         </ScrollView>
-      </SafeAreaView>
-    </View>
+      </DarkScreen>
   )
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.white },
-  safe: { flex: 1 },
-  scroll: { paddingHorizontal: 24, paddingBottom: 28 },
+  scroll: { paddingHorizontal: 22, paddingBottom: 28 },
   kicker: {
+    fontFamily: fonts.bodySemiBold,
     fontSize: 12,
-    fontWeight: '700',
     letterSpacing: 1.2,
     textTransform: 'uppercase',
-    color: brand.green,
+    color: dark.green,
     marginBottom: 6,
   },
-  title: { fontSize: 28, fontWeight: '800', color: brand.navy, marginBottom: 8 },
-  subtitle: { fontSize: 15, lineHeight: 22, color: brand.navyMuted, marginBottom: 16 },
+  title: {
+    fontFamily: fonts.displayExtraBold,
+    fontSize: 28,
+    color: dark.textPrimary,
+    marginBottom: 8,
+  },
+  subtitle: {
+    fontFamily: fonts.body,
+    fontSize: 15,
+    lineHeight: 22,
+    color: dark.textMuted,
+    marginBottom: 16,
+  },
   banner: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    backgroundColor: brand.greenLight,
+    backgroundColor: dark.greenSoft,
     borderRadius: 14,
     padding: 14,
     marginBottom: 14,
     borderWidth: 1,
-    borderColor: `${brand.green}28`,
+    borderColor: dark.border,
   },
   bannerItem: { flex: 1 },
-  bannerValue: { fontSize: 18, fontWeight: '800', color: brand.navy },
-  bannerLabel: { fontSize: 12, color: brand.navyMuted },
+  bannerValue: {
+    fontFamily: fonts.displayBold,
+    fontSize: 18,
+    color: dark.textPrimary,
+  },
+  bannerLabel: { fontFamily: fonts.body, fontSize: 12, color: dark.textMuted },
   notesLink: {
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: `${brand.navy}20`,
-    backgroundColor: colors.white,
+    borderColor: dark.border,
+    backgroundColor: dark.surface,
   },
-  notesLinkText: { fontWeight: '700', color: brand.navy, fontSize: 13 },
+  notesLinkText: {
+    fontFamily: fonts.bodyBold,
+    color: dark.textPrimary,
+    fontSize: 13,
+  },
   lockedBox: {
     marginTop: 8,
     padding: 18,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: `${brand.navy}12`,
-    backgroundColor: `${brand.navy}04`,
+    borderColor: dark.border,
+    backgroundColor: dark.surface,
     gap: 12,
   },
   lockedTitle: {
+    fontFamily: fonts.displayBold,
     fontSize: 18,
-    fontWeight: '800',
-    color: brand.navy,
+    color: dark.textPrimary,
   },
   revisionBtn: {
     alignSelf: 'flex-start',
     marginTop: 4,
-    backgroundColor: brand.green,
+    backgroundColor: dark.green,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
   revisionBtnText: {
-    color: colors.white,
-    fontWeight: '700',
+    color: '#0B0F1A',
+    fontFamily: fonts.bodyBold,
     fontSize: 14,
   },
   examCard: {
@@ -484,55 +497,113 @@ const styles = StyleSheet.create({
     gap: 12,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: `${brand.navy}12`,
-    backgroundColor: colors.white,
+    borderColor: dark.border,
+    backgroundColor: dark.surface,
     padding: 14,
     marginBottom: 10,
   },
   status_available: {},
   status_in_progress: {
-    backgroundColor: brand.goldLight,
-    borderColor: `${brand.gold}55`,
+    backgroundColor: dark.coralSoft,
+    borderColor: 'rgba(255,107,74,0.35)',
   },
   status_completed: {
-    backgroundColor: brand.greenLight,
-    borderColor: `${brand.green}35`,
+    backgroundColor: dark.greenSoft,
+    borderColor: 'rgba(34,214,115,0.35)',
   },
-  examTitle: { fontSize: 16, fontWeight: '800', color: brand.navy },
-  examMeta: { fontSize: 13, color: brand.navyMuted, marginTop: 2 },
+  examTitle: {
+    fontFamily: fonts.displayBold,
+    fontSize: 16,
+    color: dark.textPrimary,
+  },
+  examMeta: {
+    fontFamily: fonts.body,
+    fontSize: 13,
+    color: dark.textMuted,
+    marginTop: 2,
+  },
   startBtn: {
-    backgroundColor: brand.green,
+    backgroundColor: dark.green,
     borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 10,
   },
-  startBtnText: { color: colors.white, fontWeight: '800', fontSize: 13 },
+  startBtnText: {
+    color: '#0B0F1A',
+    fontFamily: fonts.displayBold,
+    fontSize: 13,
+  },
   disabled: { opacity: 0.5 },
-  empty: { color: brand.navyMuted, marginBottom: 12 },
-  error: { color: '#B91C1C', marginBottom: 10 },
-  ok: { color: brand.green, fontWeight: '700', marginBottom: 10 },
+  empty: {
+    fontFamily: fonts.body,
+    color: dark.textMuted,
+    marginBottom: 12,
+  },
+  error: { color: dark.coral, marginBottom: 10, fontFamily: fonts.body },
+  ok: {
+    color: dark.green,
+    fontFamily: fonts.bodyBold,
+    marginBottom: 10,
+  },
   quizBox: { gap: 10 },
-  progress: { fontWeight: '700', color: brand.navyMuted, marginBottom: 4 },
-  prompt: { fontSize: 16, lineHeight: 24, color: brand.navy, marginBottom: 8 },
+  progress: {
+    fontFamily: fonts.bodyBold,
+    color: dark.textMuted,
+    marginBottom: 4,
+  },
+  prompt: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 16,
+    lineHeight: 24,
+    color: dark.textPrimary,
+    marginBottom: 8,
+  },
   answer: {
     borderWidth: 1,
-    borderColor: `${brand.navy}15`,
+    borderColor: dark.border,
     borderRadius: 12,
     padding: 14,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: dark.surfaceRaised,
   },
-  answerSelected: { borderColor: brand.green, backgroundColor: brand.greenLight },
-  answerCorrect: { borderColor: brand.green, backgroundColor: brand.greenLight },
-  answerWrong: { borderColor: '#B91C1C', backgroundColor: '#FEF2F2' },
-  answerLabel: { fontWeight: '800', color: brand.navy },
-  answerMeta: { marginTop: 4, fontSize: 13, color: brand.navyMuted },
+  answerSelected: {
+    borderColor: dark.green,
+    backgroundColor: dark.greenSoft,
+  },
+  answerCorrect: {
+    borderColor: dark.green,
+    backgroundColor: dark.greenSoft,
+  },
+  answerWrong: {
+    borderColor: dark.coral,
+    backgroundColor: dark.coralSoft,
+  },
+  answerLabel: {
+    fontFamily: fonts.displayBold,
+    color: dark.textPrimary,
+  },
+  answerMeta: {
+    marginTop: 4,
+    fontSize: 13,
+    color: dark.textMuted,
+    fontFamily: fonts.body,
+  },
   resultBox: {
     borderRadius: 16,
     padding: 18,
-    backgroundColor: brand.greenLight,
+    backgroundColor: dark.greenSoft,
+    borderWidth: 1,
+    borderColor: dark.border,
     gap: 12,
     alignItems: 'flex-start',
   },
-  resultTitle: { fontSize: 20, fontWeight: '800', color: brand.navy },
-  resultScore: { fontSize: 28, fontWeight: '800', color: brand.green },
+  resultTitle: {
+    fontFamily: fonts.displayBold,
+    fontSize: 20,
+    color: dark.textPrimary,
+  },
+  resultScore: {
+    fontFamily: fonts.displayExtraBold,
+    fontSize: 28,
+    color: dark.green,
+  },
 })

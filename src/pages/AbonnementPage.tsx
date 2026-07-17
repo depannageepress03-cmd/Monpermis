@@ -266,6 +266,7 @@ export function AbonnementPage() {
                     {active.accessCode ? <span><Check size={15} /> Code</span> : null}
                     {active.accessConduite ? <span><Check size={15} /> Conduite</span> : null}
                     {active.accessECodepermis ? <span><Check size={15} /> E-Codepermis</span> : null}
+                    {active.accessAiChat ? <span><Check size={15} /> Chat IA</span> : null}
                   </div>
                 </>
               ) : pending ? (
@@ -332,6 +333,7 @@ export function AbonnementPage() {
                           {plan.accessCode ? <li><Check size={15} /> Code</li> : null}
                           {plan.accessConduite ? <li><Check size={15} /> Conduite</li> : null}
                           {plan.accessECodepermis ? <li><Check size={15} /> E-Codepermis</li> : null}
+                          {plan.accessAiChat ? <li><Check size={15} /> Chat IA tuteur</li> : null}
                           {plan.heuresIncluses > 0 ? (
                             <li><Check size={15} /> {plan.heuresIncluses} h de conduite</li>
                           ) : null}
