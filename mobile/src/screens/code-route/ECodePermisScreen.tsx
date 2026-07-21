@@ -156,7 +156,19 @@ export function ECodePermisScreen() {
                     </Pressable>
                   </View>
 
-                  {data.message ? <Text style={styles.empty}>{data.message}</Text> : null}
+                  {data.exams.length === 0 ? (
+                    <View style={styles.emptyBox}>
+                      <Text style={styles.emptyTitle}>Épreuves en préparation</Text>
+                      <Text style={styles.empty}>
+                        {data.message ||
+                          'Les épreuves seront disponibles dès que la banque de questions sera complétée par ton auto-école. Reviens bientôt !'}
+                      </Text>
+                    </View>
+                  ) : null}
+
+                  {data.message && data.exams.length > 0 ? (
+                    <Text style={styles.empty}>{data.message}</Text>
+                  ) : null}
 
                   {data.exams.map((exam) => (
                     <View
@@ -477,6 +489,23 @@ const styles = StyleSheet.create({
     fontFamily: fonts.displayBold,
     fontSize: 18,
     color: dark.textPrimary,
+  },
+  emptyBox: {
+    marginTop: 8,
+    marginBottom: 4,
+    padding: 20,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: dark.border,
+    backgroundColor: dark.surface,
+    gap: 8,
+    alignItems: 'center',
+  },
+  emptyTitle: {
+    fontFamily: fonts.displayBold,
+    fontSize: 17,
+    color: dark.textPrimary,
+    textAlign: 'center',
   },
   revisionBtn: {
     alignSelf: 'flex-start',

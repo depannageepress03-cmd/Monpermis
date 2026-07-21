@@ -139,9 +139,11 @@ export function LoginPage() {
           </p>
           <p className="signin-terms">
             En cliquant sur « Continuer », j'accepte les{' '}
-            <a href="#" onClick={(e) => e.preventDefault()}>Conditions d'utilisation</a>
+            <Link to="/conditions-utilisation">Conditions d'utilisation</Link>
             {' '}et la{' '}
-            <a href="#" onClick={(e) => e.preventDefault()}>Politique de confidentialité</a>.
+            <Link to="/politique-de-confidentialite">Politique de confidentialité</Link>.
+            {' '}
+            <Link to="/mentions-legales">Mentions légales</Link>.
           </p>
         </footer>
       </div>

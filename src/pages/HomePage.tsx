@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Car, Lock, LogOut, User, X } from 'lucide-react'
+import { Bell, Car, Lock, LogOut, Settings, User, X } from 'lucide-react'
 import { clearSession } from '../api/auth'
+import { fetchAnnouncements, type Announcement } from '../api/announcements'
+import { fetchUnreadCount } from '../api/notifications'
 import { fetchSubscriptionMe, type SubscriptionAccess } from '../api/subscriptions'
 import { BrandName } from '../components/BrandName'
 import { HomeBottomAnimation } from '../components/HomeBottomAnimation'
@@ -14,10 +16,16 @@ export function HomePage() {
   const { user, loading } = useAuth()
   const [profileOpen, setProfileOpen] = useState(false)
   const [subscription, setSubscription] = useState<SubscriptionAccess | null>(null)
+  const [announcements, setAnnouncements] = useState<Announcement[]>([])
+  const [unreadCount, setUnreadCount] = useState(0)
 
   useEffect(() => {
     if (!user) return
     void fetchSubscriptionMe().then(setSubscription).catch(() => setSubscription(null))
+    void fetchAnnouncements().then(setAnnouncements).catch(() => setAnnouncements([]))
+    void fetchUnreadCount()
+      .then(({ unreadCount: count }) => setUnreadCount(count))
+      .catch(() => setUnreadCount(0))
   }, [user])
 
   const handleLogout = () => {
@@ -40,14 +48,27 @@ export function HomePage() {
               </div>
               <BrandName as="h1" onDark className="home-brand-name" />
             </div>
-            <button
-              type="button"
-              className="home-profile-btn"
-              onClick={() => setProfileOpen(true)}
-              aria-label="Voir mon profil"
-            >
-              <User size={20} />
-            </button>
+            <div className="home-brand-actions">
+              <button
+                type="button"
+                className="home-profile-btn"
+                onClick={() => navigate('/notifications')}
+                aria-label="Mes notifications"
+              >
+                <Bell size={20} />
+                {unreadCount > 0 ? (
+                  <span className="home-bell-badge">{unreadCount > 9 ? '9+' : unreadCount}</span>
+                ) : null}
+              </button>
+              <button
+                type="button"
+                className="home-profile-btn"
+                onClick={() => setProfileOpen(true)}
+                aria-label="Voir mon profil"
+              >
+                <User size={20} />
+              </button>
+            </div>
           </div>
         </header>
 
@@ -100,6 +121,23 @@ export function HomePage() {
             </>
           )}
         </section>
+
+        {announcements.length > 0 ? (
+          <section className="home-news-section">
+            <p className="home-news-label">Actualités</p>
+            <div className="home-news-list">
+              {announcements.slice(0, 3).map((item) => (
+                <article
+                  key={item.id}
+                  className={`home-news-card home-news-card--${item.kind}`}
+                >
+                  <strong>{item.title}</strong>
+                  {item.body ? <p>{item.body}</p> : null}
+                </article>
+              ))}
+            </div>
+          </section>
+        ) : null}
 
         <div className="home-modules-center">
           <p className="home-modules-bridge">
@@ -189,6 +227,18 @@ export function HomePage() {
                 <dd>{user.authProvider === 'google' ? 'Google' : 'E-mail / mot de passe'}</dd>
               </div>
             </dl>
+            <button
+              type="button"
+              className="btn-outline"
+              style={{ width: '100%', marginBottom: 10 }}
+              onClick={() => {
+                setProfileOpen(false)
+                navigate('/profil')
+              }}
+            >
+              <Settings size={16} />
+              Modifier mon profil
+            </button>
             <button type="button" className="btn-primary" onClick={handleLogout}>
               <LogOut size={16} />
               Se déconnecter

@@ -113,6 +113,60 @@ export function forgotPassword(email: string) {
   })
 }
 
+export function resetPassword(token: string, password: string) {
+  return request<{ message: string }>('/auth/reset-password', {
+    method: 'POST',
+    body: JSON.stringify({ token, password }),
+  })
+}
+
+export function verifyEmail(token: string) {
+  return request<{ message: string }>('/auth/verify-email', {
+    method: 'POST',
+    body: JSON.stringify({ token }),
+  })
+}
+
+export function deleteAccount(data: { password?: string; confirm: boolean }) {
+  return authedRequest<{ deleted: boolean }>('/auth/account', {
+    method: 'DELETE',
+    body: JSON.stringify(data),
+  })
+}
+
+async function authedRequest<T>(path: string, options?: RequestInit): Promise<T> {
+  const token = await getStoredToken()
+  if (!token) throw new AuthError('Authentification requise')
+  return request<T>(path, {
+    ...options,
+    headers: {
+      Authorization: `Bearer ${token}`,
+      ...options?.headers,
+    },
+  })
+}
+
+export function updateProfile(data: {
+  firstName?: string
+  lastName?: string
+  phone?: string
+}) {
+  return authedRequest<{ user: AuthUser }>('/auth/profile', {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  })
+}
+
+export function changePassword(data: {
+  currentPassword: string
+  newPassword: string
+}) {
+  return authedRequest<{ message: string }>('/auth/change-password', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+}
+
 export async function saveSession(token: string, user: AuthUser) {
   await AsyncStorage.multiSet([
     [TOKEN_KEY, token],

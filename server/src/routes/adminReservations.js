@@ -7,6 +7,7 @@ import { User } from '../models/User.js'
 import { requireAdminAuth } from '../middleware/adminAuth.js'
 import { audit } from '../middleware/audit.js'
 import { imageUpload, writeFile } from '../middleware/upload.js'
+import { notifyUser } from '../services/notifications.js'
 import { logger } from '../utils/logger.js'
 import {
   formatLocalDate,
@@ -373,10 +374,22 @@ router.patch('/reservations/:id/payment', async (req, res) => {
     if (req.body.paymentRef !== undefined) {
       reservation.paymentRef = String(req.body.paymentRef).trim()
     }
+    const wasConfirmed = reservation.status !== 'confirmed'
     if (paymentStatus === 'paid' && reservation.status === 'pending_payment') {
       reservation.status = 'confirmed'
     }
     await reservation.save()
+
+    if (paymentStatus === 'paid' && reservation.userId) {
+      await notifyUser(reservation.userId, {
+        type: 'payment_validated',
+        title: 'Paiement validé ✅',
+        body: wasConfirmed
+          ? 'Ta leçon de conduite est confirmée. Rendez-vous au créneau réservé !'
+          : 'Ton paiement de leçon a bien été validé.',
+        link: 'conduite',
+      })
+    }
 
     res.json({ success: true, data: { reservation: reservation.toJSONSafe() } })
   } catch (error) {
@@ -472,6 +485,15 @@ router.post('/reservations/:id/cancel', async (req, res) => {
     reservation.cancellationReason = reason || 'Annulée par l’administration'
     reservation.cancelledBy = 'admin'
     await reservation.save()
+
+    if (reservation.userId) {
+      await notifyUser(reservation.userId, {
+        type: 'reservation_cancelled',
+        title: 'Réservation annulée',
+        body: reservation.cancellationReason || 'Ta réservation de leçon a été annulée par l’auto-école.',
+        link: 'conduite',
+      })
+    }
 
     if (reservation.creneauId?._id || reservation.creneauId) {
       await Creneau.findByIdAndUpdate(reservation.creneauId._id || reservation.creneauId, {

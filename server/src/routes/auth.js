@@ -1,7 +1,8 @@
 import { Router } from 'express'
-import { OAuth2Client } from 'google-auth-library'
 import jwt from 'jsonwebtoken'
 import { User } from '../models/User.js'
+import { Notification } from '../models/Notification.js'
+import { UserSubscription } from '../models/UserSubscription.js'
 import {
   sendVerificationEmail,
   sendWelcomeEmail,
@@ -10,9 +11,9 @@ import {
 import { generateVerificationToken, getVerificationExpiry } from '../utils/tokens.js'
 import { requireUserAuth } from '../middleware/userAuth.js'
 import { logger } from '../utils/logger.js'
+import { verifyGoogleIdToken } from '../utils/googleAuth.js'
 
 const router = Router()
-const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID)
 
 function createToken(userId) {
   return jwt.sign({ userId }, process.env.JWT_SECRET, { expiresIn: '7d', algorithm: 'HS256' })
@@ -301,6 +302,44 @@ router.patch('/profile', requireUserAuth, async (req, res) => {
   }
 })
 
+router.delete('/account', requireUserAuth, async (req, res) => {
+  try {
+    const { password, confirm } = req.body || {}
+    if (confirm !== true && confirm !== 'true') {
+      return res.status(400).json({
+        success: false,
+        error: 'Confirmation requise pour supprimer le compte',
+      })
+    }
+
+    const user = await User.findById(req.user._id).select('+password')
+    if (!user) {
+      return res.status(404).json({ success: false, error: 'Compte introuvable' })
+    }
+
+    if (user.authProvider !== 'google') {
+      if (!password) {
+        return res.status(400).json({ success: false, error: 'Mot de passe requis' })
+      }
+      if (!(await user.comparePassword(password))) {
+        return res.status(401).json({ success: false, error: 'Mot de passe incorrect' })
+      }
+    }
+
+    const userId = user._id
+    await Promise.all([
+      Notification.deleteMany({ userId }),
+      UserSubscription.deleteMany({ userId }),
+      User.findByIdAndDelete(userId),
+    ])
+
+    res.json({ success: true, data: { deleted: true } })
+  } catch (error) {
+    logger.error('Erreur suppression compte', { error: error.message })
+    res.status(500).json({ success: false, error: 'Suppression impossible' })
+  }
+})
+
 router.post('/google', async (req, res) => {
   try {
     const { idToken } = req.body
@@ -309,16 +348,7 @@ router.post('/google', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Token Google requis' })
     }
 
-    if (!process.env.GOOGLE_CLIENT_ID) {
-      return res.status(500).json({ success: false, error: 'Connexion Google non configurée' })
-    }
-
-    const ticket = await googleClient.verifyIdToken({
-      idToken,
-      audience: process.env.GOOGLE_CLIENT_ID,
-    })
-
-    const payload = ticket.getPayload()
+    const payload = await verifyGoogleIdToken(idToken)
     if (!payload?.email || !payload.sub) {
       return res.status(400).json({ success: false, error: 'Token Google invalide' })
     }

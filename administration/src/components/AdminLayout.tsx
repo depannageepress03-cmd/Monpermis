@@ -7,6 +7,7 @@ import {
   ChevronRight,
   LayoutDashboard,
   LogOut,
+  Megaphone,
   Menu,
   Plus,
   Search,
@@ -17,9 +18,12 @@ import {
 import { FormEvent, useEffect, useState } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import logoUrl from '../assets/logo.png'
+import { fetchDashboardSummary } from '../api/dashboard'
 import { useAdminAuth } from '../context/AdminAuthContext'
 import { SITE_NAME } from '../theme/brand'
 import { BrandName } from './BrandName'
+
+const ADMIN_TOKEN_KEY = 'monpermis_admin_token'
 
 type NavItem = {
   to: string
@@ -55,6 +59,7 @@ const navItems: NavItem[] = [
   },
   { to: '/utilisateurs', label: 'Utilisateurs', icon: Users },
   { to: '/abonnements', label: 'Abonnements', icon: CreditCard },
+  { to: '/annonces', label: 'Annonces', icon: Megaphone },
   { to: '/creer-admin', label: 'Créer un admin', icon: UserPlus },
 ]
 
@@ -92,7 +97,7 @@ export function AdminLayout() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [searchFocused, setSearchFocused] = useState(false)
-  const [notifCount, setNotifCount] = useState(3)
+  const [notifCount, setNotifCount] = useState(0)
   const [width, setWidth] = useState(() =>
     typeof window !== 'undefined' ? window.innerWidth : 1440,
   )
@@ -102,6 +107,28 @@ export function AdminLayout() {
     window.addEventListener('resize', onResize)
     return () => window.removeEventListener('resize', onResize)
   }, [])
+
+  useEffect(() => {
+    const token = localStorage.getItem(ADMIN_TOKEN_KEY)
+    if (!token) {
+      setNotifCount(0)
+      return
+    }
+    let cancelled = false
+    fetchDashboardSummary(token)
+      .then(({ summary }) => {
+        if (cancelled) return
+        setNotifCount(
+          (summary.subscriptions?.pending ?? 0) + (summary.conduite?.reservationsPending ?? 0),
+        )
+      })
+      .catch(() => {
+        if (!cancelled) setNotifCount(0)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [location.pathname])
 
   const isMobile = width < 640
   const isTablet = width >= 640 && width < 1080
@@ -251,9 +278,14 @@ export function AdminLayout() {
           <button
             type="button"
             className={`admin-notif-btn${notifCount > 0 ? ' has-badge' : ''}`}
-            aria-label={notifCount > 0 ? `Notifications (${notifCount})` : 'Notifications'}
+            aria-label={
+              notifCount > 0
+                ? `${notifCount} éléments en attente`
+                : 'Aucun élément en attente'
+            }
             data-count={notifCount > 0 ? notifCount : undefined}
-            onClick={() => setNotifCount(0)}
+            onClick={() => navigate('/abonnements')}
+            title="Paiements / réservations en attente"
           >
             <Bell size={16} strokeWidth={1.8} />
           </button>

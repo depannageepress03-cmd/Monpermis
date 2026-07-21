@@ -1,7 +1,6 @@
 import { Lock } from 'lucide-react'
-import { useCallback, useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ContentError, fetchPracticeExams } from '../api/content'
 import { fetchSubscriptionMe, type SubscriptionAccess } from '../api/subscriptions'
 import { CodeModuleIcon } from '../components/ModuleIcons'
 import { PageNavbar } from '../components/PageNavbar'
@@ -15,7 +14,6 @@ const categories = [
     label: 'Révision par chapitres',
     subtitle: '',
     className: 'category-pink',
-    requiresAllCourses: false,
     icon: (
       <svg viewBox="0 0 64 64" aria-hidden="true">
         <rect x="10" y="12" width="44" height="10" rx="2" fill="#ef4444" />
@@ -32,7 +30,6 @@ const categories = [
     label: 'Examens test',
     subtitle: '(auto-évaluation)',
     className: 'category-yellow',
-    requiresAllCourses: true,
     icon: (
       <svg viewBox="0 0 64 64" aria-hidden="true">
         <rect x="14" y="10" width="36" height="44" rx="4" fill="#fff" opacity="0.95" />
@@ -46,7 +43,6 @@ const categories = [
     label: 'Mes notes & avancée',
     subtitle: '',
     className: 'category-green',
-    requiresAllCourses: false,
     icon: (
       <svg viewBox="0 0 64 64" aria-hidden="true">
         <ellipse cx="24" cy="22" rx="16" ry="12" fill="#eab308" />
@@ -61,7 +57,6 @@ const categories = [
     label: 'E-Codepermis',
     subtitle: '(examen blanc)',
     className: 'category-purple',
-    requiresAllCourses: true,
     icon: (
       <svg viewBox="0 0 64 64" aria-hidden="true">
         <rect x="14" y="12" width="36" height="40" rx="4" fill="#fff" opacity="0.95" />
@@ -85,27 +80,8 @@ function CategoryIcon({ children }: { children: ReactNode }) {
 export function CodeRoutePage() {
   const navigate = useNavigate()
   const { user, loading } = useAuth()
-  const [examsUnlocked, setExamsUnlocked] = useState(false)
-  const [unlockHint, setUnlockHint] = useState<string | null>(null)
   const [subscription, setSubscription] = useState<SubscriptionAccess | null>(null)
   const [subscriptionLoading, setSubscriptionLoading] = useState(true)
-
-  const loadUnlock = useCallback(async () => {
-    try {
-      const data = await fetchPracticeExams()
-      setExamsUnlocked(data.unlocked !== false)
-      setUnlockHint(
-        data.unlocked === false
-          ? data.message ||
-              'Terminez tous les cours de chaque chapitre pour débloquer les épreuves.'
-          : null,
-      )
-    } catch (err) {
-      // En cas d’échec réseau, on laisse le bouton cliquable : l’API bloquera au démarrage.
-      setExamsUnlocked(true)
-      setUnlockHint(err instanceof ContentError ? err.message : null)
-    }
-  }, [])
 
   useEffect(() => {
     if (!user) return
@@ -114,10 +90,6 @@ export function CodeRoutePage() {
       .catch(() => setSubscription(null))
       .finally(() => setSubscriptionLoading(false))
   }, [user])
-
-  useEffect(() => {
-    if (subscription?.accessCode) void loadUnlock()
-  }, [subscription, loadUnlock])
 
   if (loading || !user) return null
 
@@ -158,41 +130,24 @@ export function CodeRoutePage() {
             Avancez à votre rythme : cours par chapitres, examens test, suivi de vos notes,
             puis un examen blanc en conditions réelles.
           </p>
-          {!examsUnlocked && unlockHint ? (
-            <p className="code-route-detail code-route-lock-hint">{unlockHint}</p>
-          ) : null}
         </header>
 
         <div className="category-grid">
-          {categories.map((category, index) => {
-            const locked = category.requiresAllCourses && !examsUnlocked
-            return (
-              <button
-                key={category.id}
-                type="button"
-                className={`category-card ${category.className} code-route-anim-card${
-                  locked ? ' is-locked' : ''
-                }`}
-                style={{ animationDelay: `${0.28 + index * 0.09}s` }}
-                disabled={locked}
-                title={locked ? unlockHint || undefined : undefined}
-                onClick={() => {
-                  if (!locked) navigate(`/code-de-la-route/${category.id}`)
-                }}
-              >
-                <CategoryIcon>{category.icon}</CategoryIcon>
-                <span className="category-label">{category.label}</span>
-                {locked ? (
-                  <span className="category-subtitle category-lock-row">
-                    <Lock size={12} aria-hidden="true" />
-                    Terminez tous les cours
-                  </span>
-                ) : category.subtitle ? (
-                  <span className="category-subtitle">{category.subtitle}</span>
-                ) : null}
-              </button>
-            )
-          })}
+          {categories.map((category, index) => (
+            <button
+              key={category.id}
+              type="button"
+              className={`category-card ${category.className} code-route-anim-card`}
+              style={{ animationDelay: `${0.28 + index * 0.09}s` }}
+              onClick={() => navigate(`/code-de-la-route/${category.id}`)}
+            >
+              <CategoryIcon>{category.icon}</CategoryIcon>
+              <span className="category-label">{category.label}</span>
+              {category.subtitle ? (
+                <span className="category-subtitle">{category.subtitle}</span>
+              ) : null}
+            </button>
+          ))}
         </div>
           </>
         )}

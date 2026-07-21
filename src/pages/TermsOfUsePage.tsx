@@ -46,7 +46,7 @@ const SECTIONS = [
     title: '4. Communications',
     paragraphs: [
       "En vous inscrivant, vous pouvez recevoir des e-mails transactionnels (bienvenue, sécurité du compte) et des messages liés à votre progression ou à votre formation.",
-      "Vous pouvez nous contacter pour exercer vos droits ou demander la suppression de votre compte.",
+      "Vous pouvez exercer vos droits et supprimer votre compte depuis Profil → Supprimer mon compte, ou en contactant le support.",
     ],
   },
   {
@@ -78,7 +78,7 @@ const SECTIONS = [
     title: '8. Suspension et résiliation',
     paragraphs: [
       "Nous nous réservons le droit de suspendre ou supprimer un compte en cas de violation des présentes conditions.",
-      "Vous pouvez demander la suppression de votre compte à tout moment.",
+      "Vous pouvez supprimer votre compte à tout moment depuis Profil → Supprimer mon compte, ou en contactant le support.",
     ],
   },
   {

@@ -1,4 +1,4 @@
-/** Animation d’intro Monpermis.bj — fond blanc/crème, logo vectoriel. */
+/** Animation d’intro Monpermis.bj — HTML embarqué pour WebView (sans blur CSS). */
 export const MONPERMIS_INTRO_HTML = `<!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -8,7 +8,6 @@ export const MONPERMIS_INTRO_HTML = `<!DOCTYPE html>
 <style>
   :root{
     --bg:        #FAF9F6;
-    --ink:       #0E2240;
     --green:     #1FA857;
     --yellow:    #F5B31B;
     --navy:      #14263F;
@@ -20,12 +19,14 @@ export const MONPERMIS_INTRO_HTML = `<!DOCTYPE html>
 
   html, body{
     height:100%;
+    width:100%;
     overflow:hidden;
     background:var(--bg);
     font-family:system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     display:flex;
     align-items:center;
     justify-content:center;
+    -webkit-tap-highlight-color:transparent;
   }
 
   .ambient{
@@ -57,7 +58,6 @@ export const MONPERMIS_INTRO_HTML = `<!DOCTYPE html>
     width:180px; height:26px;
     border-radius:50%;
     background:radial-gradient(ellipse, rgba(14,34,64,.10), transparent 70%);
-    filter:blur(6px);
     opacity:0;
     animation:fadeIn 1.4s ease-out .8s forwards;
   }
@@ -68,18 +68,17 @@ export const MONPERMIS_INTRO_HTML = `<!DOCTYPE html>
   }
   .logo svg{ width:100%; height:auto; display:block; overflow:visible; }
 
+  /* Révélation nette : opacity + translate (pas de blur — bug Android WebView) */
   .shape{
     opacity:0;
     transform:translateY(10px);
-    filter:blur(8px);
-    will-change:transform, opacity, filter;
     animation:reveal 1.6s var(--ease-out) forwards;
   }
   .s-green { animation-delay:.25s; }
   .s-yellow{ animation-delay:.45s; }
   .s-navy  { animation-delay:.65s; }
   @keyframes reveal{
-    to{ opacity:1; transform:translateY(0); filter:blur(0); }
+    to{ opacity:1; transform:translateY(0); }
   }
 
   .dash{
@@ -128,13 +127,10 @@ export const MONPERMIS_INTRO_HTML = `<!DOCTYPE html>
   .wordmark span{
     opacity:0;
     transform:translateY(8px);
-    filter:blur(5px);
-    will-change:transform, opacity, filter;
     animation:reveal 1s var(--ease-out) forwards;
   }
   .wordmark .c-green { color:var(--green); }
   .wordmark .c-navy  { color:var(--navy); }
-  .wordmark .c-yellow{ color:var(--yellow); }
 
   @media (prefers-reduced-motion: reduce){
     *{ animation-duration:.01s !important; animation-delay:0s !important;
@@ -183,34 +179,45 @@ export const MONPERMIS_INTRO_HTML = `<!DOCTYPE html>
 </div>
 
 <script>
-  const wm = document.getElementById('wordmark');
-  const segments = [
-    ['mon',    'c-navy'],
-    ['permis', 'c-navy'],
-    ['.bj',    'c-green']
-  ];
-  let i = 0;
-  for (const [text, cls] of segments){
-    for (const ch of text){
-      const s = document.createElement('span');
-      s.className = cls;
-      s.textContent = ch;
-      s.style.animationDelay = (1.6 + i * 0.04) + 's';
-      wm.appendChild(s);
-      i++;
-    }
-  }
-
-  const doneAt = 1600 + i * 40 + 1100;
-  setTimeout(function () {
-    document.body.style.transition = 'opacity .45s ease';
-    document.body.style.opacity = '0';
-    setTimeout(function () {
-      if (window.ReactNativeWebView && window.ReactNativeWebView.postMessage) {
-        window.ReactNativeWebView.postMessage('intro-done');
+  (function () {
+    var wm = document.getElementById('wordmark');
+    var segments = [
+      ['mon',    'c-navy'],
+      ['permis', 'c-navy'],
+      ['.bj',    'c-green']
+    ];
+    var i = 0;
+    for (var s = 0; s < segments.length; s++) {
+      var text = segments[s][0];
+      var cls = segments[s][1];
+      for (var c = 0; c < text.length; c++) {
+        var span = document.createElement('span');
+        span.className = cls;
+        span.textContent = text.charAt(c);
+        span.style.animationDelay = (1.6 + i * 0.04) + 's';
+        wm.appendChild(span);
+        i++;
       }
-    }, 420);
-  }, doneAt);
+    }
+
+    function notifyDone() {
+      try {
+        if (window.ReactNativeWebView && window.ReactNativeWebView.postMessage) {
+          window.ReactNativeWebView.postMessage('intro-done');
+        }
+      } catch (e) {}
+    }
+
+    var doneAt = 1600 + i * 40 + 1100;
+    setTimeout(function () {
+      document.body.style.transition = 'opacity .4s ease';
+      document.body.style.opacity = '0';
+      setTimeout(notifyDone, 400);
+    }, doneAt);
+
+    // Filet de sécurité si les timers sont ralentis
+    setTimeout(notifyDone, doneAt + 2000);
+  })();
 </script>
 
 </body>

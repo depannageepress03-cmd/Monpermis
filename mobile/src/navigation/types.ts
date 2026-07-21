@@ -9,10 +9,16 @@ export type RootStackParamList = {
   Intro: undefined
   Login: { message?: string } | undefined
   ForgotPassword: undefined
+  ResetPassword: { token?: string } | undefined
+  VerifyEmail: { token?: string } | undefined
   Register: undefined
   RegisterPassword: RegisterProfileParams
   TermsOfUse: undefined
+  PrivacyPolicy: undefined
+  MentionsLegales: undefined
   Home: undefined
+  Profile: undefined
+  Notifications: undefined
   Abonnement: undefined
   HistoriquePaiements: undefined
   CodeRoute: undefined

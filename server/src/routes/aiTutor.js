@@ -18,8 +18,7 @@ const chatLimiter = rateLimit({
   max: 40,
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req) => `ai-tutor:${req.user?._id || 'anon'}`,
-  validate: { keyGeneratorIpFallback: false },
+  keyGenerator: (req) => `ai-tutor:${req.user?._id || req.ip || 'anon'}`,
   message: {
     success: false,
     error: 'Limite de messages atteinte. Réessayez plus tard.',

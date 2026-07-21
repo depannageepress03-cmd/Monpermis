@@ -156,7 +156,19 @@ export function ExamensTestScreen() {
                     </Pressable>
                   </View>
 
-                  {data.message ? <Text style={styles.empty}>{data.message}</Text> : null}
+                  {data.exams.length === 0 ? (
+                    <View style={styles.emptyBox}>
+                      <Text style={styles.emptyTitle}>Examens en préparation</Text>
+                      <Text style={styles.empty}>
+                        {data.message ||
+                          'Les examens test seront disponibles dès que ton auto-école aura publié les questions. Reviens bientôt !'}
+                      </Text>
+                    </View>
+                  ) : null}
+
+                  {data.message && data.exams.length > 0 ? (
+                    <Text style={styles.empty}>{data.message}</Text>
+                  ) : null}
 
                   {data.exams.map((exam) => (
                     <View
@@ -463,6 +475,23 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bodyBold,
     color: dark.textPrimary,
     fontSize: 13,
+  },
+  emptyBox: {
+    marginTop: 8,
+    marginBottom: 4,
+    padding: 20,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: dark.border,
+    backgroundColor: dark.surface,
+    gap: 8,
+    alignItems: 'center',
+  },
+  emptyTitle: {
+    fontFamily: fonts.displayBold,
+    fontSize: 17,
+    color: dark.textPrimary,
+    textAlign: 'center',
   },
   lockedBox: {
     marginTop: 8,

@@ -5,15 +5,22 @@ import { useCallback } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { ChevronLeft } from 'lucide-react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import { LegalFooter } from './LegalFooter'
 import { dark, fonts } from '../theme'
 
 type IconProps = { size?: number; color?: string }
 
-/** Coquille commune claire : fond blanc, safe-area, barre de statut sombre. */
-export function DarkScreen({ children }: { children: ReactNode }) {
+/** Coquille commune : fond sombre, safe-area, barre de statut claire, footer mentions légales. */
+export function DarkScreen({
+  children,
+  hideFooter = false,
+}: {
+  children: ReactNode
+  hideFooter?: boolean
+}) {
   useFocusEffect(
     useCallback(() => {
-      setStatusBarStyle('dark')
+      setStatusBarStyle('light')
       return () => setStatusBarStyle('dark')
     }, []),
   )
@@ -21,7 +28,12 @@ export function DarkScreen({ children }: { children: ReactNode }) {
   return (
     <View style={styles.root}>
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-        {children}
+        <View style={styles.body}>{children}</View>
+        {hideFooter ? null : (
+          <View style={styles.footerWrap}>
+            <LegalFooter />
+          </View>
+        )}
       </SafeAreaView>
     </View>
   )
@@ -67,6 +79,12 @@ const styles = StyleSheet.create({
   },
   safe: {
     flex: 1,
+  },
+  body: {
+    flex: 1,
+  },
+  footerWrap: {
+    paddingHorizontal: 22,
   },
   header: {
     flexDirection: 'row',

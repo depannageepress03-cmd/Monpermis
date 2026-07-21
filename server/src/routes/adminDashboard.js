@@ -8,6 +8,8 @@ import { Moniteur } from '../models/Moniteur.js'
 import { Reservation } from '../models/Reservation.js'
 import { Creneau } from '../models/Creneau.js'
 import { Admin } from '../models/Admin.js'
+import { PaymentTransaction } from '../models/PaymentTransaction.js'
+import { UserSubscription } from '../models/UserSubscription.js'
 import { formatLocalDate } from '../utils/localDate.js'
 
 const router = Router()
@@ -34,6 +36,30 @@ router.get('/summary', async (_req, res) => {
       Creneau.countDocuments({ status: 'libre', date: { $gte: formatLocalDate() } }),
       Admin.countDocuments(),
     ])
+
+    // Revenus : somme des transactions approuvées (total + mois en cours).
+    const startOfMonth = new Date()
+    startOfMonth.setDate(1)
+    startOfMonth.setHours(0, 0, 0, 0)
+
+    const [revenueTotalAgg, revenueMonthAgg, subsActive, subsPending, subsExpired] =
+      await Promise.all([
+        PaymentTransaction.aggregate([
+          { $match: { status: 'approved' } },
+          { $group: { _id: null, total: { $sum: '$amount' }, count: { $sum: 1 } } },
+        ]),
+        PaymentTransaction.aggregate([
+          { $match: { status: 'approved', createdAt: { $gte: startOfMonth } } },
+          { $group: { _id: null, total: { $sum: '$amount' } } },
+        ]),
+        UserSubscription.countDocuments({ status: 'active' }),
+        UserSubscription.countDocuments({ status: 'pending_payment' }),
+        UserSubscription.countDocuments({ status: 'expired' }),
+      ])
+
+    const revenueTotal = revenueTotalAgg[0]?.total || 0
+    const revenueTransactions = revenueTotalAgg[0]?.count || 0
+    const revenueMonth = revenueMonthAgg[0]?.total || 0
 
     const usersTotal = users.length
     const usersActive = users.filter((item) => item.isActive !== false).length
@@ -89,6 +115,17 @@ router.get('/summary', async (_req, res) => {
           },
           admins: {
             total: adminsCount,
+          },
+          revenue: {
+            currency: 'XOF',
+            total: revenueTotal,
+            month: revenueMonth,
+            transactions: revenueTransactions,
+          },
+          subscriptions: {
+            active: subsActive,
+            pending: subsPending,
+            expired: subsExpired,
           },
         },
       },

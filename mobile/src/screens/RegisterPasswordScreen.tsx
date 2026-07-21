@@ -17,6 +17,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { registerUser } from '../api/auth'
 import { AuthInput } from '../components/AuthInput'
 import { Bouncy } from '../components/Bouncy'
+import { LegalFooter } from '../components/LegalFooter'
 import { BrandName } from '../components/BrandName'
 import { useAuth } from '../context/AuthContext'
 import type { RootStackParamList } from '../navigation/types'
@@ -149,7 +150,8 @@ export function RegisterPasswordScreen() {
                 </Text>
               </LinearGradient>
             </Bouncy>
-          </ScrollView>
+          <LegalFooter />
+            </ScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>
     </View>

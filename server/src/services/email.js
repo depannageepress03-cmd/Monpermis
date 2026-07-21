@@ -46,23 +46,44 @@ function escapeHtml(text) {
     .replace(/'/g, '&#039;')
 }
 
+function getClientBaseUrl() {
+  return String(process.env.CLIENT_URL || 'http://localhost:5173').replace(/\/$/, '')
+}
+
 function getVerifyUrl(token) {
-  if (process.env.MOBILE_SCHEME) {
-    return `${process.env.MOBILE_SCHEME}://verifier-email?token=${token}`
-  }
-  return `${process.env.CLIENT_URL}/verifier-email?token=${token}`
+  return `${getClientBaseUrl()}/verifier-email?token=${token}`
+}
+
+function getMobileVerifyUrl(token) {
+  const scheme = process.env.MOBILE_SCHEME
+  if (!scheme) return null
+  return `${scheme}://verifier-email?token=${token}`
+}
+
+function getResetUrl(token) {
+  return `${getClientBaseUrl()}/reinitialiser-mot-de-passe?token=${token}`
+}
+
+function getMobileResetUrl(token) {
+  const scheme = process.env.MOBILE_SCHEME
+  if (!scheme) return null
+  return `${scheme}://reinitialiser-mot-de-passe?token=${token}`
 }
 
 export async function sendVerificationEmail(user, token) {
   const verifyUrl = getVerifyUrl(token)
+  const mobileUrl = getMobileVerifyUrl(token)
   const safeName = escapeHtml(user.firstName)
+  const mobileHint = mobileUrl
+    ? `\n\nDepuis l'application mobile, vous pouvez aussi ouvrir :\n${mobileUrl}`
+    : ''
 
   const subject = 'Vérifiez votre adresse email — Monpermis.bj'
   const text = `Bonjour ${user.firstName},
 
 Bienvenue sur Monpermis.bj ! Cliquez sur le lien ci-dessous pour vérifier votre adresse email :
 
-${verifyUrl}
+${verifyUrl}${mobileHint}
 
 Ce lien expire dans 24 heures.
 
@@ -80,6 +101,11 @@ L'équipe Monpermis.bj`
           Vérifier mon email
         </a>
       </p>
+      ${
+        mobileUrl
+          ? `<p style="color:#6b7280;font-size:14px">Sur mobile : <a href="${mobileUrl}">ouvrir dans l'app</a></p>`
+          : ''
+      }
       <p style="color:#6b7280;font-size:14px">Ce lien expire dans 24 heures.</p>
       <p style="color:#9ca3af;font-size:12px">Si le bouton ne fonctionne pas, copiez ce lien :<br>${verifyUrl}</p>
     </div>
@@ -89,8 +115,12 @@ L'équipe Monpermis.bj`
 }
 
 export async function sendPasswordResetEmail(user, token) {
-  const resetUrl = `${process.env.CLIENT_URL}/reinitialiser-mot-de-passe?token=${token}`
+  const resetUrl = getResetUrl(token)
+  const mobileUrl = getMobileResetUrl(token)
   const safeName = escapeHtml(user.firstName)
+  const mobileHint = mobileUrl
+    ? `\n\nDepuis l'application mobile, vous pouvez aussi ouvrir :\n${mobileUrl}`
+    : ''
 
   const subject = 'Réinitialisation de mot de passe — Monpermis.bj'
   const text = `Bonjour ${user.firstName},
@@ -98,7 +128,7 @@ export async function sendPasswordResetEmail(user, token) {
 Vous avez demandé la réinitialisation de votre mot de passe Monpermis.bj.
 
 Cliquez sur le lien ci-dessous pour choisir un nouveau mot de passe :
-${resetUrl}
+${resetUrl}${mobileHint}
 
 Ce lien expire dans 1 heure.
 
@@ -116,6 +146,11 @@ L'équipe Monpermis.bj`
           Réinitialiser mon mot de passe
         </a>
       </p>
+      ${
+        mobileUrl
+          ? `<p style="color:#6b7280;font-size:14px">Sur mobile : <a href="${mobileUrl}">ouvrir dans l'app</a></p>`
+          : ''
+      }
       <p style="color:#6b7280;font-size:14px">Ce lien expire dans 1 heure.</p>
       <p style="color:#9ca3af;font-size:12px">Si le bouton ne fonctionne pas, copiez ce lien :<br>${resetUrl}</p>
     </div>
@@ -133,7 +168,7 @@ export async function sendSubscriptionExpiryEmail(user, subscription) {
         year: 'numeric',
       })
     : 'bientôt'
-  const renewUrl = `${process.env.CLIENT_URL}/abonnements`
+  const renewUrl = `${process.env.CLIENT_URL}/abonnement`
 
   const subject = 'Votre abonnement Monpermis.bj expire bientôt'
   const text = `Bonjour ${user.firstName},

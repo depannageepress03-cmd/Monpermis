@@ -9,10 +9,16 @@ import type { RootStackParamList } from './types'
 import { IntroScreen } from '../screens/IntroScreen'
 import { LoginScreen } from '../screens/LoginScreen'
 import { ForgotPasswordScreen } from '../screens/ForgotPasswordScreen'
+import { ResetPasswordScreen } from '../screens/ResetPasswordScreen'
+import { VerifyEmailScreen } from '../screens/VerifyEmailScreen'
 import { HomeScreen } from '../screens/HomeScreen'
 import { RegisterScreen } from '../screens/RegisterScreen'
 import { RegisterPasswordScreen } from '../screens/RegisterPasswordScreen'
 import { TermsOfUseScreen } from '../screens/TermsOfUseScreen'
+import { PrivacyPolicyScreen } from '../screens/PrivacyPolicyScreen'
+import { MentionsLegalesScreen } from '../screens/MentionsLegalesScreen'
+import { ProfileScreen } from '../screens/ProfileScreen'
+import { NotificationsScreen } from '../screens/NotificationsScreen'
 import { AbonnementScreen } from '../screens/AbonnementScreen'
 import { PaymentHistoryScreen } from '../screens/PaymentHistoryScreen'
 import { CodeRouteScreen } from '../screens/CodeRouteScreen'
@@ -40,10 +46,16 @@ const linking: LinkingOptions<RootStackParamList> = {
       Intro: '',
       Login: 'connexion',
       ForgotPassword: 'connexion/mot-de-passe-oublie',
+      ResetPassword: 'reinitialiser-mot-de-passe',
+      VerifyEmail: 'verifier-email',
       Register: 'inscription',
       RegisterPassword: 'inscription/mot-de-passe',
       TermsOfUse: 'conditions-utilisation',
+      PrivacyPolicy: 'politique-de-confidentialite',
+      MentionsLegales: 'mentions-legales',
       Home: 'accueil',
+      Profile: 'profil',
+      Notifications: 'notifications',
       Abonnement: 'abonnement',
       HistoriquePaiements: 'abonnement/historique',
       CodeRoute: 'code-de-la-route',
@@ -90,6 +102,14 @@ function AppNavigator() {
         component={ForgotPasswordScreen}
       />
       <Stack.Screen
+        name="ResetPassword"
+        component={ResetPasswordScreen}
+      />
+      <Stack.Screen
+        name="VerifyEmail"
+        component={VerifyEmailScreen}
+      />
+      <Stack.Screen
         name="Register"
         component={RegisterScreen}
       />
@@ -100,6 +120,22 @@ function AppNavigator() {
       <Stack.Screen
         name="TermsOfUse"
         component={TermsOfUseScreen}
+      />
+      <Stack.Screen
+        name="PrivacyPolicy"
+        component={PrivacyPolicyScreen}
+      />
+      <Stack.Screen
+        name="MentionsLegales"
+        component={MentionsLegalesScreen}
+      />
+      <Stack.Screen
+        name="Profile"
+        component={ProfileScreen}
+      />
+      <Stack.Screen
+        name="Notifications"
+        component={NotificationsScreen}
       />
       <Stack.Screen
         name="Abonnement"
