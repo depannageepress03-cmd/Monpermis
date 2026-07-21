@@ -9,6 +9,7 @@ import { RevisionChapitresPage } from './pages/code/RevisionChapitresPage'
 import { ConduiteHubPage } from './pages/conduite/ConduiteHubPage'
 import { LeconsConduitePage } from './pages/conduite/LeconsConduitePage'
 import { ReservationsPage } from './pages/conduite/ReservationsPage'
+import { AnnouncementsPage } from './pages/AnnouncementsPage'
 import { CreateAdminPage } from './pages/CreateAdminPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { LoginPage } from './pages/LoginPage'
@@ -26,6 +27,7 @@ export default function App() {
           <Route path="/" element={<DashboardPage />} />
           <Route path="/utilisateurs" element={<UsersPage />} />
           <Route path="/abonnements" element={<SubscriptionsPage />} />
+          <Route path="/annonces" element={<AnnouncementsPage />} />
           <Route path="/creer-admin" element={<CreateAdminPage />} />
           <Route path="/parcours" element={<Navigate to="/code/revision-chapitres" replace />} />
           <Route path="/code" element={<CodeRouteHubPage />} />

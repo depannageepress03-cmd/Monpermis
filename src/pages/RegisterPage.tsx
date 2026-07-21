@@ -229,9 +229,11 @@ export function RegisterPage() {
           </p>
           <p className="signin-terms">
             En vous inscrivant, vous acceptez nos{' '}
-            <a href="#" onClick={(e) => e.preventDefault()}>Conditions d'utilisation</a>
+            <Link to="/conditions-utilisation">Conditions d'utilisation</Link>
             {' '}et notre{' '}
-            <a href="#" onClick={(e) => e.preventDefault()}>Politique de confidentialité</a>.
+            <Link to="/politique-de-confidentialite">Politique de confidentialité</Link>.
+            {' '}
+            <Link to="/mentions-legales">Mentions légales</Link>.
           </p>
         </footer>
       </div>

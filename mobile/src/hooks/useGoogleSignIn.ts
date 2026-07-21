@@ -1,72 +1,59 @@
-import * as Google from 'expo-auth-session/providers/google'
-import * as WebBrowser from 'expo-web-browser'
-import { useEffect, useMemo, useState } from 'react'
+import {
+  GoogleSignin,
+  isErrorWithCode,
+  isSuccessResponse,
+  statusCodes,
+} from '@react-native-google-signin/google-signin'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Platform } from 'react-native'
+import { getGoogleClientIds, getGoogleConfigError } from '../config/google'
 
-WebBrowser.maybeCompleteAuthSession()
+let configured = false
 
-const webClientId = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID?.trim() || ''
-const iosClientId = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID?.trim() || ''
-const androidClientId = process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID?.trim() || ''
+function ensureGoogleConfigured() {
+  if (configured) return
+  const { web, ios } = getGoogleClientIds()
+  GoogleSignin.configure({
+    webClientId: web,
+    iosClientId: Platform.OS === 'ios' ? ios || web : undefined,
+    offlineAccess: false,
+  })
+  configured = true
+}
 
-function getMissingGoogleConfigMessage() {
-  if (!webClientId) {
-    return 'Connexion Google non configurée pour cette version.'
+function mapGoogleError(error: unknown): string {
+  if (isErrorWithCode(error)) {
+    if (error.code === statusCodes.SIGN_IN_CANCELLED) {
+      return 'Connexion Google annulée'
+    }
+    if (error.code === statusCodes.IN_PROGRESS) {
+      return 'Connexion Google déjà en cours'
+    }
+    if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+      return 'Google Play Services indisponible sur cet appareil'
+    }
+    if (error.message) return error.message
   }
-  if (Platform.OS === 'android' && !androidClientId && !webClientId) {
-    return 'Connexion Google non configurée pour Android.'
-  }
-  if (Platform.OS === 'ios' && !iosClientId && !webClientId) {
-    return 'Connexion Google non configurée pour iOS.'
-  }
-  return null
+  if (error instanceof Error && error.message) return error.message
+  return 'Connexion Google échouée'
 }
 
 export function useGoogleSignIn(onSuccess: (idToken: string) => Promise<void>) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const configError = useMemo(() => getMissingGoogleConfigMessage(), [])
+  const configError = useMemo(() => getGoogleConfigError(), [])
   const googleEnabled = !configError
 
-  // Toujours appeler le hook (règles React), avec un client factice si non configuré.
-  const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
-    clientId: webClientId || '',
-    iosClientId: iosClientId || webClientId || '',
-    androidClientId:
-      androidClientId || webClientId || '',
-  })
-
   useEffect(() => {
-    if (!googleEnabled || !response) return
-
-    if (response.type === 'dismiss' || response.type === 'cancel') {
-      setLoading(false)
-      return
+    if (!googleEnabled) return
+    try {
+      ensureGoogleConfigured()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Configuration Google impossible')
     }
+  }, [googleEnabled])
 
-    if (response.type !== 'success') {
-      if (response.type === 'error') {
-        setError('Connexion Google annulée ou échouée')
-        setLoading(false)
-      }
-      return
-    }
-
-    const idToken = response.params.id_token
-    if (!idToken) {
-      setError('Token Google manquant')
-      setLoading(false)
-      return
-    }
-
-    onSuccess(idToken)
-      .catch((err) => {
-        setError(err instanceof Error ? err.message : 'Connexion Google échouée')
-      })
-      .finally(() => setLoading(false))
-  }, [response, onSuccess, googleEnabled])
-
-  const signInWithGoogle = async () => {
+  const signInWithGoogle = useCallback(async () => {
     if (configError) {
       setError(configError)
       return
@@ -76,17 +63,35 @@ export function useGoogleSignIn(onSuccess: (idToken: string) => Promise<void>) {
     setLoading(true)
 
     try {
-      await promptAsync()
-    } catch {
-      setError('Connexion Google échouée')
+      ensureGoogleConfigured()
+      if (Platform.OS === 'android') {
+        await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true })
+      }
+
+      const response = await GoogleSignin.signIn()
+      if (!isSuccessResponse(response)) {
+        setError('Connexion Google annulée')
+        return
+      }
+
+      const idToken = response.data.idToken
+      if (!idToken) {
+        setError('Token Google manquant. Vérifiez le client Web OAuth dans Google Cloud.')
+        return
+      }
+
+      await onSuccess(idToken)
+    } catch (err) {
+      setError(mapGoogleError(err))
+    } finally {
       setLoading(false)
     }
-  }
+  }, [configError, onSuccess])
 
   return {
     signInWithGoogle,
     loading,
     error,
-    disabled: !googleEnabled || !request,
+    disabled: !googleEnabled,
   }
 }

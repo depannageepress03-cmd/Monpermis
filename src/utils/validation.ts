@@ -10,6 +10,15 @@ export function validatePassword(password: string): string | undefined {
   return undefined
 }
 
+export function normalizePhone(phone: string): string {
+  const digits = phone.replace(/\D/g, '')
+  let local = digits
+  if (digits.startsWith('229') && digits.length >= 13) {
+    local = digits.slice(3)
+  }
+  return local.slice(0, 10)
+}
+
 export function validatePhone(phone: string): string | undefined {
   if (!phone.trim()) return 'Le téléphone est requis'
   if (!/^(\+?\d[\d\s.-]{7,})$/.test(phone)) return 'Numéro invalide'

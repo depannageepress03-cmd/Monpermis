@@ -16,6 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { loginWithGoogle } from '../api/auth'
 import { AuthInput } from '../components/AuthInput'
 import { Bouncy } from '../components/Bouncy'
+import { LegalFooter } from '../components/LegalFooter'
 import { BrandName } from '../components/BrandName'
 import { GoogleSignInButton } from '../components/GoogleSignInButton'
 import { useAuth } from '../context/AuthContext'
@@ -72,7 +73,22 @@ export function RegisterScreen() {
     signInWithGoogle,
     loading: googleLoading,
     disabled: googleDisabled,
+    error: googleError,
   } = useGoogleSignIn(handleGoogleSuccess)
+
+  useEffect(() => {
+    if (googleError) {
+      showAuthError(new Error(googleError))
+    }
+  }, [googleError])
+
+  const handleGooglePress = () => {
+    if (!acceptTerms) {
+      setErrors({ terms: "Veuillez accepter les conditions d'utilisation" })
+      return
+    }
+    void signInWithGoogle()
+  }
 
   const handleContinue = () => {
     const newErrors: FormErrors = {
@@ -204,7 +220,7 @@ export function RegisterScreen() {
             </View>
 
             <GoogleSignInButton
-              onPress={signInWithGoogle}
+              onPress={handleGooglePress}
               loading={googleLoading}
               disabled={googleDisabled}
             />
@@ -215,7 +231,8 @@ export function RegisterScreen() {
                 Se connecter
               </Text>
             </Text>
-          </ScrollView>
+          <LegalFooter />
+            </ScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>
     </View>

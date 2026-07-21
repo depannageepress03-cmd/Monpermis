@@ -5,7 +5,6 @@ import { requireUserAuth } from '../middleware/userAuth.js'
 import { requireSubscriptionAccess } from '../middleware/subscriptionAccess.js'
 import {
   allChapterCoursesCompleted,
-  isCourseSequentiallyUnlocked,
   serializeProgress,
 } from '../utils/progress.js'
 
@@ -62,13 +61,6 @@ router.post('/progress/start', ...withConduiteAccess, async (req, res) => {
       return res.status(404).json({ success: false, error: 'Cours introuvable' })
     }
 
-    if (!isCourseSequentiallyUnlocked(req.user, chapter, courseId)) {
-      return res.status(403).json({
-        success: false,
-        error: 'Terminez le cours précédent pour accéder à celui-ci',
-      })
-    }
-
     const session = await req.user.startCourseSession(chapterId, courseId)
     const secondsRemaining = req.user.getCourseUnlockSeconds(chapterId, courseId)
 
@@ -108,22 +100,6 @@ router.post('/progress', ...withConduiteAccess, async (req, res) => {
     const course = chapter.courses.id(courseId)
     if (!course || !course.published) {
       return res.status(404).json({ success: false, error: 'Cours introuvable' })
-    }
-
-    if (!isCourseSequentiallyUnlocked(req.user, chapter, courseId)) {
-      return res.status(403).json({
-        success: false,
-        error: 'Terminez le cours précédent avant de valider celui-ci',
-      })
-    }
-
-    const secondsRemaining = req.user.getCourseUnlockSeconds(chapterId, courseId)
-    if (secondsRemaining > 0) {
-      return res.status(403).json({
-        success: false,
-        error: `Passez encore ${secondsRemaining}s sur ce cours avant de le valider`,
-        data: { secondsRemaining, minCourseSeconds: MIN_COURSE_SECONDS },
-      })
     }
 
     await req.user.markCourseCompleted(chapterId, courseId)

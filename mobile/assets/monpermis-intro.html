@@ -95,18 +95,18 @@
   .logo svg{ width:100%; height:auto; display:block; overflow:visible; }
 
   /* Révélation en cascade : flou → net + léger soulèvement */
+  /* Pas de blur CSS : évite un démarrage resté flou */
   .shape{
     opacity:0;
     transform:translateY(10px);
-    filter:blur(8px);
-    will-change:transform, opacity, filter;
+    will-change:transform, opacity;
     animation:reveal 1.6s var(--ease-out) forwards;
   }
   .s-green { animation-delay:.25s; }
   .s-yellow{ animation-delay:.45s; }
   .s-navy  { animation-delay:.65s; }
   @keyframes reveal{
-    to{ opacity:1; transform:translateY(0); filter:blur(0); }
+    to{ opacity:1; transform:translateY(0); }
   }
 
   /* Pointillés : allumage un à un, puis voyage lent sur la route */
@@ -160,8 +160,7 @@
   .wordmark span{
     opacity:0;
     transform:translateY(8px);
-    filter:blur(5px);
-    will-change:transform, opacity, filter;
+    will-change:transform, opacity;
     animation:reveal 1s var(--ease-out) forwards;
     /* délais posés en JS : 1,6 s + i × 40 ms */
   }

@@ -1,7 +1,7 @@
 import { useFocusEffect, useNavigation } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { setStatusBarStyle } from 'expo-status-bar'
-import { ChevronRight, Lock, LogOut, User, X } from 'lucide-react-native'
+import { Bell, ChevronRight, Lock, LogOut, Settings, User, X } from 'lucide-react-native'
 import { useCallback, useEffect, useState } from 'react'
 import {
   Image,
@@ -13,8 +13,10 @@ import {
   View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import { fetchAnnouncements, type Announcement } from '../api/announcements'
 import { fetchSubscriptionMe, type SubscriptionAccess } from '../api/subscriptions'
 import { Bouncy } from '../components/Bouncy'
+import { LegalFooter } from '../components/LegalFooter'
 import { BrandName } from '../components/BrandName'
 import { HomeBottomAnimation } from '../components/HomeBottomAnimation'
 import { InfiniteImageMarquee } from '../components/InfiniteImageMarquee'
@@ -22,6 +24,7 @@ import { CodeModuleIcon, DriveModuleIcon } from '../components/ModuleIcons'
 import { ScreenLoader } from '../components/ScreenLoader'
 import { useAuth } from '../context/AuthContext'
 import { useRequireAuth } from '../hooks/useRequireAuth'
+import { useUnreadNotifications } from '../hooks/useUnreadNotifications'
 import type { RootStackParamList } from '../navigation/types'
 import { colors, dark, fonts } from '../theme'
 
@@ -40,10 +43,13 @@ export function HomeScreen() {
   const { user, loading } = useRequireAuth(navigation)
   const [profileOpen, setProfileOpen] = useState(false)
   const [subscription, setSubscription] = useState<SubscriptionAccess | null>(null)
+  const [announcements, setAnnouncements] = useState<Announcement[]>([])
+  const unreadCount = useUnreadNotifications(Boolean(user))
 
   useEffect(() => {
     if (!user) return
     void fetchSubscriptionMe().then(setSubscription).catch(() => setSubscription(null))
+    void fetchAnnouncements().then(setAnnouncements).catch(() => setAnnouncements([]))
   }, [user])
 
   useFocusEffect(
@@ -81,13 +87,27 @@ export function HomeScreen() {
               </View>
               <BrandName size={17} mainColor={dark.textPrimary} />
             </View>
-            <Pressable
-              style={({ pressed }) => [styles.profileBtn, pressed && styles.pressed]}
-              onPress={() => setProfileOpen(true)}
-              accessibilityLabel="Voir mon profil"
-            >
-              <User size={19} color={dark.textPrimary} />
-            </Pressable>
+            <View style={styles.topBarActions}>
+              <Pressable
+                style={({ pressed }) => [styles.profileBtn, pressed && styles.pressed]}
+                onPress={() => navigation.navigate('Notifications')}
+                accessibilityLabel="Mes notifications"
+              >
+                <Bell size={19} color={dark.textPrimary} />
+                {unreadCount > 0 ? (
+                  <View style={styles.bellBadge}>
+                    <Text style={styles.bellBadgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
+                  </View>
+                ) : null}
+              </Pressable>
+              <Pressable
+                style={({ pressed }) => [styles.profileBtn, pressed && styles.pressed]}
+                onPress={() => setProfileOpen(true)}
+                accessibilityLabel="Voir mon profil"
+              >
+                <User size={19} color={dark.textPrimary} />
+              </Pressable>
+            </View>
           </View>
 
           {/* Hero greeting */}
@@ -130,6 +150,37 @@ export function HomeScreen() {
           <View style={styles.marqueeWrap}>
             <InfiniteImageMarquee compact />
           </View>
+
+          {/* Actualités */}
+          {announcements.length > 0 ? (
+            <>
+              <Text style={[styles.sectionLabel, styles.pathSectionLabel]}>Actualités</Text>
+              <View style={styles.newsList}>
+                {announcements.slice(0, 3).map((item) => (
+                  <View key={item.id} style={styles.newsCard}>
+                    <View
+                      style={[
+                        styles.newsAccent,
+                        item.kind === 'alerte'
+                          ? styles.newsAccentAlert
+                          : item.kind === 'promo'
+                            ? styles.newsAccentPromo
+                            : styles.newsAccentInfo,
+                      ]}
+                    />
+                    <View style={styles.newsBody}>
+                      <Text style={styles.newsTitle}>{item.title}</Text>
+                      {item.body ? (
+                        <Text style={styles.newsText} numberOfLines={3}>
+                          {item.body}
+                        </Text>
+                      ) : null}
+                    </View>
+                  </View>
+                ))}
+              </View>
+            </>
+          ) : null}
 
           {/* Path selector */}
           <Text style={[styles.sectionLabel, styles.pathSectionLabel]}>Choisis ton parcours</Text>
@@ -174,6 +225,8 @@ export function HomeScreen() {
           <View style={styles.bottomAnim}>
             <HomeBottomAnimation compact />
           </View>
+
+          <LegalFooter />
         </ScrollView>
       </SafeAreaView>
 
@@ -217,6 +270,17 @@ export function HomeScreen() {
                 </Text>
               </View>
             </View>
+
+            <Pressable
+              style={({ pressed }) => [styles.modalEdit, pressed && styles.pressed]}
+              onPress={() => {
+                setProfileOpen(false)
+                navigation.navigate('Profile')
+              }}
+            >
+              <Settings size={16} color={dark.textPrimary} />
+              <Text style={styles.modalEditText}>Modifier mon profil</Text>
+            </Pressable>
 
             <Pressable
               style={({ pressed }) => [styles.modalLogout, pressed && styles.pressed]}
@@ -275,6 +339,11 @@ const styles = StyleSheet.create({
     width: 22,
     height: 22,
   },
+  topBarActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
   profileBtn: {
     width: 38,
     height: 38,
@@ -284,6 +353,68 @@ const styles = StyleSheet.create({
     backgroundColor: dark.surfaceRaised,
     borderWidth: 1,
     borderColor: dark.border,
+  },
+  bellBadge: {
+    position: 'absolute',
+    top: -3,
+    right: -3,
+    minWidth: 18,
+    height: 18,
+    paddingHorizontal: 4,
+    borderRadius: 999,
+    backgroundColor: dark.coral,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: dark.bg,
+  },
+  bellBadgeText: {
+    fontFamily: fonts.bodyBold,
+    fontSize: 10,
+    color: '#0B0F1A',
+  },
+
+  /* Actualités */
+  newsList: {
+    gap: 10,
+    marginBottom: 4,
+  },
+  newsCard: {
+    flexDirection: 'row',
+    backgroundColor: dark.surface,
+    borderWidth: 1,
+    borderColor: dark.border,
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  newsAccent: {
+    width: 4,
+  },
+  newsAccentInfo: {
+    backgroundColor: dark.green,
+  },
+  newsAccentPromo: {
+    backgroundColor: dark.coral,
+  },
+  newsAccentAlert: {
+    backgroundColor: '#FFC000',
+  },
+  newsBody: {
+    flex: 1,
+    paddingVertical: 13,
+    paddingHorizontal: 15,
+  },
+  newsTitle: {
+    fontFamily: fonts.displayBold,
+    fontSize: 14.5,
+    color: dark.textPrimary,
+    marginBottom: 3,
+  },
+  newsText: {
+    fontFamily: fonts.body,
+    fontSize: 13,
+    lineHeight: 19,
+    color: dark.textMuted,
   },
 
   /* Hero */
@@ -502,6 +633,23 @@ const styles = StyleSheet.create({
   },
   modalRowValue: {
     fontFamily: fonts.bodySemiBold,
+    fontSize: 15,
+    color: dark.textPrimary,
+  },
+  modalEdit: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: dark.surfaceRaised,
+    borderWidth: 1,
+    borderColor: dark.border,
+    borderRadius: 14,
+    paddingVertical: 14,
+    marginBottom: 10,
+  },
+  modalEditText: {
+    fontFamily: fonts.bodyBold,
     fontSize: 15,
     color: dark.textPrimary,
   },

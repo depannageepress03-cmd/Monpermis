@@ -26,6 +26,17 @@ export interface DashboardSummary {
   admins: {
     total: number
   }
+  revenue: {
+    currency: string
+    total: number
+    month: number
+    transactions: number
+  }
+  subscriptions: {
+    active: number
+    pending: number
+    expired: number
+  }
 }
 
 export function fetchDashboardSummary(token: string) {

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { AuthUser } from '../api/auth'
 
@@ -10,6 +10,14 @@ export function getStoredUser(): AuthUser | null {
   } catch {
     return null
   }
+}
+
+export function persistUser(user: AuthUser) {
+  if (localStorage.getItem('user') !== null || localStorage.getItem('token') !== null) {
+    localStorage.setItem('user', JSON.stringify(user))
+    return
+  }
+  sessionStorage.setItem('user', JSON.stringify(user))
 }
 
 export function useAuth() {
@@ -27,5 +35,10 @@ export function useAuth() {
     setLoading(false)
   }, [navigate])
 
-  return { user, loading }
+  const updateUser = useCallback((next: AuthUser) => {
+    persistUser(next)
+    setUser(next)
+  }, [])
+
+  return { user, loading, updateUser }
 }

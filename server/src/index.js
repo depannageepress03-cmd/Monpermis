@@ -24,6 +24,9 @@ import adminEcodepermisExamsRoutes from './routes/adminEcodepermisExams.js'
 import adminSubscriptionsRoutes from './routes/adminSubscriptions.js'
 import subscriptionsRoutes from './routes/subscriptions.js'
 import aiTutorRoutes from './routes/aiTutor.js'
+import notificationsRoutes from './routes/notifications.js'
+import announcementsRoutes from './routes/announcements.js'
+import adminAnnouncementsRoutes from './routes/adminAnnouncements.js'
 import fedapayWebhooksRoutes from './routes/fedapayWebhooks.js'
 import { ensureReservationIndexes } from './models/Reservation.js'
 import {
@@ -157,6 +160,9 @@ app.use('/api/content/revision', practiceExamsRoutes)
 app.use('/api/content/ecodepermis', ecodepermisExamsRoutes)
 app.use('/api/content/conduite', contentConduiteRoutes)
 app.use('/api/reservations', reservationsRoutes)
+app.use('/api/notifications', notificationsRoutes)
+app.use('/api/content/announcements', announcementsRoutes)
+app.use('/api/admin/announcements', adminAnnouncementsRoutes)
 
 async function connectMongo() {
   await mongoose.connect(process.env.MONGODB_URI, {

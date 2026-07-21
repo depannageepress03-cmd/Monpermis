@@ -21,7 +21,12 @@ import { LoginPage } from './pages/LoginPage'
 import { RegisterPage } from './pages/RegisterPage'
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage'
 import { ResetPasswordPage } from './pages/ResetPasswordPage'
+import { VerifyEmailPage } from './pages/VerifyEmailPage'
 import { TermsOfUsePage } from './pages/TermsOfUsePage'
+import { PrivacyPolicyPage } from './pages/PrivacyPolicyPage'
+import { MentionsLegalesPage } from './pages/MentionsLegalesPage'
+import { ProfilePage } from './pages/ProfilePage'
+import { NotificationsPage } from './pages/NotificationsPage'
 
 export default function App() {
   return (
@@ -30,8 +35,13 @@ export default function App() {
       <Route path="/inscription" element={<RegisterPage />} />
       <Route path="/mot-de-passe-oublie" element={<ForgotPasswordPage />} />
       <Route path="/reinitialiser-mot-de-passe" element={<ResetPasswordPage />} />
+      <Route path="/verifier-email" element={<VerifyEmailPage />} />
       <Route path="/conditions-utilisation" element={<TermsOfUsePage />} />
+      <Route path="/politique-de-confidentialite" element={<PrivacyPolicyPage />} />
+      <Route path="/mentions-legales" element={<MentionsLegalesPage />} />
       <Route path="/accueil" element={<HomePage />} />
+      <Route path="/profil" element={<ProfilePage />} />
+      <Route path="/notifications" element={<NotificationsPage />} />
       <Route path="/abonnement" element={<AbonnementPage />} />
       <Route path="/code-de-la-route" element={<CodeRoutePage />} />
       <Route path="/code-de-la-route/revision-chapitres" element={<RevisionChapitresPage />} />

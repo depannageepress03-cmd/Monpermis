@@ -1,11 +1,12 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
-import { AuthUser, clearSession, getStoredUser, saveSession } from '../api/auth'
+import { AuthUser, clearSession, getStoredToken, getStoredUser, saveSession } from '../api/auth'
 
 interface AuthContextValue {
   user: AuthUser | null
   loading: boolean
   signIn: (token: string, user: AuthUser) => Promise<void>
   signOut: () => Promise<void>
+  updateUser: (user: AuthUser) => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -43,9 +44,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null)
   }, [])
 
+  const updateUser = useCallback(async (nextUser: AuthUser) => {
+    const token = await getStoredToken()
+    if (token) await saveSession(token, nextUser)
+    setUser(nextUser)
+  }, [])
+
   const value = useMemo(
-    () => ({ user, loading, signIn, signOut }),
-    [user, loading, signIn, signOut],
+    () => ({ user, loading, signIn, signOut, updateUser }),
+    [user, loading, signIn, signOut, updateUser],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

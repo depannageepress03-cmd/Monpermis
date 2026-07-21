@@ -12,7 +12,7 @@ const userSchema = new mongoose.Schema(
     password: { type: String, minlength: 8, select: false },
     googleId: { type: String, unique: true, sparse: true },
     authProvider: { type: String, enum: ['local', 'google'], default: 'local' },
-    isEmailVerified: { type: Boolean, default: true },
+    isEmailVerified: { type: Boolean, default: false },
     isActive: { type: Boolean, default: true },
     emailVerificationToken: { type: String, select: false },
     emailVerificationExpires: { type: Date, select: false },
@@ -96,12 +96,8 @@ userSchema.methods.startCourseSession = async function startCourseSession(chapte
   return this.getCourseSession(chapterId, courseId)
 }
 
-userSchema.methods.getCourseUnlockSeconds = function getCourseUnlockSeconds(chapterId, courseId) {
-  if (this.hasCompletedCourse(chapterId, courseId)) return 0
-  const session = this.getCourseSession(chapterId, courseId)
-  if (!session?.openedAt) return MIN_COURSE_SECONDS
-  const elapsed = Math.floor((Date.now() - new Date(session.openedAt).getTime()) / 1000)
-  return Math.max(0, MIN_COURSE_SECONDS - elapsed)
+userSchema.methods.getCourseUnlockSeconds = function getCourseUnlockSeconds() {
+  return 0
 }
 
 userSchema.methods.markCourseCompleted = async function markCourseCompleted(chapterId, courseId) {

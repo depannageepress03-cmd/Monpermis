@@ -16,19 +16,18 @@ export function allChapterCoursesCompleted(user, chapter) {
   return ids.every((courseId) => user.hasCompletedCourse(chapter._id, courseId))
 }
 
-/** Tous les cours publiés de tous les chapitres publiés sont terminés. */
 export function allRevisionCoursesCompleted(user, chapters) {
-  const list = Array.isArray(chapters) ? chapters : []
-  if (list.length === 0) return false
-  return list.every((chapter) => allChapterCoursesCompleted(user, chapter))
+  if (!Array.isArray(chapters) || chapters.length === 0) return false
+  return chapters.every((chapter) => allChapterCoursesCompleted(user, chapter))
 }
 
 export function isCourseSequentiallyUnlocked(user, chapter, courseId) {
   const ids = publishedCourseIds(chapter)
-  const index = ids.indexOf(String(courseId))
+  const target = String(courseId)
+  const index = ids.indexOf(target)
   if (index < 0) return false
   if (index === 0) return true
-  return user.hasCompletedCourse(chapter._id, ids[index - 1])
+  return ids.slice(0, index).every((id) => user.hasCompletedCourse(chapter._id, id))
 }
 
 export function serializeProgress(user, chapterId = null) {

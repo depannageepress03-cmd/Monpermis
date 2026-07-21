@@ -16,7 +16,7 @@ import { Chapter } from '../models/Chapter.js'
 import { allRevisionCoursesCompleted } from '../utils/progress.js'
 
 const router = Router()
-const withCodeAccess = [requireUserAuth, requireSubscriptionAccess('code')]
+const withECodeAccess = [requireUserAuth, requireSubscriptionAccess('eCodepermis')]
 
 async function assertECodePermisUnlocked(user) {
   const chapters = await Chapter.find({ published: true }).sort({ order: 1, createdAt: 1 })
@@ -42,7 +42,7 @@ function evaluateAnswers(question, answerIds) {
   return { isCorrect, correctAnswerIds: [...correctIds] }
 }
 
-router.get('/exams', ...withCodeAccess, async (req, res) => {
+router.get('/exams', ...withECodeAccess, async (req, res) => {
   try {
     const chapters = await Chapter.find({ published: true }).sort({ order: 1, createdAt: 1 })
     const unlocked = allRevisionCoursesCompleted(req.user, chapters)
@@ -154,7 +154,7 @@ router.get('/exams', ...withCodeAccess, async (req, res) => {
   }
 })
 
-router.post('/exams/:examNumber/start', ...withCodeAccess, async (req, res) => {
+router.post('/exams/:examNumber/start', ...withECodeAccess, async (req, res) => {
   try {
     const examNumber = Number(req.params.examNumber)
     if (!Number.isInteger(examNumber) || examNumber < 1 || examNumber > ECODEPERMIS_EXAM_COUNT) {
@@ -209,7 +209,7 @@ router.post('/exams/:examNumber/start', ...withCodeAccess, async (req, res) => {
   }
 })
 
-router.get('/exams/attempts/:attemptId', ...withCodeAccess, async (req, res) => {
+router.get('/exams/attempts/:attemptId', ...withECodeAccess, async (req, res) => {
   try {
     const attempt = await ECodePermisExamAttempt.findOne({
       _id: req.params.attemptId,
@@ -230,7 +230,7 @@ router.get('/exams/attempts/:attemptId', ...withCodeAccess, async (req, res) => 
   }
 })
 
-router.post('/exams/attempts/:attemptId/check', ...withCodeAccess, async (req, res) => {
+router.post('/exams/attempts/:attemptId/check', ...withECodeAccess, async (req, res) => {
   try {
     const attempt = await ECodePermisExamAttempt.findOne({
       _id: req.params.attemptId,
@@ -284,7 +284,7 @@ router.post('/exams/attempts/:attemptId/check', ...withCodeAccess, async (req, r
   }
 })
 
-router.post('/exams/attempts/:attemptId/complete', ...withCodeAccess, async (req, res) => {
+router.post('/exams/attempts/:attemptId/complete', ...withECodeAccess, async (req, res) => {
   try {
     const attempt = await ECodePermisExamAttempt.findOne({
       _id: req.params.attemptId,
@@ -316,7 +316,7 @@ router.post('/exams/attempts/:attemptId/complete', ...withCodeAccess, async (req
   }
 })
 
-router.get('/exams/scores', ...withCodeAccess, async (req, res) => {
+router.get('/exams/scores', ...withECodeAccess, async (req, res) => {
   try {
     const attempts = await ECodePermisExamAttempt.find({
       userId: req.user._id,

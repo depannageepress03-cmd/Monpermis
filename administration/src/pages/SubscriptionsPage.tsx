@@ -23,21 +23,29 @@ import { getAdminToken, isAuthError } from '../context/AdminAuthContext'
 
 type Tab = 'plans' | 'learners'
 
-const durationOptions: { value: DurationType; label: string }[] = [
-  { value: 'monthly', label: 'Mensuel' },
-  { value: 'quarterly', label: 'Trimestriel' },
-  { value: 'semiannual', label: 'Semestriel' },
-  { value: 'yearly', label: 'Annuel' },
-  { value: 'custom', label: 'Durée personnalisée' },
-]
+/** Convertit un ancien type prédéfini en (unité, quantité) pour le sélecteur unique. */
+function presetToUnit(durationType: DurationType): { unit: CustomDurationUnit; amount: number } {
+  if (durationType === 'quarterly') return { unit: 'months', amount: 3 }
+  if (durationType === 'semiannual') return { unit: 'months', amount: 6 }
+  if (durationType === 'yearly') return { unit: 'years', amount: 1 }
+  return { unit: 'months', amount: 1 }
+}
 
 /** Convertit (quantité, unité) en nombre de jours — même règle que le backend. */
 function customTotalDays(amount: number | undefined, unit: CustomDurationUnit | undefined) {
   const qty = Math.max(1, Number(amount) || 1)
+  if (unit === 'years') return qty * 365
   if (unit === 'months') return qty * 30
   if (unit === 'weeks') return qty * 7
   return qty
 }
+
+const unitOptions: { value: CustomDurationUnit; label: string; singular: string }[] = [
+  { value: 'days', label: 'Jours', singular: 'Nombre de jours' },
+  { value: 'weeks', label: 'Semaines', singular: 'Nombre de semaines' },
+  { value: 'months', label: 'Mois', singular: 'Nombre de mois' },
+  { value: 'years', label: 'Années', singular: "Nombre d'années" },
+]
 
 const statusOptions: { value: SubscriptionStatus; label: string }[] = [
   { value: 'active', label: 'Actifs' },
@@ -51,8 +59,9 @@ function blankPlan(order: number): SubscriptionPlanPayload {
   return {
     name: '',
     description: '',
-    durationType: 'monthly',
-    customUnit: 'days',
+    durationType: 'custom',
+    customUnit: 'months',
+    customDays: 1,
     price: 0,
     accessCode: true,
     accessConduite: false,
@@ -65,12 +74,15 @@ function blankPlan(order: number): SubscriptionPlanPayload {
 }
 
 function planPayload(plan: SubscriptionPlan): SubscriptionPlanPayload {
+  // Tout est ramené au modèle « unité + quantité » (durée personnalisée).
+  const preset = presetToUnit(plan.durationType)
+  const isCustom = plan.durationType === 'custom'
   return {
     name: plan.name,
     description: plan.description ?? '',
-    durationType: plan.durationType,
-    ...(plan.customDays ? { customDays: plan.customDays } : {}),
-    customUnit: plan.customUnit || 'days',
+    durationType: 'custom',
+    customDays: isCustom ? plan.customDays ?? 1 : preset.amount,
+    customUnit: isCustom ? plan.customUnit || 'days' : preset.unit,
     price: plan.price,
     accessCode: plan.accessCode,
     accessConduite: plan.accessConduite,
@@ -329,24 +341,17 @@ export function SubscriptionsPage() {
               <div className="subscriptions-form-grid">
                 <label>Nom<input value={planForm.name} onChange={(event) => setPlanForm({ ...planForm, name: event.target.value })} required /></label>
                 <label>Prix (FCFA)<input type="number" min="0" value={planForm.price} onChange={(event) => setPlanForm({ ...planForm, price: Number(event.target.value) })} required /></label>
-                <label>Durée<select value={planForm.durationType} onChange={(event) => setPlanForm({ ...planForm, durationType: event.target.value as DurationType })}>{durationOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
-                {planForm.durationType === 'custom' ? (
-                  <>
-                    <label>Unité de durée<select value={planForm.customUnit ?? 'days'} onChange={(event) => setPlanForm({ ...planForm, customUnit: event.target.value as CustomDurationUnit })}>
-                      <option value="days">Jours</option>
-                      <option value="weeks">Semaines</option>
-                      <option value="months">Mois</option>
-                    </select></label>
-                    <label>
-                      {planForm.customUnit === 'months' ? 'Nombre de mois' : planForm.customUnit === 'weeks' ? 'Nombre de semaines' : 'Nombre de jours'}
-                      <input type="number" min="1" value={planForm.customDays ?? ''} onChange={(event) => setPlanForm({ ...planForm, customDays: Number(event.target.value) })} required />
-                    </label>
-                    <p className="subscriptions-full-field subscriptions-duration-preview">
-                      Durée totale calculée : <strong>{customTotalDays(planForm.customDays, planForm.customUnit)} jours</strong>
-                      <span> — la date de fin sera calculée automatiquement à l’activation.</span>
-                    </p>
-                  </>
-                ) : null}
+                <label>Unité de durée<select value={planForm.customUnit ?? 'months'} onChange={(event) => setPlanForm({ ...planForm, durationType: 'custom', customUnit: event.target.value as CustomDurationUnit })}>
+                  {unitOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                </select></label>
+                <label>
+                  {unitOptions.find((option) => option.value === (planForm.customUnit ?? 'months'))?.singular ?? 'Nombre'}
+                  <input type="number" min="1" value={planForm.customDays ?? ''} onChange={(event) => setPlanForm({ ...planForm, durationType: 'custom', customDays: Number(event.target.value) })} required />
+                </label>
+                <p className="subscriptions-full-field subscriptions-duration-preview">
+                  Durée totale calculée : <strong>{customTotalDays(planForm.customDays, planForm.customUnit)} jours</strong>
+                  <span> — la date de fin sera calculée automatiquement à l’activation.</span>
+                </p>
                 <label>Heures de conduite incluses<input type="number" min="0" value={planForm.heuresIncluses} onChange={(event) => setPlanForm({ ...planForm, heuresIncluses: Number(event.target.value) })} /></label>
                 <label>Ordre d’affichage<input type="number" min="0" value={planForm.order} onChange={(event) => setPlanForm({ ...planForm, order: Number(event.target.value) })} /></label>
                 <label className="subscriptions-full-field">Description<textarea value={planForm.description ?? ''} onChange={(event) => setPlanForm({ ...planForm, description: event.target.value })} rows={2} /></label>

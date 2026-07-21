@@ -1,7 +1,7 @@
 import { apiFetch } from './client'
 
 export type DurationType = 'monthly' | 'quarterly' | 'semiannual' | 'yearly' | 'custom'
-export type CustomDurationUnit = 'days' | 'weeks' | 'months'
+export type CustomDurationUnit = 'days' | 'weeks' | 'months' | 'years'
 export type SubscriptionStatus = 'active' | 'pending_payment' | 'expired' | 'cancelled' | 'none'
 
 export interface SubscriptionPlan {

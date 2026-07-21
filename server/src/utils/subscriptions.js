@@ -2,6 +2,7 @@ import { SubscriptionPlan, durationDaysFor } from '../models/SubscriptionPlan.js
 import { UserSubscription } from '../models/UserSubscription.js'
 import { User } from '../models/User.js'
 import { sendSubscriptionExpiryEmail } from '../services/email.js'
+import { notifyUser } from '../services/notifications.js'
 import { logger } from './logger.js'
 
 const GRACE_DAYS = Math.max(1, Number(process.env.SUBSCRIPTION_GRACE_DAYS) || 14)
@@ -193,6 +194,14 @@ export async function activateSubscription(subscription, { adminId = null } = {}
   }
 
   await subscription.save()
+
+  await notifyUser(subscription.userId, {
+    type: 'subscription_activated',
+    title: 'Abonnement activé ✅',
+    body: `Ton abonnement « ${subscription.planName || 'Offre'} » est actif jusqu’au ${endAt.toLocaleDateString('fr-FR')}.`,
+    link: 'abonnement',
+  })
+
   return subscription
 }
 
@@ -319,6 +328,12 @@ export async function notifyExpiringSubscriptions() {
     if (!user?.email) continue
     try {
       await sendSubscriptionExpiryEmail(user, sub)
+      await notifyUser(user._id, {
+        type: 'subscription_expiring',
+        title: 'Ton abonnement expire bientôt ⏳',
+        body: `« ${sub.planName || 'Ton offre'} » expire le ${new Date(sub.endAt).toLocaleDateString('fr-FR')}. Renouvelle pour garder ton accès.`,
+        link: 'abonnement',
+      })
       sub.expiryWarningSent = true
       await sub.save()
       sent += 1

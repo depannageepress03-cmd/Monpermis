@@ -53,7 +53,7 @@ export function LearnerCourseDetailPage({
   const [loading, setLoading] = useState(!state?.course)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [secondsRemaining, setSecondsRemaining] = useState(5 * 60)
+  const [secondsRemaining, setSecondsRemaining] = useState(0)
   const [accessBlocked, setAccessBlocked] = useState(false)
 
   const load = useCallback(async () => {
@@ -125,7 +125,7 @@ export function LearnerCourseDetailPage({
   const isCompleted = course ? completedIds.has(course.id) : false
   const allCompleted =
     courses.length > 0 && courses.every((item) => completedIds.has(item.id))
-  const canValidate = isCompleted || secondsRemaining <= 0
+  const canValidate = !isCompleted
 
   useEffect(() => {
     if (isCompleted || loading || accessBlocked) return

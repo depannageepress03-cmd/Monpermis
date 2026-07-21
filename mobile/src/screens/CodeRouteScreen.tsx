@@ -19,10 +19,10 @@ import {
   View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { ContentError, fetchPracticeExams } from '../api/revision'
 import { fetchSubscriptionMe, type SubscriptionAccess } from '../api/subscriptions'
 import { Bouncy } from '../components/Bouncy'
 import { FadeUp } from '../components/FadeUp'
+import { LegalFooter } from '../components/LegalFooter'
 import { ScreenLoader } from '../components/ScreenLoader'
 import { useRequireAuth } from '../hooks/useRequireAuth'
 import type { RootStackParamList } from '../navigation/types'
@@ -38,7 +38,6 @@ const categories = [
     subtitle: 'Signalisation, priorités, sécurité…',
     icon: List,
     tone: 'green' as Tone,
-    requiresAllCourses: false,
   },
   {
     id: 'ExamensTest' as const,
@@ -46,7 +45,6 @@ const categories = [
     subtitle: 'Auto-évaluation guidée, note sur 20',
     icon: HelpCircle,
     tone: 'coral' as Tone,
-    requiresAllCourses: true,
   },
   {
     id: 'MesNotes' as const,
@@ -54,7 +52,6 @@ const categories = [
     subtitle: 'Où tu en es et tes résultats',
     icon: FileText,
     tone: 'neutral' as Tone,
-    requiresAllCourses: false,
   },
   {
     id: 'ECodePermis' as const,
@@ -62,7 +59,6 @@ const categories = [
     subtitle: 'Examen blanc en conditions réelles',
     icon: ClipboardCheck,
     tone: 'green' as Tone,
-    requiresAllCourses: true,
   },
 ]
 
@@ -75,8 +71,6 @@ const toneMap: Record<Tone, { accent: string; soft: string; border: string }> = 
 export function CodeRouteScreen() {
   const navigation = useNavigation<Nav>()
   const { user, loading } = useRequireAuth(navigation)
-  const [examsUnlocked, setExamsUnlocked] = useState(false)
-  const [unlockHint, setUnlockHint] = useState<string | null>(null)
   const [subscription, setSubscription] = useState<SubscriptionAccess | null>(null)
   const [subscriptionLoading, setSubscriptionLoading] = useState(true)
 
@@ -87,22 +81,6 @@ export function CodeRouteScreen() {
     }, []),
   )
 
-  const loadUnlock = useCallback(async () => {
-    try {
-      const data = await fetchPracticeExams()
-      setExamsUnlocked(data.unlocked !== false)
-      setUnlockHint(
-        data.unlocked === false
-          ? data.message ||
-              'Terminez tous les cours de chaque chapitre pour débloquer les épreuves.'
-          : null,
-      )
-    } catch (err) {
-      setExamsUnlocked(true)
-      setUnlockHint(err instanceof ContentError ? err.message : null)
-    }
-  }, [])
-
   useEffect(() => {
     if (!user) return
     void fetchSubscriptionMe()
@@ -110,10 +88,6 @@ export function CodeRouteScreen() {
       .catch(() => setSubscription(null))
       .finally(() => setSubscriptionLoading(false))
   }, [user])
-
-  useEffect(() => {
-    if (subscription?.accessCode) void loadUnlock()
-  }, [subscription, loadUnlock])
 
   if (loading || !user) return <ScreenLoader />
 
@@ -183,70 +157,37 @@ export function CodeRouteScreen() {
             </Text>
           </FadeUp>
 
-          {!examsUnlocked && unlockHint ? (
-            <FadeUp delay={140}>
-              <View style={styles.hintCard}>
-                <Lock size={14} color={dark.coral} />
-                <Text style={styles.hintText}>{unlockHint}</Text>
-              </View>
-            </FadeUp>
-          ) : null}
-
           <View style={styles.list}>
             {categories.map((category, index) => {
               const Icon = category.icon
               const tone = toneMap[category.tone]
-              const locked = category.requiresAllCourses && !examsUnlocked
 
               return (
                 <FadeUp key={category.id} delay={200 + index * 80}>
                   <Bouncy
-                    disabled={locked}
                     scaleTo={0.97}
-                    onPress={() => {
-                      if (!locked) navigation.navigate(category.id)
-                    }}
+                    onPress={() => navigation.navigate(category.id)}
                   >
-                    <View
-                      style={[
-                        styles.card,
-                        { borderColor: locked ? dark.border : tone.border },
-                        locked && styles.cardLocked,
-                      ]}
-                    >
+                    <View style={[styles.card, { borderColor: tone.border }]}>
                       <View style={styles.cardIndex}>
                         <Text style={styles.cardIndexText}>{index + 1}</Text>
                       </View>
-                      <View
-                        style={[
-                          styles.iconWrap,
-                          { backgroundColor: locked ? dark.surfaceRaised : tone.soft },
-                        ]}
-                      >
-                        {locked ? (
-                          <Lock size={20} color={dark.textMuted} />
-                        ) : (
-                          <Icon size={22} color={tone.accent} />
-                        )}
+                      <View style={[styles.iconWrap, { backgroundColor: tone.soft }]}>
+                        <Icon size={22} color={tone.accent} />
                       </View>
                       <View style={styles.cardCopy}>
                         <Text style={styles.cardTitle}>{category.label}</Text>
-                        <Text style={styles.cardSubtitle}>
-                          {locked
-                            ? 'Finis toute la révision par chapitres pour débloquer'
-                            : category.subtitle}
-                        </Text>
+                        <Text style={styles.cardSubtitle}>{category.subtitle}</Text>
                       </View>
-                      <ChevronRight
-                        size={20}
-                        color={locked ? dark.textMuted : tone.accent}
-                      />
+                      <ChevronRight size={20} color={tone.accent} />
                     </View>
                   </Bouncy>
                 </FadeUp>
               )
             })}
           </View>
+
+          <LegalFooter />
         </ScrollView>
       </SafeAreaView>
     </View>

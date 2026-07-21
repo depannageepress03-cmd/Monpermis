@@ -30,6 +30,12 @@ const emptySummary: DashboardSummary = {
     reservationsConfirmed: 0,
   },
   admins: { total: 0 },
+  revenue: { currency: 'XOF', total: 0, month: 0, transactions: 0 },
+  subscriptions: { active: 0, pending: 0, expired: 0 },
+}
+
+function formatXof(value: number) {
+  return `${new Intl.NumberFormat('fr-FR').format(value)} FCFA`
 }
 
 export function DashboardPage() {
@@ -206,6 +212,38 @@ export function DashboardPage() {
 
         <div className="dash-stat-card">
           <div className="dash-stat-head">
+            <p className="dash-stat-label">Chiffre d&apos;affaires</p>
+            <div className="dash-stat-icon is-green">
+              <CreditCard size={14} strokeWidth={2} />
+            </div>
+          </div>
+          <p className="dash-stat-num">
+            {loading ? '…' : formatXof(summary.revenue.total)}
+          </p>
+          <div className="dash-stat-foot is-green">
+            <TrendingUp size={12} strokeWidth={2} />
+            {formatXof(summary.revenue.month)} ce mois
+          </div>
+        </div>
+
+        <div className="dash-stat-card">
+          <div className="dash-stat-head">
+            <p className="dash-stat-label">Abonnements actifs</p>
+            <div className="dash-stat-icon is-violet">
+              <CreditCard size={14} strokeWidth={2} />
+            </div>
+          </div>
+          <p className="dash-stat-num">
+            {loading ? '…' : summary.subscriptions.active}
+          </p>
+          <div className="dash-stat-foot is-red">
+            <TrendingUp size={12} strokeWidth={2} />
+            {summary.subscriptions.pending} en attente · {summary.subscriptions.expired} expirés
+          </div>
+        </div>
+
+        <div className="dash-stat-card">
+          <div className="dash-stat-head">
             <p className="dash-stat-label">Paiements en attente</p>
             <div className="dash-stat-icon is-violet">
               <CreditCard size={14} strokeWidth={2} />
@@ -321,6 +359,7 @@ export function DashboardPage() {
           { to: '/conduite/lecons', label: 'Leçons conduite' },
           { to: '/conduite/reservations', label: 'Réservations' },
           { to: '/utilisateurs', label: 'Utilisateurs' },
+          { to: '/annonces', label: 'Annonces' },
           { to: '/creer-admin', label: 'Créer un admin' },
         ].map((item) => (
           <Link key={item.to} to={item.to} className="dash-quick-link">

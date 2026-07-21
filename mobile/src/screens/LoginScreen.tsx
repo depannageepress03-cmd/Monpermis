@@ -17,6 +17,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { loginUser, loginWithGoogle } from '../api/auth'
 import { AuthInput } from '../components/AuthInput'
 import { Bouncy } from '../components/Bouncy'
+import { LegalFooter } from '../components/LegalFooter'
 import { GoogleSignInButton } from '../components/GoogleSignInButton'
 import { BrandName } from '../components/BrandName'
 import { useAuth } from '../context/AuthContext'
@@ -73,7 +74,14 @@ export function LoginScreen() {
     signInWithGoogle,
     loading: googleLoading,
     disabled: googleDisabled,
+    error: googleError,
   } = useGoogleSignIn(handleGoogleSuccess)
+
+  useEffect(() => {
+    if (googleError) {
+      showAuthError(new Error(googleError))
+    }
+  }, [googleError])
 
   useEffect(() => {
     if (route.params?.message) {
@@ -197,6 +205,7 @@ export function LoginScreen() {
                   Créer un compte
                 </Text>
               </Text>
+            <LegalFooter />
             </ScrollView>
           </Animated.View>
         </KeyboardAvoidingView>

@@ -7,7 +7,6 @@ import { requireUserAuth } from '../middleware/userAuth.js'
 import { requireSubscriptionAccess } from '../middleware/subscriptionAccess.js'
 import {
   allChapterCoursesCompleted,
-  isCourseSequentiallyUnlocked,
   serializeProgress,
 } from '../utils/progress.js'
 import { buildLearnerJourney } from '../utils/learnerJourney.js'
@@ -60,13 +59,6 @@ router.get('/chapters/:chapterId/test-subject', ...withCodeAccess, async (req, r
     const chapter = await Chapter.findById(req.params.chapterId)
     if (!chapter || !chapter.published) {
       return res.status(404).json({ success: false, error: 'Chapitre introuvable' })
-    }
-
-    if (!allChapterCoursesCompleted(req.user, chapter)) {
-      return res.status(403).json({
-        success: false,
-        error: 'Terminez tous les cours du chapitre pour accéder au sujet test',
-      })
     }
 
     const subject = await TestSubject.findOne({
@@ -190,13 +182,6 @@ router.post('/progress/start', ...withCodeAccess, async (req, res) => {
       return res.status(404).json({ success: false, error: 'Cours introuvable' })
     }
 
-    if (!isCourseSequentiallyUnlocked(req.user, chapter, courseId)) {
-      return res.status(403).json({
-        success: false,
-        error: 'Terminez le cours précédent pour accéder à celui-ci',
-      })
-    }
-
     const session = await req.user.startCourseSession(chapterId, courseId)
     const secondsRemaining = req.user.getCourseUnlockSeconds(chapterId, courseId)
 
@@ -238,22 +223,6 @@ router.post('/progress', ...withCodeAccess, async (req, res) => {
       return res.status(404).json({ success: false, error: 'Cours introuvable' })
     }
 
-    if (!isCourseSequentiallyUnlocked(req.user, chapter, courseId)) {
-      return res.status(403).json({
-        success: false,
-        error: 'Terminez le cours précédent avant de valider celui-ci',
-      })
-    }
-
-    const secondsRemaining = req.user.getCourseUnlockSeconds(chapterId, courseId)
-    if (secondsRemaining > 0) {
-      return res.status(403).json({
-        success: false,
-        error: `Passez encore ${secondsRemaining}s sur ce cours avant de le valider`,
-        data: { secondsRemaining, minCourseSeconds: MIN_COURSE_SECONDS },
-      })
-    }
-
     await req.user.markCourseCompleted(chapterId, courseId)
 
     res.json({
@@ -281,13 +250,6 @@ router.post('/progress/test', ...withCodeAccess, async (req, res) => {
     const chapter = await Chapter.findById(chapterId)
     if (!chapter || !chapter.published) {
       return res.status(404).json({ success: false, error: 'Chapitre introuvable' })
-    }
-
-    if (!allChapterCoursesCompleted(req.user, chapter)) {
-      return res.status(403).json({
-        success: false,
-        error: 'Terminez tous les cours avant de valider le sujet test',
-      })
     }
 
     await req.user.markTestCompleted(chapterId, correct, total)

@@ -31,7 +31,7 @@ export function CourseDetailScreen() {
 
   const [completedIds, setCompletedIds] = useState<Set<string>>(new Set())
   const [progressLoading, setProgressLoading] = useState(true)
-  const [secondsRemaining, setSecondsRemaining] = useState(5 * 60)
+  const [secondsRemaining, setSecondsRemaining] = useState(0)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [accessBlocked, setAccessBlocked] = useState(false)
@@ -44,7 +44,7 @@ export function CourseDetailScreen() {
   const nextCourse = courseIndex >= 0 ? courses[courseIndex + 1] : undefined
   const isCompleted = completedIds.has(course.id)
   const allCompleted = courses.length > 0 && courses.every((item) => completedIds.has(item.id))
-  const canValidate = isCompleted || secondsRemaining <= 0
+  const canValidate = !isCompleted
 
   const loadProgress = useCallback(async () => {
     setProgressLoading(true)
