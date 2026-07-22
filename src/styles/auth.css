@@ -404,7 +404,81 @@
   grid-template-columns: 1fr 1fr;
   gap: 0.75rem;
   flex: 1;
-  margin-top: 4.5rem;
+  margin-top: 1.25rem;
+}
+
+.code-route-banner {
+  position: relative;
+  width: 100%;
+  height: clamp(7.5rem, 18vw, 11rem);
+  margin: 1.25rem 0 0;
+  overflow: hidden;
+  border-radius: 18px;
+  border: 1px solid var(--color-border, rgba(0, 16, 48, 0.1));
+  background: #eef1f5;
+  box-shadow: var(--shadow-sm, 0 2px 8px rgba(0, 16, 48, 0.06));
+}
+
+.code-route-banner::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.55) 0%,
+    transparent 12%,
+    transparent 88%,
+    rgba(255, 255, 255, 0.55) 100%
+  );
+}
+
+.code-route-banner-track {
+  display: flex;
+  width: max-content;
+  height: 100%;
+  animation: code-route-banner-scroll 32s linear infinite;
+}
+
+.code-route-banner-item {
+  width: clamp(9.5rem, 28vw, 14rem);
+  height: 100%;
+  object-fit: cover;
+  flex-shrink: 0;
+  display: block;
+}
+
+@keyframes code-route-banner-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .code-route-banner-track {
+    animation: none;
+  }
+}
+
+@media (min-width: 768px) {
+  .code-route-banner {
+    height: clamp(9rem, 16vw, 13rem);
+    margin-top: 1.5rem;
+    border-radius: 22px;
+  }
+
+  .code-route-banner-item {
+    width: clamp(12rem, 18vw, 16rem);
+  }
+}
+
+@media (min-width: 1024px) {
+  .code-route-banner {
+    height: 14rem;
+  }
 }
 
 .code-route-anim-nav {
