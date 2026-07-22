@@ -2,24 +2,20 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { GoogleOAuthProvider } from '@react-oauth/google'
 import { BrowserRouter } from 'react-router-dom'
-import { registerSW } from 'virtual:pwa-register'
 import App from './App.tsx'
 import './index.css'
 
-// Force la prise en compte des nouveaux builds (évite de rester bloqué sur un vieux JS en cache)
-registerSW({
-  immediate: true,
-  onNeedRefresh() {
-    window.location.reload()
-  },
-  onRegisteredSW(_url, registration) {
-    if (!registration) return
-    // Vérifie régulièrement une nouvelle version du service worker
-    window.setInterval(() => {
-      void registration.update()
-    }, 60_000)
-  },
-})
+// Purge agressive des anciens Service Workers / caches PWA
+if ('serviceWorker' in navigator) {
+  void navigator.serviceWorker.getRegistrations().then((regs) => {
+    for (const reg of regs) void reg.unregister()
+  })
+}
+if (typeof caches !== 'undefined') {
+  void caches.keys().then((keys) => {
+    for (const key of keys) void caches.delete(key)
+  })
+}
 
 const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID ?? ''
 

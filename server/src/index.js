@@ -180,7 +180,17 @@ app.use('/api/admin/announcements', adminAnnouncementsRoutes)
 if (serveWebApp) {
   logger.info('SPA web servie depuis web-dist', { path: webDistPath })
 
-  // Assets hashés : cache long. index.html / sw : jamais mis en cache longtemps.
+  // Tue les anciens SW : 404 + Clear-Site-Data (ne jamais renvoyer index.html pour /sw.js)
+  app.get(['/sw.js', '/registerSW.js', '/manifest.webmanifest'], (req, res) => {
+    res.setHeader('Clear-Site-Data', '"cache", "storage"')
+    res.setHeader('Cache-Control', 'no-store')
+    return res.status(404).type('text/plain').send('PWA disabled')
+  })
+  app.get(/^\/workbox-.*\.js$/, (_req, res) => {
+    res.setHeader('Cache-Control', 'no-store')
+    return res.status(404).type('text/plain').send('PWA disabled')
+  })
+
   app.use(
     '/assets',
     express.static(path.join(webDistPath, 'assets'), {
@@ -198,8 +208,9 @@ if (serveWebApp) {
       maxAge: '1h',
       setHeaders(res, filePath) {
         const base = path.basename(filePath)
-        if (base === 'index.html' || base === 'sw.js' || base === 'registerSW.js' || base === 'manifest.webmanifest') {
+        if (base === 'index.html') {
           res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate')
+          res.setHeader('Clear-Site-Data', '"cache"')
         }
       },
     }),
@@ -208,6 +219,10 @@ if (serveWebApp) {
   app.get(/^(?!\/api(?:\/|$)|\/uploads(?:\/|$)|\/assets(?:\/|$)).*/, (req, res, next) => {
     if (req.method !== 'GET' && req.method !== 'HEAD') return next()
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate')
+    // Aide les navigateurs à lâcher les vieux caches HTML/SW
+    if (req.query.purge === '1') {
+      res.setHeader('Clear-Site-Data', '"cache", "storage"')
+    }
     return res.sendFile(path.join(webDistPath, 'index.html'), (err) => {
       if (err) next(err)
     })
