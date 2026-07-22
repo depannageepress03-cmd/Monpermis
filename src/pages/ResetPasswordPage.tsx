@@ -3,6 +3,7 @@ import { type FormEvent, useState } from 'react'
 import { resetPassword } from '../api/auth-password'
 import { AuthInput } from '../components/AuthInput'
 import { BrandName } from '../components/BrandName'
+import { LegalFooter } from '../components/LegalFooter'
 import '../styles/login.css'
 
 export function ResetPasswordPage() {
@@ -62,6 +63,7 @@ export function ResetPasswordPage() {
           <p className="signin-register-link" style={{ textAlign: 'center' }}>
             <Link to="/mot-de-passe-oublie">Demander un nouveau lien</Link>
           </p>
+          <LegalFooter />
         </div>
       </div>
     )
@@ -83,6 +85,7 @@ export function ResetPasswordPage() {
             <p className="signin-register-link">
               <Link to="/">Se connecter</Link>
             </p>
+            <LegalFooter />
           </div>
         ) : (
           <form className="signin-form signin-form--app" onSubmit={handleSubmit} noValidate>
@@ -120,6 +123,8 @@ export function ResetPasswordPage() {
             <p className="signin-register-link">
               <Link to="/">Retour à la connexion</Link>
             </p>
+
+            <LegalFooter />
           </form>
         )}
       </div>

@@ -4,6 +4,7 @@ import { getAuthErrorDetails, loginUser, loginWithGoogle, saveSession } from '..
 import { AuthInput } from '../components/AuthInput'
 import { GoogleSignInButton } from '../components/GoogleSignInButton'
 import { BrandName } from '../components/BrandName'
+import { LegalFooter } from '../components/LegalFooter'
 import { validateEmail, validatePassword } from '../utils/validation'
 import '../styles/login.css'
 
@@ -132,13 +133,7 @@ export function LoginPage() {
             Pas encore de compte ? <Link to="/inscription">Créer un compte</Link>
           </p>
 
-          <p className="signin-terms">
-            <Link to="/conditions-utilisation">Conditions d&apos;utilisation</Link>
-            {' · '}
-            <Link to="/politique-de-confidentialite">Confidentialité</Link>
-            {' · '}
-            <Link to="/mentions-legales">Mentions légales</Link>
-          </p>
+          <LegalFooter />
         </form>
       </div>
     </div>
