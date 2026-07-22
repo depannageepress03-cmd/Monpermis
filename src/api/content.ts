@@ -4,12 +4,18 @@ interface ApiResponse<T> {
   success: boolean
   data?: T
   error?: string
+  code?: string
 }
 
 export class ContentError extends Error {
-  constructor(message: string) {
+  status?: number
+  code?: string
+
+  constructor(message: string, status?: number, code?: string) {
     super(message)
     this.name = 'ContentError'
+    this.status = status
+    this.code = code
   }
 }
 
@@ -27,7 +33,7 @@ async function request<T>(path: string, options?: RequestInit & { auth?: boolean
   const needAuth = options?.auth !== false
   if (needAuth) {
     const token = getToken()
-    if (!token) throw new ContentError('Authentification requise')
+    if (!token) throw new ContentError('Authentification requise', 401)
     headers.Authorization = `Bearer ${token}`
   }
 
@@ -37,7 +43,7 @@ async function request<T>(path: string, options?: RequestInit & { auth?: boolean
   })
   const body = (await response.json().catch(() => ({}))) as ApiResponse<T>
   if (!response.ok || !body.success || body.data === undefined) {
-    throw new ContentError(body.error ?? 'Contenu indisponible')
+    throw new ContentError(body.error ?? 'Contenu indisponible', response.status, body.code)
   }
   return body.data
 }

@@ -133,21 +133,36 @@ export function CodeRoutePage() {
         </header>
 
         <div className="category-grid">
-          {categories.map((category, index) => (
+          {categories.map((category, index) => {
+            const eCodeLocked = category.id === 'e-codepermis' && !subscription?.accessECodepermis
+            return (
             <button
               key={category.id}
               type="button"
-              className={`category-card ${category.className} code-route-anim-card`}
+              className={`category-card ${category.className} code-route-anim-card${eCodeLocked ? ' is-locked' : ''}`}
               style={{ animationDelay: `${0.28 + index * 0.09}s` }}
-              onClick={() => navigate(`/code-de-la-route/${category.id}`)}
+              disabled={eCodeLocked}
+              onClick={() => {
+                if (eCodeLocked) {
+                  navigate('/abonnement')
+                  return
+                }
+                navigate(`/code-de-la-route/${category.id}`)
+              }}
             >
               <CategoryIcon>{category.icon}</CategoryIcon>
               <span className="category-label">{category.label}</span>
               {category.subtitle ? (
                 <span className="category-subtitle">{category.subtitle}</span>
               ) : null}
+              {eCodeLocked ? (
+                <span className="category-subtitle">
+                  <Lock size={12} /> Abonnement adapté requis
+                </span>
+              ) : null}
             </button>
-          ))}
+            )
+          })}
         </div>
           </>
         )}
