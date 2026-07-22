@@ -1,5 +1,5 @@
 import { Lock } from 'lucide-react'
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { fetchSubscriptionMe, type SubscriptionAccess } from '../api/subscriptions'
 import { CodeRouteBanner } from '../components/CodeRouteBanner'
@@ -15,68 +15,30 @@ const categories = [
     label: 'Révision par chapitres',
     subtitle: '',
     className: 'category-pink',
-    icon: (
-      <svg viewBox="0 0 64 64" aria-hidden="true">
-        <rect x="10" y="12" width="44" height="10" rx="2" fill="#ef4444" />
-        <text x="14" y="19" fill="#fff" fontSize="8" fontWeight="700">?</text>
-        <rect x="10" y="26" width="44" height="10" rx="2" fill="#eab308" />
-        <text x="14" y="33" fill="#fff" fontSize="8" fontWeight="700">?</text>
-        <rect x="10" y="40" width="44" height="10" rx="2" fill="#22c55e" />
-        <text x="14" y="47" fill="#fff" fontSize="8" fontWeight="700">?</text>
-      </svg>
-    ),
+    image: '/code-route/cards/revision.jpg',
   },
   {
     id: 'examens-test',
     label: 'Examens test',
     subtitle: '(auto-évaluation)',
     className: 'category-yellow',
-    icon: (
-      <svg viewBox="0 0 64 64" aria-hidden="true">
-        <rect x="14" y="10" width="36" height="44" rx="4" fill="#fff" opacity="0.95" />
-        <circle cx="32" cy="30" r="12" fill="#3b82f6" />
-        <text x="32" y="35" textAnchor="middle" fill="#fff" fontSize="16" fontWeight="700">?</text>
-      </svg>
-    ),
+    image: '/code-route/cards/examens.jpg',
   },
   {
     id: 'mes-notes',
     label: 'Mes notes & avancée',
     subtitle: '',
     className: 'category-green',
-    icon: (
-      <svg viewBox="0 0 64 64" aria-hidden="true">
-        <ellipse cx="24" cy="22" rx="16" ry="12" fill="#eab308" />
-        <text x="24" y="26" textAnchor="middle" fill="#fff" fontSize="12" fontWeight="700">Q</text>
-        <ellipse cx="40" cy="38" rx="16" ry="12" fill="#3b82f6" />
-        <text x="40" y="42" textAnchor="middle" fill="#fff" fontSize="12" fontWeight="700">A</text>
-      </svg>
-    ),
+    image: '/code-route/cards/notes.jpg',
   },
   {
     id: 'e-codepermis',
     label: 'E-Codepermis',
     subtitle: '(examen blanc)',
     className: 'category-purple',
-    icon: (
-      <svg viewBox="0 0 64 64" aria-hidden="true">
-        <rect x="14" y="12" width="36" height="40" rx="4" fill="#fff" opacity="0.95" />
-        <rect x="18" y="18" width="10" height="10" rx="2" fill="#22c55e" />
-        <text x="23" y="26" textAnchor="middle" fill="#fff" fontSize="7" fontWeight="700">a</text>
-        <rect x="30" y="18" width="10" height="10" rx="2" fill="#eab308" />
-        <text x="35" y="26" textAnchor="middle" fill="#fff" fontSize="8" fontWeight="700">✓</text>
-        <rect x="18" y="30" width="10" height="10" rx="2" fill="#ef4444" />
-        <text x="23" y="38" textAnchor="middle" fill="#fff" fontSize="7" fontWeight="700">c</text>
-        <rect x="30" y="30" width="10" height="10" rx="2" fill="#3b82f6" />
-        <text x="35" y="38" textAnchor="middle" fill="#fff" fontSize="7" fontWeight="700">d</text>
-      </svg>
-    ),
+    image: '/code-route/cards/ecodepermis.jpg',
   },
 ] as const
-
-function CategoryIcon({ children }: { children: ReactNode }) {
-  return <span className="category-icon">{children}</span>
-}
 
 export function CodeRoutePage() {
   const navigate = useNavigate()
@@ -133,7 +95,7 @@ export function CodeRoutePage() {
             <button
               key={category.id}
               type="button"
-              className={`category-card ${category.className} code-route-anim-card${eCodeLocked ? ' is-locked' : ''}`}
+              className={`category-card category-card--photo ${category.className} code-route-anim-card${eCodeLocked ? ' is-locked' : ''}`}
               style={{ animationDelay: `${0.28 + index * 0.09}s` }}
               disabled={eCodeLocked}
               onClick={() => {
@@ -144,16 +106,24 @@ export function CodeRoutePage() {
                 navigate(`/code-de-la-route/${category.id}`)
               }}
             >
-              <CategoryIcon>{category.icon}</CategoryIcon>
-              <span className="category-label">{category.label}</span>
-              {category.subtitle ? (
-                <span className="category-subtitle">{category.subtitle}</span>
-              ) : null}
-              {eCodeLocked ? (
-                <span className="category-subtitle">
-                  <Lock size={12} /> Abonnement adapté requis
-                </span>
-              ) : null}
+              <img
+                src={category.image}
+                alt=""
+                className="category-card-image"
+                draggable={false}
+              />
+              <span className="category-card-shade" aria-hidden="true" />
+              <span className="category-card-body">
+                <span className="category-label">{category.label}</span>
+                {category.subtitle ? (
+                  <span className="category-subtitle">{category.subtitle}</span>
+                ) : null}
+                {eCodeLocked ? (
+                  <span className="category-subtitle category-lock-row">
+                    <Lock size={12} /> Abonnement adapté requis
+                  </span>
+                ) : null}
+              </span>
             </button>
             )
           })}

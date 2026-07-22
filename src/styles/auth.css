@@ -632,6 +632,50 @@
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
 }
 
+.category-card--photo {
+  position: relative;
+  align-items: stretch;
+  justify-content: flex-end;
+  gap: 0;
+  min-height: 11.5rem;
+  padding: 0;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.category-card-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 0;
+}
+
+.category-card-shade {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(
+    to top,
+    rgba(0, 16, 48, 0.88) 0%,
+    rgba(0, 16, 48, 0.35) 48%,
+    rgba(0, 16, 48, 0.12) 100%
+  );
+  pointer-events: none;
+}
+
+.category-card-body {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  width: 100%;
+  padding: 0.85rem 0.55rem 0.9rem;
+}
+
 .category-card:active {
   transform: scale(0.97);
 }
@@ -677,6 +721,22 @@
   background: linear-gradient(160deg, #7c3aed, #c4b5fd);
 }
 
+.category-card--photo.category-pink .category-card-shade {
+  background: linear-gradient(to top, rgba(157, 23, 77, 0.92), rgba(219, 39, 119, 0.28), transparent);
+}
+
+.category-card--photo.category-yellow .category-card-shade {
+  background: linear-gradient(to top, rgba(154, 52, 18, 0.92), rgba(234, 88, 12, 0.28), transparent);
+}
+
+.category-card--photo.category-green .category-card-shade {
+  background: linear-gradient(to top, rgba(21, 128, 61, 0.92), rgba(22, 163, 74, 0.28), transparent);
+}
+
+.category-card--photo.category-purple .category-card-shade {
+  background: linear-gradient(to top, rgba(91, 33, 182, 0.92), rgba(124, 58, 237, 0.28), transparent);
+}
+
 .category-icon {
   width: 64px;
   height: 64px;
@@ -712,8 +772,27 @@
     padding: 0.75rem 0.4rem;
   }
 
+  .category-card--photo {
+    min-height: 10.25rem;
+    padding: 0;
+  }
+
   .category-label {
     font-size: 0.65rem;
+  }
+}
+
+@media (min-width: 768px) {
+  .category-card--photo {
+    min-height: 14rem;
+  }
+
+  .category-card-body {
+    padding: 1rem 0.75rem 1.1rem;
+  }
+
+  .category-label {
+    font-size: 0.82rem;
   }
 }
 
