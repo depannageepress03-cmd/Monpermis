@@ -179,9 +179,32 @@ app.use('/api/admin/announcements', adminAnnouncementsRoutes)
 // App web apprenant (SPA) — filet si monpermis-web static est indisponible
 if (serveWebApp) {
   logger.info('SPA web servie depuis web-dist', { path: webDistPath })
-  app.use(express.static(webDistPath, { index: false, maxAge: '1h' }))
-  app.get(/^(?!\/api(?:\/|$)|\/uploads(?:\/|$)).*/, (req, res, next) => {
+
+  // Assets hashés : cache long. index.html / sw : jamais mis en cache longtemps.
+  app.use(
+    '/assets',
+    express.static(path.join(webDistPath, 'assets'), {
+      maxAge: '7d',
+      immutable: true,
+      fallthrough: false,
+    }),
+  )
+  app.use(
+    express.static(webDistPath, {
+      index: false,
+      maxAge: '1h',
+      setHeaders(res, filePath) {
+        const base = path.basename(filePath)
+        if (base === 'index.html' || base === 'sw.js' || base === 'registerSW.js' || base === 'manifest.webmanifest') {
+          res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate')
+        }
+      },
+    }),
+  )
+
+  app.get(/^(?!\/api(?:\/|$)|\/uploads(?:\/|$)|\/assets(?:\/|$)).*/, (req, res, next) => {
     if (req.method !== 'GET' && req.method !== 'HEAD') return next()
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate')
     return res.sendFile(path.join(webDistPath, 'index.html'), (err) => {
       if (err) next(err)
     })
