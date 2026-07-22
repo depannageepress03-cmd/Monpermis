@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 
-/** Photos Afrique (savane, paysages, villes). */
+/** Diaporama : toutes les images empilées, fondu d’opacité très fluide. */
 const BANNER_IMAGES = [
   '/code-route/banner-1.jpg',
   '/code-route/banner-2.jpg',
@@ -50,9 +50,9 @@ export function CodeRouteBanner() {
       </div>
       <div className="code-route-banner-fade" aria-hidden="true" />
       <div className="code-route-banner-caption">
-        <p className="code-route-banner-title">Monpermis · Afrique</p>
+        <p className="code-route-banner-title">Code de la route</p>
         <p className="code-route-banner-text">
-          Images d’Afrique — transition douce, sans coupure.
+          Révision, examens test et examen blanc — avancez à votre rythme.
         </p>
       </div>
       <div className="code-route-banner-dots" aria-hidden="true">
