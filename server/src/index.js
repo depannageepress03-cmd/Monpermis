@@ -96,9 +96,12 @@ app.use((req, res, next) => {
   return next()
 })
 // Security headers (CSP off : SPA Vite + PWA sur le même host que l’API)
+// COOP same-origin casse le popup Google Sign-In → allow-popups obligatoire
 app.use(
   helmet({
     crossOriginResourcePolicy: { policy: 'cross-origin' },
+    crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' },
+    referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
     contentSecurityPolicy: false,
   }),
 )
