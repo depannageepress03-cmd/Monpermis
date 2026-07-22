@@ -134,10 +134,10 @@ export function CodeRoutePage() {
 
         <div className="code-route-banner" aria-hidden="true">
           <div className="code-route-banner-track">
-            {[1, 2, 3, 4, 5, 7, 1, 2, 3, 4, 5, 7].map((n, i) => (
+            {[1, 2, 3, 4, 5, 6, 1, 2, 3, 4, 5, 6].map((n, i) => (
               <img
                 key={`${n}-${i}`}
-                src={`/home/i${n}.jpg`}
+                src={`/code-route/banner-${n}.jpg`}
                 alt=""
                 className="code-route-banner-item"
                 loading={i < 4 ? 'eager' : 'lazy'}

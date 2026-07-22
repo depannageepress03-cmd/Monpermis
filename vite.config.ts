@@ -8,8 +8,8 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       injectRegister: false,
-      // Une fois : désinscrit les anciens SW bloqués sur de vieux bundles
-      selfDestroying: true,
+      // Remettre un SW normal après purge des vieux caches
+      selfDestroying: false,
       includeAssets: ['favicon.ico', 'favicon-32.png', 'pwa-icon-192.png', 'pwa-icon-512.png', 'logo.png'],
       manifest: {
         name: 'Monpermis.bj',
