@@ -425,17 +425,19 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
-  opacity: 0;
-  transform: translateX(8%);
-  transition: opacity 0.55s ease, transform 0.55s ease;
-  pointer-events: none;
-  user-select: none;
+  display: block;
+  animation: code-route-banner-fade 0.45s ease;
 }
 
-.code-route-banner-slide.is-active {
-  opacity: 1;
-  transform: translateX(0);
-  z-index: 1;
+@keyframes code-route-banner-fade {
+  from {
+    opacity: 0.35;
+    transform: translateX(4%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 .code-route-banner-dots {
@@ -454,7 +456,6 @@
   height: 0.45rem;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.45);
-  transition: background 0.25s ease, transform 0.25s ease;
 }
 
 .code-route-banner-dot.is-active {
@@ -462,10 +463,23 @@
   transform: scale(1.25);
 }
 
+.code-route-banner-count {
+  position: absolute;
+  top: 0.55rem;
+  right: 0.7rem;
+  z-index: 2;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  background: rgba(0, 16, 48, 0.55);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .code-route-banner-slide {
-    transition: none;
-    transform: none;
+    animation: none;
   }
 }
 

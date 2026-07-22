@@ -184,9 +184,12 @@ if (serveWebApp) {
   app.use(
     '/assets',
     express.static(path.join(webDistPath, 'assets'), {
-      maxAge: '7d',
-      immutable: true,
+      maxAge: '1h',
+      immutable: false,
       fallthrough: false,
+      setHeaders(res) {
+        res.setHeader('Cache-Control', 'public, max-age=3600, must-revalidate')
+      },
     }),
   )
   app.use(
