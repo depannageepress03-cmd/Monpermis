@@ -8,7 +8,6 @@ import { fetchSubscriptionMe, type SubscriptionAccess } from '../api/subscriptio
 import { BrandName } from '../components/BrandName'
 import { HomeBottomAnimation } from '../components/HomeBottomAnimation'
 import { LegalFooter } from '../components/LegalFooter'
-import { CodeModuleIcon, DriveModuleIcon } from '../components/ModuleIcons'
 import { useAuth } from '../hooks/useAuth'
 import '../styles/auth.css'
 
@@ -148,13 +147,16 @@ export function HomePage() {
         <div className="home-app-paths">
           <button
             type="button"
-            className={`home-app-path home-app-path--code${codeLocked ? ' is-locked' : ''}`}
+            className={`home-app-path home-app-path--photo home-app-path--code${codeLocked ? ' is-locked' : ''}`}
             disabled={codeLocked}
             onClick={() => navigate('/code-de-la-route')}
           >
-            <span className="home-app-path-icon">
-              <CodeModuleIcon size={36} />
-            </span>
+            <img
+              src="/home/paths/code.jpg"
+              alt=""
+              className="home-app-path-image"
+              draggable={false}
+            />
             <span className="home-app-path-text">
               <strong>Code de la route</strong>
               <small>
@@ -172,13 +174,16 @@ export function HomePage() {
 
           <button
             type="button"
-            className={`home-app-path home-app-path--drive${conduiteLocked ? ' is-locked' : ''}`}
+            className={`home-app-path home-app-path--photo home-app-path--drive${conduiteLocked ? ' is-locked' : ''}`}
             disabled={conduiteLocked}
             onClick={() => navigate('/conduite')}
           >
-            <span className="home-app-path-icon">
-              <DriveModuleIcon size={36} />
-            </span>
+            <img
+              src="/home/paths/conduite.jpg"
+              alt=""
+              className="home-app-path-image"
+              draggable={false}
+            />
             <span className="home-app-path-text">
               <strong>Conduite</strong>
               <small>
