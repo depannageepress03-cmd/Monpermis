@@ -2,6 +2,7 @@
   max-width: 720px;
 }
 
+/* Navbar sur fond clair (auth-page blanc) */
 .page-navbar,
 .learner-navbar,
 .code-route-navbar {
@@ -11,7 +12,7 @@
   gap: 0.75rem;
   margin: 0 0 1rem;
   padding-bottom: 0.85rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.18);
+  border-bottom: 1px solid var(--color-border, rgba(0, 16, 48, 0.1));
 }
 
 .page-nav-left,
@@ -32,16 +33,16 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0, 176, 80, 0.2);
-  border: 1px solid rgba(0, 176, 80, 0.4);
+  background: rgba(0, 176, 80, 0.12);
+  border: 1px solid rgba(0, 176, 80, 0.3);
   color: #00b050;
   flex-shrink: 0;
 }
 
 .page-nav-icon-drive,
 .learner-nav-icon-drive {
-  background: rgba(255, 192, 0, 0.22);
-  border-color: rgba(255, 192, 0, 0.5);
+  background: rgba(255, 192, 0, 0.18);
+  border-color: rgba(255, 192, 0, 0.45);
   color: #b8860b;
 }
 
@@ -52,7 +53,7 @@
   font-size: 1.15rem;
   font-weight: 800;
   letter-spacing: -0.02em;
-  color: #fff;
+  color: var(--brand-navy, #001030);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -63,7 +64,7 @@
 .code-route-nav-back {
   flex-shrink: 0;
   margin: 0;
-  color: rgba(255, 255, 255, 0.95);
+  color: var(--brand-navy, #001030);
 }
 
 .learner-header {
@@ -111,7 +112,7 @@
   font-size: 1.2rem;
   font-weight: 600;
   line-height: 1.45;
-  color: #fff;
+  color: var(--brand-navy, #001030);
   max-width: 28rem;
 }
 
@@ -119,7 +120,7 @@
   margin: 0.7rem 0 0;
   font-size: 1.05rem;
   line-height: 1.5;
-  color: rgba(255, 255, 255, 0.8);
+  color: var(--color-text-muted, #3d5a73);
   max-width: 28rem;
 }
 
@@ -191,7 +192,7 @@
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.75);
+  color: var(--color-text-muted, #3d5a73);
 }
 
 .learner-chapter-name {
@@ -200,14 +201,14 @@
   font-weight: 800;
   letter-spacing: -0.02em;
   line-height: 1.25;
-  color: #fff;
+  color: var(--brand-navy, #001030);
 }
 
 .learner-course-title {
   margin: 0;
   font-size: 1.05rem;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.85);
+  color: var(--color-text-muted, #3d5a73);
 }
 
 .learner-card {
@@ -873,4 +874,62 @@
 
 .practice-exam-card small {
   color: rgba(0, 16, 48, 0.65);
+}
+
+/* ─── Responsive tablette / desktop ─────────────────────────── */
+@media (min-width: 768px) {
+  .learner-container {
+    max-width: 900px;
+  }
+
+  .learner-courses-lead,
+  .learner-courses-detail {
+    max-width: 40rem;
+  }
+
+  .subscription-plan-list {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+  }
+
+  .page-navbar h1,
+  .learner-navbar h1,
+  .code-route-navbar h1 {
+    font-size: 1.35rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .learner-container {
+    max-width: 1100px;
+  }
+
+  .subscription-plan-list {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.15rem;
+  }
+
+  .subscription-plan {
+    grid-template-columns: 1fr;
+    align-content: start;
+  }
+
+  .subscription-price {
+    justify-self: start;
+  }
+
+  .learner-courses-lead {
+    font-size: 1.35rem;
+    max-width: 48rem;
+  }
+
+  .learner-courses-detail {
+    max-width: 48rem;
+  }
+}
+
+@media (min-width: 1280px) {
+  .learner-container {
+    max-width: 1200px;
+  }
 }

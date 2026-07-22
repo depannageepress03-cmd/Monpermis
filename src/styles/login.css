@@ -716,3 +716,58 @@
   text-decoration: underline;
   text-underline-offset: 2px;
 }
+
+/* ─── Responsive tablette / desktop ─────────────────────────── */
+@media (min-width: 768px) {
+  .signin-page--app {
+    align-items: center;
+    padding: 2rem 1.5rem;
+  }
+
+  .signin-container--app {
+    max-width: 480px;
+    padding: 2rem 2rem 2.25rem;
+  }
+
+  .signin-header--app .signin-subtitle {
+    max-width: 360px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .signin-page--app {
+    padding: 2.5rem 2rem;
+  }
+
+  .signin-container--app {
+    max-width: 520px;
+    width: 100%;
+    padding: 2.25rem 2.5rem 2.5rem;
+    border: 1px solid var(--color-border);
+    border-radius: 24px;
+    box-shadow: var(--shadow-md);
+    background: #fff;
+  }
+
+  .signin-page--register .signin-container--app {
+    max-width: 640px;
+  }
+
+  .signin-header--app {
+    margin-bottom: 2.25rem;
+  }
+
+  .signin-logo-img {
+    width: 120px;
+    height: 80px;
+  }
+}
+
+@media (min-width: 1280px) {
+  .signin-page--app {
+    /* Fond léger pour ancrer la carte centrée sur grand écran */
+    background:
+      radial-gradient(ellipse 50% 40% at 50% 0%, rgba(0, 176, 80, 0.08), transparent 60%),
+      #ffffff;
+  }
+}
