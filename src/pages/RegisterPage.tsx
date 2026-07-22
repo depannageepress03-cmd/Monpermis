@@ -4,6 +4,7 @@ import { registerUser, loginWithGoogle, saveSession, getAuthErrorDetails } from 
 import { AuthInput } from '../components/AuthInput'
 import { BrandName } from '../components/BrandName'
 import { GoogleSignInButton } from '../components/GoogleSignInButton'
+import { LegalFooter } from '../components/LegalFooter'
 import {
   validateEmail,
   validateName,
@@ -219,13 +220,7 @@ export function RegisterPage() {
             Déjà inscrit ? <Link to="/">Se connecter</Link>
           </p>
 
-          <p className="signin-terms">
-            <Link to="/conditions-utilisation">Conditions d&apos;utilisation</Link>
-            {' · '}
-            <Link to="/politique-de-confidentialite">Confidentialité</Link>
-            {' · '}
-            <Link to="/mentions-legales">Mentions légales</Link>
-          </p>
+          <LegalFooter />
         </form>
       </div>
     </div>

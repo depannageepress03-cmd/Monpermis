@@ -7,6 +7,7 @@ import { fetchUnreadCount } from '../api/notifications'
 import { fetchSubscriptionMe, type SubscriptionAccess } from '../api/subscriptions'
 import { BrandName } from '../components/BrandName'
 import { HomeBottomAnimation } from '../components/HomeBottomAnimation'
+import { LegalFooter } from '../components/LegalFooter'
 import { CodeModuleIcon, DriveModuleIcon } from '../components/ModuleIcons'
 import { useAuth } from '../hooks/useAuth'
 import '../styles/auth.css'
@@ -195,6 +196,7 @@ export function HomePage() {
         </div>
 
         <HomeBottomAnimation />
+        <LegalFooter />
       </div>
 
       {profileOpen ? (

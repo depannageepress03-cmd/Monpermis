@@ -3,6 +3,7 @@ import { type FormEvent, useState } from 'react'
 import { forgotPassword } from '../api/auth-password'
 import { AuthInput } from '../components/AuthInput'
 import { BrandName } from '../components/BrandName'
+import { LegalFooter } from '../components/LegalFooter'
 import '../styles/login.css'
 
 export function ForgotPasswordPage() {
@@ -50,6 +51,7 @@ export function ForgotPasswordPage() {
             <p className="signin-register-link">
               <Link to="/">Retour à la connexion</Link>
             </p>
+            <LegalFooter />
           </div>
         ) : (
           <form className="signin-form signin-form--app" onSubmit={handleSubmit} noValidate>
@@ -79,6 +81,8 @@ export function ForgotPasswordPage() {
             <p className="signin-register-link">
               <Link to="/">Retour à la connexion</Link>
             </p>
+
+            <LegalFooter />
           </form>
         )}
       </div>

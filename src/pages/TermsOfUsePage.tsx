@@ -4,6 +4,7 @@ import { BrandName } from '../components/BrandName'
 import { PageNavbar } from '../components/PageNavbar'
 import '../styles/auth.css'
 import '../styles/learner.css'
+import '../styles/legal-footer.css'
 
 function ParagraphWithBrand({ text }: { text: string }) {
   const parts = text.split('Monpermis.bj')
@@ -109,36 +110,32 @@ export function TermsOfUsePage() {
           onBack={() => navigate(-1)}
         />
 
-        <p style={{ color: '#6b7280', fontSize: 13, margin: '4px 0 20px' }}>
-          Dernière mise à jour : juillet 2026
-        </p>
+        <div className="legal-doc">
+          <p className="legal-doc-updated">
+            <FileText size={16} aria-hidden />
+            Dernière mise à jour : juillet 2026
+          </p>
 
-        {SECTIONS.map((section) => (
-          <section key={section.title} className="auth-card learner-card" style={{ marginBottom: 12 }}>
-            <h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>{section.title}</h2>
-            {section.paragraphs.map((paragraph) => (
-              <ParagraphWithBrand key={paragraph} text={paragraph} />
-            ))}
-            {'bullets' in section && section.bullets ? (
-              <ul style={{ paddingLeft: 18, margin: 0 }}>
-                {section.bullets.map((bullet) => (
-                  <li key={bullet} style={{ marginBottom: 4 }}>
-                    {bullet}
-                  </li>
-                ))}
-              </ul>
-            ) : null}
-          </section>
-        ))}
+          {SECTIONS.map((section) => (
+            <section key={section.title} className="legal-doc-card">
+              <h2>{section.title}</h2>
+              {section.paragraphs.map((paragraph) => (
+                <ParagraphWithBrand key={paragraph} text={paragraph} />
+              ))}
+              {'bullets' in section && section.bullets ? (
+                <ul>
+                  {section.bullets.map((bullet) => (
+                    <li key={bullet}>{bullet}</li>
+                  ))}
+                </ul>
+              ) : null}
+            </section>
+          ))}
 
-        <button
-          type="button"
-          className="signin-register-link"
-          style={{ background: 'none', border: 0, cursor: 'pointer', padding: '12px 0' }}
-          onClick={() => navigate('/inscription')}
-        >
-          ← Retour à l'inscription
-        </button>
+          <button type="button" className="legal-doc-back" onClick={() => navigate('/inscription')}>
+            ← Retour à l&apos;inscription
+          </button>
+        </div>
       </div>
     </div>
   )
