@@ -118,20 +118,11 @@ export function CodeRoutePage() {
           </div>
         ) : (
           <>
-        <header className="auth-header auth-header-compact code-route-header code-route-anim-header">
-          <div className="code-route-accents" aria-hidden="true">
-            <span className="code-route-accent code-route-accent-green" />
-            <span className="code-route-accent code-route-accent-gold" />
-            <span className="code-route-accent code-route-accent-navy" />
-          </div>
-          <p className="code-route-subtitle">
-            Choisissez un module pour réviser, vous tester ou passer un examen blanc.
-          </p>
-          <p className="code-route-detail">
-            Avancez à votre rythme : cours par chapitres, examens test, suivi de vos notes,
-            puis un examen blanc en conditions réelles.
-          </p>
-        </header>
+        <div className="code-route-accents" aria-hidden="true">
+          <span className="code-route-accent code-route-accent-green" />
+          <span className="code-route-accent code-route-accent-gold" />
+          <span className="code-route-accent code-route-accent-navy" />
+        </div>
 
         <CodeRouteBanner />
 
