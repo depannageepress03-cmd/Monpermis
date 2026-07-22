@@ -50,9 +50,9 @@ export function CodeRouteBanner() {
       </div>
       <div className="code-route-banner-fade" aria-hidden="true" />
       <div className="code-route-banner-caption">
-        <p className="code-route-banner-title">Code de la route</p>
+        <p className="code-route-banner-title">Monpermis · Afrique</p>
         <p className="code-route-banner-text">
-          Révision, examens test et examen blanc — avancez à votre rythme.
+          Images d’Afrique — transition douce, sans coupure.
         </p>
       </div>
       <div className="code-route-banner-dots" aria-hidden="true">

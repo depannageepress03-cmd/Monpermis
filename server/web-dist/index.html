@@ -16,24 +16,25 @@
     <link rel="apple-touch-icon" href="/pwa-icon-192.png" />
     <title>Monpermis.bj</title>
     <script>
-      // Inline : s'exécute même si un vieux SW a servi cette page
+      // Si un ancien SW contrôle encore la page, on force la purge via /api (hors cache SW)
       (function () {
-        if (!('serviceWorker' in navigator)) return
-        navigator.serviceWorker.getRegistrations().then(function (regs) {
-          regs.forEach(function (reg) { reg.unregister() })
-        })
-        if (window.caches) {
-          caches.keys().then(function (keys) {
-            keys.forEach(function (key) { caches.delete(key) })
+        try {
+          if (sessionStorage.getItem('mp_purged_v3') === '1') return
+          if (!('serviceWorker' in navigator)) return
+          var controlled = !!navigator.serviceWorker.controller
+          navigator.serviceWorker.getRegistrations().then(function (regs) {
+            if (!controlled && (!regs || regs.length === 0)) return
+            sessionStorage.setItem('mp_purged_v3', '1')
+            location.replace('/api/client-reset?next=' + encodeURIComponent(location.pathname + location.search))
           })
-        }
+        } catch (e) {}
       })()
     </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@600;700;800&family=Playfair+Display:wght@700&display=swap" rel="stylesheet" />
-    <script type="module" crossorigin src="/assets/index-SWHG3EEf.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-_peBwwpk.css">
+    <script type="module" crossorigin src="/assets/index-B1zG-Y0q.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-DgLGqKjU.css">
   </head>
   <body>
     <div id="root"></div>

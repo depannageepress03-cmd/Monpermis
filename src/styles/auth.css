@@ -416,7 +416,7 @@
   height: clamp(16rem, 58vw, 26rem);
   overflow: hidden;
   border-radius: 18px;
-  border: 1px solid var(--color-border, rgba(0, 16, 48, 0.1));
+  border: 3px solid #ffc000;
   background: #001030;
   box-shadow: var(--shadow-sm, 0 2px 8px rgba(0, 16, 48, 0.06));
 }

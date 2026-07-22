@@ -182,27 +182,38 @@ app.get('/api/client-reset', (req, res) => {
     ? req.query.next
     : '/code-de-la-route'
   res.setHeader('Clear-Site-Data', '"cache", "storage"')
-  res.setHeader('Cache-Control', 'no-store')
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate')
+  res.setHeader('Pragma', 'no-cache')
   res.type('html').send(`<!doctype html>
 <html lang="fr"><head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta http-equiv="Cache-Control" content="no-store"/>
 <title>Mise à jour Monpermis…</title>
-</head><body style="font-family:system-ui;padding:2rem;background:#001030;color:#fff">
-<p>Mise à jour en cours…</p>
+</head><body style="margin:0;font-family:system-ui,sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#001030;color:#fff;text-align:center;padding:2rem">
+<div>
+  <p style="font-size:1.25rem;font-weight:700;margin:0 0 .5rem">Cache vidé</p>
+  <p style="opacity:.85;margin:0 0 1.25rem">Chargement de la nouvelle version…</p>
+  <p style="font-size:.85rem;opacity:.55">Si rien ne se passe, <a href="${next}" style="color:#ffc000">cliquez ici</a>.</p>
+</div>
 <script>
 (async function () {
   try {
     if ('serviceWorker' in navigator) {
-      const regs = await navigator.serviceWorker.getRegistrations()
+      var regs = await navigator.serviceWorker.getRegistrations()
       await Promise.all(regs.map(function (r) { return r.unregister() }))
     }
     if (window.caches) {
-      const keys = await caches.keys()
+      var keys = await caches.keys()
       await Promise.all(keys.map(function (k) { return caches.delete(k) }))
     }
+    try { localStorage.removeItem('vite-plugin-pwa') } catch (e) {}
   } catch (e) {}
-  location.replace(${JSON.stringify(next)} + '?v=' + Date.now())
+  setTimeout(function () {
+    var dest = ${JSON.stringify(next)}
+    dest += (dest.indexOf('?') >= 0 ? '&' : '?') + 'v=afrique3'
+    location.replace(dest)
+  }, 400)
 })()
 </script>
 </body></html>`)
