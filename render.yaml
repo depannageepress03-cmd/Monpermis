@@ -7,7 +7,8 @@ services:
     runtime: node
     rootDir: server
     plan: free
-    buildCommand: npm install
+    # Build l’API + la SPA web (servie par Express si monpermis-web est down)
+    buildCommand: npm install && cd .. && npm install && VITE_API_URL= VITE_GOOGLE_CLIENT_ID="${VITE_GOOGLE_CLIENT_ID:-$GOOGLE_CLIENT_ID}" npm run build:web && rm -rf server/web-dist && mkdir -p server/web-dist && cp -r dist/. server/web-dist/
     startCommand: npm start
     healthCheckPath: /api/health
     envVars:
@@ -26,6 +27,8 @@ services:
       - key: API_PUBLIC_URL
         sync: false
       - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: VITE_GOOGLE_CLIENT_ID
         sync: false
       - key: SMTP_HOST
         sync: false
@@ -80,7 +83,8 @@ services:
     runtime: static
     rootDir: .
     plan: free
-    buildCommand: npm install && npm run build:web
+    # ignore-scripts : évite le postinstall mobile pendant le build web
+    buildCommand: npm install --ignore-scripts && npm run build:web
     staticPublishPath: dist
     envVars:
       - key: VITE_API_URL

@@ -1,4 +1,5 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
+import { IntroPage } from './pages/IntroPage'
 import { CodeRoutePage } from './pages/CodeRoutePage'
 import { ConduitePage } from './pages/ConduitePage'
 import { ConduiteChapterCoursesPage } from './pages/conduite/ConduiteChapterCoursesPage'
@@ -31,6 +32,7 @@ import { NotificationsPage } from './pages/NotificationsPage'
 export default function App() {
   return (
     <Routes>
+      <Route path="/intro" element={<IntroPage />} />
       <Route path="/" element={<LoginPage />} />
       <Route path="/inscription" element={<RegisterPage />} />
       <Route path="/mot-de-passe-oublie" element={<ForgotPasswordPage />} />
@@ -74,7 +76,7 @@ export default function App() {
         path="/conduite/lecons/:chapterId/cours/:courseId"
         element={<ConduiteCourseDetailPage />}
       />
-      <Route path="*" element={<Navigate to="/" replace />} />
+      <Route path="*" element={<Navigate to="/intro" replace />} />
     </Routes>
   )
 }

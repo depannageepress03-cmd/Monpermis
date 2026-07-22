@@ -39,7 +39,7 @@ const SECTIONS = [
     title: '3. Hébergement',
     paragraphs: [
       'Le site et l’API sont hébergés par Render Services, Inc. (render.com).',
-      'L’application mobile est distribuée via les stores Android / iOS selon les plateformes disponibles.',
+      'L’application est accessible via le site web et disponible sur le store Android.',
     ],
   },
   {

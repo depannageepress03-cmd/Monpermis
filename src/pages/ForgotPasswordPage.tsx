@@ -34,6 +34,7 @@ export function ForgotPasswordPage() {
       <div className="signin-container signin-container--login">
         <div className="signin-main">
           <header className="signin-header signin-header--compact">
+            <img src="/logo.png" alt="Monpermis.bj" className="signin-logo" />
             <BrandName as="p" className="signin-brand" />
             <h1 className="signin-title">Mot de passe oublié</h1>
             <p className="signin-subtitle">
