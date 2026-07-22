@@ -411,7 +411,7 @@
   position: relative;
   width: 100%;
   margin-top: 1.25rem;
-  height: clamp(9rem, 28vw, 13rem);
+  height: clamp(18rem, 52vw, 24rem);
   overflow: hidden;
   border-radius: 18px;
   border: 1px solid var(--color-border, rgba(0, 16, 48, 0.1));
@@ -440,11 +440,53 @@
   }
 }
 
+.code-route-banner-fade {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1;
+  height: 55%;
+  background: linear-gradient(
+    to top,
+    rgba(0, 16, 48, 0.88) 0%,
+    rgba(0, 16, 48, 0.45) 55%,
+    transparent 100%
+  );
+  pointer-events: none;
+}
+
+.code-route-banner-caption {
+  position: absolute;
+  left: 1rem;
+  right: 1rem;
+  bottom: 2.1rem;
+  z-index: 2;
+  color: #fff;
+}
+
+.code-route-banner-title {
+  margin: 0;
+  font-size: clamp(1.15rem, 4.2vw, 1.55rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.code-route-banner-text {
+  margin: 0.35rem 0 0;
+  max-width: 28rem;
+  font-size: clamp(0.82rem, 2.8vw, 0.95rem);
+  font-weight: 500;
+  line-height: 1.35;
+  color: rgba(255, 255, 255, 0.9);
+}
+
 .code-route-banner-dots {
   position: absolute;
   left: 0;
   right: 0;
-  bottom: 0.65rem;
+  bottom: 0.55rem;
   z-index: 2;
   display: flex;
   justify-content: center;
@@ -485,15 +527,21 @@
 
 @media (min-width: 768px) {
   .code-route-banner {
-    height: clamp(11rem, 20vw, 15rem);
+    height: clamp(22rem, 36vw, 28rem);
     margin-top: 1.5rem;
     border-radius: 22px;
+  }
+
+  .code-route-banner-caption {
+    left: 1.35rem;
+    right: 1.35rem;
+    bottom: 2.35rem;
   }
 }
 
 @media (min-width: 1024px) {
   .code-route-banner {
-    height: 16rem;
+    height: 30rem;
   }
 }
 

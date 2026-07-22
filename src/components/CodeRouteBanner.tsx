@@ -23,29 +23,27 @@ export function CodeRouteBanner() {
   }, [])
 
   return (
-    <div className="code-route-banner" aria-hidden="true">
-      {/* Une seule <img> montée = impossible d’en voir plusieurs côte à côte */}
+    <div className="code-route-banner">
       <img
         key={BANNER_IMAGES[index]}
         src={BANNER_IMAGES[index]}
         alt=""
         className="code-route-banner-slide is-active"
-        style={{
-          position: 'absolute',
-          inset: 0,
-          width: '100%',
-          height: '100%',
-          objectFit: 'cover',
-          display: 'block',
-        }}
         draggable={false}
       />
-      <div className="code-route-banner-dots">
+      <div className="code-route-banner-fade" aria-hidden="true" />
+      <div className="code-route-banner-caption">
+        <p className="code-route-banner-title">Code de la route</p>
+        <p className="code-route-banner-text">
+          Révision, examens test et examen blanc — avancez à votre rythme.
+        </p>
+      </div>
+      <div className="code-route-banner-dots" aria-hidden="true">
         {BANNER_IMAGES.map((src, i) => (
           <span key={src} className={`code-route-banner-dot${i === index ? ' is-active' : ''}`} />
         ))}
       </div>
-      <span className="code-route-banner-count">
+      <span className="code-route-banner-count" aria-hidden="true">
         {index + 1}/{BANNER_IMAGES.length}
       </span>
     </div>
