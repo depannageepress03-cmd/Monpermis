@@ -176,6 +176,38 @@ app.use('/api/notifications', notificationsRoutes)
 app.use('/api/content/announcements', announcementsRoutes)
 app.use('/api/admin/announcements', adminAnnouncementsRoutes)
 
+// Hors SW (navigateFallback ignore /api) : purge cache client puis redirige
+app.get('/api/client-reset', (req, res) => {
+  const next = typeof req.query.next === 'string' && req.query.next.startsWith('/')
+    ? req.query.next
+    : '/code-de-la-route'
+  res.setHeader('Clear-Site-Data', '"cache", "storage"')
+  res.setHeader('Cache-Control', 'no-store')
+  res.type('html').send(`<!doctype html>
+<html lang="fr"><head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Mise à jour Monpermis…</title>
+</head><body style="font-family:system-ui;padding:2rem;background:#001030;color:#fff">
+<p>Mise à jour en cours…</p>
+<script>
+(async function () {
+  try {
+    if ('serviceWorker' in navigator) {
+      const regs = await navigator.serviceWorker.getRegistrations()
+      await Promise.all(regs.map(function (r) { return r.unregister() }))
+    }
+    if (window.caches) {
+      const keys = await caches.keys()
+      await Promise.all(keys.map(function (k) { return caches.delete(k) }))
+    }
+  } catch (e) {}
+  location.replace(${JSON.stringify(next)} + '?v=' + Date.now())
+})()
+</script>
+</body></html>`)
+})
+
 // App web apprenant (SPA) — filet si monpermis-web static est indisponible
 if (serveWebApp) {
   logger.info('SPA web servie depuis web-dist', { path: webDistPath })
