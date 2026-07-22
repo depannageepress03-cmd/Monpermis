@@ -2,6 +2,7 @@ import { Lock } from 'lucide-react'
 import { useEffect, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { fetchSubscriptionMe, type SubscriptionAccess } from '../api/subscriptions'
+import { CodeRouteBanner } from '../components/CodeRouteBanner'
 import { CodeModuleIcon } from '../components/ModuleIcons'
 import { PageNavbar } from '../components/PageNavbar'
 import { useAuth } from '../hooks/useAuth'
@@ -132,20 +133,7 @@ export function CodeRoutePage() {
           </p>
         </header>
 
-        <div className="code-route-banner" aria-hidden="true">
-          <div className="code-route-banner-track">
-            {[1, 2, 3, 4, 5, 6, 1].map((n, i) => (
-              <img
-                key={`${n}-${i}`}
-                src={`/code-route/banner-${n}.jpg`}
-                alt=""
-                className="code-route-banner-item"
-                loading={i < 2 ? 'eager' : 'lazy'}
-                draggable={false}
-              />
-            ))}
-          </div>
-        </div>
+        <CodeRouteBanner />
 
         <div className="category-grid">
           {categories.map((category, index) => {
