@@ -7,6 +7,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
+      injectRegister: false,
       includeAssets: ['favicon.ico', 'favicon-32.png', 'pwa-icon-192.png', 'pwa-icon-512.png', 'logo.png'],
       manifest: {
         name: 'Monpermis.bj',
