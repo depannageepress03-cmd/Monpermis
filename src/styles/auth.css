@@ -1779,12 +1779,13 @@
   gap: 0.85rem;
   width: 100%;
   text-align: left;
-  padding: 1rem;
+  padding: 0.7rem 1rem 0.7rem 0.7rem;
   border-radius: 18px;
   border: 1.5px solid var(--color-border);
   background: #fff;
   cursor: pointer;
   box-shadow: var(--shadow-sm);
+  overflow: hidden;
 }
 
 .home-app-path--code {
@@ -1802,6 +1803,24 @@
 
 .home-app-path-icon {
   flex-shrink: 0;
+}
+
+.home-app-path-image {
+  flex-shrink: 0;
+  width: 4.5rem;
+  height: 4.5rem;
+  border-radius: 14px;
+  object-fit: cover;
+  display: block;
+  background: #e8eef5;
+}
+
+.home-app-path--code .home-app-path-image {
+  box-shadow: 0 0 0 2px rgba(0, 176, 80, 0.25);
+}
+
+.home-app-path--drive .home-app-path-image {
+  box-shadow: 0 0 0 2px rgba(232, 93, 59, 0.25);
 }
 
 .home-app-path-text {
@@ -1873,7 +1892,12 @@
 
   .home-app-path {
     min-height: 5.5rem;
-    padding: 1.15rem 1.25rem;
+    padding: 0.85rem 1.15rem 0.85rem 0.85rem;
+  }
+
+  .home-app-path-image {
+    width: 5.25rem;
+    height: 5.25rem;
   }
 
   .home-app-news-list {
