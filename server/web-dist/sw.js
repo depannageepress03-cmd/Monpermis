@@ -1,1 +1,25 @@
-if(!self.define){let e,i={};const n=(n,f)=>(n=new URL(n+".js",f).href,i[n]||new Promise(i=>{if("document"in self){const e=document.createElement("script");e.src=n,e.onload=i,document.head.appendChild(e)}else e=n,importScripts(n),i()}).then(()=>{let e=i[n];if(!e)throw new Error(`Module ${n} didn’t register its module`);return e}));self.define=(f,c)=>{const s=e||("document"in self?document.currentScript.src:"")||location.href;if(i[s])return;let o={};const r=e=>n(e,s),a={module:{uri:s},exports:o,require:r};i[s]=Promise.all(f.map(e=>a[e]||r(e))).then(e=>(c(...e),o))}}define(["./workbox-9d79bed4"],function(e){"use strict";self.addEventListener("message",e=>{e.data&&"SKIP_WAITING"===e.data.type&&self.skipWaiting()}),e.precacheAndRoute([{url:"pwa-icon.svg",revision:"b8abbac10bf3dfb31478cc0c923f0d71"},{url:"pwa-icon-512.png",revision:"342fe53ffc45ed8f5716a31a997a975f"},{url:"pwa-icon-192.svg",revision:"c2946f99207876ab39865ae4ed6c8b9b"},{url:"pwa-icon-192.png",revision:"9db33bef0ff162698b23f8f684046e09"},{url:"logo.png",revision:"f1bff7ce12fdb774625d7eaa4995bf5d"},{url:"index.html",revision:"3b92412720eba7f129d2eff9bcb90bf5"},{url:"icons.svg",revision:"3b4fcfcf393eca4d264dca4a4663bc37"},{url:"favicon.ico",revision:"25eab35fe6a0ebdf15b61300e74915ac"},{url:"favicon-48.png",revision:"bdf5396009add9f6b2f226621d6d7473"},{url:"favicon-32.png",revision:"e82f8c8022493c5e9cfa55919572dcc6"},{url:"home/car-clean.png",revision:"c81b7f10cacf5a89335b128f2b6f9c5c"},{url:"assets/workbox-window.prod.es5-BBnX5xw4.js",revision:null},{url:"assets/index-DnTqZZd4.js",revision:null},{url:"assets/index-DPeNZzgW.css",revision:null},{url:"favicon-32.png",revision:"e82f8c8022493c5e9cfa55919572dcc6"},{url:"favicon.ico",revision:"25eab35fe6a0ebdf15b61300e74915ac"},{url:"logo.png",revision:"f1bff7ce12fdb774625d7eaa4995bf5d"},{url:"pwa-icon-192.png",revision:"9db33bef0ff162698b23f8f684046e09"},{url:"pwa-icon-512.png",revision:"342fe53ffc45ed8f5716a31a997a975f"},{url:"manifest.webmanifest",revision:"3436af9e870f794bb3829bfc656e879a"}],{}),e.cleanupOutdatedCaches(),e.registerRoute(new e.NavigationRoute(e.createHandlerBoundToURL("index.html"))),e.registerRoute(/^https?:\/\/.*\/api\/.*/i,new e.NetworkFirst({cacheName:"api-cache",plugins:[new e.ExpirationPlugin({maxEntries:50,maxAgeSeconds:86400})]}),"GET"),e.registerRoute(/^https?:\/\/.*\/uploads\/.*/i,new e.CacheFirst({cacheName:"uploads-cache",plugins:[new e.ExpirationPlugin({maxEntries:100,maxAgeSeconds:2592e3})]}),"GET")});
+
+self.addEventListener('install', (e) => {
+  self.skipWaiting();
+});
+self.addEventListener('activate', (e) => {
+  self.registration.unregister()
+    .then(() => self.clients.matchAll())
+    .then((clients) => {
+      clients.forEach((client) => {
+        if (client instanceof WindowClient)
+          client.navigate(client.url);
+      });
+      return Promise.resolve();
+    })
+    .then(() => {
+      self.caches.keys().then((cacheNames) => {
+        Promise.all(
+          cacheNames.map((cacheName) => {
+            return self.caches.delete(cacheName);
+          }),
+        );
+      })
+    });
+});
+    
