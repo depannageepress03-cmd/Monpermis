@@ -1,5 +1,5 @@
 import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
-import { ClipboardCheck, ShieldCheck } from 'lucide-react'
+import { ClipboardCheck, Lock, ShieldCheck } from 'lucide-react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
   checkECodePermisAnswer,
@@ -10,6 +10,7 @@ import {
   type PracticeExamAttempt,
   type PracticeExamsOverview,
 } from '../../api/content'
+import { fetchSubscriptionMe } from '../../api/subscriptions'
 import { QuestionAudioSequence } from '../../components/QuestionAudioSequence'
 import { PageNavbar } from '../../components/PageNavbar'
 import { useAuth } from '../../hooks/useAuth'
@@ -24,14 +25,31 @@ export function ECodePermisPage() {
   const [loading, setLoading] = useState(true)
   const [starting, setStarting] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [subscriptionLocked, setSubscriptionLocked] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
+      const access = await fetchSubscriptionMe()
+      if (!access.accessECodepermis) {
+        setSubscriptionLocked(true)
+        setData(null)
+        setError(
+          access.hasActiveSubscription
+            ? 'Votre abonnement actuel n’inclut pas E-Codepermis. Choisissez une offre adaptée.'
+            : 'Souscrivez un abonnement avec E-Codepermis pour accéder à ce module.',
+        )
+        return
+      }
+      setSubscriptionLocked(false)
       setData(await fetchECodePermisExams())
     } catch (err) {
-      setError(err instanceof ContentError ? err.message : 'Chargement impossible')
+      const contentErr = err instanceof ContentError ? err : null
+      if (contentErr?.status === 403 || contentErr?.code === 'SUBSCRIPTION_REQUIRED') {
+        setSubscriptionLocked(true)
+      }
+      setError(contentErr?.message ?? 'Chargement impossible')
       setData(null)
     } finally {
       setLoading(false)
@@ -43,14 +61,25 @@ export function ECodePermisPage() {
   }, [user, load])
 
   useEffect(() => {
-    if (!user) return
+    if (!user || subscriptionLocked) return
     const timer = window.setInterval(() => {
       void fetchECodePermisExams()
-        .then(setData)
-        .catch(() => undefined)
+        .then((next) => {
+          setData(next)
+          setError(null)
+        })
+        .catch((err) => {
+          if (
+            err instanceof ContentError &&
+            (err.status === 403 || err.code === 'SUBSCRIPTION_REQUIRED')
+          ) {
+            setSubscriptionLocked(true)
+            setError(err.message)
+          }
+        })
     }, 5000)
     return () => window.clearInterval(timer)
-  }, [user])
+  }, [user, subscriptionLocked])
 
   const handleStart = async (examNumber: number) => {
     setStarting(examNumber)
@@ -78,6 +107,17 @@ export function ECodePermisPage() {
           onBack={() => navigate('/code-de-la-route')}
         />
 
+        {subscriptionLocked ? (
+          <div className="auth-card learner-card learner-empty subscription-locked-state">
+            <Lock size={32} aria-hidden="true" />
+            <h2>E-Codepermis verrouillé</h2>
+            <p>{error || 'Ce module nécessite une offre qui inclut E-Codepermis.'}</p>
+            <button type="button" className="btn-primary" onClick={() => navigate('/abonnement')}>
+              Voir les offres
+            </button>
+          </div>
+        ) : (
+          <>
         <header className="auth-header learner-header">
           <p className="learner-kicker">Conditions réelles</p>
           <p>
@@ -162,6 +202,8 @@ export function ECodePermisPage() {
             </>
           ) : null}
         </div>
+          </>
+        )}
       </div>
     </div>
   )
