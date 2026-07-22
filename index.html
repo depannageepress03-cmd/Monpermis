@@ -16,17 +16,18 @@
     <link rel="apple-touch-icon" href="/pwa-icon-192.png" />
     <title>Monpermis.bj</title>
     <script>
-      // Inline : s'exécute même si un vieux SW a servi cette page
+      // Si un ancien SW contrôle encore la page, on force la purge via /api (hors cache SW)
       (function () {
-        if (!('serviceWorker' in navigator)) return
-        navigator.serviceWorker.getRegistrations().then(function (regs) {
-          regs.forEach(function (reg) { reg.unregister() })
-        })
-        if (window.caches) {
-          caches.keys().then(function (keys) {
-            keys.forEach(function (key) { caches.delete(key) })
+        try {
+          if (sessionStorage.getItem('mp_purged_v3') === '1') return
+          if (!('serviceWorker' in navigator)) return
+          var controlled = !!navigator.serviceWorker.controller
+          navigator.serviceWorker.getRegistrations().then(function (regs) {
+            if (!controlled && (!regs || regs.length === 0)) return
+            sessionStorage.setItem('mp_purged_v3', '1')
+            location.replace('/api/client-reset?next=' + encodeURIComponent(location.pathname + location.search))
           })
-        }
+        } catch (e) {}
       })()
     </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
