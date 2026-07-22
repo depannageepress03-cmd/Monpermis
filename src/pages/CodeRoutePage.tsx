@@ -134,15 +134,18 @@ export function CodeRoutePage() {
 
         <div className="code-route-banner" aria-hidden="true">
           <div className="code-route-banner-track">
-            {[1, 2, 3, 4, 5, 6, 1, 2, 3, 4, 5, 6].map((n, i) => (
-              <img
-                key={`${n}-${i}`}
-                src={`/code-route/banner-${n}.jpg`}
-                alt=""
-                className="code-route-banner-item"
-                loading={i < 4 ? 'eager' : 'lazy'}
-              />
-            ))}
+            {[0, 1].flatMap((copy) =>
+              [1, 2, 3, 4, 5, 6].map((n) => (
+                <img
+                  key={`${copy}-${n}`}
+                  src={`/code-route/banner-${n}.jpg`}
+                  alt=""
+                  className="code-route-banner-item"
+                  loading={copy === 0 && n <= 3 ? 'eager' : 'lazy'}
+                  draggable={false}
+                />
+              )),
+            )}
           </div>
         </div>
 
