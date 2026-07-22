@@ -7,24 +7,30 @@
 }
 
 :root {
+  /* Aligné sur mobile/src/theme (brand + dark) */
   --color-primary: #001030;
   --color-primary-dark: #0a1530;
-  --color-primary-light: #3b82f6;
-  --color-accent: #FFC000;
-  --color-success: #00B050;
-  --color-error: #E85D3B;
-  --color-bg: #FAF9F6;
-  --color-surface: #ffffff;
+  --color-accent: #ffc000;
+  --color-success: #00b050;
+  --color-error: #e85d3b;
+  --color-bg: #ffffff;
+  --color-surface: #f8fafc;
+  --color-surface-raised: #eef1f5;
   --color-text: #001030;
   --color-text-muted: #3d5a73;
-  --color-border: rgba(0, 16, 48, 0.10);
-  --brand-green: #00B050;
-  --brand-green-gradient: linear-gradient(135deg, #00D566, #00A344);
+  --color-border: rgba(0, 16, 48, 0.1);
+  --brand-black: #000000;
+  --brand-green: #00b050;
+  --brand-green-gradient: linear-gradient(135deg, #00d566, #00a344);
   --brand-green-soft: rgba(0, 176, 80, 0.12);
-  --brand-gold: #FFC000;
+  --brand-gold: #ffc000;
   --brand-navy: #001030;
-  --brand-coral: #E85D3B;
+  --brand-coral: #e85d3b;
   --brand-coral-soft: rgba(232, 93, 59, 0.12);
+  --intro-bg: #faf9f6;
+  --font-body: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-display: 'Poppins', 'Inter', system-ui, sans-serif;
+  --font-heading: 'Playfair Display', Georgia, serif;
   --radius-xs: 6px;
   --radius-sm: 10px;
   --radius-md: 14px;
@@ -33,16 +39,17 @@
   --radius-pill: 999px;
   --shadow-sm: 0 2px 8px rgba(0, 16, 48, 0.06);
   --shadow-md: 0 4px 16px rgba(0, 16, 48, 0.08);
-  --shadow-lg: 0 8px 24px rgba(0, 16, 48, 0.10);
-  --shadow-card: 0 6px 20px rgba(0, 16, 48, 0.10);
+  --shadow-lg: 0 8px 24px rgba(0, 16, 48, 0.1);
+  --shadow-card: 0 6px 20px rgba(0, 16, 48, 0.1);
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
 
-/* Mot-symbole Monpermis.bj */
+/* Mot-symbole Monpermis.bj — identique mobile */
 .brand-name {
   display: inline-flex;
   align-items: baseline;
+  font-family: var(--font-display);
   font-weight: 800;
   letter-spacing: -0.03em;
   line-height: 1.1;
@@ -70,28 +77,26 @@ body,
 }
 
 body {
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  background: #d1d5db;
+  font-family: var(--font-body);
+  background: #ffffff;
   color: var(--color-text);
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
 }
 
 #root {
+  min-height: 100%;
   display: flex;
   flex-direction: column;
 }
 
+button,
 input,
-button {
+textarea,
+select {
   font: inherit;
 }
 
 a {
-  color: var(--color-primary);
-  text-decoration: none;
-}
-
-a:hover {
-  text-decoration: underline;
+  color: inherit;
 }

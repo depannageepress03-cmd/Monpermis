@@ -1,7 +1,7 @@
 import { Link, useSearchParams } from 'react-router-dom'
-import { Shield } from 'lucide-react'
 import { type FormEvent, useState } from 'react'
 import { resetPassword } from '../api/auth-password'
+import { AuthInput } from '../components/AuthInput'
 import { BrandName } from '../components/BrandName'
 import '../styles/login.css'
 
@@ -51,87 +51,77 @@ export function ResetPasswordPage() {
 
   if (!token) {
     return (
-      <div className="signin-page signin-page--login">
-        <div className="signin-container signin-container--login">
-          <div className="signin-main" style={{ textAlign: 'center', padding: '40px 0' }}>
-            <p style={{ color: '#dc2626', fontWeight: 600 }}>Lien invalide ou expiré.</p>
-            <Link to="/mot-de-passe-oublie" style={{ color: '#0f4c4c', fontWeight: 600, display: 'inline-block', marginTop: 12 }}>
-              Demander un nouveau lien
-            </Link>
-          </div>
+      <div className="signin-page signin-page--app">
+        <div className="signin-container signin-container--app">
+          <header className="signin-header signin-header--app">
+            <img src="/logo.png" alt="" className="signin-logo-img" width={110} height={74} />
+            <BrandName as="p" className="signin-brand" />
+            <h1 className="signin-title">Lien invalide</h1>
+            <p className="signin-subtitle">Ce lien est invalide ou a expiré.</p>
+          </header>
+          <p className="signin-register-link" style={{ textAlign: 'center' }}>
+            <Link to="/mot-de-passe-oublie">Demander un nouveau lien</Link>
+          </p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="signin-page signin-page--login">
-      <div className="signin-container signin-container--login">
-        <div className="signin-main">
-          <header className="signin-header signin-header--compact">
-            <img src="/logo.png" alt="Monpermis.bj" className="signin-logo" />
-            <BrandName as="p" className="signin-brand" />
-            <h1 className="signin-title">Nouveau mot de passe</h1>
-            <p className="signin-subtitle">
-              Choisissez un mot de passe sécurisé.
+    <div className="signin-page signin-page--app">
+      <div className="signin-container signin-container--app">
+        <header className="signin-header signin-header--app">
+          <img src="/logo.png" alt="" className="signin-logo-img" width={110} height={74} />
+          <BrandName as="p" className="signin-brand" />
+          <h1 className="signin-title">Nouveau mot de passe</h1>
+          <p className="signin-subtitle">Choisis un mot de passe sécurisé pour ton compte.</p>
+        </header>
+
+        {done ? (
+          <div className="signin-form signin-form--app">
+            <p className="signin-banner signin-banner--ok">Mot de passe réinitialisé !</p>
+            <p className="signin-register-link">
+              <Link to="/">Se connecter</Link>
             </p>
-          </header>
-
-          <div className="signin-form-card">
-            {done ? (
-              <div style={{ textAlign: 'center', padding: '20px 0' }}>
-                <p style={{ color: '#16a34a', fontWeight: 600, marginBottom: 12 }}>
-                  Mot de passe réinitialisé !
-                </p>
-                <Link to="/" style={{ display: 'inline-block', marginTop: 12, color: '#0f4c4c', fontWeight: 600 }}>
-                  Se connecter
-                </Link>
-              </div>
-            ) : (
-              <form className="signin-form" onSubmit={handleSubmit} noValidate>
-                {error && <p className="signin-form-error">{error}</p>}
-
-                <fieldset className="signin-section">
-                  <legend className="signin-section-title">Mot de passe</legend>
-                  <div className="signin-fields">
-                    <div className="auth-input-wrap">
-                      <span className="auth-input-icon"><Shield size={18} /></span>
-                      <input
-                        type="password"
-                        placeholder="Nouveau mot de passe"
-                        autoComplete="new-password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        className="auth-input"
-                      />
-                    </div>
-                    <div className="auth-input-wrap">
-                      <span className="auth-input-icon"><Shield size={18} /></span>
-                      <input
-                        type="password"
-                        placeholder="Confirmer le mot de passe"
-                        autoComplete="new-password"
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                        className="auth-input"
-                      />
-                    </div>
-                  </div>
-                </fieldset>
-
-                <button type="submit" className="signin-btn-continue signin-btn-continue--compact" disabled={loading}>
-                  {loading ? 'Réinitialisation...' : 'Réinitialiser'}
-                </button>
-              </form>
-            )}
           </div>
-        </div>
+        ) : (
+          <form className="signin-form signin-form--app" onSubmit={handleSubmit} noValidate>
+            {error ? <p className="signin-banner signin-banner--err">{error}</p> : null}
 
-        <footer className="signin-footer">
-          <p className="signin-register-link">
-            <Link to="/">Retour à la connexion</Link>
-          </p>
-        </footer>
+            <div className="signin-fields">
+              <AuthInput
+                label="Nouveau mot de passe"
+                name="password"
+                type="password"
+                placeholder="Nouveau mot de passe"
+                autoComplete="new-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+              <AuthInput
+                label="Confirmer le mot de passe"
+                name="confirmPassword"
+                type="password"
+                placeholder="Confirmer le mot de passe"
+                autoComplete="new-password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+              />
+            </div>
+
+            <button
+              type="submit"
+              className="signin-btn-continue signin-btn-continue--app"
+              disabled={loading}
+            >
+              {loading ? 'Réinitialisation…' : 'Réinitialiser'}
+            </button>
+
+            <p className="signin-register-link">
+              <Link to="/">Retour à la connexion</Link>
+            </p>
+          </form>
+        )}
       </div>
     </div>
   )
