@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Bell, Car, Lock, LogOut, Settings, User, X } from 'lucide-react'
+import { Bell, ChevronRight, Lock, LogOut, Settings, User, X } from 'lucide-react'
 import { clearSession } from '../api/auth'
 import { fetchAnnouncements, type Announcement } from '../api/announcements'
 import { fetchUnreadCount } from '../api/notifications'
@@ -10,6 +10,13 @@ import { HomeBottomAnimation } from '../components/HomeBottomAnimation'
 import { CodeModuleIcon, DriveModuleIcon } from '../components/ModuleIcons'
 import { useAuth } from '../hooks/useAuth'
 import '../styles/auth.css'
+
+function greetingWord() {
+  const hour = new Date().getHours()
+  if (hour < 12) return 'Bonjour'
+  if (hour < 18) return 'Bon après-midi'
+  return 'Bonsoir'
+}
 
 export function HomePage() {
   const navigate = useNavigate()
@@ -30,49 +37,86 @@ export function HomePage() {
 
   const handleLogout = () => {
     clearSession()
-    navigate('/', { replace: true })
+    navigate('/intro', { replace: true })
   }
 
   if (loading || !user) return null
 
   const fullName = `${user.firstName} ${user.lastName}`.trim()
+  const codeLocked = subscription?.accessCode === false
+  const conduiteLocked = subscription?.accessConduite === false
 
   return (
-    <div className="auth-page home-page">
-      <div className="auth-container home-container">
-        <header className="auth-header home-brand-header">
-          <div className="home-brand-bar">
-            <div className="home-brand-left">
-              <div className="auth-logo home-brand-logo">
-                <img src="/logo.png" alt="Monpermis.bj" style={{ width: 22, height: 'auto' }} />
-              </div>
-              <BrandName as="h1" onDark className="home-brand-name" />
+    <div className="home-app">
+      <div className="home-app-inner">
+        <header className="home-app-top">
+          <div className="home-app-brand">
+            <div className="home-app-logo-badge">
+              <img src="/logo.png" alt="" width={32} height={32} />
             </div>
-            <div className="home-brand-actions">
-              <button
-                type="button"
-                className="home-profile-btn"
-                onClick={() => navigate('/notifications')}
-                aria-label="Mes notifications"
-              >
-                <Bell size={20} />
-                {unreadCount > 0 ? (
-                  <span className="home-bell-badge">{unreadCount > 9 ? '9+' : unreadCount}</span>
-                ) : null}
-              </button>
-              <button
-                type="button"
-                className="home-profile-btn"
-                onClick={() => setProfileOpen(true)}
-                aria-label="Voir mon profil"
-              >
-                <User size={20} />
-              </button>
-            </div>
+            <BrandName as="h1" className="home-app-brand-name" />
+          </div>
+          <div className="home-app-actions">
+            <button
+              type="button"
+              className="home-app-icon-btn"
+              onClick={() => navigate('/notifications')}
+              aria-label="Mes notifications"
+            >
+              <Bell size={19} />
+              {unreadCount > 0 ? (
+                <span className="home-app-bell-badge">{unreadCount > 9 ? '9+' : unreadCount}</span>
+              ) : null}
+            </button>
+            <button
+              type="button"
+              className="home-app-icon-btn"
+              onClick={() => setProfileOpen(true)}
+              aria-label="Voir mon profil"
+            >
+              <User size={19} />
+            </button>
           </div>
         </header>
 
-        <div className="home-image-marquee" aria-hidden="true">
+        <section className="home-app-hero">
+          <p className="home-app-eyebrow">{greetingWord()}</p>
+          <h2 className="home-app-name">{user.firstName}</h2>
+          <p className="home-app-subtitle">Ton permis commence ici. Choisis ton parcours ci-dessous.</p>
+        </section>
+
+        <section className="home-app-sub-strip">
+          {subscription?.hasActiveSubscription ? (
+            <>
+              <div>
+                <strong>{subscription.subscription?.planName || 'Abonnement actif'}</strong>
+                <span>Parcours accessibles</span>
+              </div>
+              <button type="button" onClick={() => navigate('/abonnement')}>
+                Gérer
+              </button>
+            </>
+          ) : (
+            <>
+              <div>
+                <strong>
+                  {subscription?.pendingSubscription ? 'Paiement en validation' : 'Accès verrouillé'}
+                </strong>
+                <span>
+                  {subscription?.pendingSubscription
+                    ? 'En attente de validation'
+                    : 'Souscris pour débloquer'}
+                </span>
+              </div>
+              <button type="button" onClick={() => navigate('/abonnement')}>
+                Voir les offres
+              </button>
+            </>
+          )}
+        </section>
+
+        <p className="home-app-section-label">Sur la route avec Monpermis</p>
+        <div className="home-image-marquee home-app-marquee" aria-hidden="true">
           <div className="home-image-marquee-track">
             {[1, 2, 3, 4, 5, 1].map((n, i) => (
               <img
@@ -85,52 +129,12 @@ export function HomePage() {
           </div>
         </div>
 
-        <div className="home-guide">
-          <p className="home-guide-line">
-            <span className="home-guide-name">{user.firstName}</span>
-            , ton permis t’attend.
-          </p>
-        </div>
-
-        <section className="home-subscription-card">
-          {subscription?.hasActiveSubscription ? (
-            <>
-              <div>
-                <strong>{subscription.subscription?.planName || 'Abonnement actif'}</strong>
-                <span>Parcours accessibles</span>
-              </div>
-              <button type="button" className="btn-outline" onClick={() => navigate('/abonnement')}>
-                Renouveler
-              </button>
-            </>
-          ) : (
-            <>
-              <div>
-                <strong>
-                  {subscription?.pendingSubscription ? 'Paiement en validation' : 'Accès verrouillé'}
-                </strong>
-                <span>
-                  {subscription?.pendingSubscription
-                    ? 'En attente de validation admin'
-                    : 'Souscrivez pour débloquer'}
-                </span>
-              </div>
-              <button type="button" className="btn-primary" onClick={() => navigate('/abonnement')}>
-                Voir les offres
-              </button>
-            </>
-          )}
-        </section>
-
         {announcements.length > 0 ? (
-          <section className="home-news-section">
-            <p className="home-news-label">Actualités</p>
-            <div className="home-news-list">
+          <section className="home-app-news">
+            <p className="home-app-section-label">Actualités</p>
+            <div className="home-app-news-list">
               {announcements.slice(0, 3).map((item) => (
-                <article
-                  key={item.id}
-                  className={`home-news-card home-news-card--${item.kind}`}
-                >
+                <article key={item.id} className={`home-app-news-card home-news-card--${item.kind}`}>
                   <strong>{item.title}</strong>
                   {item.body ? <p>{item.body}</p> : null}
                 </article>
@@ -139,61 +143,64 @@ export function HomePage() {
           </section>
         ) : null}
 
-        <div className="home-modules-center">
-          <p className="home-modules-bridge">
-            Commencez par le code pour maîtriser les règles de circulation, les panneaux et les
-            priorités. Une fois vos bases solides, passez à la conduite pour vous entraîner sur la
-            route avec un moniteur.
-          </p>
+        <p className="home-app-section-label">Choisis ton parcours</p>
+        <div className="home-app-paths">
+          <button
+            type="button"
+            className={`home-app-path home-app-path--code${codeLocked ? ' is-locked' : ''}`}
+            disabled={codeLocked}
+            onClick={() => navigate('/code-de-la-route')}
+          >
+            <span className="home-app-path-icon">
+              <CodeModuleIcon size={36} />
+            </span>
+            <span className="home-app-path-text">
+              <strong>Code de la route</strong>
+              <small>
+                {codeLocked ? (
+                  <>
+                    <Lock size={12} /> Abonnement requis
+                  </>
+                ) : (
+                  'Cours, quiz & examens'
+                )}
+              </small>
+            </span>
+            <ChevronRight size={20} className="home-app-path-chevron" />
+          </button>
 
-          <div className="auth-card home-modules-card">
-            <div className="menu-buttons">
-              <button
-                type="button"
-                className={`menu-btn menu-btn-code${subscription && !subscription.accessCode ? ' is-locked' : ''}`}
-                disabled={Boolean(subscription && !subscription.accessCode)}
-                title={subscription && !subscription.accessCode ? 'Un abonnement Code est requis.' : undefined}
-                onClick={() => navigate('/code-de-la-route')}
-              >
-                <span className="menu-btn-icon menu-btn-icon-illus">
-                  <CodeModuleIcon size={36} />
-                </span>
-                <span className="menu-btn-content">
-                  <strong>Code</strong>
-                  <small>{subscription && !subscription.accessCode ? <><Lock size={12} /> Abonnement requis</> : 'Cours & QCM'}</small>
-                </span>
-              </button>
-
-              <button
-                type="button"
-                className={`menu-btn menu-btn-drive${subscription && !subscription.accessConduite ? ' is-locked' : ''}`}
-                disabled={Boolean(subscription && !subscription.accessConduite)}
-                title={subscription && !subscription.accessConduite ? 'Un abonnement Conduite est requis.' : undefined}
-                onClick={() => navigate('/conduite')}
-              >
-                <span className="menu-btn-icon menu-btn-icon-illus">
-                  <DriveModuleIcon size={36} />
-                </span>
-                <span className="menu-btn-content">
-                  <strong>Conduite</strong>
-                  <small>{subscription && !subscription.accessConduite ? <><Lock size={12} /> Abonnement requis</> : 'Leçons'}</small>
-                </span>
-              </button>
-            </div>
-          </div>
+          <button
+            type="button"
+            className={`home-app-path home-app-path--drive${conduiteLocked ? ' is-locked' : ''}`}
+            disabled={conduiteLocked}
+            onClick={() => navigate('/conduite')}
+          >
+            <span className="home-app-path-icon">
+              <DriveModuleIcon size={36} />
+            </span>
+            <span className="home-app-path-text">
+              <strong>Conduite</strong>
+              <small>
+                {conduiteLocked ? (
+                  <>
+                    <Lock size={12} /> Abonnement requis
+                  </>
+                ) : (
+                  'Leçons & réservations'
+                )}
+              </small>
+            </span>
+            <ChevronRight size={20} className="home-app-path-chevron" />
+          </button>
         </div>
 
         <HomeBottomAnimation />
       </div>
 
       {profileOpen ? (
-        <div
-          className="home-profile-backdrop"
-          role="presentation"
-          onClick={() => setProfileOpen(false)}
-        >
+        <div className="home-profile-backdrop" role="presentation" onClick={() => setProfileOpen(false)}>
           <div
-            className="home-profile-card"
+            className="home-profile-card home-profile-card--light"
             role="dialog"
             aria-label="Mon identité"
             onClick={(e) => e.stopPropagation()}

@@ -1,5 +1,4 @@
 import { Link, useNavigate } from 'react-router-dom'
-import { Mail, Phone, Shield, User } from 'lucide-react'
 import { type FormEvent, useState } from 'react'
 import { registerUser, loginWithGoogle, saveSession, getAuthErrorDetails } from '../api/auth'
 import { AuthInput } from '../components/AuthInput'
@@ -97,145 +96,137 @@ export function RegisterPage() {
   }
 
   return (
-    <div className="signin-page signin-page--register">
-      <div className="signin-container signin-container--register">
-        <div className="signin-main">
-          <header className="signin-header signin-header--compact">
-            <BrandName as="p" className="signin-brand" />
-            <h1 className="signin-title">Inscription</h1>
-            <p className="signin-subtitle">
-              Créez votre compte pour accéder à vos cours et examens.
-            </p>
-          </header>
+    <div className="signin-page signin-page--app signin-page--register">
+      <div className="signin-container signin-container--app signin-container--register">
+        <header className="signin-header signin-header--app">
+          <img src="/logo.png" alt="" className="signin-logo-img" width={110} height={74} />
+          <BrandName as="p" className="signin-brand" />
+          <h1 className="signin-title">Crée ton compte</h1>
+          <p className="signin-subtitle">
+            Quelques infos et tu démarres ta préparation au permis.
+          </p>
+        </header>
 
-          <div className="signin-form-card signin-form-card--compact">
-            <form className="signin-form" onSubmit={handleSubmit} noValidate>
-              {errors.form && <p className="signin-form-error">{errors.form}</p>}
+        <form className="signin-form signin-form--app" onSubmit={handleSubmit} noValidate>
+          {errors.form ? <p className="signin-banner signin-banner--err">{errors.form}</p> : null}
 
-              <fieldset className="signin-section">
-                <legend className="signin-section-title">Identité</legend>
-                <div className="signin-row">
-                  <AuthInput
-                    name="firstName"
-                    placeholder="Prénom"
-                    autoComplete="given-name"
-                    icon={<User size={18} />}
-                    value={firstName}
-                    onChange={(e) => setFirstName(e.target.value)}
-                    error={errors.firstName}
-                  />
-                  <AuthInput
-                    name="lastName"
-                    placeholder="Nom"
-                    autoComplete="family-name"
-                    icon={<User size={18} />}
-                    value={lastName}
-                    onChange={(e) => setLastName(e.target.value)}
-                    error={errors.lastName}
-                  />
-                </div>
-              </fieldset>
-
-              <fieldset className="signin-section">
-                <legend className="signin-section-title">Contact</legend>
-                <div className="signin-fields">
-                  <AuthInput
-                    name="email"
-                    type="email"
-                    placeholder="E-mail"
-                    autoComplete="email"
-                    inputMode="email"
-                    icon={<Mail size={18} />}
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    error={errors.email}
-                  />
-                  <AuthInput
-                    name="phone"
-                    type="tel"
-                    placeholder="Téléphone"
-                    autoComplete="tel"
-                    inputMode="tel"
-                    icon={<Phone size={18} />}
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    error={errors.phone}
-                  />
-                </div>
-              </fieldset>
-
-              <fieldset className="signin-section">
-                <legend className="signin-section-title">Sécurité</legend>
-                <div className="signin-fields">
-                  <AuthInput
-                    name="password"
-                    type="password"
-                    placeholder="Mot de passe"
-                    autoComplete="new-password"
-                    icon={<Shield size={18} />}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    error={errors.password}
-                  />
-                  <AuthInput
-                    name="confirmPassword"
-                    type="password"
-                    placeholder="Confirmer le mot de passe"
-                    autoComplete="new-password"
-                    icon={<Shield size={18} />}
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    error={errors.confirmPassword}
-                  />
-                </div>
-              </fieldset>
-
-              <div className="signin-terms-block">
-                <label className="signin-checkbox">
-                  <input
-                    type="checkbox"
-                    checked={acceptTerms}
-                    onChange={(e) => setAcceptTerms(e.target.checked)}
-                  />
-                  <span>
-                    J'accepte les{' '}
-                    <Link to="/conditions-utilisation" target="_blank" rel="noopener noreferrer">
-                      conditions d'utilisation
-                    </Link>
-                  </span>
-                </label>
-                {errors.terms && <span className="auth-input-error-text signin-terms-error">{errors.terms}</span>}
-              </div>
-
-              <button type="submit" className="signin-btn-continue signin-btn-continue--compact" disabled={loading || googleLoading}>
-                {loading ? 'Création...' : 'Créer mon compte'}
-              </button>
-            </form>
-
-            <p className="signin-divider">ou</p>
-
-            <GoogleSignInButton
-              onSuccess={handleGoogleSuccess}
-              onError={() => setErrors({ form: 'Connexion Google échouée' })}
-              disabled={loading || googleLoading || !import.meta.env.VITE_GOOGLE_CLIENT_ID}
+          <div className="signin-row signin-row--app">
+            <AuthInput
+              label="Prénom"
+              name="firstName"
+              placeholder="Prénom"
+              autoComplete="given-name"
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+              error={errors.firstName}
+            />
+            <AuthInput
+              label="Nom"
+              name="lastName"
+              placeholder="Nom"
+              autoComplete="family-name"
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
+              error={errors.lastName}
             />
           </div>
-        </div>
 
-        <footer className="signin-footer">
+          <div className="signin-fields">
+            <AuthInput
+              label="Adresse email"
+              name="email"
+              type="email"
+              placeholder="Adresse email"
+              autoComplete="email"
+              inputMode="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              error={errors.email}
+            />
+            <AuthInput
+              label="Téléphone"
+              name="phone"
+              type="tel"
+              placeholder="Téléphone"
+              autoComplete="tel"
+              inputMode="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              error={errors.phone}
+            />
+            <AuthInput
+              label="Mot de passe"
+              name="password"
+              type="password"
+              placeholder="Mot de passe"
+              autoComplete="new-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              error={errors.password}
+            />
+            <AuthInput
+              label="Confirmer le mot de passe"
+              name="confirmPassword"
+              type="password"
+              placeholder="Confirmer le mot de passe"
+              autoComplete="new-password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              error={errors.confirmPassword}
+            />
+          </div>
+
+          <div className="signin-terms-block signin-terms-block--app">
+            <label className="signin-checkbox">
+              <input
+                type="checkbox"
+                checked={acceptTerms}
+                onChange={(e) => setAcceptTerms(e.target.checked)}
+              />
+              <span>
+                J&apos;accepte les{' '}
+                <Link to="/conditions-utilisation" target="_blank" rel="noopener noreferrer">
+                  conditions d&apos;utilisation
+                </Link>
+              </span>
+            </label>
+            {errors.terms ? (
+              <span className="auth-input-error-text signin-terms-error">{errors.terms}</span>
+            ) : null}
+          </div>
+
+          <button
+            type="submit"
+            className="signin-btn-continue signin-btn-continue--app"
+            disabled={loading || googleLoading}
+          >
+            {loading ? 'Création…' : 'Créer mon compte'}
+          </button>
+
+          <div className="signin-divider-row" aria-hidden="true">
+            <span className="signin-divider-line" />
+            <span className="signin-divider-text">ou</span>
+            <span className="signin-divider-line" />
+          </div>
+
+          <GoogleSignInButton
+            onSuccess={handleGoogleSuccess}
+            onError={() => setErrors({ form: 'Connexion Google échouée' })}
+            disabled={loading || googleLoading || !import.meta.env.VITE_GOOGLE_CLIENT_ID}
+          />
+
           <p className="signin-register-link">
-            Déjà inscrit ?{' '}
-            <Link to="/">Se connecter</Link>
+            Déjà inscrit ? <Link to="/">Se connecter</Link>
           </p>
+
           <p className="signin-terms">
-            En vous inscrivant, vous acceptez nos{' '}
-            <Link to="/conditions-utilisation">Conditions d'utilisation</Link>
-            {' '}et notre{' '}
-            <Link to="/politique-de-confidentialite">Politique de confidentialité</Link>.
-            {' '}
-            <Link to="/mentions-legales">Mentions légales</Link>.
+            <Link to="/conditions-utilisation">Conditions d&apos;utilisation</Link>
+            {' · '}
+            <Link to="/politique-de-confidentialite">Confidentialité</Link>
+            {' · '}
+            <Link to="/mentions-legales">Mentions légales</Link>
           </p>
-        </footer>
+        </form>
       </div>
     </div>
   )

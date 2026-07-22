@@ -528,3 +528,191 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ─── Alignement mobile (Login / Register) ─────────────────── */
+.signin-page--app {
+  background: #ffffff;
+  align-items: stretch;
+}
+
+.signin-container--app {
+  max-width: 440px;
+  padding: 1.5rem 1.5rem 1.75rem;
+  justify-content: flex-start;
+}
+
+.signin-header--app {
+  margin-bottom: 2rem;
+}
+
+.signin-logo-img {
+  width: 110px;
+  height: 74px;
+  object-fit: contain;
+  margin: 0 auto 0.75rem;
+  display: block;
+}
+
+.signin-row--app {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  margin-bottom: 1.125rem;
+}
+
+.signin-terms-block--app {
+  margin: 1rem 0 0.25rem;
+}
+
+@media (max-width: 380px) {
+  .signin-row--app {
+    grid-template-columns: 1fr;
+  }
+}
+
+.signin-header--app .signin-brand {
+  font-family: var(--font-display);
+  font-size: 1.375rem;
+  margin-bottom: 1rem;
+}
+
+.signin-header--app .signin-title {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1.625rem;
+  letter-spacing: -0.025em;
+  color: var(--brand-navy);
+  margin-bottom: 0.5rem;
+}
+
+.signin-header--app .signin-subtitle {
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: var(--color-text-muted);
+  max-width: 280px;
+}
+
+.signin-form--app {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.signin-form--app .signin-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 1.125rem;
+}
+
+.signin-banner {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  text-align: center;
+  border-radius: 12px;
+  padding: 0.75rem 0.875rem;
+  margin-bottom: 0.75rem;
+}
+
+.signin-banner--ok {
+  color: var(--brand-green);
+  background: var(--brand-green-soft);
+}
+
+.signin-banner--err {
+  color: var(--brand-coral);
+  background: var(--brand-coral-soft);
+}
+
+.auth-input-label {
+  display: block;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--brand-navy);
+  margin-bottom: 0.4rem;
+}
+
+.auth-input-wrap--no-icon {
+  padding-left: 0.15rem;
+}
+
+.auth-input-wrap--no-icon .auth-input {
+  padding-left: 0.9rem;
+}
+
+.signin-forgot {
+  text-align: center;
+  margin: 1rem 0 0.25rem;
+}
+
+.signin-forgot a {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  text-decoration: none;
+}
+
+.signin-btn-continue--app {
+  margin-top: 0.75rem;
+  width: 100%;
+  min-height: 52px;
+  border: none;
+  border-radius: 999px;
+  background: var(--brand-green-gradient);
+  color: #0b0f1a;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.95rem;
+  cursor: pointer;
+  box-shadow: 0 8px 20px rgba(0, 176, 80, 0.28);
+}
+
+.signin-btn-continue--app:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.signin-divider-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 1.25rem 0;
+}
+
+.signin-divider-line {
+  flex: 1;
+  height: 1px;
+  background: var(--color-border);
+}
+
+.signin-divider-text {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: lowercase;
+  color: var(--color-text-muted);
+}
+
+.signin-form--app .signin-register-link {
+  text-align: center;
+  margin-top: 1.25rem;
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
+}
+
+.signin-form--app .signin-register-link a {
+  color: var(--brand-green);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.signin-form--app .signin-terms {
+  text-align: center;
+  margin-top: 1rem;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  line-height: 1.5;
+}
+
+.signin-form--app .signin-terms a {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}

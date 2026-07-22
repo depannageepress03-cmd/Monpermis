@@ -1,5 +1,4 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { Mail, Shield } from 'lucide-react'
 import { type FormEvent, useEffect, useState } from 'react'
 import { getAuthErrorDetails, loginUser, loginWithGoogle, saveSession } from '../api/auth'
 import { AuthInput } from '../components/AuthInput'
@@ -68,84 +67,79 @@ export function LoginPage() {
   }
 
   return (
-    <div className="signin-page signin-page--login">
-      <div className="signin-container signin-container--login">
-        <div className="signin-main">
-          <header className="signin-header signin-header--compact">
-            <BrandName as="p" className="signin-brand" />
-            <h1 className="signin-title">Connexion</h1>
-            <p className="signin-subtitle">
-              Connectez-vous pour accéder à vos cours et examens.
-            </p>
-          </header>
+    <div className="signin-page signin-page--app">
+      <div className="signin-container signin-container--app">
+        <header className="signin-header signin-header--app">
+          <img src="/logo.png" alt="" className="signin-logo-img" width={110} height={74} />
+          <BrandName as="p" className="signin-brand" />
+          <h1 className="signin-title">Content de te revoir</h1>
+          <p className="signin-subtitle">Connecte-toi pour reprendre ta préparation au permis.</p>
+        </header>
 
-          <div className="signin-form-card">
-            <form className="signin-form" onSubmit={handleSubmit} noValidate>
-              {errors.info && <p className="signin-form-error" style={{ color: '#16a34a' }}>{errors.info}</p>}
-              {errors.form && <p className="signin-form-error">{errors.form}</p>}
+        <form className="signin-form signin-form--app" onSubmit={handleSubmit} noValidate>
+          {errors.info ? <p className="signin-banner signin-banner--ok">{errors.info}</p> : null}
+          {errors.form ? <p className="signin-banner signin-banner--err">{errors.form}</p> : null}
 
-              <fieldset className="signin-section">
-                <legend className="signin-section-title">Compte</legend>
-                <div className="signin-fields">
-                  <AuthInput
-                    name="email"
-                    type="email"
-                    placeholder="E-mail"
-                    autoComplete="email"
-                    inputMode="email"
-                    icon={<Mail size={18} />}
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    error={errors.email}
-                  />
-
-                  <AuthInput
-                    name="password"
-                    type="password"
-                    placeholder="Mot de passe"
-                    autoComplete="current-password"
-                    icon={<Shield size={18} />}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    error={errors.password}
-                  />
-              </div>
-            </fieldset>
-
-            <button type="submit" className="signin-btn-continue signin-btn-continue--compact" disabled={loading || googleLoading}>
-                {loading ? 'Connexion...' : 'Continuer'}
-              </button>
-              <p style={{ textAlign: 'right', marginTop: 8 }}>
-                <Link to="/mot-de-passe-oublie" style={{ fontSize: 13, color: '#6b7280' }}>
-                  Mot de passe oublié ?
-                </Link>
-              </p>
-            </form>
-
-            <p className="signin-divider">ou</p>
-
-            <GoogleSignInButton
-              onSuccess={handleGoogleSuccess}
-              onError={() => setErrors({ form: 'Connexion Google échouée' })}
-              disabled={loading || googleLoading || !import.meta.env.VITE_GOOGLE_CLIENT_ID}
+          <div className="signin-fields">
+            <AuthInput
+              label="Adresse email"
+              name="email"
+              type="email"
+              placeholder="Adresse email"
+              autoComplete="email"
+              inputMode="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              error={errors.email}
+            />
+            <AuthInput
+              label="Mot de passe"
+              name="password"
+              type="password"
+              placeholder="Mot de passe"
+              autoComplete="current-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              error={errors.password}
             />
           </div>
-        </div>
 
-        <footer className="signin-footer">
+          <p className="signin-forgot">
+            <Link to="/mot-de-passe-oublie">Mot de passe oublié ?</Link>
+          </p>
+
+          <button
+            type="submit"
+            className="signin-btn-continue signin-btn-continue--app"
+            disabled={loading || googleLoading}
+          >
+            {loading ? 'Connexion en cours…' : 'Se connecter'}
+          </button>
+
+          <div className="signin-divider-row" aria-hidden="true">
+            <span className="signin-divider-line" />
+            <span className="signin-divider-text">ou</span>
+            <span className="signin-divider-line" />
+          </div>
+
+          <GoogleSignInButton
+            onSuccess={handleGoogleSuccess}
+            onError={() => setErrors({ form: 'Connexion Google échouée' })}
+            disabled={loading || googleLoading || !import.meta.env.VITE_GOOGLE_CLIENT_ID}
+          />
+
           <p className="signin-register-link">
-            Pas encore de compte ?{' '}
-            <Link to="/inscription">Créer un compte</Link>
+            Pas encore de compte ? <Link to="/inscription">Créer un compte</Link>
           </p>
+
           <p className="signin-terms">
-            En cliquant sur « Continuer », j'accepte les{' '}
-            <Link to="/conditions-utilisation">Conditions d'utilisation</Link>
-            {' '}et la{' '}
-            <Link to="/politique-de-confidentialite">Politique de confidentialité</Link>.
-            {' '}
-            <Link to="/mentions-legales">Mentions légales</Link>.
+            <Link to="/conditions-utilisation">Conditions d&apos;utilisation</Link>
+            {' · '}
+            <Link to="/politique-de-confidentialite">Confidentialité</Link>
+            {' · '}
+            <Link to="/mentions-legales">Mentions légales</Link>
           </p>
-        </footer>
+        </form>
       </div>
     </div>
   )
