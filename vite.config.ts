@@ -9,7 +9,7 @@ export default defineConfig({
       registerType: 'autoUpdate',
       injectRegister: false,
       // Remettre un SW normal après purge des vieux caches
-      selfDestroying: false,
+      selfDestroying: true,
       includeAssets: ['favicon.ico', 'favicon-32.png', 'pwa-icon-192.png', 'pwa-icon-512.png', 'logo.png'],
       manifest: {
         name: 'Monpermis.bj',
