@@ -348,7 +348,23 @@ router.post('/google', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Token Google requis' })
     }
 
-    const payload = await verifyGoogleIdToken(idToken)
+    let payload
+    try {
+      payload = await verifyGoogleIdToken(idToken)
+    } catch (verifyError) {
+      console.error('Erreur vérification Google:', verifyError?.message || verifyError)
+      if (verifyError?.status === 500) {
+        return res.status(503).json({
+          success: false,
+          error: 'Connexion Google non configurée sur le serveur',
+        })
+      }
+      return res.status(401).json({
+        success: false,
+        error: 'Token Google invalide ou expiré',
+      })
+    }
+
     if (!payload?.email || !payload.sub) {
       return res.status(400).json({ success: false, error: 'Token Google invalide' })
     }
@@ -364,9 +380,11 @@ router.post('/google', async (req, res) => {
 
     if (!user) {
       user = await User.create({
-        firstName: payload.given_name || 'Utilisateur',
-        lastName: payload.family_name || '',
+        firstName: (payload.given_name || '').trim() || 'Utilisateur',
+        // required: true refuse '' — certains comptes Google n’ont pas de family_name
+        lastName: (payload.family_name || '').trim() || 'Google',
         email: normalizedEmail,
+        phone: '',
         googleId: payload.sub,
         authProvider: 'google',
         isEmailVerified: true,
@@ -374,10 +392,15 @@ router.post('/google', async (req, res) => {
       await sendWelcomeEmail(user).catch((err) => {
         console.error('Email de bienvenue non envoyé:', err.message)
       })
-    } else if (!user.googleId) {
-      user.googleId = payload.sub
-      user.isEmailVerified = true
-      await user.save()
+    } else {
+      if (!user.googleId) {
+        user.googleId = payload.sub
+        user.isEmailVerified = true
+        if (user.authProvider !== 'google') {
+          user.authProvider = user.password ? user.authProvider : 'google'
+        }
+        await user.save()
+      }
     }
 
     if (user.isActive === false) {
@@ -395,7 +418,13 @@ router.post('/google', async (req, res) => {
     })
   } catch (error) {
     console.error('Erreur connexion Google:', error)
-    res.status(401).json({ success: false, error: 'Connexion Google échouée' })
+    if (error?.name === 'ValidationError') {
+      return res.status(400).json({
+        success: false,
+        error: 'Impossible de créer le compte Google',
+      })
+    }
+    res.status(500).json({ success: false, error: 'Connexion Google échouée' })
   }
 })
 
