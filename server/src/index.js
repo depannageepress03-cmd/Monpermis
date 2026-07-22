@@ -1,5 +1,6 @@
 import 'dotenv/config'
 import express from 'express'
+import fs from 'fs'
 import mongoose from 'mongoose'
 import path from 'path'
 import helmet from 'helmet'
@@ -39,6 +40,9 @@ import {
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const app = express()
 const PORT = process.env.PORT || 5000
+/** Build web Vite copié ici au deploy Render (voir render.yaml). */
+const webDistPath = path.join(__dirname, '../web-dist')
+const serveWebApp = fs.existsSync(path.join(webDistPath, 'index.html'))
 
 function parseAllowedOrigins() {
   const clean = (value) =>
@@ -55,6 +59,7 @@ function parseAllowedOrigins() {
   const defaults = [
     'https://monpermis-admin.onrender.com',
     'https://monpermis-web.onrender.com',
+    'https://monpermis-api.onrender.com',
   ]
   return [...new Set([...fromList, ...singles, ...defaults])]
 }
@@ -90,9 +95,13 @@ app.use((req, res, next) => {
   }
   return next()
 })
-// Security headers
-app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }))
-
+// Security headers (CSP off : SPA Vite + PWA sur le même host que l’API)
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+    contentSecurityPolicy: false,
+  }),
+)
 // Rate limiting
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -163,6 +172,20 @@ app.use('/api/reservations', reservationsRoutes)
 app.use('/api/notifications', notificationsRoutes)
 app.use('/api/content/announcements', announcementsRoutes)
 app.use('/api/admin/announcements', adminAnnouncementsRoutes)
+
+// App web apprenant (SPA) — filet si monpermis-web static est indisponible
+if (serveWebApp) {
+  logger.info('SPA web servie depuis web-dist', { path: webDistPath })
+  app.use(express.static(webDistPath, { index: false, maxAge: '1h' }))
+  app.get(/^(?!\/api(?:\/|$)|\/uploads(?:\/|$)).*/, (req, res, next) => {
+    if (req.method !== 'GET' && req.method !== 'HEAD') return next()
+    return res.sendFile(path.join(webDistPath, 'index.html'), (err) => {
+      if (err) next(err)
+    })
+  })
+} else {
+  logger.info('SPA web absente (web-dist) — API seule')
+}
 
 async function connectMongo() {
   await mongoose.connect(process.env.MONGODB_URI, {

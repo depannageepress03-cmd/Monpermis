@@ -12,10 +12,6 @@
       "resizeMode": "contain",
       "backgroundColor": "#FAF9F6"
     },
-    "ios": {
-      "supportsTablet": false,
-      "bundleIdentifier": "com.monpermis.app"
-    },
     "android": {
       "package": "com.monpermis.app",
       "versionCode": 8,
@@ -40,7 +36,15 @@
       "expo-audio",
       "expo-font",
       "@react-native-google-signin/google-signin",
-      "expo-asset"
+      "expo-asset",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "useLegacyPackaging": true
+          }
+        }
+      ]
     ],
     "extra": {
       "eas": {

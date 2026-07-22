@@ -53,7 +53,14 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     headers: { 'Content-Type': 'application/json', ...options?.headers },
   })
 
-  const body: ApiResponse<T> = await response.json()
+  let body: ApiResponse<T>
+  try {
+    body = await response.json()
+  } catch {
+    throw new AuthError(
+      response.statusText || 'Le serveur est inaccessible. Vérifiez votre connexion.',
+    )
+  }
 
   if (!response.ok || !body.success) {
     throw new AuthError(body.error || 'Une erreur est survenue', body.code, body.email)

@@ -44,7 +44,7 @@ export function HomePage() {
           <div className="home-brand-bar">
             <div className="home-brand-left">
               <div className="auth-logo home-brand-logo">
-                <Car size={22} strokeWidth={2} />
+                <img src="/logo.png" alt="Monpermis.bj" style={{ width: 22, height: 'auto' }} />
               </div>
               <BrandName as="h1" onDark className="home-brand-name" />
             </div>
