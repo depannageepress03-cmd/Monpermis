@@ -421,6 +421,12 @@
   box-shadow: var(--shadow-sm, 0 2px 8px rgba(0, 16, 48, 0.06));
 }
 
+.code-route-banner-stack {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
 .code-route-banner-slide {
   position: absolute;
   inset: 0;
@@ -428,17 +434,29 @@
   height: 100%;
   object-fit: cover;
   display: block;
-  animation: code-route-banner-fade 0.45s ease;
+  opacity: 0;
+  transform: scale(1.03);
+  transition:
+    opacity var(--banner-crossfade, 2.8s) cubic-bezier(0.33, 0, 0.2, 1),
+    transform 8s ease-out;
+  will-change: opacity, transform;
+  pointer-events: none;
 }
 
-@keyframes code-route-banner-fade {
-  from {
-    opacity: 0.35;
-    transform: translateX(4%);
+.code-route-banner-slide.is-active {
+  opacity: 1;
+  transform: scale(1);
+  z-index: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .code-route-banner-slide {
+    transition: opacity 0.01ms linear;
+    transform: none;
   }
-  to {
-    opacity: 1;
-    transform: translateX(0);
+
+  .code-route-banner-slide.is-active {
+    transform: none;
   }
 }
 
@@ -496,35 +514,22 @@
 }
 
 .code-route-banner-dot {
-  width: 0.45rem;
-  height: 0.45rem;
+  width: 0.4rem;
+  height: 0.4rem;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.45);
+  background: rgba(255, 255, 255, 0.35);
+  transition: background 0.8s ease, transform 0.8s ease, opacity 0.8s ease;
+  opacity: 0.7;
 }
 
 .code-route-banner-dot.is-active {
   background: #fff;
-  transform: scale(1.25);
+  transform: scale(1.2);
+  opacity: 1;
 }
 
 .code-route-banner-count {
-  position: absolute;
-  top: 0.55rem;
-  right: 0.7rem;
-  z-index: 2;
-  padding: 0.15rem 0.45rem;
-  border-radius: 999px;
-  background: rgba(0, 16, 48, 0.55);
-  color: #fff;
-  font-size: 0.7rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .code-route-banner-slide {
-    animation: none;
-  }
+  display: none;
 }
 
 @media (min-width: 768px) {

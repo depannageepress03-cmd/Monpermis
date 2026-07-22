@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 
+/** Photos Afrique (savane, paysages, villes). */
 const BANNER_IMAGES = [
   '/code-route/banner-1.jpg',
   '/code-route/banner-2.jpg',
@@ -9,28 +10,44 @@ const BANNER_IMAGES = [
   '/code-route/banner-6.jpg',
 ] as const
 
-const SLIDE_MS = 3500
+const HOLD_MS = 6000
+/** Fondu croisé long = changement presque imperceptible */
+const CROSSFADE_MS = 2800
 
-/** Diaporama strict : une seule image visible à la fois. */
+/** Diaporama : toutes les images empilées, fondu d’opacité très fluide. */
 export function CodeRouteBanner() {
   const [index, setIndex] = useState(0)
 
   useEffect(() => {
-    const timer = window.setInterval(() => {
-      setIndex((prev) => (prev + 1) % BANNER_IMAGES.length)
-    }, SLIDE_MS)
-    return () => window.clearInterval(timer)
+    BANNER_IMAGES.forEach((src) => {
+      const img = new Image()
+      img.src = src
+    })
   }, [])
 
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setIndex((prev) => (prev + 1) % BANNER_IMAGES.length)
+    }, HOLD_MS)
+    return () => window.clearTimeout(timer)
+  }, [index])
+
   return (
-    <div className="code-route-banner">
-      <img
-        key={BANNER_IMAGES[index]}
-        src={BANNER_IMAGES[index]}
-        alt=""
-        className="code-route-banner-slide is-active"
-        draggable={false}
-      />
+    <div
+      className="code-route-banner"
+      style={{ ['--banner-crossfade' as string]: `${CROSSFADE_MS}ms` }}
+    >
+      <div className="code-route-banner-stack" aria-hidden="true">
+        {BANNER_IMAGES.map((src, i) => (
+          <img
+            key={src}
+            src={src}
+            alt=""
+            className={`code-route-banner-slide${i === index ? ' is-active' : ''}`}
+            draggable={false}
+          />
+        ))}
+      </div>
       <div className="code-route-banner-fade" aria-hidden="true" />
       <div className="code-route-banner-caption">
         <p className="code-route-banner-title">Code de la route</p>
@@ -43,9 +60,6 @@ export function CodeRouteBanner() {
           <span key={src} className={`code-route-banner-dot${i === index ? ' is-active' : ''}`} />
         ))}
       </div>
-      <span className="code-route-banner-count" aria-hidden="true">
-        {index + 1}/{BANNER_IMAGES.length}
-      </span>
     </div>
   )
 }
