@@ -23,7 +23,9 @@ async function request<T>(path: string, options?: RequestInit & { auth?: boolean
     ...(options?.headers as Record<string, string> | undefined),
   }
 
-  if (options?.auth) {
+  // Contenu apprenant : auth par défaut (évite les 401 silencieux)
+  const needAuth = options?.auth !== false
+  if (needAuth) {
     const token = getToken()
     if (!token) throw new ContentError('Authentification requise')
     headers.Authorization = `Bearer ${token}`
@@ -103,13 +105,13 @@ export interface CourseSessionStart {
 }
 
 export function fetchRevisionChapters() {
-  return request<{ chapters: LearnerChapter[] }>('/content/revision/chapters').then(
+  return request<{ chapters: LearnerChapter[] }>('/content/revision/chapters', { auth: true }).then(
     (data) => data.chapters,
   )
 }
 
 export function fetchConduiteChapters() {
-  return request<{ chapters: LearnerChapter[] }>('/content/conduite/chapters').then(
+  return request<{ chapters: LearnerChapter[] }>('/content/conduite/chapters', { auth: true }).then(
     (data) => data.chapters,
   )
 }
