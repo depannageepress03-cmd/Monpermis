@@ -743,6 +743,7 @@
   margin: 0;
   font-size: 1.05rem;
   color: #0f172a;
+  text-align: left;
 }
 
 .learner-media {
@@ -774,17 +775,38 @@
   color: #334155;
   line-height: 1.55;
   font-size: 0.95rem;
+  text-align: left;
 }
 
 .learner-richtext p {
   margin: 0 0 0.75rem;
 }
 
+.learner-richtext p,
+.learner-richtext h2,
+.learner-richtext h3,
+.learner-richtext li {
+  text-align: left;
+}
+
 .learner-actions {
   display: flex;
   flex-direction: column;
+  align-items: stretch;
   gap: 0.75rem;
   margin-top: 0.5rem;
+  text-align: left;
+}
+
+.learner-actions .subtitle {
+  text-align: left;
+  margin-bottom: 0;
+}
+
+.learner-actions .btn-primary,
+.learner-actions .btn-outline {
+  justify-content: flex-start;
+  text-align: left;
 }
 
 .learner-check {

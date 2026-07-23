@@ -207,7 +207,7 @@ const styles = StyleSheet.create({
     fontFamily: fonts.displayBold,
     color: dark.textPrimary,
     letterSpacing: -0.2,
-    textAlign: 'center',
+    textAlign: 'left',
   },
   mediaFrame: {
     borderRadius: 14,
@@ -258,25 +258,25 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 22,
     color: dark.textPrimary,
-    textAlign: 'center',
+    textAlign: 'left',
   },
   htmlBase: {
     fontSize: 15,
     lineHeight: 22,
     color: dark.textPrimary,
-    textAlign: 'center',
+    textAlign: 'left',
   },
   htmlParagraph: {
     marginTop: 0,
     marginBottom: 10,
-    textAlign: 'center',
+    textAlign: 'left',
   },
   htmlHeading: {
     fontSize: 16,
     fontFamily: fonts.displayBold,
     color: dark.textPrimary,
     marginBottom: 8,
-    textAlign: 'center',
+    textAlign: 'left',
   },
   htmlStrong: {
     fontFamily: fonts.displayBold,
@@ -293,7 +293,7 @@ const styles = StyleSheet.create({
   },
   htmlListItem: {
     marginBottom: 4,
-    textAlign: 'center',
+    textAlign: 'left',
   },
   empty: {
     fontSize: 14,
