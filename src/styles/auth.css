@@ -1998,13 +1998,23 @@
     padding: 1.5rem 2.5rem 0;
     width: 100%;
     box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .home-desk-paths .home-app-section-label {
+    width: min(100%, 42rem);
+    text-align: center;
   }
 
   .home-desk-paths .home-app-paths {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 1.25rem;
-    width: 100%;
+    gap: 1rem;
+    width: min(100%, 42rem);
+    margin-left: auto;
+    margin-right: auto;
   }
 
   /* Cartes photo parcours (taille réduite) */
