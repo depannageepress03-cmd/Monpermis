@@ -1,12 +1,11 @@
 import { Volume2 } from 'lucide-react-native'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { dark, fonts } from '../theme'
 
 type Props = {
   questionKey: string
   promptUri?: string | null
-  answerUris?: (string | null | undefined)[]
 }
 
 type Player = {
@@ -22,8 +21,16 @@ type Player = {
 
 type AudioModule = typeof import('expo-audio')
 
+const PAUSE_MS = 600
+
 function cleanUri(uri?: string | null) {
   return uri?.trim() || ''
+}
+
+function wait(ms: number) {
+  return new Promise<void>((resolve) => {
+    setTimeout(resolve, ms)
+  })
 }
 
 async function playUntilEnd(player: Player) {
@@ -50,68 +57,70 @@ async function playUntilEnd(player: Player) {
 }
 
 /**
- * Enchaîne audio question puis audios des réponses (invisibles).
- * Bouton pour réécouter uniquement l’énoncé.
+ * Joue l’audio unique (question + choix) deux fois d’affilée.
+ * Bouton « Réécouter » relance la double lecture.
  */
-export function QuestionAudioSequence({ questionKey, promptUri, answerUris = [] }: Props) {
+export function QuestionAudioSequence({ questionKey, promptUri }: Props) {
   const [status, setStatus] = useState('')
   const [ready, setReady] = useState(false)
-  const promptPlayerRef = useRef<Player | null>(null)
+  const [playing, setPlaying] = useState(false)
+  const playerRef = useRef<Player | null>(null)
   const cancelledRef = useRef(false)
+  const runIdRef = useRef(0)
 
   const promptUrl = cleanUri(promptUri)
-  const answerUrls = useMemo(() => answerUris.map(cleanUri).filter(Boolean), [answerUris])
+
+  const playTwice = useCallback(async (player: Player) => {
+    const runId = ++runIdRef.current
+    setPlaying(true)
+
+    try {
+      setStatus('Première écoute…')
+      await playUntilEnd(player)
+      if (cancelledRef.current || runId !== runIdRef.current) return
+
+      await wait(PAUSE_MS)
+      if (cancelledRef.current || runId !== runIdRef.current) return
+
+      setStatus('Deuxième écoute…')
+      await playUntilEnd(player)
+    } finally {
+      if (!cancelledRef.current && runId === runIdRef.current) {
+        setStatus('')
+        setPlaying(false)
+      }
+    }
+  }, [])
 
   useEffect(() => {
     cancelledRef.current = false
     setReady(false)
     setStatus('')
-    promptPlayerRef.current = null
+    setPlaying(false)
+    playerRef.current = null
+    runIdRef.current += 1
 
-    let localPrompt: Player | null = null
-    let localAnswers: Player[] = []
+    let localPlayer: Player | null = null
 
     const cleanup = () => {
       try {
-        localPrompt?.pause?.()
-        localPrompt?.remove?.()
+        localPlayer?.pause?.()
+        localPlayer?.remove?.()
       } catch {
         // ignore
       }
-      localAnswers.forEach((player) => {
-        try {
-          player.pause?.()
-          player.remove?.()
-        } catch {
-          // ignore
-        }
-      })
     }
+
+    if (!promptUrl) return cleanup
 
     void import('expo-audio')
       .then(async (audio: AudioModule) => {
         if (cancelledRef.current) return
 
-        if (promptUrl) {
-          localPrompt = audio.createAudioPlayer({ uri: promptUrl }) as Player
-          promptPlayerRef.current = localPrompt
-        }
-        localAnswers = answerUrls.map((uri) => audio.createAudioPlayer({ uri }) as Player)
+        localPlayer = audio.createAudioPlayer({ uri: promptUrl }) as Player
+        playerRef.current = localPlayer
         setReady(true)
-
-        if (localPrompt) {
-          setStatus('Écoute de la question…')
-          await playUntilEnd(localPrompt)
-          if (cancelledRef.current) return
-        }
-
-        for (let i = 0; i < localAnswers.length; i += 1) {
-          if (cancelledRef.current) return
-          setStatus(`Écoute du choix ${String.fromCharCode(97 + i).toUpperCase()}…`)
-          await playUntilEnd(localAnswers[i])
-        }
-
-        if (!cancelledRef.current) setStatus('')
+        await playTwice(localPlayer)
       })
       .catch(() => {
         setReady(false)
@@ -119,35 +128,29 @@ export function QuestionAudioSequence({ questionKey, promptUri, answerUris = [] 
 
     return () => {
       cancelledRef.current = true
+      runIdRef.current += 1
       cleanup()
-      promptPlayerRef.current = null
+      playerRef.current = null
     }
-  }, [questionKey, promptUrl, answerUrls])
+  }, [questionKey, promptUrl, playTwice])
 
-  if (!promptUrl && answerUrls.length === 0) return null
+  if (!promptUrl) return null
 
   return (
     <View style={styles.wrap}>
-      {promptUrl ? (
-        <Pressable
-          style={[styles.btn, !ready && styles.btnDisabled]}
-          disabled={!ready}
-          onPress={() => {
-            const player = promptPlayerRef.current
-            if (!player) return
-            try {
-              player.seekTo(0)
-              player.play()
-            } catch {
-              // ignore
-            }
-          }}
-          hitSlop={8}
-        >
-          <Volume2 size={18} color={dark.coral} />
-          <Text style={styles.label}>Réécouter la question</Text>
-        </Pressable>
-      ) : null}
+      <Pressable
+        style={[styles.btn, (!ready || playing) && styles.btnDisabled]}
+        disabled={!ready || playing}
+        onPress={() => {
+          const player = playerRef.current
+          if (!player || playing) return
+          void playTwice(player)
+        }}
+        hitSlop={8}
+      >
+        <Volume2 size={18} color={dark.coral} />
+        <Text style={styles.label}>Réécouter</Text>
+      </Pressable>
       {status ? <Text style={styles.status}>{status}</Text> : null}
     </View>
   )

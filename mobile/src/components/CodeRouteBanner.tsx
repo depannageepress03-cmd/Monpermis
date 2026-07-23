@@ -22,7 +22,7 @@ const BANNER_IMAGES: ImageSourcePropType[] = [
 const HOLD_MS = 6000
 const CROSSFADE_MS = 2800
 
-/** Diaporama Afrique : fondu croisé très fluide (images empilées). */
+/** Diaporama voitures : fondu croisé très fluide (images empilées). */
 export function CodeRouteBanner() {
   const [index, setIndex] = useState(0)
   const opacities = useRef(BANNER_IMAGES.map((_, i) => new Animated.Value(i === 0 ? 1 : 0))).current

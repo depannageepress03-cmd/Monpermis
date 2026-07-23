@@ -276,7 +276,7 @@ export function ChapterTestSubjectPanel({ chapterId }: { chapterId: string }) {
                         {question.answers.map((answer) => (
                           <li key={`${question.id}-${answer.label}`}>
                             <span className={answer.isCorrect ? 'is-correct' : undefined}>
-                              {answer.label.toUpperCase()}. {answer.text || 'Audio'}
+                              {answer.label.toUpperCase()}. {answer.text || '—'}
                               {answer.isCorrect ? ' ✓' : ''}
                             </span>
                           </li>
