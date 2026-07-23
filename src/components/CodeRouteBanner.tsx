@@ -2,12 +2,12 @@ import { useEffect, useState } from 'react'
 
 /** Diaporama voitures — ?v= pour forcer le refresh après remplacement des JPG. */
 const BANNER_IMAGES = [
-  '/code-route/banner-1.jpg?v=mfold',
-  '/code-route/banner-2.jpg?v=mfold',
-  '/code-route/banner-3.jpg?v=mfold',
-  '/code-route/banner-4.jpg?v=mfold',
-  '/code-route/banner-5.jpg?v=mfold',
-  '/code-route/banner-6.jpg?v=mfold',
+  '/code-route/banner-m1.jpg',
+  '/code-route/banner-m2.jpg',
+  '/code-route/banner-m3.jpg',
+  '/code-route/banner-m4.jpg',
+  '/code-route/banner-m5.jpg',
+  '/code-route/banner-m6.jpg',
 ] as const
 
 const HOLD_MS = 6000

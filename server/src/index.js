@@ -254,6 +254,9 @@ if (serveWebApp) {
         if (base === 'index.html') {
           res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate')
           res.setHeader('Clear-Site-Data', '"cache"')
+        } else if (/\.(jpe?g|png|webp|gif|svg)$/i.test(base)) {
+          // Images du diaporama / cartes : éviter un cache navigateur trop long
+          res.setHeader('Cache-Control', 'public, max-age=120, must-revalidate')
         }
       },
     }),
