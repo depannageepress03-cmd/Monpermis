@@ -40,7 +40,7 @@ function serializeModule(module) {
     (module.videoUrl ? 'video' : module.imageUrl ? 'image' : '')
 
   return {
-    id: module._id,
+    id: String(module._id),
     name: module.name || '',
     title: module.title || '',
     text: module.text || '',
@@ -54,7 +54,7 @@ function serializeModule(module) {
 
 function serializeCourse(course) {
   return {
-    id: course._id,
+    id: String(course._id),
     title: course.title,
     order: course.order,
     published: Boolean(course.published),
@@ -66,7 +66,7 @@ function serializeCourse(course) {
 
 baseChapterSchema.methods.toAdminJSON = function toAdminJSON() {
   return {
-    id: this._id,
+    id: String(this._id),
     name: this.name,
     order: this.order,
     published: Boolean(this.published),
@@ -80,14 +80,14 @@ baseChapterSchema.methods.toAdminJSON = function toAdminJSON() {
 
 baseChapterSchema.methods.toPublicJSON = function toPublicJSON() {
   return {
-    id: this._id,
+    id: String(this._id),
     name: this.name,
     order: this.order,
     courses: [...this.courses]
       .filter((course) => course.published)
       .sort((a, b) => a.order - b.order)
       .map((course) => ({
-        id: course._id,
+        id: String(course._id),
         title: course.title,
         order: course.order,
         modules: [...course.modules]

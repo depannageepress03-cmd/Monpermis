@@ -270,6 +270,9 @@
   border-color: rgba(15, 23, 42, 0.08);
   opacity: 0.85;
   cursor: not-allowed;
+  width: 100%;
+  font: inherit;
+  text-align: left;
 }
 
 .learner-item-icon {
