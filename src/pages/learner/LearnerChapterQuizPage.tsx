@@ -55,6 +55,7 @@ export function LearnerChapterQuizPage({
   const [finished, setFinished] = useState(false)
   const [savingTest, setSavingTest] = useState(false)
   const [testSaved, setTestSaved] = useState(false)
+  const [sequenceLive, setSequenceLive] = useState(true)
 
   const selectedIdsRef = useRef(selectedIds)
   selectedIdsRef.current = selectedIds
@@ -70,6 +71,8 @@ export function LearnerChapterQuizPage({
   scoreRef.current = score
   const testSavedRef = useRef(testSaved)
   testSavedRef.current = testSaved
+  const sequenceLiveRef = useRef(sequenceLive)
+  sequenceLiveRef.current = sequenceLive
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -95,6 +98,7 @@ export function LearnerChapterQuizPage({
       setScore({ correct: 0, total: 0 })
       setFinished(false)
       setTestSaved(false)
+      setSequenceLive(true)
     } catch (err) {
       setError(err instanceof ContentError ? err.message : 'Chargement impossible')
       setQuestions([])
@@ -106,6 +110,12 @@ export function LearnerChapterQuizPage({
   useEffect(() => {
     if (user) void load()
   }, [user, load])
+
+  useEffect(() => {
+    setSequenceLive(true)
+    setSelectedIds([])
+    setResult(null)
+  }, [index])
 
   const question = questions[index]
   const progressLabel = useMemo(() => {
@@ -144,6 +154,7 @@ export function LearnerChapterQuizPage({
       setIndex((value) => value + 1)
       setSelectedIds([])
       setResult(null)
+      setSequenceLive(true)
     },
     [chapterId, mode],
   )
@@ -151,6 +162,7 @@ export function LearnerChapterQuizPage({
   const skipMissed = useCallback(async () => {
     if (checkingRef.current || resultRef.current) return
     setChecking(true)
+    setSequenceLive(false)
     try {
       const currentQuestion = questionsRef.current[indexRef.current]
       const promptUrl = currentQuestion?.prompt?.audioUrl
@@ -162,7 +174,6 @@ export function LearnerChapterQuizPage({
         total: scoreRef.current.total + 1,
       }
       setScore(nextScore)
-      // Rejoue la question ratée pendant qu’on passe à la suivante (plus de retour possible)
       if (promptUrl) void playRemoteAudio(promptUrl)
       void playFailSound()
       await finishOrAdvance(nextScore)
@@ -177,6 +188,7 @@ export function LearnerChapterQuizPage({
       if (!currentQuestion || ids.length === 0 || checkingRef.current || resultRef.current) return
 
       setChecking(true)
+      setSequenceLive(false)
       try {
         const data = await checkRevisionQuestionAnswers(chapterId, currentQuestion.id, ids)
         setResult(data)
@@ -191,6 +203,7 @@ export function LearnerChapterQuizPage({
         await finishOrAdvance(nextScore)
       } catch (err) {
         setError(err instanceof ContentError ? err.message : 'Vérification impossible')
+        setSequenceLive(true)
       } finally {
         setChecking(false)
       }
@@ -199,6 +212,7 @@ export function LearnerChapterQuizPage({
   )
 
   const handleSequenceComplete = useCallback(() => {
+    if (!sequenceLiveRef.current) return
     const ids = selectedIdsRef.current
     if (ids.length > 0) {
       void resolveSelection(ids)
@@ -207,6 +221,12 @@ export function LearnerChapterQuizPage({
     void skipMissed()
   }, [resolveSelection, skipMissed])
 
+  const handleContinue = () => {
+    const ids = selectedIdsRef.current
+    if (ids.length === 0 || checking || result) return
+    setSequenceLive(false)
+    void resolveSelection(ids)
+  }
   if (authLoading || !user) return null
 
   return (
@@ -272,12 +292,14 @@ export function LearnerChapterQuizPage({
               {question.prompt?.text ? (
                 <p className="learner-quiz-prompt">{question.prompt.text}</p>
               ) : null}
-              <QuestionAudioSequence
-                key={question.id}
-                questionKey={question.id}
-                promptAudioUrl={question.prompt?.audioUrl}
-                onSequenceComplete={handleSequenceComplete}
-              />
+              {sequenceLive && !result ? (
+                <QuestionAudioSequence
+                  key={question.id}
+                  questionKey={question.id}
+                  promptAudioUrl={question.prompt?.audioUrl}
+                  onSequenceComplete={handleSequenceComplete}
+                />
+              ) : null}
               <div className="learner-quiz-answers">
                 {question.answers.map((answer) => {
                   const selected = selectedIds.includes(answer.id)
@@ -308,14 +330,25 @@ export function LearnerChapterQuizPage({
               ) : null}
 
               <div className="learner-quiz-actions">
-                {!result ? (
+                {!result && selectedIds.length > 0 ? (
+                  <button
+                    type="button"
+                    className="btn-primary"
+                    disabled={checking}
+                    onClick={handleContinue}
+                  >
+                    {checking ? 'Vérification…' : 'Continuer'}
+                  </button>
+                ) : null}
+                {!result && selectedIds.length === 0 ? (
                   <p className="learner-quiz-audio-status">
-                    Cochez pendant l’écoute ou le décompte 5→0. Sans choix à 0 : question ratée,
-                    audio rejoué, passage automatique — retour impossible avant « Recommencer ».
+                    L’audio démarre tout seul. Cochez puis appuyez sur Continuer pour passer sans
+                    décompte. Sans choix à 0 : question ratée.
                   </p>
-                ) : (
+                ) : null}
+                {result ? (
                   <p className="learner-quiz-audio-status">Passage automatique…</p>
-                )}
+                ) : null}
               </div>
             </div>
           ) : null}

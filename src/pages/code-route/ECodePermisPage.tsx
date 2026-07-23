@@ -240,6 +240,7 @@ export function ECodePermisTakePage() {
     passed: boolean
     passScore: number
   } | null>(null)
+  const [sequenceLive, setSequenceLive] = useState(true)
 
   const selectedIdsRef = useRef(selectedIds)
   selectedIdsRef.current = selectedIds
@@ -252,6 +253,8 @@ export function ECodePermisTakePage() {
   const questionsRef = useRef<PracticeExamAttempt['questions']>([])
   const attemptRef = useRef(attempt)
   attemptRef.current = attempt
+  const sequenceLiveRef = useRef(sequenceLive)
+  sequenceLiveRef.current = sequenceLive
 
   const number = Number(examNumber)
 
@@ -273,6 +276,7 @@ export function ECodePermisTakePage() {
       setLiveCorrect(started.liveCorrect || 0)
       setAnsweredCount(answered)
       setFinished(started.status === 'completed')
+      setSequenceLive(true)
       if (started.status === 'completed') {
         setFinalScore({
           correct: started.correct,
@@ -293,6 +297,12 @@ export function ECodePermisTakePage() {
   useEffect(() => {
     if (user) void load()
   }, [user, load])
+
+  useEffect(() => {
+    setSequenceLive(true)
+    setSelectedIds([])
+    setResult(null)
+  }, [index])
 
   const questions = attempt?.questions || []
   questionsRef.current = questions
@@ -330,6 +340,7 @@ export function ECodePermisTakePage() {
     setIndex((value) => value + 1)
     setSelectedIds([])
     setResult(null)
+    setSequenceLive(true)
   }, [])
 
   const skipMissed = useCallback(async () => {
@@ -344,6 +355,7 @@ export function ECodePermisTakePage() {
       return
 
     setChecking(true)
+    setSequenceLive(false)
     try {
       const promptUrl = currentQuestion.prompt?.audioUrl
         ? resolveMediaUrl(currentQuestion.prompt.audioUrl)
@@ -376,6 +388,7 @@ export function ECodePermisTakePage() {
         return
 
       setChecking(true)
+      setSequenceLive(false)
       try {
         const data = await checkECodePermisAnswer(currentAttempt.id, currentQuestion.id, ids)
         setResult({ isCorrect: data.isCorrect, correctAnswerIds: data.correctAnswerIds })
@@ -387,6 +400,7 @@ export function ECodePermisTakePage() {
         await finishOrAdvance()
       } catch (err) {
         setError(err instanceof ContentError ? err.message : 'Vérification impossible')
+        setSequenceLive(true)
       } finally {
         setChecking(false)
       }
@@ -395,6 +409,7 @@ export function ECodePermisTakePage() {
   )
 
   const handleSequenceComplete = useCallback(() => {
+    if (!sequenceLiveRef.current) return
     const ids = selectedIdsRef.current
     if (ids.length > 0) {
       void resolveSelection(ids)
@@ -402,6 +417,13 @@ export function ECodePermisTakePage() {
     }
     void skipMissed()
   }, [resolveSelection, skipMissed])
+
+  const handleContinue = () => {
+    const ids = selectedIdsRef.current
+    if (ids.length === 0 || checking || result) return
+    setSequenceLive(false)
+    void resolveSelection(ids)
+  }
 
   if (authLoading || !user) return null
 
@@ -467,12 +489,14 @@ export function ECodePermisTakePage() {
               {question.prompt?.text ? (
                 <p className="learner-quiz-prompt">{question.prompt.text}</p>
               ) : null}
-              <QuestionAudioSequence
-                key={question.id}
-                questionKey={question.id}
-                promptAudioUrl={question.prompt?.audioUrl}
-                onSequenceComplete={handleSequenceComplete}
-              />
+              {sequenceLive && !result ? (
+                <QuestionAudioSequence
+                  key={question.id}
+                  questionKey={question.id}
+                  promptAudioUrl={question.prompt?.audioUrl}
+                  onSequenceComplete={handleSequenceComplete}
+                />
+              ) : null}
 
               <div className="learner-quiz-answers">
                 {question.answers.map((answer) => {
@@ -504,13 +528,25 @@ export function ECodePermisTakePage() {
               ) : null}
 
               <div className="learner-quiz-actions">
-                {!result ? (
+                {!result && selectedIds.length > 0 ? (
+                  <button
+                    type="button"
+                    className="btn-primary"
+                    disabled={checking}
+                    onClick={handleContinue}
+                  >
+                    {checking ? 'Vérification…' : 'Continuer'}
+                  </button>
+                ) : null}
+                {!result && selectedIds.length === 0 ? (
                   <p className="learner-quiz-audio-status">
-                    Cochez pendant l’écoute / le décompte — passage auto à 0.
+                    L’audio démarre tout seul. Cochez puis appuyez sur Continuer pour passer sans
+                    décompte. Sans choix à 0 : question ratée.
                   </p>
-                ) : (
+                ) : null}
+                {result ? (
                   <p className="learner-quiz-audio-status">Passage automatique…</p>
-                )}
+                ) : null}
               </div>
             </form>
           ) : null}

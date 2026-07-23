@@ -72,10 +72,14 @@ export type CountdownValue = 5 | 4 | 3 | 2 | 1 | 0
  * Décompte 5 → 0 en exactement 5 secondes :
  * 5 à t=0, 4 à t=1s, …, 1 à t=4s, 0 à t=5s puis fin.
  */
-export async function playCountdown5to0(onTick?: (n: CountdownValue) => void) {
+export async function playCountdown5to0(
+  onTick?: (n: CountdownValue) => void,
+  isCancelled?: () => boolean,
+) {
   const steps: CountdownValue[] = [5, 4, 3, 2, 1, 0]
   const started = Date.now()
   for (let i = 0; i < steps.length; i += 1) {
+    if (isCancelled?.()) return
     const n = steps[i]
     onTick?.(n)
     if (n > 0) {
@@ -84,10 +88,12 @@ export async function playCountdown5to0(onTick?: (n: CountdownValue) => void) {
     } else {
       void speakFrench('zéro')
     }
-    // Afficher 5…1 pendant 1 s chacun ; 0 apparaît à la 5e seconde puis on sort tout de suite
     if (i < steps.length - 1) {
       const target = started + (i + 1) * 1000
-      await wait(Math.max(0, target - Date.now()))
+      while (Date.now() < target) {
+        if (isCancelled?.()) return
+        await wait(Math.min(100, target - Date.now()))
+      }
     } else {
       await wait(280)
     }

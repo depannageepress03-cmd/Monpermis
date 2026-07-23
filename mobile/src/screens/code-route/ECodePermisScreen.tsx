@@ -248,6 +248,7 @@ export function ECodePermisTakeScreen() {
     passed: boolean
     passScore: number
   } | null>(null)
+  const [sequenceLive, setSequenceLive] = useState(true)
 
   const selectedIdsRef = useRef(selectedIds)
   selectedIdsRef.current = selectedIds
@@ -260,6 +261,8 @@ export function ECodePermisTakeScreen() {
   const questionsRef = useRef<PracticeExamAttempt['questions']>([])
   const attemptRef = useRef(attempt)
   attemptRef.current = attempt
+  const sequenceLiveRef = useRef(sequenceLive)
+  sequenceLiveRef.current = sequenceLive
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -274,6 +277,7 @@ export function ECodePermisTakeScreen() {
       setLiveCorrect(started.liveCorrect || 0)
       setAnsweredCount(answered)
       setFinished(started.status === 'completed')
+      setSequenceLive(true)
       if (started.status === 'completed') {
         setFinalScore({
           correct: started.correct,
@@ -293,6 +297,12 @@ export function ECodePermisTakeScreen() {
   useEffect(() => {
     if (user) void load()
   }, [user, load])
+
+  useEffect(() => {
+    setSequenceLive(true)
+    setSelectedIds([])
+    setResult(null)
+  }, [index])
 
   const questions = attempt?.questions || []
   questionsRef.current = questions
@@ -330,6 +340,7 @@ export function ECodePermisTakeScreen() {
     setIndex((value) => value + 1)
     setSelectedIds([])
     setResult(null)
+    setSequenceLive(true)
   }, [])
 
   const skipMissed = useCallback(async () => {
@@ -344,6 +355,7 @@ export function ECodePermisTakeScreen() {
       return
 
     setChecking(true)
+    setSequenceLive(false)
     try {
       const promptUrl = currentQuestion.prompt?.audioUrl
         ? resolveMediaUrl(currentQuestion.prompt.audioUrl)
@@ -376,6 +388,7 @@ export function ECodePermisTakeScreen() {
         return
 
       setChecking(true)
+      setSequenceLive(false)
       try {
         const data = await checkECodePermisAnswer(currentAttempt.id, currentQuestion.id, ids)
         setResult({ isCorrect: data.isCorrect, correctAnswerIds: data.correctAnswerIds })
@@ -387,6 +400,7 @@ export function ECodePermisTakeScreen() {
         await finishOrAdvance()
       } catch (err) {
         setError(err instanceof ContentError ? err.message : 'Vérification impossible')
+        setSequenceLive(true)
       } finally {
         setChecking(false)
       }
@@ -395,6 +409,7 @@ export function ECodePermisTakeScreen() {
   )
 
   const handleSequenceComplete = useCallback(() => {
+    if (!sequenceLiveRef.current) return
     const ids = selectedIdsRef.current
     if (ids.length > 0) {
       void resolveSelection(ids)
@@ -402,6 +417,13 @@ export function ECodePermisTakeScreen() {
     }
     void skipMissed()
   }, [resolveSelection, skipMissed])
+
+  const handleContinue = () => {
+    const ids = selectedIdsRef.current
+    if (ids.length === 0 || checking || result) return
+    setSequenceLive(false)
+    void resolveSelection(ids)
+  }
 
   if (authLoading || !user) return <ScreenLoader />
 
@@ -444,7 +466,7 @@ export function ECodePermisTakeScreen() {
               {question.prompt?.text ? (
                 <Text style={styles.prompt}>{question.prompt.text}</Text>
               ) : null}
-              {question.prompt?.audioUrl ? (
+              {sequenceLive && !result && question.prompt?.audioUrl ? (
                 <QuestionAudioSequence
                   questionKey={question.id}
                   promptUri={resolveMediaUrl(question.prompt?.audioUrl)}
@@ -478,13 +500,25 @@ export function ECodePermisTakeScreen() {
                 </Text>
               ) : null}
 
-              {!result ? (
+              {!result && selectedIds.length > 0 ? (
+                <Pressable
+                  style={[styles.primaryBtn, checking && styles.primaryBtnDisabled]}
+                  disabled={checking}
+                  onPress={handleContinue}
+                >
+                  {checking ? (
+                    <ActivityIndicator color={'#0B0F1A'} />
+                  ) : (
+                    <Text style={styles.primaryBtnText}>Continuer</Text>
+                  )}
+                </Pressable>
+              ) : null}
+              {!result && selectedIds.length === 0 ? (
                 <Text style={styles.awaitingText}>
-                  Cochez pendant l’écoute / le décompte — passage auto à 0.
+                  L’audio démarre tout seul. Cochez puis Continuer pour passer sans décompte.
                 </Text>
-              ) : (
-                <Text style={styles.awaitingText}>Passage automatique…</Text>
-              )}
+              ) : null}
+              {result ? <Text style={styles.awaitingText}>Passage automatique…</Text> : null}
             </View>
           ) : null}
         </ScrollView>
@@ -631,6 +665,23 @@ const styles = StyleSheet.create({
     color: '#0B0F1A',
     fontFamily: fonts.displayBold,
     fontSize: 13,
+  },
+  primaryBtn: {
+    marginTop: 8,
+    borderRadius: 14,
+    backgroundColor: dark.green,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 48,
+  },
+  primaryBtnDisabled: {
+    opacity: 0.45,
+  },
+  primaryBtnText: {
+    color: '#0B0F1A',
+    fontFamily: fonts.displayBold,
+    fontSize: 16,
   },
   disabled: { opacity: 0.5 },
   empty: {

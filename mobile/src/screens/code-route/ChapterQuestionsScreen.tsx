@@ -58,6 +58,7 @@ export function ChapterQuestionsScreen() {
   const [finished, setFinished] = useState(false)
   const [savingTest, setSavingTest] = useState(false)
   const [testSaved, setTestSaved] = useState(false)
+  const [sequenceLive, setSequenceLive] = useState(true)
 
   const selectedIdsRef = useRef(selectedIds)
   selectedIdsRef.current = selectedIds
@@ -73,6 +74,8 @@ export function ChapterQuestionsScreen() {
   scoreRef.current = score
   const testSavedRef = useRef(testSaved)
   testSavedRef.current = testSaved
+  const sequenceLiveRef = useRef(sequenceLive)
+  sequenceLiveRef.current = sequenceLive
 
   useEffect(() => {
     void import('expo-audio')
@@ -94,6 +97,7 @@ export function ChapterQuestionsScreen() {
       setScore({ correct: 0, total: 0 })
       setFinished(false)
       setTestSaved(false)
+      setSequenceLive(true)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Chargement impossible')
       setQuestions([])
@@ -107,6 +111,12 @@ export function ChapterQuestionsScreen() {
       if (user) void loadQuestions()
     }, [user, loadQuestions]),
   )
+
+  useEffect(() => {
+    setSequenceLive(true)
+    setSelectedIds(new Set())
+    setResult(null)
+  }, [index])
 
   const question = questions[index]
 
@@ -132,6 +142,7 @@ export function ChapterQuestionsScreen() {
       setIndex((prev) => prev + 1)
       setSelectedIds(new Set())
       setResult(null)
+      setSequenceLive(true)
     },
     [chapterId, isTest],
   )
@@ -139,6 +150,7 @@ export function ChapterQuestionsScreen() {
   const skipMissed = useCallback(async () => {
     if (checkingRef.current || resultRef.current) return
     setChecking(true)
+    setSequenceLive(false)
     try {
       const currentQuestion = questionsRef.current[indexRef.current]
       const promptUrl = currentQuestion?.prompt?.audioUrl
@@ -164,6 +176,7 @@ export function ChapterQuestionsScreen() {
       if (!currentQuestion || ids.length === 0 || checkingRef.current || resultRef.current) return
 
       setChecking(true)
+      setSequenceLive(false)
       try {
         const check = await checkQuestionAnswers(chapterId, currentQuestion.id, ids)
         setResult(check)
@@ -178,6 +191,7 @@ export function ChapterQuestionsScreen() {
         await finishOrAdvance(nextScore)
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Vérification impossible')
+        setSequenceLive(true)
       } finally {
         setChecking(false)
       }
@@ -186,6 +200,7 @@ export function ChapterQuestionsScreen() {
   )
 
   const handleSequenceComplete = useCallback(() => {
+    if (!sequenceLiveRef.current) return
     const ids = [...selectedIdsRef.current]
     if (ids.length > 0) {
       void resolveSelection(ids)
@@ -193,6 +208,13 @@ export function ChapterQuestionsScreen() {
     }
     void skipMissed()
   }, [resolveSelection, skipMissed])
+
+  const handleContinue = () => {
+    const ids = [...selectedIdsRef.current]
+    if (ids.length === 0 || checking || result) return
+    setSequenceLive(false)
+    void resolveSelection(ids)
+  }
 
   const toggleAnswer = (answerId: string) => {
     if (result || checking) return
@@ -290,7 +312,7 @@ export function ChapterQuestionsScreen() {
                 {question.prompt.text ? (
                   <Text style={styles.promptText}>{question.prompt.text}</Text>
                 ) : null}
-                {question.prompt.audioUrl ? (
+                {sequenceLive && !result && question.prompt.audioUrl ? (
                   <QuestionAudioSequence
                     questionKey={question.id}
                     promptUri={resolveMediaUrl(question.prompt.audioUrl)}
@@ -371,13 +393,25 @@ export function ChapterQuestionsScreen() {
                 </View>
               ) : null}
 
-              {!result ? (
+              {!result && selectedIds.size > 0 ? (
+                <Pressable
+                  style={[styles.primaryBtn, checking && styles.primaryBtnDisabled]}
+                  disabled={checking}
+                  onPress={handleContinue}
+                >
+                  {checking ? (
+                    <ActivityIndicator color={'#0B0F1A'} />
+                  ) : (
+                    <Text style={styles.primaryBtnText}>Continuer</Text>
+                  )}
+                </Pressable>
+              ) : null}
+              {!result && selectedIds.size === 0 ? (
                 <Text style={styles.awaitingText}>
-                  Cochez pendant l’écoute / le décompte — passage auto à 0.
+                  L’audio démarre tout seul. Cochez puis Continuer pour passer sans décompte.
                 </Text>
-              ) : (
-                <Text style={styles.awaitingText}>Passage automatique…</Text>
-              )}
+              ) : null}
+              {result ? <Text style={styles.awaitingText}>Passage automatique…</Text> : null}
             </View>
           ) : null}
         </ScrollView>

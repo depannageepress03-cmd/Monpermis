@@ -94,17 +94,24 @@ async function playUri(uri: string, maxMs = 4000) {
 export type CountdownValue = 5 | 4 | 3 | 2 | 1 | 0
 
 /** Décompte 5 → 0 en exactement 5 secondes. */
-export async function playCountdown5to0(onTick?: (n: CountdownValue) => void) {
+export async function playCountdown5to0(
+  onTick?: (n: CountdownValue) => void,
+  isCancelled?: () => boolean,
+) {
   const steps: CountdownValue[] = [5, 4, 3, 2, 1, 0]
   const freqs = [920, 860, 800, 740, 680, 520]
   const started = Date.now()
   for (let i = 0; i < steps.length; i += 1) {
+    if (isCancelled?.()) return
     const n = steps[i]
     onTick?.(n)
     void playUri(toneWavUri(freqs[i], n === 0 ? 220 : 120, 0.4), 600)
     if (i < steps.length - 1) {
       const target = started + (i + 1) * 1000
-      await wait(Math.max(0, target - Date.now()))
+      while (Date.now() < target) {
+        if (isCancelled?.()) return
+        await wait(Math.min(100, target - Date.now()))
+      }
     } else {
       await wait(280)
     }
