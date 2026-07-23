@@ -22,18 +22,30 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const token = await getStoredToken()
   if (!token) throw new SubscriptionError('Authentification requise')
 
-  let response: Response
-  try {
-    response = await fetch(`${getApiBase()}${path}`, {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-        ...options?.headers,
-      },
-    })
-  } catch {
-    throw new SubscriptionError('Impossible de joindre le serveur')
+  const url = `${getApiBase()}${path}`
+  const headers = {
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${token}`,
+    ...options?.headers,
+  }
+
+  // Render (free) peut dormir : 1er appel échoue parfois → 3 tentatives
+  let response: Response | null = null
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      response = await fetch(url, { ...options, headers })
+      break
+    } catch {
+      if (attempt < 2) {
+        await new Promise((r) => setTimeout(r, 1500 * (attempt + 1)))
+      }
+    }
+  }
+
+  if (!response) {
+    throw new SubscriptionError(
+      'Impossible de joindre le serveur. Vérifiez votre connexion ou réessayez dans quelques secondes.',
+    )
   }
 
   const body = (await response.json().catch(() => ({}))) as ApiResponse<T>

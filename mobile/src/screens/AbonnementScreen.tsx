@@ -252,7 +252,18 @@ export function AbonnementScreen() {
             </View>
           ) : (
             <>
-              {error ? <Text style={styles.error}>{error}</Text> : null}
+              {error ? (
+                <View style={styles.errorBox}>
+                  <Text style={styles.error}>{error}</Text>
+                  <Pressable
+                    style={({ pressed }) => [styles.retryBtn, pressed && styles.pressed]}
+                    onPress={() => void load()}
+                  >
+                    <RefreshCw size={15} color={dark.green} />
+                    <Text style={styles.retryBtnText}>Réessayer</Text>
+                  </Pressable>
+                </View>
+              ) : null}
               {success ? <Text style={styles.success}>{success}</Text> : null}
 
               {active ? (
@@ -437,7 +448,28 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontFamily: fonts.body,
   },
-  error: { color: dark.coral, marginBottom: 12, fontFamily: fonts.body },
+  error: { color: dark.coral, fontFamily: fonts.body, flex: 1 },
+  errorBox: {
+    marginBottom: 12,
+    gap: 10,
+  },
+  retryBtn: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: 'rgba(0,176,80,0.35)',
+    backgroundColor: 'rgba(0,176,80,0.08)',
+  },
+  retryBtnText: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 13,
+    color: dark.green,
+  },
   success: { color: dark.green, marginBottom: 12, fontFamily: fonts.body },
   statusCard: {
     borderRadius: 18,
