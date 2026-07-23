@@ -33,14 +33,10 @@ function normalizeAnswers(rawAnswers) {
     label:
       String(answer.label || String.fromCharCode(97 + index)).trim() ||
       String.fromCharCode(97 + index),
-    text: String(answer.text || '').trim(),
+    text: '',
     audioUrl: '',
     isCorrect: Boolean(answer.isCorrect),
   }))
-
-  if (answers.some((answer) => !answer.text)) {
-    return { error: 'Chaque réponse doit avoir un texte' }
-  }
 
   if (!answers.some((answer) => answer.isCorrect)) {
     return { error: 'Cochez au moins une bonne réponse' }
