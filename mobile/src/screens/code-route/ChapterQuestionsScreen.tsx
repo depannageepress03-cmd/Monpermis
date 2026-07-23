@@ -1,7 +1,7 @@
 import { useFocusEffect, useNavigation, useRoute, type RouteProp } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { Check, Circle, ClipboardList, HelpCircle, X } from 'lucide-react-native'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   ActivityIndicator,
   Image,
@@ -25,7 +25,14 @@ import { QuestionAudioSequence } from '../../components/QuestionAudioSequence'
 import { useRequireAuth } from '../../hooks/useRequireAuth'
 import type { RootStackParamList } from '../../navigation/types'
 import { dark, fonts } from '../../theme'
+import { playFailSound, playSuccessSound } from '../../utils/quizSounds'
 import { resolveMediaUrl } from '../../utils/mediaUrl'
+
+function wait(ms: number) {
+  return new Promise<void>((resolve) => {
+    setTimeout(resolve, ms)
+  })
+}
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'ChapterQuestions'>
 type Route = RouteProp<RootStackParamList, 'ChapterQuestions'>
@@ -51,6 +58,22 @@ export function ChapterQuestionsScreen() {
   const [finished, setFinished] = useState(false)
   const [savingTest, setSavingTest] = useState(false)
   const [testSaved, setTestSaved] = useState(false)
+  const [awaitingChoice, setAwaitingChoice] = useState(false)
+
+  const selectedIdsRef = useRef(selectedIds)
+  selectedIdsRef.current = selectedIds
+  const resultRef = useRef(result)
+  resultRef.current = result
+  const checkingRef = useRef(checking)
+  checkingRef.current = checking
+  const indexRef = useRef(index)
+  indexRef.current = index
+  const questionsRef = useRef(questions)
+  questionsRef.current = questions
+  const scoreRef = useRef(score)
+  scoreRef.current = score
+  const testSavedRef = useRef(testSaved)
+  testSavedRef.current = testSaved
 
   useEffect(() => {
     void import('expo-audio')
@@ -72,6 +95,7 @@ export function ChapterQuestionsScreen() {
       setScore({ correct: 0, total: 0 })
       setFinished(false)
       setTestSaved(false)
+      setAwaitingChoice(false)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Chargement impossible')
       setQuestions([])
@@ -88,8 +112,73 @@ export function ChapterQuestionsScreen() {
 
   const question = questions[index]
 
+  const finishOrAdvance = useCallback(
+    async (nextScore: { correct: number; total: number }) => {
+      const currentIndex = indexRef.current
+      const list = questionsRef.current
+      if (currentIndex >= list.length - 1) {
+        setFinished(true)
+        if (isTest && !testSavedRef.current) {
+          setSavingTest(true)
+          try {
+            await markChapterTestCompleted(chapterId, nextScore.correct, nextScore.total)
+            setTestSaved(true)
+          } catch (err) {
+            setError(err instanceof Error ? err.message : 'Validation du test impossible')
+          } finally {
+            setSavingTest(false)
+          }
+        }
+        return
+      }
+      setIndex((prev) => prev + 1)
+      setSelectedIds(new Set())
+      setResult(null)
+      setAwaitingChoice(false)
+    },
+    [chapterId, isTest],
+  )
+
+  const resolveSelection = useCallback(
+    async (ids: string[]) => {
+      const currentQuestion = questionsRef.current[indexRef.current]
+      if (!currentQuestion || ids.length === 0 || checkingRef.current || resultRef.current) return
+
+      setChecking(true)
+      setAwaitingChoice(false)
+      try {
+        const check = await checkQuestionAnswers(chapterId, currentQuestion.id, ids)
+        setResult(check)
+        const nextScore = {
+          correct: scoreRef.current.correct + (check.isCorrect ? 1 : 0),
+          total: scoreRef.current.total + 1,
+        }
+        setScore(nextScore)
+        if (check.isCorrect) await playSuccessSound()
+        else await playFailSound()
+        await wait(900)
+        await finishOrAdvance(nextScore)
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Vérification impossible')
+      } finally {
+        setChecking(false)
+      }
+    },
+    [chapterId, finishOrAdvance],
+  )
+
+  const handleSequenceComplete = useCallback(() => {
+    const ids = [...selectedIdsRef.current]
+    if (ids.length > 0) {
+      void resolveSelection(ids)
+      return
+    }
+    setAwaitingChoice(true)
+  }, [resolveSelection])
+
   const toggleAnswer = (answerId: string) => {
-    if (result) return
+    if (result || checking) return
+    setAwaitingChoice(false)
     setSelectedIds((prev) => {
       const next = new Set(prev)
       if (next.has(answerId)) next.delete(answerId)
@@ -99,42 +188,7 @@ export function ChapterQuestionsScreen() {
   }
 
   const onValidate = async () => {
-    if (!question || selectedIds.size === 0 || checking) return
-    setChecking(true)
-    try {
-      const check = await checkQuestionAnswers(chapterId, question.id, [...selectedIds])
-      setResult(check)
-      setScore((prev) => ({
-        correct: prev.correct + (check.isCorrect ? 1 : 0),
-        total: prev.total + 1,
-      }))
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Vérification impossible')
-    } finally {
-      setChecking(false)
-    }
-  }
-
-  const onNext = async () => {
-    if (index >= questions.length - 1) {
-      setFinished(true)
-      if (isTest && !testSaved) {
-        setSavingTest(true)
-        try {
-          const nextScore = score
-          await markChapterTestCompleted(chapterId, nextScore.correct, nextScore.total)
-          setTestSaved(true)
-        } catch (err) {
-          setError(err instanceof Error ? err.message : 'Validation du test impossible')
-        } finally {
-          setSavingTest(false)
-        }
-      }
-      return
-    }
-    setIndex((prev) => prev + 1)
-    setSelectedIds(new Set())
-    setResult(null)
+    await resolveSelection([...selectedIdsRef.current])
   }
 
   if (loading || !user) return <ScreenLoader />
@@ -227,6 +281,7 @@ export function ChapterQuestionsScreen() {
                   <QuestionAudioSequence
                     questionKey={question.id}
                     promptUri={resolveMediaUrl(question.prompt.audioUrl)}
+                    onSequenceComplete={handleSequenceComplete}
                   />
                 ) : null}
                 {question.prompt.imageUrls.length > 0 ? (
@@ -285,6 +340,10 @@ export function ChapterQuestionsScreen() {
                 )
               })}
 
+              {awaitingChoice && !result ? (
+                <Text style={styles.awaitingText}>Choisissez une réponse, puis validez.</Text>
+              ) : null}
+
               {result ? (
                 <View
                   style={[
@@ -319,11 +378,7 @@ export function ChapterQuestionsScreen() {
                   )}
                 </Pressable>
               ) : (
-                <Pressable style={styles.primaryBtn} onPress={onNext}>
-                  <Text style={styles.primaryBtnText}>
-                    {index >= questions.length - 1 ? 'Voir le score' : 'Question suivante'}
-                  </Text>
-                </Pressable>
+                <Text style={styles.awaitingText}>Passage automatique…</Text>
               )}
             </View>
           ) : null}
@@ -545,5 +600,12 @@ const styles = StyleSheet.create({
     fontSize: 22,
     color: dark.green,
     marginBottom: 20,
+  },
+  awaitingText: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: 14,
+    color: dark.textMuted,
+    textAlign: 'center',
+    marginTop: 8,
   },
 })

@@ -1,4 +1,4 @@
-import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ClipboardList, HelpCircle } from 'lucide-react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import {
@@ -13,11 +13,18 @@ import {
 import { QuestionAudioSequence } from '../../components/QuestionAudioSequence'
 import { PageNavbar } from '../../components/PageNavbar'
 import { useAuth } from '../../hooks/useAuth'
+import { playFailSound, playSuccessSound } from '../../utils/quizSounds'
 import { resolveMediaUrl } from '../../utils/mediaUrl'
 import '../../styles/auth.css'
 import '../../styles/learner.css'
 
 type Mode = 'practice' | 'test'
+
+function wait(ms: number) {
+  return new Promise<void>((resolve) => {
+    window.setTimeout(resolve, ms)
+  })
+}
 
 export function LearnerChapterQuizPage({
   mode,
@@ -48,6 +55,22 @@ export function LearnerChapterQuizPage({
   const [finished, setFinished] = useState(false)
   const [savingTest, setSavingTest] = useState(false)
   const [testSaved, setTestSaved] = useState(false)
+  const [awaitingChoice, setAwaitingChoice] = useState(false)
+
+  const selectedIdsRef = useRef(selectedIds)
+  selectedIdsRef.current = selectedIds
+  const resultRef = useRef(result)
+  resultRef.current = result
+  const checkingRef = useRef(checking)
+  checkingRef.current = checking
+  const indexRef = useRef(index)
+  indexRef.current = index
+  const questionsRef = useRef(questions)
+  questionsRef.current = questions
+  const scoreRef = useRef(score)
+  scoreRef.current = score
+  const testSavedRef = useRef(testSaved)
+  testSavedRef.current = testSaved
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -73,6 +96,7 @@ export function LearnerChapterQuizPage({
       setScore({ correct: 0, total: 0 })
       setFinished(false)
       setTestSaved(false)
+      setAwaitingChoice(false)
     } catch (err) {
       setError(err instanceof ContentError ? err.message : 'Chargement impossible')
       setQuestions([])
@@ -93,6 +117,7 @@ export function LearnerChapterQuizPage({
 
   const toggleAnswer = (answerId: string) => {
     if (result || checking) return
+    setAwaitingChoice(false)
     setSelectedIds((current) =>
       current.includes(answerId)
         ? current.filter((id) => id !== answerId)
@@ -100,44 +125,74 @@ export function LearnerChapterQuizPage({
     )
   }
 
+  const finishOrAdvance = useCallback(
+    async (nextScore: { correct: number; total: number }) => {
+      const currentIndex = indexRef.current
+      const list = questionsRef.current
+      if (currentIndex + 1 >= list.length) {
+        setFinished(true)
+        if (mode === 'test' && !testSavedRef.current) {
+          setSavingTest(true)
+          try {
+            await markRevisionTestCompleted(chapterId, nextScore.correct, nextScore.total)
+            setTestSaved(true)
+          } catch (err) {
+            setError(err instanceof ContentError ? err.message : 'Validation du test impossible')
+          } finally {
+            setSavingTest(false)
+          }
+        }
+        return
+      }
+      setIndex((value) => value + 1)
+      setSelectedIds([])
+      setResult(null)
+      setAwaitingChoice(false)
+    },
+    [chapterId, mode],
+  )
+
+  const resolveSelection = useCallback(
+    async (ids: string[]) => {
+      const currentQuestion = questionsRef.current[indexRef.current]
+      if (!currentQuestion || ids.length === 0 || checkingRef.current || resultRef.current) return
+
+      setChecking(true)
+      setAwaitingChoice(false)
+      try {
+        const data = await checkRevisionQuestionAnswers(chapterId, currentQuestion.id, ids)
+        setResult(data)
+        const nextScore = {
+          correct: scoreRef.current.correct + (data.isCorrect ? 1 : 0),
+          total: scoreRef.current.total + 1,
+        }
+        setScore(nextScore)
+        if (data.isCorrect) await playSuccessSound()
+        else await playFailSound()
+        await wait(900)
+        await finishOrAdvance(nextScore)
+      } catch (err) {
+        setError(err instanceof ContentError ? err.message : 'Vérification impossible')
+      } finally {
+        setChecking(false)
+      }
+    },
+    [chapterId, finishOrAdvance],
+  )
+
   const handleCheck = async (e: FormEvent) => {
     e.preventDefault()
-    if (!question || selectedIds.length === 0 || checking) return
-    setChecking(true)
-    try {
-      const data = await checkRevisionQuestionAnswers(chapterId, question.id, selectedIds)
-      setResult(data)
-      setScore((current) => ({
-        correct: current.correct + (data.isCorrect ? 1 : 0),
-        total: current.total + 1,
-      }))
-    } catch (err) {
-      setError(err instanceof ContentError ? err.message : 'Vérification impossible')
-    } finally {
-      setChecking(false)
-    }
+    await resolveSelection(selectedIdsRef.current)
   }
 
-  const goNext = async () => {
-    if (index + 1 >= questions.length) {
-      setFinished(true)
-      if (mode === 'test' && !testSaved) {
-        setSavingTest(true)
-        try {
-          await markRevisionTestCompleted(chapterId, score.correct, score.total)
-          setTestSaved(true)
-        } catch (err) {
-          setError(err instanceof ContentError ? err.message : 'Validation du test impossible')
-        } finally {
-          setSavingTest(false)
-        }
-      }
+  const handleSequenceComplete = useCallback(() => {
+    const ids = selectedIdsRef.current
+    if (ids.length > 0) {
+      void resolveSelection(ids)
       return
     }
-    setIndex((value) => value + 1)
-    setSelectedIds([])
-    setResult(null)
-  }
+    setAwaitingChoice(true)
+  }, [resolveSelection])
 
   if (authLoading || !user) return null
 
@@ -208,6 +263,7 @@ export function LearnerChapterQuizPage({
                 key={question.id}
                 questionKey={question.id}
                 promptAudioUrl={question.prompt?.audioUrl}
+                onSequenceComplete={handleSequenceComplete}
               />
               <div className="learner-quiz-answers">
                 {question.answers.map((answer) => {
@@ -232,6 +288,10 @@ export function LearnerChapterQuizPage({
                 })}
               </div>
 
+              {awaitingChoice && !result ? (
+                <p className="learner-quiz-audio-status">Choisissez une réponse, puis validez.</p>
+              ) : null}
+
               {result ? (
                 <p className={result.isCorrect ? 'form-success' : 'form-error'}>
                   {result.isCorrect ? 'Bonne réponse' : 'Mauvaise réponse'}
@@ -248,9 +308,7 @@ export function LearnerChapterQuizPage({
                     {checking ? 'Vérification…' : 'Valider'}
                   </button>
                 ) : (
-                  <button type="button" className="btn-primary" onClick={goNext}>
-                    {index + 1 >= questions.length ? 'Voir le score' : 'Question suivante'}
-                  </button>
+                  <p className="learner-quiz-audio-status">Passage automatique…</p>
                 )}
               </div>
             </form>

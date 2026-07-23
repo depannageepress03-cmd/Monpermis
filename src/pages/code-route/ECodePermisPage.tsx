@@ -1,4 +1,4 @@
-import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
+import { type FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ClipboardCheck, Lock, ShieldCheck } from 'lucide-react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
@@ -14,9 +14,16 @@ import { fetchSubscriptionMe } from '../../api/subscriptions'
 import { QuestionAudioSequence } from '../../components/QuestionAudioSequence'
 import { PageNavbar } from '../../components/PageNavbar'
 import { useAuth } from '../../hooks/useAuth'
+import { playFailSound, playSuccessSound } from '../../utils/quizSounds'
 import { resolveMediaUrl } from '../../utils/mediaUrl'
 import '../../styles/auth.css'
 import '../../styles/learner.css'
+
+function wait(ms: number) {
+  return new Promise<void>((resolve) => {
+    window.setTimeout(resolve, ms)
+  })
+}
 
 export function ECodePermisPage() {
   const navigate = useNavigate()
@@ -233,6 +240,19 @@ export function ECodePermisTakePage() {
     passed: boolean
     passScore: number
   } | null>(null)
+  const [awaitingChoice, setAwaitingChoice] = useState(false)
+
+  const selectedIdsRef = useRef(selectedIds)
+  selectedIdsRef.current = selectedIds
+  const resultRef = useRef(result)
+  resultRef.current = result
+  const checkingRef = useRef(checking)
+  checkingRef.current = checking
+  const indexRef = useRef(index)
+  indexRef.current = index
+  const questionsRef = useRef<PracticeExamAttempt['questions']>([])
+  const attemptRef = useRef(attempt)
+  attemptRef.current = attempt
 
   const number = Number(examNumber)
 
@@ -254,6 +274,7 @@ export function ECodePermisTakePage() {
       setLiveCorrect(started.liveCorrect || 0)
       setAnsweredCount(answered)
       setFinished(started.status === 'completed')
+      setAwaitingChoice(false)
       if (started.status === 'completed') {
         setFinalScore({
           correct: started.correct,
@@ -276,6 +297,7 @@ export function ECodePermisTakePage() {
   }, [user, load])
 
   const questions = attempt?.questions || []
+  questionsRef.current = questions
   const question = questions[index]
   const progressLabel = useMemo(() => {
     if (!questions.length) return ''
@@ -284,6 +306,7 @@ export function ECodePermisTakePage() {
 
   const toggleAnswer = (answerId: string) => {
     if (result || checking) return
+    setAwaitingChoice(false)
     setSelectedIds((current) =>
       current.includes(answerId)
         ? current.filter((id) => id !== answerId)
@@ -291,27 +314,15 @@ export function ECodePermisTakePage() {
     )
   }
 
-  const handleCheck = async (e: FormEvent) => {
-    e.preventDefault()
-    if (!attempt || !question || selectedIds.length === 0 || checking) return
-    setChecking(true)
-    try {
-      const data = await checkECodePermisAnswer(attempt.id, question.id, selectedIds)
-      setResult({ isCorrect: data.isCorrect, correctAnswerIds: data.correctAnswerIds })
-      setLiveCorrect(data.liveCorrect)
-      setAnsweredCount(data.answeredCount)
-    } catch (err) {
-      setError(err instanceof ContentError ? err.message : 'Vérification impossible')
-    } finally {
-      setChecking(false)
-    }
-  }
+  const finishOrAdvance = useCallback(async () => {
+    const currentAttempt = attemptRef.current
+    const currentIndex = indexRef.current
+    const list = questionsRef.current
+    if (!currentAttempt) return
 
-  const goNext = async () => {
-    if (!attempt) return
-    if (index + 1 >= questions.length) {
+    if (currentIndex + 1 >= list.length) {
       try {
-        const { attempt: score } = await completeECodePermisExam(attempt.id)
+        const { attempt: score } = await completeECodePermisExam(currentAttempt.id)
         setFinalScore(score)
         setFinished(true)
       } catch (err) {
@@ -322,7 +333,55 @@ export function ECodePermisTakePage() {
     setIndex((value) => value + 1)
     setSelectedIds([])
     setResult(null)
+    setAwaitingChoice(false)
+  }, [])
+
+  const resolveSelection = useCallback(
+    async (ids: string[]) => {
+      const currentAttempt = attemptRef.current
+      const currentQuestion = questionsRef.current[indexRef.current]
+      if (
+        !currentAttempt ||
+        !currentQuestion ||
+        ids.length === 0 ||
+        checkingRef.current ||
+        resultRef.current
+      )
+        return
+
+      setChecking(true)
+      setAwaitingChoice(false)
+      try {
+        const data = await checkECodePermisAnswer(currentAttempt.id, currentQuestion.id, ids)
+        setResult({ isCorrect: data.isCorrect, correctAnswerIds: data.correctAnswerIds })
+        setLiveCorrect(data.liveCorrect)
+        setAnsweredCount(data.answeredCount)
+        if (data.isCorrect) await playSuccessSound()
+        else await playFailSound()
+        await wait(900)
+        await finishOrAdvance()
+      } catch (err) {
+        setError(err instanceof ContentError ? err.message : 'Vérification impossible')
+      } finally {
+        setChecking(false)
+      }
+    },
+    [finishOrAdvance],
+  )
+
+  const handleCheck = async (e: FormEvent) => {
+    e.preventDefault()
+    await resolveSelection(selectedIdsRef.current)
   }
+
+  const handleSequenceComplete = useCallback(() => {
+    const ids = selectedIdsRef.current
+    if (ids.length > 0) {
+      void resolveSelection(ids)
+      return
+    }
+    setAwaitingChoice(true)
+  }, [resolveSelection])
 
   if (authLoading || !user) return null
 
@@ -392,6 +451,7 @@ export function ECodePermisTakePage() {
                 key={question.id}
                 questionKey={question.id}
                 promptAudioUrl={question.prompt?.audioUrl}
+                onSequenceComplete={handleSequenceComplete}
               />
 
               <div className="learner-quiz-answers">
@@ -417,6 +477,10 @@ export function ECodePermisTakePage() {
                 })}
               </div>
 
+              {awaitingChoice && !result ? (
+                <p className="learner-quiz-audio-status">Choisissez une réponse, puis validez.</p>
+              ) : null}
+
               {result ? (
                 <p className={result.isCorrect ? 'form-success' : 'form-error'}>
                   {result.isCorrect ? 'Bonne réponse' : 'Mauvaise réponse'}
@@ -433,9 +497,7 @@ export function ECodePermisTakePage() {
                     {checking ? 'Vérification…' : 'Valider'}
                   </button>
                 ) : (
-                  <button type="button" className="btn-primary" onClick={() => void goNext()}>
-                    {index + 1 >= questions.length ? 'Voir la note /20' : 'Question suivante'}
-                  </button>
+                  <p className="learner-quiz-audio-status">Passage automatique…</p>
                 )}
               </div>
             </form>

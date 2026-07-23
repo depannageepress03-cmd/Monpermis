@@ -1,11 +1,12 @@
-import { Volume2 } from 'lucide-react-native'
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { useEffect, useRef, useState } from 'react'
+import { StyleSheet, Text, View } from 'react-native'
 import { dark, fonts } from '../theme'
+import { playCountdown123, playGongSound } from '../utils/quizSounds'
 
 type Props = {
   questionKey: string
   promptUri?: string | null
+  onSequenceComplete?: () => void
 }
 
 type Player = {
@@ -57,48 +58,21 @@ async function playUntilEnd(player: Player) {
 }
 
 /**
- * Joue l’audio unique (question + choix) deux fois d’affilée.
- * Bouton « Réécouter » relance la double lecture.
+ * Double lecture, décompte 1→3, sonnerie, puis callback.
  */
-export function QuestionAudioSequence({ questionKey, promptUri }: Props) {
+export function QuestionAudioSequence({ questionKey, promptUri, onSequenceComplete }: Props) {
   const [status, setStatus] = useState('')
-  const [ready, setReady] = useState(false)
-  const [playing, setPlaying] = useState(false)
-  const playerRef = useRef<Player | null>(null)
+  const [countdown, setCountdown] = useState<1 | 2 | 3 | null>(null)
   const cancelledRef = useRef(false)
-  const runIdRef = useRef(0)
+  const completeRef = useRef(onSequenceComplete)
+  completeRef.current = onSequenceComplete
 
   const promptUrl = cleanUri(promptUri)
 
-  const playTwice = useCallback(async (player: Player) => {
-    const runId = ++runIdRef.current
-    setPlaying(true)
-
-    try {
-      setStatus('Première écoute…')
-      await playUntilEnd(player)
-      if (cancelledRef.current || runId !== runIdRef.current) return
-
-      await wait(PAUSE_MS)
-      if (cancelledRef.current || runId !== runIdRef.current) return
-
-      setStatus('Deuxième écoute…')
-      await playUntilEnd(player)
-    } finally {
-      if (!cancelledRef.current && runId === runIdRef.current) {
-        setStatus('')
-        setPlaying(false)
-      }
-    }
-  }, [])
-
   useEffect(() => {
     cancelledRef.current = false
-    setReady(false)
     setStatus('')
-    setPlaying(false)
-    playerRef.current = null
-    runIdRef.current += 1
+    setCountdown(null)
 
     let localPlayer: Player | null = null
 
@@ -111,66 +85,72 @@ export function QuestionAudioSequence({ questionKey, promptUri }: Props) {
       }
     }
 
-    if (!promptUrl) return cleanup
+    void (async () => {
+      try {
+        if (promptUrl) {
+          const audio: AudioModule = await import('expo-audio')
+          if (cancelledRef.current) return
+          localPlayer = audio.createAudioPlayer({ uri: promptUrl }) as Player
 
-    void import('expo-audio')
-      .then(async (audio: AudioModule) => {
+          setStatus('Première écoute…')
+          await playUntilEnd(localPlayer)
+          if (cancelledRef.current) return
+
+          await wait(PAUSE_MS)
+          if (cancelledRef.current) return
+
+          setStatus('Deuxième écoute…')
+          await playUntilEnd(localPlayer)
+          if (cancelledRef.current) return
+        }
+
+        setStatus('Décompte…')
+        await playCountdown123((n) => {
+          if (!cancelledRef.current) setCountdown(n)
+        })
         if (cancelledRef.current) return
 
-        localPlayer = audio.createAudioPlayer({ uri: promptUrl }) as Player
-        playerRef.current = localPlayer
-        setReady(true)
-        await playTwice(localPlayer)
-      })
-      .catch(() => {
-        setReady(false)
-      })
+        setCountdown(null)
+        setStatus('Temps !')
+        await playGongSound()
+        if (cancelledRef.current) return
+
+        setStatus('')
+        completeRef.current?.()
+      } catch {
+        if (!cancelledRef.current) completeRef.current?.()
+      } finally {
+        cleanup()
+      }
+    })()
 
     return () => {
       cancelledRef.current = true
-      runIdRef.current += 1
       cleanup()
-      playerRef.current = null
     }
-  }, [questionKey, promptUrl, playTwice])
-
-  if (!promptUrl) return null
+  }, [questionKey, promptUrl])
 
   return (
     <View style={styles.wrap}>
-      <Pressable
-        style={[styles.btn, (!ready || playing) && styles.btnDisabled]}
-        disabled={!ready || playing}
-        onPress={() => {
-          const player = playerRef.current
-          if (!player || playing) return
-          void playTwice(player)
-        }}
-        hitSlop={8}
-      >
-        <Volume2 size={18} color={dark.coral} />
-        <Text style={styles.label}>Réécouter</Text>
-      </Pressable>
+      {countdown ? <Text style={styles.countdown}>{countdown}</Text> : null}
       {status ? <Text style={styles.status}>{status}</Text> : null}
     </View>
   )
 }
 
 const styles = StyleSheet.create({
-  wrap: { gap: 8, marginBottom: 8 },
-  btn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    alignSelf: 'flex-start',
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderRadius: 12,
-    backgroundColor: dark.coralSoft,
-    borderWidth: 1,
-    borderColor: 'rgba(255,107,74,0.28)',
+  wrap: { gap: 8, marginBottom: 8, alignItems: 'center' },
+  countdown: {
+    fontFamily: fonts.displayExtraBold,
+    fontSize: 72,
+    lineHeight: 80,
+    color: dark.green,
+    textAlign: 'center',
   },
-  btnDisabled: { opacity: 0.55 },
-  label: { fontSize: 14, fontFamily: fonts.bodyBold, color: dark.textPrimary },
-  status: { fontSize: 13, color: dark.textMuted, fontFamily: fonts.bodySemiBold },
+  status: {
+    fontSize: 13,
+    color: dark.textMuted,
+    fontFamily: fonts.bodySemiBold,
+    textAlign: 'center',
+  },
 })

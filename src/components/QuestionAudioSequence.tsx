@@ -1,10 +1,13 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { resolveMediaUrl } from '../utils/mediaUrl'
+import { playCountdown123, playGongSound } from '../utils/quizSounds'
 
 type Props = {
   questionKey: string
   promptAudioUrl?: string | null
   className?: string
+  /** Appelé après double lecture + décompte 1→3 + sonnerie. */
+  onSequenceComplete?: () => void
 }
 
 const PAUSE_MS = 600
@@ -14,28 +17,40 @@ function cleanUrl(url?: string | null) {
   return value ? resolveMediaUrl(value) : ''
 }
 
+function wait(ms: number) {
+  return new Promise<void>((resolve) => {
+    window.setTimeout(resolve, ms)
+  })
+}
+
 /**
- * Joue l’audio unique (question + choix) deux fois d’affilée.
- * Bouton « Réécouter » relance la double lecture.
+ * Double lecture de l’audio unique, puis décompte 1→3 et sonnerie.
  */
-export function QuestionAudioSequence({ questionKey, promptAudioUrl, className }: Props) {
+export function QuestionAudioSequence({
+  questionKey,
+  promptAudioUrl,
+  className,
+  onSequenceComplete,
+}: Props) {
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const cancelledRef = useRef(false)
+  const completeRef = useRef(onSequenceComplete)
+  completeRef.current = onSequenceComplete
   const [status, setStatus] = useState('')
-  const [playing, setPlaying] = useState(false)
+  const [countdown, setCountdown] = useState<1 | 2 | 3 | null>(null)
 
   const promptUrl = cleanUrl(promptAudioUrl)
 
-  const playTwice = useCallback(async () => {
-    const el = audioRef.current
-    if (!el || !promptUrl) return
-
+  useEffect(() => {
     cancelledRef.current = false
-    setPlaying(true)
+    setCountdown(null)
+    setStatus('')
+
+    const el = audioRef.current
 
     const playOnce = (label: string) =>
       new Promise<void>((resolve) => {
-        if (cancelledRef.current) {
+        if (!el || cancelledRef.current) {
           resolve()
           return
         }
@@ -51,61 +66,60 @@ export function QuestionAudioSequence({ questionKey, promptAudioUrl, className }
         void el.play().catch(() => finish())
       })
 
-    const wait = (ms: number) =>
-      new Promise<void>((resolve) => {
-        window.setTimeout(resolve, ms)
+    const run = async () => {
+      if (promptUrl && el) {
+        if (el.readyState < 2) {
+          await new Promise<void>((resolve) => {
+            el.addEventListener('canplay', () => resolve(), { once: true })
+            window.setTimeout(() => resolve(), 4000)
+          })
+        }
+        if (cancelledRef.current) return
+        await playOnce('Première écoute…')
+        if (cancelledRef.current) return
+        await wait(PAUSE_MS)
+        if (cancelledRef.current) return
+        await playOnce('Deuxième écoute…')
+        if (cancelledRef.current) return
+      }
+
+      setStatus('Décompte…')
+      await playCountdown123((n) => {
+        if (!cancelledRef.current) setCountdown(n)
       })
-
-    try {
-      if (el.readyState < 2) {
-        await new Promise<void>((resolve) => {
-          el.addEventListener('canplay', () => resolve(), { once: true })
-        })
-      }
       if (cancelledRef.current) return
 
-      await playOnce('Première écoute…')
+      setCountdown(null)
+      setStatus('Temps !')
+      await playGongSound()
       if (cancelledRef.current) return
 
-      await wait(PAUSE_MS)
-      if (cancelledRef.current) return
-
-      await playOnce('Deuxième écoute…')
-    } finally {
-      if (!cancelledRef.current) {
-        setStatus('')
-        setPlaying(false)
-      }
+      setStatus('')
+      completeRef.current?.()
     }
-  }, [promptUrl])
 
-  useEffect(() => {
-    cancelledRef.current = false
-    void playTwice()
+    void run()
 
     return () => {
       cancelledRef.current = true
-      const el = audioRef.current
       if (el) {
         el.pause()
         el.currentTime = 0
       }
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        window.speechSynthesis.cancel()
+      }
     }
-  }, [questionKey, promptUrl, playTwice])
-
-  if (!promptUrl) return null
+  }, [questionKey, promptUrl])
 
   return (
     <div className={className}>
-      <audio ref={audioRef} src={promptUrl} preload="auto" hidden />
-      <button
-        type="button"
-        className="learner-quiz-replay"
-        disabled={playing}
-        onClick={() => void playTwice()}
-      >
-        Réécouter
-      </button>
+      {promptUrl ? <audio ref={audioRef} src={promptUrl} preload="auto" hidden /> : null}
+      {countdown ? (
+        <div className="learner-quiz-countdown" aria-live="polite">
+          {countdown}
+        </div>
+      ) : null}
       {status ? <p className="learner-quiz-audio-status">{status}</p> : null}
     </div>
   )
