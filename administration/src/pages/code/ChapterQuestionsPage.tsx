@@ -286,11 +286,6 @@ export function ChapterQuestionsPage() {
       setError('Ajoutez au moins une réponse')
       return
     }
-    if (answers.some((answer) => !answer.text.trim())) {
-      setFormStep('A')
-      setError('Chaque réponse doit avoir un texte')
-      return
-    }
     if (!answers.some((answer) => answer.isCorrect)) {
       setFormStep('A')
       setError('Cochez au moins une bonne réponse')
@@ -309,9 +304,9 @@ export function ChapterQuestionsPage() {
         audioUrl: prompt.audioUrl,
         imageUrls: prompt.imageUrls,
       },
-      answers: answers.map(({ label, text, isCorrect }) => ({
+      answers: answers.map(({ label, isCorrect }) => ({
         label,
-        text: text.trim(),
+        text: '',
         audioUrl: '',
         isCorrect,
       })),
@@ -390,7 +385,7 @@ export function ChapterQuestionsPage() {
         backLabel="Retour au chapitre"
         kicker="Banque de questions"
         title={chapterName ? `Questions — ${chapterName}` : 'Questions du chapitre'}
-        subtitle={`${questions.length} question${questions.length !== 1 ? 's' : ''} · un audio (question + choix) · textes a / b / c`}
+        subtitle={`${questions.length} question${questions.length !== 1 ? 's' : ''} · un audio (question + choix) · bonnes réponses a / b / c`}
       />
 
       {success ? (
@@ -568,8 +563,8 @@ export function ChapterQuestionsPage() {
             <fieldset className="question-section question-section-a">
               <legend>Réponses (A)</legend>
               <p className="question-hint">
-                Saisissez le texte des choix a, b et c, cochez la ou les bonnes réponses, puis
-                enregistrez. L’audio unique (étape Q) contient déjà la question et ces choix.
+                Cochez la ou les bonnes réponses (a, b, c), puis enregistrez. L’audio unique (étape Q)
+                contient déjà la question et ces choix.
               </p>
 
               <div className="answer-list">
@@ -609,22 +604,6 @@ export function ChapterQuestionsPage() {
                         </button>
                       ) : null}
                     </div>
-
-                    <label className="question-text-field">
-                      <span className="question-media-label">Texte du choix</span>
-                      <input
-                        type="text"
-                        value={answer.text}
-                        onChange={(e) =>
-                          setAnswers((current) =>
-                            current.map((item, itemIndex) =>
-                              itemIndex === index ? { ...item, text: e.target.value } : item,
-                            ),
-                          )
-                        }
-                        placeholder={`Réponse ${answer.label.toUpperCase()}…`}
-                      />
-                    </label>
                   </div>
                 ))}
               </div>
@@ -725,7 +704,7 @@ export function ChapterQuestionsPage() {
                       {question.answers.map((answer) => (
                         <li key={`${question.id}-${answer.id ?? answer.label}`}>
                           <span className={answer.isCorrect ? 'is-correct' : undefined}>
-                            {answer.label.toUpperCase()}. {answer.text || '—'}
+                            {answer.label.toUpperCase()}
                             {answer.isCorrect ? ' ✓' : ''}
                           </span>
                         </li>
