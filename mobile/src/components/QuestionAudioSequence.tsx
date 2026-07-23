@@ -1,7 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 import { dark, fonts } from '../theme'
-import { playCountdown123, playGongSound } from '../utils/quizSounds'
+import {
+  playCountdown5to0,
+  playGongSound,
+  type CountdownValue,
+} from '../utils/quizSounds'
 
 type Props = {
   questionKey: string
@@ -58,11 +62,11 @@ async function playUntilEnd(player: Player) {
 }
 
 /**
- * Double lecture, décompte 1→3, sonnerie, puis callback.
+ * Double lecture, décompte 5→0, sonnerie, puis callback.
  */
 export function QuestionAudioSequence({ questionKey, promptUri, onSequenceComplete }: Props) {
   const [status, setStatus] = useState('')
-  const [countdown, setCountdown] = useState<1 | 2 | 3 | null>(null)
+  const [countdown, setCountdown] = useState<CountdownValue | null>(null)
   const cancelledRef = useRef(false)
   const completeRef = useRef(onSequenceComplete)
   completeRef.current = onSequenceComplete
@@ -105,16 +109,16 @@ export function QuestionAudioSequence({ questionKey, promptUri, onSequenceComple
         }
 
         setStatus('Décompte…')
-        await playCountdown123((n) => {
+        await playCountdown5to0((n) => {
           if (!cancelledRef.current) setCountdown(n)
         })
         if (cancelledRef.current) return
 
-        setCountdown(null)
         setStatus('Temps !')
         await playGongSound()
         if (cancelledRef.current) return
 
+        setCountdown(null)
         setStatus('')
         completeRef.current?.()
       } catch {
@@ -132,7 +136,7 @@ export function QuestionAudioSequence({ questionKey, promptUri, onSequenceComple
 
   return (
     <View style={styles.wrap}>
-      {countdown ? <Text style={styles.countdown}>{countdown}</Text> : null}
+      {countdown !== null ? <Text style={styles.countdown}>{countdown}</Text> : null}
       {status ? <Text style={styles.status}>{status}</Text> : null}
     </View>
   )

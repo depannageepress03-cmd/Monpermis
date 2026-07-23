@@ -1,4 +1,4 @@
-import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ClipboardList, HelpCircle } from 'lucide-react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import {
@@ -13,7 +13,7 @@ import {
 import { QuestionAudioSequence } from '../../components/QuestionAudioSequence'
 import { PageNavbar } from '../../components/PageNavbar'
 import { useAuth } from '../../hooks/useAuth'
-import { playFailSound, playSuccessSound } from '../../utils/quizSounds'
+import { playFailSound, playRemoteAudio, playSuccessSound } from '../../utils/quizSounds'
 import { resolveMediaUrl } from '../../utils/mediaUrl'
 import '../../styles/auth.css'
 import '../../styles/learner.css'
@@ -55,7 +55,6 @@ export function LearnerChapterQuizPage({
   const [finished, setFinished] = useState(false)
   const [savingTest, setSavingTest] = useState(false)
   const [testSaved, setTestSaved] = useState(false)
-  const [awaitingChoice, setAwaitingChoice] = useState(false)
 
   const selectedIdsRef = useRef(selectedIds)
   selectedIdsRef.current = selectedIds
@@ -96,7 +95,6 @@ export function LearnerChapterQuizPage({
       setScore({ correct: 0, total: 0 })
       setFinished(false)
       setTestSaved(false)
-      setAwaitingChoice(false)
     } catch (err) {
       setError(err instanceof ContentError ? err.message : 'Chargement impossible')
       setQuestions([])
@@ -117,7 +115,6 @@ export function LearnerChapterQuizPage({
 
   const toggleAnswer = (answerId: string) => {
     if (result || checking) return
-    setAwaitingChoice(false)
     setSelectedIds((current) =>
       current.includes(answerId)
         ? current.filter((id) => id !== answerId)
@@ -147,10 +144,33 @@ export function LearnerChapterQuizPage({
       setIndex((value) => value + 1)
       setSelectedIds([])
       setResult(null)
-      setAwaitingChoice(false)
     },
     [chapterId, mode],
   )
+
+  const skipMissed = useCallback(async () => {
+    if (checkingRef.current || resultRef.current) return
+    setChecking(true)
+    try {
+      const currentQuestion = questionsRef.current[indexRef.current]
+      const promptUrl = currentQuestion?.prompt?.audioUrl
+        ? resolveMediaUrl(currentQuestion.prompt.audioUrl)
+        : ''
+      setResult({ isCorrect: false, correctAnswerIds: [] })
+      const nextScore = {
+        correct: scoreRef.current.correct,
+        total: scoreRef.current.total + 1,
+      }
+      setScore(nextScore)
+      // Rejoue la question pendant qu’on prépare le passage suivant
+      if (promptUrl) void playRemoteAudio(promptUrl)
+      await playFailSound()
+      await wait(500)
+      await finishOrAdvance(nextScore)
+    } finally {
+      setChecking(false)
+    }
+  }, [finishOrAdvance])
 
   const resolveSelection = useCallback(
     async (ids: string[]) => {
@@ -158,7 +178,6 @@ export function LearnerChapterQuizPage({
       if (!currentQuestion || ids.length === 0 || checkingRef.current || resultRef.current) return
 
       setChecking(true)
-      setAwaitingChoice(false)
       try {
         const data = await checkRevisionQuestionAnswers(chapterId, currentQuestion.id, ids)
         setResult(data)
@@ -180,19 +199,14 @@ export function LearnerChapterQuizPage({
     [chapterId, finishOrAdvance],
   )
 
-  const handleCheck = async (e: FormEvent) => {
-    e.preventDefault()
-    await resolveSelection(selectedIdsRef.current)
-  }
-
   const handleSequenceComplete = useCallback(() => {
     const ids = selectedIdsRef.current
     if (ids.length > 0) {
       void resolveSelection(ids)
       return
     }
-    setAwaitingChoice(true)
-  }, [resolveSelection])
+    void skipMissed()
+  }, [resolveSelection, skipMissed])
 
   if (authLoading || !user) return null
 
@@ -247,7 +261,7 @@ export function LearnerChapterQuizPage({
           ) : null}
 
           {!loading && !error && question && !finished ? (
-            <form onSubmit={handleCheck} className="learner-quiz">
+            <div className="learner-quiz">
               <p className="learner-quiz-progress">{progressLabel}</p>
               {question.prompt?.imageUrls?.length ? (
                 <div className="learner-quiz-images">
@@ -288,10 +302,6 @@ export function LearnerChapterQuizPage({
                 })}
               </div>
 
-              {awaitingChoice && !result ? (
-                <p className="learner-quiz-audio-status">Choisissez une réponse, puis validez.</p>
-              ) : null}
-
               {result ? (
                 <p className={result.isCorrect ? 'form-success' : 'form-error'}>
                   {result.isCorrect ? 'Bonne réponse' : 'Mauvaise réponse'}
@@ -300,18 +310,14 @@ export function LearnerChapterQuizPage({
 
               <div className="learner-quiz-actions">
                 {!result ? (
-                  <button
-                    type="submit"
-                    className="btn-primary"
-                    disabled={selectedIds.length === 0 || checking}
-                  >
-                    {checking ? 'Vérification…' : 'Valider'}
-                  </button>
+                  <p className="learner-quiz-audio-status">
+                    Cochez pendant l’écoute / le décompte — passage auto à 0.
+                  </p>
                 ) : (
                   <p className="learner-quiz-audio-status">Passage automatique…</p>
                 )}
               </div>
-            </form>
+            </div>
           ) : null}
         </div>
       </div>

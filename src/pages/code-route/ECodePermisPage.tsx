@@ -1,4 +1,4 @@
-import { type FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ClipboardCheck, Lock, ShieldCheck } from 'lucide-react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
@@ -14,7 +14,7 @@ import { fetchSubscriptionMe } from '../../api/subscriptions'
 import { QuestionAudioSequence } from '../../components/QuestionAudioSequence'
 import { PageNavbar } from '../../components/PageNavbar'
 import { useAuth } from '../../hooks/useAuth'
-import { playFailSound, playSuccessSound } from '../../utils/quizSounds'
+import { playFailSound, playRemoteAudio, playSuccessSound } from '../../utils/quizSounds'
 import { resolveMediaUrl } from '../../utils/mediaUrl'
 import '../../styles/auth.css'
 import '../../styles/learner.css'
@@ -240,7 +240,6 @@ export function ECodePermisTakePage() {
     passed: boolean
     passScore: number
   } | null>(null)
-  const [awaitingChoice, setAwaitingChoice] = useState(false)
 
   const selectedIdsRef = useRef(selectedIds)
   selectedIdsRef.current = selectedIds
@@ -274,7 +273,6 @@ export function ECodePermisTakePage() {
       setLiveCorrect(started.liveCorrect || 0)
       setAnsweredCount(answered)
       setFinished(started.status === 'completed')
-      setAwaitingChoice(false)
       if (started.status === 'completed') {
         setFinalScore({
           correct: started.correct,
@@ -306,7 +304,6 @@ export function ECodePermisTakePage() {
 
   const toggleAnswer = (answerId: string) => {
     if (result || checking) return
-    setAwaitingChoice(false)
     setSelectedIds((current) =>
       current.includes(answerId)
         ? current.filter((id) => id !== answerId)
@@ -333,8 +330,38 @@ export function ECodePermisTakePage() {
     setIndex((value) => value + 1)
     setSelectedIds([])
     setResult(null)
-    setAwaitingChoice(false)
   }, [])
+
+  const skipMissed = useCallback(async () => {
+    const currentAttempt = attemptRef.current
+    const currentQuestion = questionsRef.current[indexRef.current]
+    if (
+      !currentAttempt ||
+      !currentQuestion ||
+      checkingRef.current ||
+      resultRef.current
+    )
+      return
+
+    setChecking(true)
+    try {
+      const promptUrl = currentQuestion.prompt?.audioUrl
+        ? resolveMediaUrl(currentQuestion.prompt.audioUrl)
+        : ''
+      const data = await checkECodePermisAnswer(currentAttempt.id, currentQuestion.id, [])
+      setResult({ isCorrect: false, correctAnswerIds: [] })
+      setLiveCorrect(data.liveCorrect)
+      setAnsweredCount(data.answeredCount)
+      if (promptUrl) void playRemoteAudio(promptUrl)
+      await playFailSound()
+      await wait(500)
+      await finishOrAdvance()
+    } catch (err) {
+      setError(err instanceof ContentError ? err.message : 'Vérification impossible')
+    } finally {
+      setChecking(false)
+    }
+  }, [finishOrAdvance])
 
   const resolveSelection = useCallback(
     async (ids: string[]) => {
@@ -350,7 +377,6 @@ export function ECodePermisTakePage() {
         return
 
       setChecking(true)
-      setAwaitingChoice(false)
       try {
         const data = await checkECodePermisAnswer(currentAttempt.id, currentQuestion.id, ids)
         setResult({ isCorrect: data.isCorrect, correctAnswerIds: data.correctAnswerIds })
@@ -369,19 +395,14 @@ export function ECodePermisTakePage() {
     [finishOrAdvance],
   )
 
-  const handleCheck = async (e: FormEvent) => {
-    e.preventDefault()
-    await resolveSelection(selectedIdsRef.current)
-  }
-
   const handleSequenceComplete = useCallback(() => {
     const ids = selectedIdsRef.current
     if (ids.length > 0) {
       void resolveSelection(ids)
       return
     }
-    setAwaitingChoice(true)
-  }, [resolveSelection])
+    void skipMissed()
+  }, [resolveSelection, skipMissed])
 
   if (authLoading || !user) return null
 
@@ -433,7 +454,7 @@ export function ECodePermisTakePage() {
           ) : null}
 
           {!loading && !error && question && !finished ? (
-            <form onSubmit={handleCheck} className="learner-quiz">
+            <form className="learner-quiz">
               <p className="learner-quiz-progress">
                 {progressLabel} · Score live {liveCorrect}/{answeredCount || '—'}
               </p>
@@ -477,10 +498,6 @@ export function ECodePermisTakePage() {
                 })}
               </div>
 
-              {awaitingChoice && !result ? (
-                <p className="learner-quiz-audio-status">Choisissez une réponse, puis validez.</p>
-              ) : null}
-
               {result ? (
                 <p className={result.isCorrect ? 'form-success' : 'form-error'}>
                   {result.isCorrect ? 'Bonne réponse' : 'Mauvaise réponse'}
@@ -489,13 +506,9 @@ export function ECodePermisTakePage() {
 
               <div className="learner-quiz-actions">
                 {!result ? (
-                  <button
-                    type="submit"
-                    className="btn-primary"
-                    disabled={selectedIds.length === 0 || checking}
-                  >
-                    {checking ? 'Vérification…' : 'Valider'}
-                  </button>
+                  <p className="learner-quiz-audio-status">
+                    Cochez pendant l’écoute / le décompte — passage auto à 0.
+                  </p>
                 ) : (
                   <p className="learner-quiz-audio-status">Passage automatique…</p>
                 )}

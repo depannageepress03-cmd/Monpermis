@@ -55,24 +55,37 @@ function speakFrench(text: string) {
       window.speechSynthesis.cancel()
       const utterance = new SpeechSynthesisUtterance(text)
       utterance.lang = 'fr-FR'
-      utterance.rate = 0.95
+      utterance.rate = 1
       utterance.onend = () => resolve()
       utterance.onerror = () => resolve()
       window.speechSynthesis.speak(utterance)
-      window.setTimeout(resolve, 1800)
+      window.setTimeout(resolve, 900)
     } catch {
       resolve()
     }
   })
 }
 
-/** Décompte vocal 1 → 2 → 3. */
-export async function playCountdown123(onTick?: (n: 1 | 2 | 3) => void) {
-  for (const n of [1, 2, 3] as const) {
+export type CountdownValue = 5 | 4 | 3 | 2 | 1 | 0
+
+/**
+ * Décompte 5 → 0 sur exactement 5 secondes (1 s par tick jusqu’à 0).
+ */
+export async function playCountdown5to0(onTick?: (n: CountdownValue) => void) {
+  const steps: CountdownValue[] = [5, 4, 3, 2, 1, 0]
+  const started = Date.now()
+  for (let i = 0; i < steps.length; i += 1) {
+    const n = steps[i]
     onTick?.(n)
-    await speakFrench(String(n))
-    await playTone(880 + n * 40, 120, { gain: 0.12 })
-    await wait(220)
+    if (n > 0) {
+      void speakFrench(String(n))
+      void playTone(720 + (5 - n) * 50, 80, { gain: 0.1 })
+    } else {
+      void speakFrench('zéro')
+    }
+    const target = started + (i + 1) * 1000
+    const delay = Math.max(0, target - Date.now())
+    await wait(delay)
   }
 }
 
@@ -91,4 +104,27 @@ export async function playSuccessSound() {
 export async function playFailSound() {
   await playTone(320, 180, { type: 'square', gain: 0.12 })
   await playTone(220, 320, { type: 'square', gain: 0.14 })
+}
+
+/** Rejoue un média distant sans bloquer longtemps (fire-and-forget possible). */
+export function playRemoteAudio(url: string): Promise<void> {
+  const src = url.trim()
+  if (!src || typeof window === 'undefined') return Promise.resolve()
+  return new Promise((resolve) => {
+    try {
+      const audio = new Audio(src)
+      audio.preload = 'auto'
+      const finish = () => {
+        audio.removeEventListener('ended', finish)
+        audio.removeEventListener('error', finish)
+        resolve()
+      }
+      audio.addEventListener('ended', finish, { once: true })
+      audio.addEventListener('error', finish, { once: true })
+      void audio.play().catch(() => finish())
+      window.setTimeout(finish, 120000)
+    } catch {
+      resolve()
+    }
+  })
 }

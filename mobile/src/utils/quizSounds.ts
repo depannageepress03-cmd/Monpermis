@@ -56,7 +56,7 @@ type Player = {
   ) => { remove: () => void }
 }
 
-async function playUri(uri: string) {
+async function playUri(uri: string, maxMs = 4000) {
   try {
     const audio = await import('expo-audio')
     const player = audio.createAudioPlayer({ uri }) as Player
@@ -78,7 +78,7 @@ async function playUri(uri: string) {
       const sub = player.addListener?.('playbackStatusUpdate', (status) => {
         if (status?.didJustFinish) finish()
       })
-      const safety = setTimeout(finish, 4000)
+      const safety = setTimeout(finish, maxMs)
       try {
         player.seekTo(0)
         player.play()
@@ -91,13 +91,19 @@ async function playUri(uri: string) {
   }
 }
 
-export async function playCountdown123(onTick?: (n: 1 | 2 | 3) => void) {
-  const freqs = [660, 740, 820]
-  for (let i = 0; i < 3; i += 1) {
-    const n = (i + 1) as 1 | 2 | 3
+export type CountdownValue = 5 | 4 | 3 | 2 | 1 | 0
+
+/** Décompte 5 → 0 sur exactement 5 secondes. */
+export async function playCountdown5to0(onTick?: (n: CountdownValue) => void) {
+  const steps: CountdownValue[] = [5, 4, 3, 2, 1, 0]
+  const freqs = [920, 860, 800, 740, 680, 520]
+  const started = Date.now()
+  for (let i = 0; i < steps.length; i += 1) {
+    const n = steps[i]
     onTick?.(n)
-    await playUri(toneWavUri(freqs[i], 160, 0.4))
-    await wait(450)
+    void playUri(toneWavUri(freqs[i], n === 0 ? 220 : 120, 0.4), 600)
+    const target = started + (i + 1) * 1000
+    await wait(Math.max(0, target - Date.now()))
   }
 }
 
@@ -115,4 +121,11 @@ export async function playSuccessSound() {
 export async function playFailSound() {
   await playUri(toneWavUri(280, 200, 0.35))
   await playUri(toneWavUri(180, 320, 0.4))
+}
+
+/** Rejoue l’audio question (peut tourner en parallèle du passage suivant). */
+export function playRemoteAudio(url: string): Promise<void> {
+  const src = url.trim()
+  if (!src) return Promise.resolve()
+  return playUri(src, 120000)
 }

@@ -28,7 +28,7 @@ import { ScreenLoader } from '../../components/ScreenLoader'
 import { useRequireAuth } from '../../hooks/useRequireAuth'
 import type { RootStackParamList } from '../../navigation/types'
 import { dark, fonts } from '../../theme'
-import { playFailSound, playSuccessSound } from '../../utils/quizSounds'
+import { playFailSound, playRemoteAudio, playSuccessSound } from '../../utils/quizSounds'
 import { resolveMediaUrl } from '../../utils/mediaUrl'
 
 function wait(ms: number) {
@@ -248,7 +248,6 @@ export function ECodePermisTakeScreen() {
     passed: boolean
     passScore: number
   } | null>(null)
-  const [awaitingChoice, setAwaitingChoice] = useState(false)
 
   const selectedIdsRef = useRef(selectedIds)
   selectedIdsRef.current = selectedIds
@@ -275,7 +274,6 @@ export function ECodePermisTakeScreen() {
       setLiveCorrect(started.liveCorrect || 0)
       setAnsweredCount(answered)
       setFinished(started.status === 'completed')
-      setAwaitingChoice(false)
       if (started.status === 'completed') {
         setFinalScore({
           correct: started.correct,
@@ -306,7 +304,6 @@ export function ECodePermisTakeScreen() {
 
   const toggleAnswer = (answerId: string) => {
     if (result || checking) return
-    setAwaitingChoice(false)
     setSelectedIds((current) =>
       current.includes(answerId)
         ? current.filter((id) => id !== answerId)
@@ -333,8 +330,38 @@ export function ECodePermisTakeScreen() {
     setIndex((value) => value + 1)
     setSelectedIds([])
     setResult(null)
-    setAwaitingChoice(false)
   }, [])
+
+  const skipMissed = useCallback(async () => {
+    const currentAttempt = attemptRef.current
+    const currentQuestion = questionsRef.current[indexRef.current]
+    if (
+      !currentAttempt ||
+      !currentQuestion ||
+      checkingRef.current ||
+      resultRef.current
+    )
+      return
+
+    setChecking(true)
+    try {
+      const promptUrl = currentQuestion.prompt?.audioUrl
+        ? resolveMediaUrl(currentQuestion.prompt.audioUrl)
+        : ''
+      const data = await checkECodePermisAnswer(currentAttempt.id, currentQuestion.id, [])
+      setResult({ isCorrect: false, correctAnswerIds: [] })
+      setLiveCorrect(data.liveCorrect)
+      setAnsweredCount(data.answeredCount)
+      if (promptUrl) void playRemoteAudio(promptUrl)
+      await playFailSound()
+      await wait(500)
+      await finishOrAdvance()
+    } catch (err) {
+      setError(err instanceof ContentError ? err.message : 'Vérification impossible')
+    } finally {
+      setChecking(false)
+    }
+  }, [finishOrAdvance])
 
   const resolveSelection = useCallback(
     async (ids: string[]) => {
@@ -350,7 +377,6 @@ export function ECodePermisTakeScreen() {
         return
 
       setChecking(true)
-      setAwaitingChoice(false)
       try {
         const data = await checkECodePermisAnswer(currentAttempt.id, currentQuestion.id, ids)
         setResult({ isCorrect: data.isCorrect, correctAnswerIds: data.correctAnswerIds })
@@ -369,18 +395,14 @@ export function ECodePermisTakeScreen() {
     [finishOrAdvance],
   )
 
-  const handleCheck = async () => {
-    await resolveSelection(selectedIdsRef.current)
-  }
-
   const handleSequenceComplete = useCallback(() => {
     const ids = selectedIdsRef.current
     if (ids.length > 0) {
       void resolveSelection(ids)
       return
     }
-    setAwaitingChoice(true)
-  }, [resolveSelection])
+    void skipMissed()
+  }, [resolveSelection, skipMissed])
 
   if (authLoading || !user) return <ScreenLoader />
 
@@ -451,10 +473,6 @@ export function ECodePermisTakeScreen() {
                 )
               })}
 
-              {awaitingChoice && !result ? (
-                <Text style={styles.awaitingText}>Choisissez une réponse, puis validez.</Text>
-              ) : null}
-
               {result ? (
                 <Text style={result.isCorrect ? styles.ok : styles.error}>
                   {result.isCorrect ? 'Bonne réponse' : 'Mauvaise réponse'}
@@ -462,15 +480,9 @@ export function ECodePermisTakeScreen() {
               ) : null}
 
               {!result ? (
-                <Pressable
-                  style={[styles.startBtn, selectedIds.length === 0 && styles.disabled]}
-                  disabled={selectedIds.length === 0 || checking}
-                  onPress={() => void handleCheck()}
-                >
-                  <Text style={styles.startBtnText}>
-                    {checking ? 'Vérification…' : 'Valider'}
-                  </Text>
-                </Pressable>
+                <Text style={styles.awaitingText}>
+                  Cochez pendant l’écoute / le décompte — passage auto à 0.
+                </Text>
               ) : (
                 <Text style={styles.awaitingText}>Passage automatique…</Text>
               )}
