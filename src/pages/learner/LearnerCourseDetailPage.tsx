@@ -62,7 +62,7 @@ export function LearnerCourseDetailPage({
     try {
       const chapters =
         track === 'revision' ? await fetchRevisionChapters() : await fetchConduiteChapters()
-      const chapterIndex = chapters.findIndex((item) => item.id === chapterId)
+      const chapterIndex = chapters.findIndex((item) => String(item.id) === String(chapterId))
       const chapter = chapterIndex >= 0 ? chapters[chapterIndex] : undefined
       if (!chapter) {
         setError('Chapitre introuvable')
@@ -71,23 +71,28 @@ export function LearnerCourseDetailPage({
       }
       setChapterName(`${chapterIndex + 1}. ${chapter.name}`)
       setCourses(chapter.courses)
-      const found = chapter.courses.find((item) => item.id === courseId) ?? null
+      const found =
+        chapter.courses.find((item) => String(item.id) === String(courseId)) ?? null
       setCourse(found)
       if (!found) {
-        setError('Cours introuvable')
+        setError('Cours introuvable ou non publié')
         return
       }
       const progress =
         track === 'revision'
           ? await fetchRevisionProgress(chapterId)
           : await fetchConduiteProgress(chapterId)
-      const ids = new Set(progress.map((entry) => entry.courseId))
+      const ids = new Set(progress.map((entry) => String(entry.courseId)))
       setCompletedIds(ids)
 
-      const foundIndex = chapter.courses.findIndex((item) => item.id === courseId)
+      const foundIndex = chapter.courses.findIndex(
+        (item) => String(item.id) === String(courseId),
+      )
       const unlocked = isCourseUnlocked(
         foundIndex,
-        chapter.courses[foundIndex - 1]?.id,
+        chapter.courses[foundIndex - 1]?.id
+          ? String(chapter.courses[foundIndex - 1].id)
+          : undefined,
         ids,
       )
       if (!unlocked) {
@@ -96,16 +101,22 @@ export function LearnerCourseDetailPage({
       }
       setAccessBlocked(false)
 
-      if (ids.has(courseId)) {
+      if (ids.has(String(courseId))) {
         setSecondsRemaining(0)
         return
       }
 
-      const session =
-        track === 'revision'
-          ? await startRevisionCourseSession(chapterId, courseId)
-          : await startConduiteCourseSession(chapterId, courseId)
-      setSecondsRemaining(session.alreadyCompleted ? 0 : session.secondsRemaining)
+      try {
+        const session =
+          track === 'revision'
+            ? await startRevisionCourseSession(chapterId, courseId)
+            : await startConduiteCourseSession(chapterId, courseId)
+        setSecondsRemaining(session.alreadyCompleted ? 0 : session.secondsRemaining)
+      } catch (sessionErr) {
+        // Ne pas bloquer l’affichage du cours si le suivi de session échoue
+        console.warn('Session cours:', sessionErr)
+        setSecondsRemaining(0)
+      }
     } catch (err) {
       setError(err instanceof ContentError ? err.message : 'Chargement impossible')
     } finally {
@@ -118,13 +129,13 @@ export function LearnerCourseDetailPage({
   }, [user, load])
 
   const courseIndex = useMemo(
-    () => courses.findIndex((item) => item.id === course?.id),
+    () => courses.findIndex((item) => String(item.id) === String(course?.id)),
     [courses, course?.id],
   )
   const nextCourse = courseIndex >= 0 ? courses[courseIndex + 1] : undefined
-  const isCompleted = course ? completedIds.has(course.id) : false
+  const isCompleted = course ? completedIds.has(String(course.id)) : false
   const allCompleted =
-    courses.length > 0 && courses.every((item) => completedIds.has(item.id))
+    courses.length > 0 && courses.every((item) => completedIds.has(String(item.id)))
   const canValidate = !isCompleted
 
   useEffect(() => {
@@ -154,7 +165,17 @@ export function LearnerCourseDetailPage({
     }
   }
 
-  if (authLoading || !user) return null
+  if (authLoading) {
+    return (
+      <div className="auth-page">
+        <div className="auth-container learner-container">
+          <p className="subtitle">Chargement…</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!user) return null
 
   if (accessBlocked) {
     return (
@@ -206,10 +227,8 @@ export function LearnerCourseDetailPage({
           ) : null}
 
           {course?.modules.map((module: LearnerModule) => {
-            const video =
-              module.mediaType === 'video' && module.videoUrl
-                ? resolveVideoEmbed(module.videoUrl)
-                : null
+            const hasVideoLink = module.mediaType === 'video' && Boolean(module.videoUrl?.trim())
+            const video = hasVideoLink ? resolveVideoEmbed(module.videoUrl) : null
 
             return (
             <article key={module.id} className="learner-module">
@@ -231,6 +250,11 @@ export function LearnerCourseDetailPage({
                     <video src={mediaSrc(video.src)} controls playsInline preload="metadata" />
                   )}
                 </div>
+              ) : null}
+              {hasVideoLink && !video ? (
+                <p className="form-error">
+                  Vidéo indisponible : le lien doit être un YouTube ou Vimeo valide.
+                </p>
               ) : null}
               {module.mediaType === 'image' && module.imageUrl ? (
                 <img

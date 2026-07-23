@@ -37,6 +37,7 @@ export function LearnerCourseListPage({
   const [completedIds, setCompletedIds] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(!stateChapter)
   const [error, setError] = useState<string | null>(null)
+  const [lockHint, setLockHint] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -44,7 +45,7 @@ export function LearnerCourseListPage({
     try {
       const chapters =
         track === 'revision' ? await fetchRevisionChapters() : await fetchConduiteChapters()
-      const chapterIndex = chapters.findIndex((item) => item.id === chapterId)
+      const chapterIndex = chapters.findIndex((item) => String(item.id) === String(chapterId))
       const found = chapterIndex >= 0 ? chapters[chapterIndex] : null
       setChapter(
         found
@@ -59,7 +60,7 @@ export function LearnerCourseListPage({
         track === 'revision'
           ? await fetchRevisionProgress(chapterId)
           : await fetchConduiteProgress(chapterId)
-      setCompletedIds(new Set(progress.map((entry) => entry.courseId)))
+      setCompletedIds(new Set(progress.map((entry) => String(entry.courseId))))
     } catch (err) {
       setError(err instanceof ContentError ? err.message : 'Chargement impossible')
     } finally {
@@ -76,11 +77,22 @@ export function LearnerCourseListPage({
   const isUnlocked = useMemo(() => {
     return (index: number) => {
       if (index === 0) return true
-      return completedIds.has(courses[index - 1]?.id)
+      const prevId = courses[index - 1]?.id
+      return prevId ? completedIds.has(String(prevId)) : true
     }
   }, [completedIds, courses])
 
-  if (authLoading || !user) return null
+  if (authLoading) {
+    return (
+      <div className="auth-page">
+        <div className="auth-container learner-container">
+          <p className="subtitle">Chargement…</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!user) return null
 
   return (
     <div className="auth-page">
@@ -110,6 +122,7 @@ export function LearnerCourseListPage({
         <div className="auth-card learner-card">
           {loading ? <p className="subtitle">Chargement…</p> : null}
           {error ? <p className="form-error">{error}</p> : null}
+          {lockHint ? <p className="form-error">{lockHint}</p> : null}
           {!loading && !error && courses.length === 0 ? (
             <div className="learner-empty">
               <h2>Aucun cours</h2>
@@ -119,7 +132,7 @@ export function LearnerCourseListPage({
           <div className="learner-list">
             {courses.map((course: LearnerCourse, index) => {
               const unlocked = isUnlocked(index)
-              const completed = completedIds.has(course.id)
+              const completed = completedIds.has(String(course.id))
               const content = (
                 <>
                   <span className={`learner-item-icon${unlocked ? '' : ' is-locked'}`}>
@@ -128,7 +141,11 @@ export function LearnerCourseListPage({
                   <span className="learner-item-body">
                     <strong>{formatCourseHeading(index, course.title)}</strong>
                     <small>
-                      {completed ? 'Terminé' : !unlocked ? 'Verrouillé' : ''}
+                      {completed
+                        ? 'Terminé'
+                        : !unlocked
+                          ? 'Verrouillé — terminez le cours précédent'
+                          : 'Appuyez pour ouvrir'}
                     </small>
                   </span>
                   {unlocked ? <ChevronRight size={18} /> : <Lock size={16} />}
@@ -137,23 +154,30 @@ export function LearnerCourseListPage({
 
               if (!unlocked) {
                 return (
-                  <div
+                  <button
                     key={course.id}
+                    type="button"
                     className="learner-item is-disabled learner-anim-item"
                     style={{ animationDelay: `${0.22 + index * 0.08}s` }}
+                    onClick={() =>
+                      setLockHint(
+                        'Ce cours est verrouillé. Validez le cours précédent (case « J’ai terminé ce cours ») pour le débloquer.',
+                      )
+                    }
                   >
                     {content}
-                  </div>
+                  </button>
                 )
               }
 
               return (
                 <Link
                   key={course.id}
-                  to={detailPath(chapterId, course.id)}
+                  to={detailPath(chapterId, String(course.id))}
                   state={{ chapter, course, courses }}
                   className={`learner-item${completed ? ' is-done' : ''} learner-anim-item`}
                   style={{ animationDelay: `${0.22 + index * 0.08}s` }}
+                  onClick={() => setLockHint(null)}
                 >
                   {content}
                 </Link>
