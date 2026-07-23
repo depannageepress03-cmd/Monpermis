@@ -1,9 +1,11 @@
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, Navigate, useParams } from 'react-router-dom'
 import {
+  Check,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  ClipboardList,
   HelpCircle,
   ImagePlus,
   Mic,
@@ -11,6 +13,7 @@ import {
   Square,
   Trash2,
   Upload,
+  Volume2,
   X,
 } from 'lucide-react'
 import {
@@ -84,6 +87,12 @@ export function ChapterQuestionsPage() {
   const [answers, setAnswers] = useState<QuestionAnswer[]>(defaultAnswers())
   const recorderRef = useRef<MediaRecorder | null>(null)
 
+  const publishedCount = useMemo(
+    () => questions.filter((question) => question.published).length,
+    [questions],
+  )
+  const draftCount = questions.length - publishedCount
+
   const totalPages = Math.max(1, Math.ceil(questions.length / PAGE_SIZE))
   const pageQuestions = useMemo(() => {
     const start = (page - 1) * PAGE_SIZE
@@ -147,6 +156,7 @@ export function ChapterQuestionsPage() {
     setShowForm(true)
     setSuccess(null)
     setError(null)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   const addAnswer = () => {
@@ -178,15 +188,14 @@ export function ChapterQuestionsPage() {
       audioUrl: question.prompt.audioUrl,
       imageUrls: [...question.prompt.imageUrls],
     })
-    setAnswers(
-      question.answers.length > 0 ? cloneAnswers(question.answers) : defaultAnswers(),
-    )
+    setAnswers(question.answers.length > 0 ? cloneAnswers(question.answers) : defaultAnswers())
     setEditingId(question.id)
     setFormStep('Q')
     setShowForm(true)
     setExpandedId(question.id)
     setSuccess(null)
     setError(null)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   const handlePromptImage = async (file: File | null) => {
@@ -269,6 +278,15 @@ export function ChapterQuestionsPage() {
     if (recorder && recorder.state !== 'inactive') {
       recorder.stop()
     }
+  }
+
+  const goToAnswers = () => {
+    if (!prompt.audioUrl.trim()) {
+      setError('Enregistrez ou importez l’audio unique avant de continuer')
+      return
+    }
+    setError(null)
+    setFormStep('A')
   }
 
   const handleSubmit = async (e: FormEvent) => {
@@ -377,6 +395,7 @@ export function ChapterQuestionsPage() {
   }
 
   const pageOffset = (page - 1) * PAGE_SIZE
+  const correctLabels = answers.filter((a) => a.isCorrect).map((a) => a.label.toUpperCase())
 
   return (
     <div className="questions-page">
@@ -384,35 +403,56 @@ export function ChapterQuestionsPage() {
         backTo={`/code/revision-chapitres?chapter=${encodeURIComponent(chapterId)}`}
         backLabel="Retour au chapitre"
         kicker="Banque de questions"
-        title={chapterName ? `Questions — ${chapterName}` : 'Questions du chapitre'}
-        subtitle={`${questions.length} question${questions.length !== 1 ? 's' : ''} · un audio (question + choix) · bonnes réponses a / b / c`}
+        title={chapterName ? chapterName : 'Questions du chapitre'}
+        subtitle="Un audio (question + a/b/c) · cochez la bonne réponse · l’apprenant écoute deux fois"
       />
 
       {success ? (
-        <p className="form-success" role="status">
+        <p className="qp-toast qp-toast-ok" role="status">
           {success}
         </p>
       ) : null}
-
-      <div className="questions-toolbar">
-        <p className="questions-toolbar-meta">
-          {loading
-            ? 'Chargement…'
-            : `${questions.length} question${questions.length !== 1 ? 's' : ''} dans ce chapitre`}
+      {error ? (
+        <p className="qp-toast qp-toast-err" role="alert">
+          {error}
         </p>
-        {!showForm ? (
-          <button type="button" className="btn-primary btn-primary-inline" onClick={openCreateForm}>
-            <Plus size={16} />
-            Ajouter une question
-          </button>
-        ) : null}
+      ) : null}
+
+      <div className="qp-stats">
+        <article className="qp-stat">
+          <span className="qp-stat-value">{loading ? '—' : questions.length}</span>
+          <span className="qp-stat-label">Total</span>
+        </article>
+        <article className="qp-stat qp-stat-live">
+          <span className="qp-stat-value">{loading ? '—' : publishedCount}</span>
+          <span className="qp-stat-label">Publiées</span>
+        </article>
+        <article className="qp-stat qp-stat-draft">
+          <span className="qp-stat-value">{loading ? '—' : draftCount}</span>
+          <span className="qp-stat-label">Brouillons</span>
+        </article>
+        <div className="qp-stat-actions">
+          {!showForm ? (
+            <button type="button" className="btn-primary btn-primary-inline" onClick={openCreateForm}>
+              <Plus size={16} />
+              Nouvelle question
+            </button>
+          ) : null}
+          <Link
+            to={`/code/revision-chapitres?chapter=${encodeURIComponent(chapterId)}&tab=sujet-test`}
+            className="btn-outline"
+          >
+            <ClipboardList size={15} />
+            Sujet test
+          </Link>
+        </div>
       </div>
 
       {showForm ? (
-        <form className="question-form" onSubmit={handleSubmit}>
-          <div className="question-form-header">
+        <form className="qp-composer" onSubmit={handleSubmit}>
+          <div className="qp-composer-top">
             <div>
-              <span className="questions-badge">{editingId ? 'Édition' : 'Création'}</span>
+              <span className="qp-mode">{editingId ? 'Édition' : 'Création'}</span>
               <h3>{editingId ? 'Modifier la question' : 'Nouvelle question'}</h3>
             </div>
             <button type="button" className="btn-icon-muted" onClick={resetForm} aria-label="Fermer">
@@ -420,96 +460,95 @@ export function ChapterQuestionsPage() {
             </button>
           </div>
 
-          <div className="question-step-switch" role="tablist" aria-label="Étape du formulaire">
-            <button
-              type="button"
-              role="tab"
-              aria-selected={formStep === 'Q'}
-              className={`question-step-btn${formStep === 'Q' ? ' active' : ''}`}
-              onClick={() => setFormStep('Q')}
-            >
-              Q — Question
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={formStep === 'A'}
-              className={`question-step-btn${formStep === 'A' ? ' active' : ''}`}
-              onClick={() => setFormStep('A')}
-            >
-              A — Réponses
-            </button>
-          </div>
+          <ol className="qp-steps" aria-label="Étapes">
+            <li className={formStep === 'Q' ? 'is-active' : 'is-done'}>
+              <button type="button" onClick={() => setFormStep('Q')}>
+                <span className="qp-step-num">1</span>
+                <span className="qp-step-copy">
+                  <strong>Audio</strong>
+                  <small>Question + choix</small>
+                </span>
+              </button>
+            </li>
+            <li className={formStep === 'A' ? 'is-active' : ''}>
+              <button type="button" onClick={() => void goToAnswers()}>
+                <span className="qp-step-num">2</span>
+                <span className="qp-step-copy">
+                  <strong>Réponses</strong>
+                  <small>Cocher A / B / C</small>
+                </span>
+              </button>
+            </li>
+          </ol>
 
           {formStep === 'Q' ? (
-            <fieldset className="question-section question-section-q">
-              <legend>Question (Q)</legend>
-              <p className="question-hint">
-                Enregistrez un seul audio qui contient la question et les choix a, b, c. Le texte et
-                les images restent optionnels. L’audio est obligatoire.
-              </p>
-
-              <label className="question-text-field">
-                <span className="question-media-label">Texte (optionnel)</span>
-                <textarea
-                  value={prompt.text}
-                  onChange={(e) => setPrompt((current) => ({ ...current, text: e.target.value }))}
-                  placeholder="Énoncez la question à l’écrit si besoin…"
-                  rows={4}
-                />
-              </label>
-
-              <div className="question-media-row">
-                <div className="question-media-block question-media-audio">
-                  <span className="question-media-label">Audio unique (question + choix)</span>
-                  <div className="question-media-actions">
-                    <label className="btn-outline btn-file">
-                      <Upload size={15} />
-                      Importer
-                      <input
-                        type="file"
-                        accept="audio/*"
-                        hidden
-                        onChange={(e) => void handleAudioUpload(e.target.files?.[0] ?? null)}
-                      />
-                    </label>
-                    {recordingTarget === 'prompt' ? (
-                      <button
-                        type="button"
-                        className="btn-outline btn-recording"
-                        onClick={stopRecording}
-                      >
-                        <Square size={15} />
-                        Stop
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        className="btn-outline"
-                        onClick={() => void startRecording()}
-                        disabled={uploading}
-                      >
-                        <Mic size={15} />
-                        Enregistrer
-                      </button>
-                    )}
-                  </div>
-                  {prompt.audioUrl ? (
-                    <div className="question-audio-preview">
-                      <audio controls src={resolveMediaUrl(prompt.audioUrl)} />
-                      <button
-                        type="button"
-                        className="btn-text-danger"
-                        onClick={() => setPrompt((current) => ({ ...current, audioUrl: '' }))}
-                      >
-                        Retirer
-                      </button>
-                    </div>
+            <div className="qp-panel">
+              <div className={`qp-audio-hero${prompt.audioUrl ? ' has-audio' : ''}${recordingTarget ? ' is-recording' : ''}`}>
+                <div className="qp-audio-hero-icon">
+                  {recordingTarget ? <Mic size={28} /> : <Volume2 size={28} />}
+                </div>
+                <div className="qp-audio-hero-copy">
+                  <h4>{recordingTarget ? 'Enregistrement en cours…' : 'Audio unique'}</h4>
+                  <p>
+                    Énoncez la question puis les choix a, b et c dans le même fichier. L’apprenant
+                    l’entendra deux fois.
+                  </p>
+                </div>
+                <div className="qp-audio-hero-actions">
+                  <label className="btn-outline btn-file">
+                    <Upload size={15} />
+                    Importer
+                    <input
+                      type="file"
+                      accept="audio/*"
+                      hidden
+                      onChange={(e) => void handleAudioUpload(e.target.files?.[0] ?? null)}
+                    />
+                  </label>
+                  {recordingTarget === 'prompt' ? (
+                    <button type="button" className="btn-outline btn-recording" onClick={stopRecording}>
+                      <Square size={15} />
+                      Stop
+                    </button>
                   ) : (
-                    <p className="question-media-empty">Aucun audio — obligatoire</p>
+                    <button
+                      type="button"
+                      className="btn-primary btn-primary-inline"
+                      onClick={() => void startRecording()}
+                      disabled={uploading}
+                    >
+                      <Mic size={15} />
+                      Enregistrer
+                    </button>
                   )}
                 </div>
+                {prompt.audioUrl ? (
+                  <div className="qp-audio-ready">
+                    <audio controls src={resolveMediaUrl(prompt.audioUrl)} />
+                    <button
+                      type="button"
+                      className="btn-text-danger"
+                      onClick={() => setPrompt((current) => ({ ...current, audioUrl: '' }))}
+                    >
+                      Retirer l’audio
+                    </button>
+                  </div>
+                ) : (
+                  <p className="qp-audio-missing">Audio obligatoire pour continuer</p>
+                )}
+              </div>
 
+              <details className="qp-optional">
+                <summary>Texte et images (optionnel)</summary>
+                <label className="question-text-field">
+                  <span className="question-media-label">Texte</span>
+                  <textarea
+                    value={prompt.text}
+                    onChange={(e) => setPrompt((current) => ({ ...current, text: e.target.value }))}
+                    placeholder="Note écrite visible pour l’apprenant (optionnel)…"
+                    rows={3}
+                  />
+                </label>
                 <div className="question-media-block question-media-images">
                   <span className="question-media-label">Images</span>
                   <label className="btn-outline btn-file">
@@ -547,171 +586,208 @@ export function ChapterQuestionsPage() {
                     <p className="question-media-empty">Aucune image</p>
                   )}
                 </div>
-              </div>
+              </details>
 
-              <div className="question-form-actions">
+              <div className="qp-footer">
                 <button type="button" className="btn-outline" onClick={resetForm}>
                   Annuler
                 </button>
-                <button type="button" className="btn-primary btn-primary-inline" onClick={() => setFormStep('A')}>
-                  Continuer vers A
+                <button type="button" className="btn-primary btn-primary-inline" onClick={goToAnswers}>
+                  Continuer
                   <ChevronRight size={16} />
                 </button>
               </div>
-            </fieldset>
+            </div>
           ) : (
-            <fieldset className="question-section question-section-a">
-              <legend>Réponses (A)</legend>
-              <p className="question-hint">
-                Cochez la ou les bonnes réponses (a, b, c), puis enregistrez. L’audio unique (étape Q)
-                contient déjà la question et ces choix.
-              </p>
+            <div className="qp-panel">
+              <div className="qp-answer-intro">
+                <p>
+                  Cochez la ou les bonnes réponses. Les choix sont déjà dans l’audio.
+                  {correctLabels.length > 0 ? (
+                    <>
+                      {' '}
+                      Sélection : <strong>{correctLabels.join(', ')}</strong>
+                    </>
+                  ) : null}
+                </p>
+              </div>
 
-              <div className="answer-list">
+              <div className="qp-answer-grid">
                 {answers.map((answer, index) => (
                   <div
                     key={`${answer.label}-${index}`}
-                    className={`answer-card${answer.isCorrect ? ' is-correct' : ''}`}
+                    className={`qp-answer-tile${answer.isCorrect ? ' is-correct' : ''}`}
                   >
-                    <div className="answer-card-top">
-                      <div className="answer-identity">
-                        <label className="answer-correct">
-                          <input
-                            type="checkbox"
-                            checked={answer.isCorrect}
-                            onChange={(e) =>
-                              setAnswers((current) =>
-                                current.map((item, itemIndex) =>
-                                  itemIndex === index
-                                    ? { ...item, isCorrect: e.target.checked }
-                                    : item,
-                                ),
-                              )
-                            }
-                          />
-                          <span className="answer-chip">{answer.label.toUpperCase()}</span>
-                          <span>Bonne réponse</span>
-                        </label>
-                      </div>
-                      {answers.length > 1 ? (
-                        <button
-                          type="button"
-                          className="btn-text-danger"
-                          onClick={() => removeAnswer(index)}
-                        >
-                          <Trash2 size={15} />
-                          Retirer
-                        </button>
-                      ) : null}
-                    </div>
+                    <button
+                      type="button"
+                      className="qp-answer-main"
+                      onClick={() =>
+                        setAnswers((current) =>
+                          current.map((item, itemIndex) =>
+                            itemIndex === index
+                              ? { ...item, isCorrect: !item.isCorrect }
+                              : item,
+                          ),
+                        )
+                      }
+                    >
+                      <span className="qp-answer-letter">{answer.label.toUpperCase()}</span>
+                      <span className="qp-answer-meta">
+                        <strong>{answer.isCorrect ? 'Bonne réponse' : 'Marquer comme bonne'}</strong>
+                        <small>Choix {answer.label.toUpperCase()}</small>
+                      </span>
+                      <span className={`qp-answer-check${answer.isCorrect ? ' on' : ''}`}>
+                        {answer.isCorrect ? <Check size={18} /> : null}
+                      </span>
+                    </button>
+                    {answers.length > 1 ? (
+                      <button
+                        type="button"
+                        className="qp-answer-remove"
+                        onClick={() => removeAnswer(index)}
+                        aria-label={`Retirer le choix ${answer.label.toUpperCase()}`}
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    ) : null}
                   </div>
                 ))}
               </div>
 
               <button type="button" className="btn-add-answer" onClick={addAnswer}>
                 <Plus size={16} />
-                Ajouter une réponse
+                Ajouter un choix
               </button>
 
-              <div className="question-form-actions">
+              <div className="qp-footer">
                 <button type="button" className="btn-outline" onClick={() => setFormStep('Q')}>
                   <ChevronLeft size={16} />
-                  Retour à Q
+                  Retour
                 </button>
                 <button
                   type="submit"
                   className="btn-primary btn-primary-inline"
                   disabled={saving || uploading}
                 >
-                  {saving ? 'Enregistrement…' : editingId ? 'Mettre à jour' : 'Enregistrer la question'}
+                  {saving
+                    ? 'Enregistrement…'
+                    : editingId
+                      ? 'Mettre à jour'
+                      : 'Enregistrer la question'}
                 </button>
               </div>
-            </fieldset>
+            </div>
           )}
         </form>
       ) : null}
 
-      <div className="revision-courses-stack questions-list">
+      <section className="qp-bank">
+        <div className="qp-bank-head">
+          <h3>Questions du chapitre</h3>
+          <p>
+            {loading
+              ? 'Chargement…'
+              : `${questions.length} question${questions.length !== 1 ? 's' : ''}`}
+          </p>
+        </div>
+
         {loading ? (
-          <p className="revision-empty">Chargement des questions…</p>
+          <p className="qp-loading">Chargement des questions…</p>
         ) : questions.length === 0 ? (
-          <div className="questions-empty">
-            <p className="questions-empty-title">Aucune question dans ce chapitre</p>
-            <p className="questions-empty-text">
-              Cliquez sur « Ajouter une question » pour créer la première (Q puis A).
+          <div className="qp-empty">
+            <div className="qp-empty-icon">
+              <HelpCircle size={28} />
+            </div>
+            <p className="qp-empty-title">Aucune question</p>
+            <p className="qp-empty-text">
+              Créez la première : un audio (question + a/b/c), puis cochez la bonne réponse.
             </p>
+            <button type="button" className="btn-primary btn-primary-inline" onClick={openCreateForm}>
+              <Plus size={16} />
+              Créer une question
+            </button>
           </div>
         ) : (
-          pageQuestions.map((question, index) => {
-            const displayIndex = pageOffset + index + 1
-            const expanded = expandedId === question.id
-            return (
-              <div key={question.id} className="revision-course question-list-card">
-                <div className="revision-course-header">
-                  <button
-                    type="button"
-                    className="revision-course-toggle"
-                    onClick={() =>
-                      setExpandedId((current) => (current === question.id ? null : question.id))
-                    }
-                  >
-                    {expanded ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
-                    <HelpCircle size={18} />
-                    <span>Question {displayIndex}</span>
-                    <span className="revision-count">
-                      {question.answers.length} réponse
-                      {question.answers.length !== 1 ? 's' : ''}
-                    </span>
-                    {!question.published ? <span className="revision-tag">Brouillon</span> : null}
-                  </button>
-                  <div className="revision-item-actions">
-                    <PublishSwitch
-                      checked={question.published}
-                      onChange={(published) => void handleTogglePublished(question, published)}
-                      disabled={busyId === question.id}
-                    />
+          <div className="qp-list">
+            {pageQuestions.map((question, index) => {
+              const displayIndex = pageOffset + index + 1
+              const expanded = expandedId === question.id
+              const correct = question.answers.filter((a) => a.isCorrect).map((a) => a.label.toUpperCase())
+              return (
+                <article
+                  key={question.id}
+                  className={`qp-card${expanded ? ' is-open' : ''}${question.published ? '' : ' is-draft'}`}
+                >
+                  <div className="qp-card-row">
                     <button
                       type="button"
-                      className="btn-text-danger"
-                      disabled={busyId === question.id}
-                      onClick={() => void handleDelete(question)}
-                      aria-label={`Supprimer la question ${displayIndex}`}
-                      title="Supprimer"
+                      className="qp-card-toggle"
+                      onClick={() =>
+                        setExpandedId((current) => (current === question.id ? null : question.id))
+                      }
                     >
-                      <Trash2 size={16} />
-                      Supprimer
+                      <span className="qp-card-index">{displayIndex}</span>
+                      <span className="qp-card-body">
+                        <strong>Question {displayIndex}</strong>
+                        <small>
+                          {question.prompt.audioUrl ? 'Audio prêt' : 'Sans audio'}
+                          {' · '}
+                          {correct.length > 0 ? `Bonne(s) : ${correct.join(', ')}` : 'Aucune bonne réponse'}
+                        </small>
+                      </span>
+                      {expanded ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
                     </button>
+                    <div className="qp-card-actions">
+                      {!question.published ? <span className="qp-draft-tag">Brouillon</span> : null}
+                      <PublishSwitch
+                        checked={question.published}
+                        onChange={(published) => void handleTogglePublished(question, published)}
+                        disabled={busyId === question.id}
+                      />
+                      <button
+                        type="button"
+                        className="btn-text-danger"
+                        disabled={busyId === question.id}
+                        onClick={() => void handleDelete(question)}
+                        aria-label={`Supprimer la question ${displayIndex}`}
+                        title="Supprimer"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
                   </div>
-                </div>
 
-                {expanded ? (
-                  <div className="revision-course-body">
-                    {question.prompt.text ? (
-                      <p className="question-prompt-text">{question.prompt.text}</p>
-                    ) : null}
-                    {question.prompt.audioUrl ? (
-                      <audio controls src={resolveMediaUrl(question.prompt.audioUrl)} />
-                    ) : null}
-                    {question.prompt.imageUrls.length > 0 ? (
-                      <div className="question-images">
-                        {question.prompt.imageUrls.map((url) => (
-                          <img key={url} src={resolveMediaUrl(url)} alt="" className="question-preview-image" />
+                  {expanded ? (
+                    <div className="qp-card-detail">
+                      {question.prompt.text ? (
+                        <p className="question-prompt-text">{question.prompt.text}</p>
+                      ) : null}
+                      {question.prompt.audioUrl ? (
+                        <audio controls src={resolveMediaUrl(question.prompt.audioUrl)} />
+                      ) : null}
+                      {question.prompt.imageUrls.length > 0 ? (
+                        <div className="question-images">
+                          {question.prompt.imageUrls.map((url) => (
+                            <img
+                              key={url}
+                              src={resolveMediaUrl(url)}
+                              alt=""
+                              className="question-preview-image"
+                            />
+                          ))}
+                        </div>
+                      ) : null}
+                      <div className="qp-correct-pills">
+                        {question.answers.map((answer) => (
+                          <span
+                            key={`${question.id}-${answer.id ?? answer.label}`}
+                            className={`qp-pill${answer.isCorrect ? ' is-correct' : ''}`}
+                          >
+                            {answer.label.toUpperCase()}
+                            {answer.isCorrect ? <Check size={12} /> : null}
+                          </span>
                         ))}
                       </div>
-                    ) : null}
-
-                    <ul className="question-answers-preview">
-                      {question.answers.map((answer) => (
-                        <li key={`${question.id}-${answer.id ?? answer.label}`}>
-                          <span className={answer.isCorrect ? 'is-correct' : undefined}>
-                            {answer.label.toUpperCase()}
-                            {answer.isCorrect ? ' ✓' : ''}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-
-                    <div className="revision-actions revision-actions-footer">
                       <button
                         type="button"
                         className="btn-outline-sm"
@@ -720,56 +796,39 @@ export function ChapterQuestionsPage() {
                         Modifier
                       </button>
                     </div>
-                  </div>
-                ) : null}
-              </div>
-            )
-          })
+                  ) : null}
+                </article>
+              )
+            })}
+          </div>
         )}
-      </div>
 
-      {!loading && questions.length > PAGE_SIZE ? (
-        <div className="questions-pagination">
-          <button
-            type="button"
-            className="btn-outline"
-            disabled={page <= 1}
-            onClick={() => setPage((current) => Math.max(1, current - 1))}
-          >
-            <ChevronLeft size={16} />
-            Précédent
-          </button>
-          <span>
-            Page {page} / {totalPages}
-          </span>
-          <button
-            type="button"
-            className="btn-outline"
-            disabled={page >= totalPages}
-            onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
-          >
-            Suivant
-            <ChevronRight size={16} />
-          </button>
-        </div>
-      ) : null}
-
-      {!showForm && questions.length > 0 ? (
-        <div className="revision-inline-form revision-add-course">
-          <button type="button" className="btn-primary btn-primary-inline" onClick={openCreateForm}>
-            <Plus size={16} />
-            Ajouter une question
-          </button>
-          <Link
-            to={`/code/revision-chapitres?chapter=${encodeURIComponent(chapterId)}&tab=sujet-test`}
-            className="btn-outline"
-          >
-            Voir le sujet test
-          </Link>
-        </div>
-      ) : null}
-
-      {error ? <p className="form-error">{error}</p> : null}
+        {!loading && questions.length > PAGE_SIZE ? (
+          <div className="questions-pagination">
+            <button
+              type="button"
+              className="btn-outline"
+              disabled={page <= 1}
+              onClick={() => setPage((current) => Math.max(1, current - 1))}
+            >
+              <ChevronLeft size={16} />
+              Précédent
+            </button>
+            <span>
+              Page {page} / {totalPages}
+            </span>
+            <button
+              type="button"
+              className="btn-outline"
+              disabled={page >= totalPages}
+              onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
+            >
+              Suivant
+              <ChevronRight size={16} />
+            </button>
+          </div>
+        ) : null}
+      </section>
     </div>
   )
 }
