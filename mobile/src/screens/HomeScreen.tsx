@@ -20,7 +20,6 @@ import { LegalFooter } from '../components/LegalFooter'
 import { BrandName } from '../components/BrandName'
 import { HomeBottomAnimation } from '../components/HomeBottomAnimation'
 import { InfiniteImageMarquee } from '../components/InfiniteImageMarquee'
-import { CodeModuleIcon, DriveModuleIcon } from '../components/ModuleIcons'
 import { ScreenLoader } from '../components/ScreenLoader'
 import { useAuth } from '../context/AuthContext'
 import { useRequireAuth } from '../hooks/useRequireAuth'
@@ -190,14 +189,21 @@ export function HomeScreen() {
             onPress={() => navigation.navigate(codeLocked ? 'Abonnement' : 'CodeRoute')}
           >
             <View style={[styles.pathCard, codeLocked ? styles.pathCardLocked : styles.pathCardGreen]}>
-              <View style={[styles.pathIcon, !codeLocked && styles.pathIconGreen]}>
-                {codeLocked ? <Lock size={24} color={dark.textMuted} /> : <CodeModuleIcon size={30} />}
-              </View>
+              <Image
+                source={require('../../assets/home/paths/code.jpg')}
+                style={[styles.pathImage, styles.pathImageGreen]}
+                resizeMode="cover"
+              />
               <View style={styles.pathCopy}>
                 <Text style={styles.pathTitle}>Code de la route</Text>
-                <Text style={styles.pathDesc}>
-                  {codeLocked ? 'Abonnement requis' : 'Cours, QCM et examens blancs'}
-                </Text>
+                {codeLocked ? (
+                  <View style={styles.pathDescRow}>
+                    <Lock size={12} color={dark.textMuted} />
+                    <Text style={styles.pathDesc}>Abonnement requis</Text>
+                  </View>
+                ) : (
+                  <Text style={styles.pathDesc}>Cours, quiz & examens</Text>
+                )}
               </View>
               <ChevronRight size={20} color={codeLocked ? dark.textMuted : dark.green} />
             </View>
@@ -209,14 +215,21 @@ export function HomeScreen() {
             onPress={() => navigation.navigate(conduiteLocked ? 'Abonnement' : 'Conduite')}
           >
             <View style={[styles.pathCard, conduiteLocked ? styles.pathCardLocked : styles.pathCardCoral]}>
-              <View style={[styles.pathIcon, !conduiteLocked && styles.pathIconCoral]}>
-                {conduiteLocked ? <Lock size={24} color={dark.textMuted} /> : <DriveModuleIcon size={30} />}
-              </View>
+              <Image
+                source={require('../../assets/home/paths/conduite.jpg')}
+                style={[styles.pathImage, styles.pathImageCoral]}
+                resizeMode="cover"
+              />
               <View style={styles.pathCopy}>
                 <Text style={styles.pathTitle}>Conduite</Text>
-                <Text style={styles.pathDesc}>
-                  {conduiteLocked ? 'Abonnement requis' : 'Leçons et réservations moniteur'}
-                </Text>
+                {conduiteLocked ? (
+                  <View style={styles.pathDescRow}>
+                    <Lock size={12} color={dark.textMuted} />
+                    <Text style={styles.pathDesc}>Abonnement requis</Text>
+                  </View>
+                ) : (
+                  <Text style={styles.pathDesc}>Leçons & réservations</Text>
+                )}
               </View>
               <ChevronRight size={20} color={conduiteLocked ? dark.textMuted : dark.coral} />
             </View>
@@ -506,8 +519,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 14,
     borderRadius: 20,
-    paddingVertical: 16,
-    paddingHorizontal: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
     borderWidth: 1,
   },
   pathCardGreen: {
@@ -527,19 +540,30 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   pathIcon: {
-    width: 54,
-    height: 54,
+    width: 64,
+    height: 64,
     borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: dark.surfaceRaised,
     flexShrink: 0,
   },
-  pathIconGreen: {
-    backgroundColor: dark.greenSoft,
+  pathIconLocked: {
+    backgroundColor: dark.surfaceRaised,
   },
-  pathIconCoral: {
-    backgroundColor: dark.coralSoft,
+  pathImage: {
+    width: 64,
+    height: 64,
+    borderRadius: 16,
+    flexShrink: 0,
+  },
+  pathImageGreen: {
+    borderWidth: 2,
+    borderColor: 'rgba(0,176,80,0.28)',
+  },
+  pathImageCoral: {
+    borderWidth: 2,
+    borderColor: 'rgba(232,93,59,0.28)',
   },
   pathCopy: {
     flex: 1,
@@ -555,6 +579,11 @@ const styles = StyleSheet.create({
     fontFamily: fonts.body,
     fontSize: 13,
     color: dark.textMuted,
+  },
+  pathDescRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
 
   bottomAnim: {

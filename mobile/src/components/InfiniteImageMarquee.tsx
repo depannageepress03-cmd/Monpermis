@@ -9,23 +9,24 @@ import {
 } from 'react-native'
 import { dark } from '../theme'
 
+/** Même sources que le site web : /home/i1…i5.jpg */
 const IMAGES = [
-  require('../../assets/i1.jpg'),
-  require('../../assets/i2.jpg'),
-  require('../../assets/i3.jpg'),
-  require('../../assets/i4.jpg'),
-  require('../../assets/i5.jpg'),
+  require('../../assets/home/i1.jpg'),
+  require('../../assets/home/i2.jpg'),
+  require('../../assets/home/i3.jpg'),
+  require('../../assets/home/i4.jpg'),
+  require('../../assets/home/i5.jpg'),
 ]
 
 const STRIP_HEIGHT = 160
 const STRIP_HEIGHT_COMPACT = 112
-const HOLD_MS = 2800
-const SLIDE_MS = 500
+const HOLD_MS = 5500
+const CROSSFADE_MS = 2400
 
 export function InfiniteImageMarquee({ compact = false }: { compact?: boolean }) {
+  const [index, setIndex] = useState(0)
   const [width, setWidth] = useState(0)
-  const offset = useRef(new Animated.Value(0)).current
-  const indexRef = useRef(0)
+  const opacities = useRef(IMAGES.map((_, i) => new Animated.Value(i === 0 ? 1 : 0))).current
   const height = compact ? STRIP_HEIGHT_COMPACT : STRIP_HEIGHT
 
   const onLayout = (e: LayoutChangeEvent) => {
@@ -35,41 +36,28 @@ export function InfiniteImageMarquee({ compact = false }: { compact?: boolean })
   useEffect(() => {
     if (width <= 0) return
 
-    let cancelled = false
-    let timer: ReturnType<typeof setTimeout> | undefined
-
-    const advance = () => {
-      if (cancelled) return
-      const next = indexRef.current + 1
-
-      Animated.timing(offset, {
-        toValue: -next * width,
-        duration: SLIDE_MS,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }).start(({ finished }) => {
-        if (!finished || cancelled) return
-
-        if (next >= IMAGES.length) {
-          indexRef.current = 0
-          offset.setValue(0)
-        } else {
-          indexRef.current = next
-        }
-
-        timer = setTimeout(advance, HOLD_MS)
+    const timer = setTimeout(() => {
+      const next = (index + 1) % IMAGES.length
+      Animated.parallel([
+        Animated.timing(opacities[index], {
+          toValue: 0,
+          duration: CROSSFADE_MS,
+          easing: Easing.bezier(0.33, 0, 0.2, 1),
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacities[next], {
+          toValue: 1,
+          duration: CROSSFADE_MS,
+          easing: Easing.bezier(0.33, 0, 0.2, 1),
+          useNativeDriver: true,
+        }),
+      ]).start(({ finished }) => {
+        if (finished) setIndex(next)
       })
-    }
+    }, HOLD_MS)
 
-    timer = setTimeout(advance, HOLD_MS)
-    return () => {
-      cancelled = true
-      if (timer) clearTimeout(timer)
-      offset.stopAnimation()
-    }
-  }, [offset, width])
-
-  const track = [...IMAGES, IMAGES[0]]
+    return () => clearTimeout(timer)
+  }, [index, opacities, width])
 
   return (
     <View
@@ -78,27 +66,11 @@ export function InfiniteImageMarquee({ compact = false }: { compact?: boolean })
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
     >
-      {width > 0 ? (
-        <Animated.View
-          style={[
-            styles.track,
-            {
-              height,
-              width: width * track.length,
-              transform: [{ translateX: offset }],
-            },
-          ]}
-        >
-          {track.map((src, index) => (
-            <Image
-              key={`${index}`}
-              source={src}
-              style={[styles.image, { width, height }]}
-              resizeMode="cover"
-            />
-          ))}
+      {IMAGES.map((src, i) => (
+        <Animated.View key={i} style={[styles.slide, { opacity: opacities[i] }]}>
+          <Image source={src} style={styles.image} resizeMode="cover" />
         </Animated.View>
-      ) : null}
+      ))}
     </View>
   )
 }
@@ -106,20 +78,18 @@ export function InfiniteImageMarquee({ compact = false }: { compact?: boolean })
 const styles = StyleSheet.create({
   wrap: {
     width: '100%',
-    height: STRIP_HEIGHT,
+    borderRadius: 18,
     overflow: 'hidden',
-    marginBottom: 28,
-    backgroundColor: dark.surface,
-    borderRadius: 12,
+    backgroundColor: dark.surfaceRaised,
   },
   wrapCompact: {
-    marginBottom: 10,
+    borderRadius: 16,
   },
-  track: {
-    flexDirection: 'row',
-    height: STRIP_HEIGHT,
+  slide: {
+    ...StyleSheet.absoluteFillObject,
   },
   image: {
-    height: STRIP_HEIGHT,
+    width: '100%',
+    height: '100%',
   },
 })
