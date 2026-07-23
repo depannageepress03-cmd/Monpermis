@@ -2004,17 +2004,22 @@
   }
 
   .home-desk-paths .home-app-section-label {
-    width: min(100%, 42rem);
+    width: min(100%, 48rem);
     text-align: center;
   }
 
   .home-desk-paths .home-app-paths {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 1.75rem;
-    width: min(100%, 42rem);
+    column-gap: 3.5rem;
+    row-gap: 1.25rem;
+    width: min(100%, 48rem);
     margin-left: auto;
     margin-right: auto;
+  }
+
+  .home-desk-paths .home-app-path--panel {
+    margin: 0;
   }
 
   /* Cartes photo parcours (taille réduite) */
