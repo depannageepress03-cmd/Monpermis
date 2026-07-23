@@ -222,11 +222,13 @@ export function LearnerCourseDetailPage({
                     <iframe
                       title={module.title || 'Vidéo'}
                       src={video.src}
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
                       allowFullScreen
+                      loading="eager"
+                      referrerPolicy="strict-origin-when-cross-origin"
                     />
                   ) : (
-                    <video src={mediaSrc(video.src)} controls playsInline />
+                    <video src={mediaSrc(video.src)} controls playsInline preload="metadata" />
                   )}
                 </div>
               ) : null}

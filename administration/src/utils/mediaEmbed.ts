@@ -1,5 +1,15 @@
 /** Convertit une URL vidéo en source d’affichage sans jamais l’exposer à l’UI. */
 
+function normalizeVideoInput(url: string): string {
+  let trimmed = url.trim()
+  if (!trimmed) return ''
+
+  if (!/^[a-z][a-z0-9+.-]*:/i.test(trimmed) && !trimmed.startsWith('/')) {
+    trimmed = `https://${trimmed}`
+  }
+  return trimmed
+}
+
 function extractYoutubeId(url: URL): string | null {
   const host = url.hostname.replace(/^www\./, '')
 
@@ -8,7 +18,12 @@ function extractYoutubeId(url: URL): string | null {
     return id.split('?')[0] || null
   }
 
-  if (host === 'youtube.com' || host === 'm.youtube.com' || host === 'music.youtube.com') {
+  if (
+    host === 'youtube.com' ||
+    host === 'm.youtube.com' ||
+    host === 'music.youtube.com' ||
+    host === 'youtube-nocookie.com'
+  ) {
     const fromQuery = url.searchParams.get('v')
     if (fromQuery) return fromQuery
 
@@ -33,8 +48,20 @@ function extractVimeoId(url: URL): string | null {
   return id ?? null
 }
 
+function isYoutubeOrVimeoHost(url: URL): boolean {
+  const host = url.hostname.replace(/^www\./, '')
+  return (
+    host === 'youtu.be' ||
+    host === 'youtube.com' ||
+    host === 'm.youtube.com' ||
+    host === 'music.youtube.com' ||
+    host === 'youtube-nocookie.com' ||
+    host.endsWith('vimeo.com')
+  )
+}
+
 export function resolveVideoEmbed(url: string): { kind: 'iframe' | 'video'; src: string } | null {
-  const trimmed = url.trim()
+  const trimmed = normalizeVideoInput(url)
   if (!trimmed) return null
 
   try {
@@ -59,6 +86,10 @@ export function resolveVideoEmbed(url: string): { kind: 'iframe' | 'video'; src:
         kind: 'iframe',
         src: `https://player.vimeo.com/video/${vimeoId}?playsinline=1&title=0&byline=0`,
       }
+    }
+
+    if (isYoutubeOrVimeoHost(parsed)) {
+      return null
     }
   } catch {
     // URL relative ou invalide : lecture directe
