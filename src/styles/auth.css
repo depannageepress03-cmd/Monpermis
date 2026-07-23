@@ -2007,16 +2007,17 @@
     width: 100%;
   }
 
-  /* Grandes cartes photo plein panneau */
+  /* Cartes photo parcours (taille réduite) */
   .home-app-path--panel {
     position: relative;
     display: block;
-    min-height: 16rem;
-    height: 18rem;
+    min-height: 9.5rem;
+    height: 10.5rem;
     padding: 0;
     overflow: hidden;
     align-items: stretch;
     gap: 0;
+    border-radius: 16px;
   }
 
   .home-app-path--panel .home-app-path-image {
@@ -2054,28 +2055,28 @@
 
   .home-app-path--panel .home-app-path-text {
     position: absolute;
-    left: 1.25rem;
-    right: 3rem;
-    bottom: 1.25rem;
+    left: 1rem;
+    right: 2.5rem;
+    bottom: 0.85rem;
     z-index: 2;
     color: #fff;
   }
 
   .home-app-path--panel .home-app-path-text strong {
     color: #fff;
-    font-size: 1.35rem;
+    font-size: 1.1rem;
   }
 
   .home-app-path--panel .home-app-path-text small {
     color: rgba(255, 255, 255, 0.92);
-    font-size: 0.95rem;
-    margin-top: 0.35rem;
+    font-size: 0.82rem;
+    margin-top: 0.2rem;
   }
 
   .home-app-path--panel .home-app-path-chevron {
     position: absolute;
-    right: 1.1rem;
-    bottom: 1.35rem;
+    right: 0.9rem;
+    bottom: 0.95rem;
     z-index: 2;
     color: #fff;
   }
@@ -2105,7 +2106,8 @@
   }
 
   .home-app-path--panel {
-    height: 20rem;
+    min-height: 10rem;
+    height: 11.25rem;
   }
 }
 
@@ -2125,7 +2127,8 @@
   }
 
   .home-app-path--panel {
-    height: 22rem;
+    min-height: 10.5rem;
+    height: 12rem;
   }
 }
 
