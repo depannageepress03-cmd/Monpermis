@@ -2011,7 +2011,7 @@
   .home-desk-paths .home-app-paths {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 1rem;
+    gap: 1.75rem;
     width: min(100%, 42rem);
     margin-left: auto;
     margin-right: auto;
