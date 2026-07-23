@@ -399,12 +399,14 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: dark.textPrimary,
     marginBottom: 6,
+    textAlign: 'left',
   },
   completionHint: {
     fontFamily: fonts.body,
     fontSize: 13,
     lineHeight: 19,
     color: dark.textMuted,
+    textAlign: 'left',
   },
   checkboxRow: {
     marginTop: 14,
@@ -473,7 +475,7 @@ const styles = StyleSheet.create({
   secondaryBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
     gap: 8,
     borderRadius: 14,
     borderWidth: 1,
@@ -489,6 +491,7 @@ const styles = StyleSheet.create({
     color: dark.textPrimary,
     fontFamily: fonts.bodyBold,
     fontSize: 14,
+    textAlign: 'left',
   },
   secondaryBtnTextDisabled: {
     color: dark.textMuted,
