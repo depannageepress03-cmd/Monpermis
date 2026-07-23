@@ -1565,14 +1565,18 @@
 /* ─── Accueil aligné app mobile (fond clair) ───────────────── */
 .home-app {
   min-height: 100dvh;
+  width: 100%;
+  max-width: none;
+  margin: 0;
   background: #ffffff;
   color: var(--brand-navy);
+  box-sizing: border-box;
 }
 
 .home-app-inner {
   width: 100%;
-  max-width: none;
-  margin: 0;
+  max-width: none !important;
+  margin: 0 !important;
   padding: 1rem 1.25rem calc(2rem + var(--safe-bottom));
   box-sizing: border-box;
 }
@@ -1872,15 +1876,8 @@
   color: var(--brand-navy);
 }
 
-/* ─── Tablette ─────────────────────────────────────────────── */
+/* ─── Tablette (plein largeur ; desk layout dès 700px) ─────── */
 @media (min-width: 768px) {
-  .home-app-inner {
-    max-width: none !important;
-    width: 100%;
-    margin: 0 !important;
-    padding: 1.5rem 2rem calc(2.5rem + var(--safe-bottom));
-  }
-
   .home-app-paths {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -1912,10 +1909,11 @@
   }
 }
 
-/* ─── Desktop PC : nouvelle disposition pleine largeur ─────── */
-@media (min-width: 900px) {
+/* ─── Desktop / large window : disposition pleine largeur ───── */
+@media (min-width: 700px) {
   .home-app {
     width: 100%;
+    max-width: none;
   }
 
   .home-app-inner {

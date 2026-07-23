@@ -94,7 +94,7 @@ export function HomePage() {
   )
 
   return (
-    <div className="home-app">
+    <div className="home-app" data-home-layout="fullbleed-v3">
       <div className="home-app-inner">
         <header className="home-app-top">
           <div className="home-app-brand">
