@@ -151,8 +151,7 @@ export function ChapterQuestionsScreen() {
       }
       setScore(nextScore)
       if (promptUrl) void playRemoteAudio(promptUrl)
-      await playFailSound()
-      await wait(500)
+      void playFailSound()
       await finishOrAdvance(nextScore)
     } finally {
       setChecking(false)
