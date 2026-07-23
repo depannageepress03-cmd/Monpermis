@@ -32,25 +32,41 @@ function cleanUri(uri?: string | null) {
   return uri?.trim() || ''
 }
 
-function wait(ms: number) {
+function wait(ms: number, isCancelled?: () => boolean) {
   return new Promise<void>((resolve) => {
-    setTimeout(resolve, ms)
+    const started = Date.now()
+    const tick = () => {
+      if (isCancelled?.()) {
+        resolve()
+        return
+      }
+      if (Date.now() - started >= ms) {
+        resolve()
+        return
+      }
+      setTimeout(tick, Math.min(80, ms - (Date.now() - started)))
+    }
+    tick()
   })
 }
 
-async function playUntilEnd(player: Player) {
+async function playUntilEnd(player: Player, isCancelled?: () => boolean) {
   await new Promise<void>((resolve) => {
     let done = false
     const finish = () => {
       if (done) return
       done = true
       sub?.remove?.()
+      clearInterval(cancelWatch)
       clearTimeout(safety)
       resolve()
     }
     const sub = player.addListener?.('playbackStatusUpdate', (status) => {
       if (status?.didJustFinish) finish()
     })
+    const cancelWatch = setInterval(() => {
+      if (isCancelled?.()) finish()
+    }, 100)
     const safety = setTimeout(finish, 180000)
     try {
       player.seekTo(0)
@@ -62,7 +78,8 @@ async function playUntilEnd(player: Player) {
 }
 
 /**
- * Double lecture, décompte 5→0, sonnerie, puis callback.
+ * Lance l’audio automatiquement (×2), puis décompte 5→0.
+ * Démonter le composant (Continuer) annule tout sans décompte.
  */
 export function QuestionAudioSequence({ questionKey, promptUri, onSequenceComplete }: Props) {
   const [status, setStatus] = useState('')
@@ -70,6 +87,7 @@ export function QuestionAudioSequence({ questionKey, promptUri, onSequenceComple
   const cancelledRef = useRef(false)
   const completeRef = useRef(onSequenceComplete)
   completeRef.current = onSequenceComplete
+  const isCancelled = () => cancelledRef.current
 
   const promptUrl = cleanUri(promptUri)
 
@@ -97,21 +115,21 @@ export function QuestionAudioSequence({ questionKey, promptUri, onSequenceComple
           localPlayer = audio.createAudioPlayer({ uri: promptUrl }) as Player
 
           setStatus('Première écoute…')
-          await playUntilEnd(localPlayer)
+          await playUntilEnd(localPlayer, isCancelled)
           if (cancelledRef.current) return
 
-          await wait(PAUSE_MS)
+          await wait(PAUSE_MS, isCancelled)
           if (cancelledRef.current) return
 
           setStatus('Deuxième écoute…')
-          await playUntilEnd(localPlayer)
+          await playUntilEnd(localPlayer, isCancelled)
           if (cancelledRef.current) return
         }
 
         setStatus('Décompte…')
         await playCountdown5to0((n) => {
           if (!cancelledRef.current) setCountdown(n)
-        })
+        }, isCancelled)
         if (cancelledRef.current) return
 
         setStatus('Temps !')
@@ -131,6 +149,8 @@ export function QuestionAudioSequence({ questionKey, promptUri, onSequenceComple
     return () => {
       cancelledRef.current = true
       cleanup()
+      setCountdown(null)
+      setStatus('')
     }
   }, [questionKey, promptUrl])
 

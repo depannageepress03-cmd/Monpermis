@@ -10,7 +10,7 @@ type Props = {
   questionKey: string
   promptAudioUrl?: string | null
   className?: string
-  /** Après double lecture + décompte 5→0 + sonnerie. */
+  /** Après double lecture + décompte 5→0 + sonnerie (sauf si aborté). */
   onSequenceComplete?: () => void
 }
 
@@ -21,14 +21,27 @@ function cleanUrl(url?: string | null) {
   return value ? resolveMediaUrl(value) : ''
 }
 
-function wait(ms: number) {
+function wait(ms: number, isCancelled?: () => boolean) {
   return new Promise<void>((resolve) => {
-    window.setTimeout(resolve, ms)
+    const started = Date.now()
+    const tick = () => {
+      if (isCancelled?.()) {
+        resolve()
+        return
+      }
+      if (Date.now() - started >= ms) {
+        resolve()
+        return
+      }
+      window.setTimeout(tick, Math.min(80, ms - (Date.now() - started)))
+    }
+    tick()
   })
 }
 
 /**
- * Double lecture, puis décompte 5 → 0 (5 s) et sonnerie.
+ * Lance l’audio automatiquement (×2), puis décompte 5→0.
+ * Si le parent démonte le composant (Continuer), tout s’arrête sans décompte.
  */
 export function QuestionAudioSequence({
   questionKey,
@@ -44,6 +57,7 @@ export function QuestionAudioSequence({
   const [countdown, setCountdown] = useState<CountdownValue | null>(null)
 
   const promptUrl = cleanUrl(promptAudioUrl)
+  const isCancelled = () => cancelledRef.current
 
   useEffect(() => {
     cancelledRef.current = false
@@ -67,21 +81,26 @@ export function QuestionAudioSequence({
         el.addEventListener('ended', finish, { once: true })
         el.addEventListener('error', finish, { once: true })
         el.currentTime = 0
-        void el.play().catch(() => finish())
+        const tryPlay = () => {
+          void el.play().catch(() => finish())
+        }
+        if (el.readyState >= 2) tryPlay()
+        else {
+          el.addEventListener('canplay', tryPlay, { once: true })
+          window.setTimeout(tryPlay, 300)
+        }
       })
 
     const run = async () => {
+      // Petit délai pour laisser le <audio> se monter / charger
+      await wait(50, isCancelled)
+      if (cancelledRef.current) return
+
       if (promptUrl && el) {
-        if (el.readyState < 2) {
-          await new Promise<void>((resolve) => {
-            el.addEventListener('canplay', () => resolve(), { once: true })
-            window.setTimeout(() => resolve(), 4000)
-          })
-        }
-        if (cancelledRef.current) return
+        setStatus('Écoute…')
         await playOnce('Première écoute…')
         if (cancelledRef.current) return
-        await wait(PAUSE_MS)
+        await wait(PAUSE_MS, isCancelled)
         if (cancelledRef.current) return
         await playOnce('Deuxième écoute…')
         if (cancelledRef.current) return
@@ -90,7 +109,7 @@ export function QuestionAudioSequence({
       setStatus('Décompte…')
       await playCountdown5to0((n) => {
         if (!cancelledRef.current) setCountdown(n)
-      })
+      }, isCancelled)
       if (cancelledRef.current) return
 
       setStatus('Temps !')
@@ -113,12 +132,16 @@ export function QuestionAudioSequence({
       if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
         window.speechSynthesis.cancel()
       }
+      setCountdown(null)
+      setStatus('')
     }
   }, [questionKey, promptUrl])
 
   return (
     <div className={className}>
-      {promptUrl ? <audio ref={audioRef} src={promptUrl} preload="auto" hidden /> : null}
+      {promptUrl ? (
+        <audio ref={audioRef} src={promptUrl} preload="auto" autoPlay hidden />
+      ) : null}
       {countdown !== null ? (
         <div className="learner-quiz-countdown" aria-live="polite">
           {countdown}
