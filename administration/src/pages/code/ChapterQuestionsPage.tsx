@@ -51,8 +51,8 @@ function nextAnswerLabel(answers: QuestionAnswer[]) {
 function cloneAnswers(answers: QuestionAnswer[] = []): QuestionAnswer[] {
   return answers.map((answer) => ({
     label: answer.label,
-    text: '',
-    audioUrl: answer.audioUrl,
+    text: answer.text || '',
+    audioUrl: '',
     isCorrect: answer.isCorrect,
   }))
 }
@@ -76,7 +76,7 @@ export function ChapterQuestionsPage() {
   const [saving, setSaving] = useState(false)
   const [busyId, setBusyId] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
-  const [recordingTarget, setRecordingTarget] = useState<'prompt' | number | null>(null)
+  const [recordingTarget, setRecordingTarget] = useState<'prompt' | null>(null)
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [page, setPage] = useState(1)
 
@@ -168,7 +168,6 @@ export function ChapterQuestionsPage() {
         .map((answer, itemIndex) => ({
           ...answer,
           label: String.fromCharCode(97 + itemIndex),
-          text: '',
         })),
     )
   }
@@ -212,21 +211,13 @@ export function ChapterQuestionsPage() {
     }
   }
 
-  const handleAudioUpload = async (target: 'prompt' | number, file: File | null) => {
+  const handleAudioUpload = async (file: File | null) => {
     if (!file) return
     setUploading(true)
     setError(null)
     try {
       const { audioUrl } = await uploadAudioFile(file, file.name)
-      if (target === 'prompt') {
-        setPrompt((current) => ({ ...current, audioUrl }))
-      } else {
-        setAnswers((current) =>
-          current.map((answer, index) =>
-            index === target ? { ...answer, audioUrl } : answer,
-          ),
-        )
-      }
+      setPrompt((current) => ({ ...current, audioUrl }))
     } catch (err) {
       setError(isAuthError(err) ? err.message : 'Import audio impossible')
     } finally {
@@ -234,7 +225,7 @@ export function ChapterQuestionsPage() {
     }
   }
 
-  const startRecording = async (target: 'prompt' | number) => {
+  const startRecording = async () => {
     if (!navigator.mediaDevices?.getUserMedia) {
       setError('Enregistrement audio non supporté par ce navigateur')
       return
@@ -256,15 +247,7 @@ export function ChapterQuestionsPage() {
         setUploading(true)
         try {
           const { audioUrl } = await uploadAudioFile(blob, 'recording.webm')
-          if (target === 'prompt') {
-            setPrompt((current) => ({ ...current, audioUrl }))
-          } else {
-            setAnswers((current) =>
-              current.map((answer, index) =>
-                index === target ? { ...answer, audioUrl } : answer,
-              ),
-            )
-          }
+          setPrompt((current) => ({ ...current, audioUrl }))
         } catch (err) {
           setError(isAuthError(err) ? err.message : 'Enregistrement impossible')
         } finally {
@@ -274,7 +257,7 @@ export function ChapterQuestionsPage() {
 
       recorderRef.current = recorder
       recorder.start()
-      setRecordingTarget(target)
+      setRecordingTarget('prompt')
       setError(null)
     } catch {
       setError('Impossible d’accéder au microphone')
@@ -293,11 +276,9 @@ export function ChapterQuestionsPage() {
     setError(null)
     setSuccess(null)
 
-    const hasPromptContent =
-      Boolean(prompt.text.trim()) || Boolean(prompt.audioUrl) || prompt.imageUrls.length > 0
-    if (!hasPromptContent) {
+    if (!prompt.audioUrl.trim()) {
       setFormStep('Q')
-      setError('Ajoutez au moins un texte, un audio ou une image à la question')
+      setError('Enregistrez ou importez l’audio unique (question + choix a, b, c)')
       return
     }
     if (answers.length < 1) {
@@ -305,14 +286,14 @@ export function ChapterQuestionsPage() {
       setError('Ajoutez au moins une réponse')
       return
     }
+    if (answers.some((answer) => !answer.text.trim())) {
+      setFormStep('A')
+      setError('Chaque réponse doit avoir un texte')
+      return
+    }
     if (!answers.some((answer) => answer.isCorrect)) {
       setFormStep('A')
       setError('Cochez au moins une bonne réponse')
-      return
-    }
-    if (answers.some((answer) => !answer.audioUrl)) {
-      setFormStep('A')
-      setError('Chaque réponse doit avoir un audio')
       return
     }
 
@@ -328,10 +309,10 @@ export function ChapterQuestionsPage() {
         audioUrl: prompt.audioUrl,
         imageUrls: prompt.imageUrls,
       },
-      answers: answers.map(({ label, audioUrl, isCorrect }) => ({
+      answers: answers.map(({ label, text, isCorrect }) => ({
         label,
-        text: '',
-        audioUrl,
+        text: text.trim(),
+        audioUrl: '',
         isCorrect,
       })),
     }
@@ -409,7 +390,7 @@ export function ChapterQuestionsPage() {
         backLabel="Retour au chapitre"
         kicker="Banque de questions"
         title={chapterName ? `Questions — ${chapterName}` : 'Questions du chapitre'}
-        subtitle={`${questions.length} question${questions.length !== 1 ? 's' : ''} · texte, audio et images libres · réponses a / b / c`}
+        subtitle={`${questions.length} question${questions.length !== 1 ? 's' : ''} · un audio (question + choix) · textes a / b / c`}
       />
 
       {success ? (
@@ -469,23 +450,23 @@ export function ChapterQuestionsPage() {
             <fieldset className="question-section question-section-q">
               <legend>Question (Q)</legend>
               <p className="question-hint">
-                Ajoutez librement du texte, un audio et/ou des images — rien n’est obligatoire
-                individuellement, mais au moins un élément est requis pour enregistrer.
+                Enregistrez un seul audio qui contient la question et les choix a, b, c. Le texte et
+                les images restent optionnels. L’audio est obligatoire.
               </p>
 
               <label className="question-text-field">
-                <span className="question-media-label">Texte</span>
+                <span className="question-media-label">Texte (optionnel)</span>
                 <textarea
                   value={prompt.text}
                   onChange={(e) => setPrompt((current) => ({ ...current, text: e.target.value }))}
-                  placeholder="Énoncez la question (optionnel si audio ou image)…"
+                  placeholder="Énoncez la question à l’écrit si besoin…"
                   rows={4}
                 />
               </label>
 
               <div className="question-media-row">
                 <div className="question-media-block question-media-audio">
-                  <span className="question-media-label">Audio</span>
+                  <span className="question-media-label">Audio unique (question + choix)</span>
                   <div className="question-media-actions">
                     <label className="btn-outline btn-file">
                       <Upload size={15} />
@@ -494,9 +475,7 @@ export function ChapterQuestionsPage() {
                         type="file"
                         accept="audio/*"
                         hidden
-                        onChange={(e) =>
-                          void handleAudioUpload('prompt', e.target.files?.[0] ?? null)
-                        }
+                        onChange={(e) => void handleAudioUpload(e.target.files?.[0] ?? null)}
                       />
                     </label>
                     {recordingTarget === 'prompt' ? (
@@ -512,7 +491,7 @@ export function ChapterQuestionsPage() {
                       <button
                         type="button"
                         className="btn-outline"
-                        onClick={() => void startRecording('prompt')}
+                        onClick={() => void startRecording()}
                         disabled={uploading}
                       >
                         <Mic size={15} />
@@ -532,7 +511,7 @@ export function ChapterQuestionsPage() {
                       </button>
                     </div>
                   ) : (
-                    <p className="question-media-empty">Aucun audio</p>
+                    <p className="question-media-empty">Aucun audio — obligatoire</p>
                   )}
                 </div>
 
@@ -589,8 +568,8 @@ export function ChapterQuestionsPage() {
             <fieldset className="question-section question-section-a">
               <legend>Réponses (A)</legend>
               <p className="question-hint">
-                Les choix a, b et c sont prêts. Ajoutez l’audio de chaque réponse, cochez la ou les
-                bonnes réponses, puis enregistrez.
+                Saisissez le texte des choix a, b et c, cochez la ou les bonnes réponses, puis
+                enregistrez. L’audio unique (étape Q) contient déjà la question et ces choix.
               </p>
 
               <div className="answer-list">
@@ -631,61 +610,21 @@ export function ChapterQuestionsPage() {
                       ) : null}
                     </div>
 
-                    <div className="question-media-actions">
-                      <label className="btn-outline btn-file">
-                        <Upload size={15} />
-                        Importer audio
-                        <input
-                          type="file"
-                          accept="audio/*"
-                          hidden
-                          onChange={(e) =>
-                            void handleAudioUpload(index, e.target.files?.[0] ?? null)
-                          }
-                        />
-                      </label>
-                      {recordingTarget === index ? (
-                        <button
-                          type="button"
-                          className="btn-outline btn-recording"
-                          onClick={stopRecording}
-                        >
-                          <Square size={15} />
-                          Stop
-                        </button>
-                      ) : (
-                        <button
-                          type="button"
-                          className="btn-outline"
-                          onClick={() => void startRecording(index)}
-                          disabled={uploading}
-                        >
-                          <Mic size={15} />
-                          Enregistrer
-                        </button>
-                      )}
-                    </div>
-
-                    {answer.audioUrl ? (
-                      <div className="question-audio-preview">
-                        <audio controls src={resolveMediaUrl(answer.audioUrl)} />
-                        <button
-                          type="button"
-                          className="btn-text-danger"
-                          onClick={() =>
-                            setAnswers((current) =>
-                              current.map((item, itemIndex) =>
-                                itemIndex === index ? { ...item, audioUrl: '' } : item,
-                              ),
-                            )
-                          }
-                        >
-                          Retirer l’audio
-                        </button>
-                      </div>
-                    ) : (
-                      <p className="question-media-empty">Aucun audio pour cette réponse</p>
-                    )}
+                    <label className="question-text-field">
+                      <span className="question-media-label">Texte du choix</span>
+                      <input
+                        type="text"
+                        value={answer.text}
+                        onChange={(e) =>
+                          setAnswers((current) =>
+                            current.map((item, itemIndex) =>
+                              itemIndex === index ? { ...item, text: e.target.value } : item,
+                            ),
+                          )
+                        }
+                        placeholder={`Réponse ${answer.label.toUpperCase()}…`}
+                      />
+                    </label>
                   </div>
                 ))}
               </div>
@@ -786,7 +725,7 @@ export function ChapterQuestionsPage() {
                       {question.answers.map((answer) => (
                         <li key={`${question.id}-${answer.id ?? answer.label}`}>
                           <span className={answer.isCorrect ? 'is-correct' : undefined}>
-                            {answer.label.toUpperCase()}. Audio
+                            {answer.label.toUpperCase()}. {answer.text || '—'}
                             {answer.isCorrect ? ' ✓' : ''}
                           </span>
                         </li>

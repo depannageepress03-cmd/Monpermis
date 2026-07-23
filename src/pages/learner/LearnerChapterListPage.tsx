@@ -169,25 +169,6 @@ export function LearnerChapterListPage({
                         </span>
                       </div>
                       <div className="learner-chapter-actions">
-                        {testSubjectUnlocked ? (
-                          <Link
-                            to={testSubjectPath!(chapter.id)}
-                            state={{ chapterName: numberedName }}
-                            className="learner-chapter-action learner-chapter-action--test"
-                          >
-                            <span className="learner-chapter-action-icon is-test">
-                              <ClipboardList size={15} />
-                            </span>
-                            <span>Sujet test</span>
-                          </Link>
-                        ) : (
-                          <span className="learner-chapter-action learner-chapter-action--test is-disabled">
-                            <span className="learner-chapter-action-icon">
-                              <Lock size={13} />
-                            </span>
-                            <span>Sujet test</span>
-                          </span>
-                        )}
                         {chapterUnlocked ? (
                           <Link
                             to={coursesPath(chapter.id)}
@@ -224,6 +205,25 @@ export function LearnerChapterListPage({
                               <Lock size={13} />
                             </span>
                             <span>Questions</span>
+                          </span>
+                        )}
+                        {testSubjectUnlocked ? (
+                          <Link
+                            to={testSubjectPath!(chapter.id)}
+                            state={{ chapterName: numberedName }}
+                            className="learner-chapter-action"
+                          >
+                            <span className="learner-chapter-action-icon is-test">
+                              <ClipboardList size={15} />
+                            </span>
+                            <span>Sujet test</span>
+                          </Link>
+                        ) : (
+                          <span className="learner-chapter-action is-disabled">
+                            <span className="learner-chapter-action-icon">
+                              <Lock size={13} />
+                            </span>
+                            <span>Sujet test</span>
                           </span>
                         )}
                       </div>

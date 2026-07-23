@@ -223,11 +223,10 @@ export function ChapterQuestionsScreen() {
                 {question.prompt.text ? (
                   <Text style={styles.promptText}>{question.prompt.text}</Text>
                 ) : null}
-                {question.prompt.audioUrl || question.answers.some((a) => a.audioUrl) ? (
+                {question.prompt.audioUrl ? (
                   <QuestionAudioSequence
                     questionKey={question.id}
                     promptUri={resolveMediaUrl(question.prompt.audioUrl)}
-                    answerUris={question.answers.map((a) => resolveMediaUrl(a.audioUrl))}
                   />
                 ) : null}
                 {question.prompt.imageUrls.length > 0 ? (

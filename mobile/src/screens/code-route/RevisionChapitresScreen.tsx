@@ -207,26 +207,6 @@ export function RevisionChapitresScreen() {
                       <Pressable
                         style={({ pressed }) => [
                           styles.actionBtn,
-                          styles.testBtn,
-                          !testSubjectUnlocked && styles.actionDisabled,
-                          pressed && testSubjectUnlocked && styles.pressed,
-                        ]}
-                        disabled={!testSubjectUnlocked}
-                        onPress={() => openTestSubject(chapter, index)}
-                      >
-                        <View style={[styles.actionIcon, styles.actionTest]}>
-                          {testSubjectUnlocked ? (
-                            <ClipboardList size={15} color={dark.textPrimary} />
-                          ) : (
-                            <Lock size={13} color={dark.textMuted} />
-                          )}
-                        </View>
-                        <Text style={styles.actionLabel}>Sujet test</Text>
-                      </Pressable>
-
-                      <Pressable
-                        style={({ pressed }) => [
-                          styles.actionBtn,
                           !chapterUnlocked && styles.actionDisabled,
                           pressed && chapterUnlocked && styles.pressed,
                         ]}
@@ -260,6 +240,25 @@ export function RevisionChapitresScreen() {
                           )}
                         </View>
                         <Text style={styles.actionLabel}>Questions</Text>
+                      </Pressable>
+
+                      <Pressable
+                        style={({ pressed }) => [
+                          styles.actionBtn,
+                          !testSubjectUnlocked && styles.actionDisabled,
+                          pressed && testSubjectUnlocked && styles.pressed,
+                        ]}
+                        disabled={!testSubjectUnlocked}
+                        onPress={() => openTestSubject(chapter, index)}
+                      >
+                        <View style={[styles.actionIcon, styles.actionTest]}>
+                          {testSubjectUnlocked ? (
+                            <ClipboardList size={15} color={dark.textPrimary} />
+                          ) : (
+                            <Lock size={13} color={dark.textMuted} />
+                          )}
+                        </View>
+                        <Text style={styles.actionLabel}>Sujet test</Text>
                       </Pressable>
                     </View>
                   </View>
@@ -346,32 +345,21 @@ const styles = StyleSheet.create({
   },
   actions: {
     flexDirection: 'row',
-    justifyContent: 'flex-start',
     alignItems: 'stretch',
-    flexWrap: 'wrap',
     gap: 8,
   },
   actionBtn: {
-    flexGrow: 1,
-    flexShrink: 1,
-    flexBasis: 0,
-    flexDirection: 'row',
+    flex: 1,
+    minWidth: 0,
     alignItems: 'center',
-    justifyContent: 'flex-start',
-    gap: 8,
+    justifyContent: 'center',
+    gap: 5,
     paddingVertical: 10,
-    paddingHorizontal: 10,
+    paddingHorizontal: 4,
     borderRadius: 14,
     backgroundColor: dark.surfaceRaised,
     borderWidth: 1,
     borderColor: dark.border,
-  },
-  testBtn: {
-    flexGrow: 0,
-    flexShrink: 0,
-    flexBasis: 'auto',
-    minWidth: 118,
-    backgroundColor: 'rgba(255,255,255,0.08)',
   },
   actionIcon: {
     width: 32,
@@ -393,6 +381,7 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bodySemiBold,
     fontSize: 11.5,
     color: dark.textPrimary,
+    textAlign: 'center',
   },
   centerBox: {
     alignItems: 'center',

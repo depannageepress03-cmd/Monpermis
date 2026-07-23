@@ -33,17 +33,17 @@ function normalizeAnswers(rawAnswers) {
     label:
       String(answer.label || String.fromCharCode(97 + index)).trim() ||
       String.fromCharCode(97 + index),
-    text: '',
-    audioUrl: String(answer.audioUrl || '').trim(),
+    text: String(answer.text || '').trim(),
+    audioUrl: '',
     isCorrect: Boolean(answer.isCorrect),
   }))
 
-  if (!answers.some((answer) => answer.isCorrect)) {
-    return { error: 'Cochez au moins une bonne réponse' }
+  if (answers.some((answer) => !answer.text)) {
+    return { error: 'Chaque réponse doit avoir un texte' }
   }
 
-  if (answers.some((answer) => !answer.audioUrl)) {
-    return { error: 'Chaque réponse doit avoir un audio' }
+  if (!answers.some((answer) => answer.isCorrect)) {
+    return { error: 'Cochez au moins une bonne réponse' }
   }
 
   return { answers }
@@ -56,8 +56,8 @@ function normalizePrompt(rawPrompt = {}) {
     ? rawPrompt.imageUrls.map((url) => String(url).trim()).filter(Boolean)
     : []
 
-  if (!text && !audioUrl && imageUrls.length === 0) {
-    return { error: 'La question doit contenir au moins un texte, un audio ou une image' }
+  if (!audioUrl) {
+    return { error: 'L’audio unique (question + choix) est obligatoire' }
   }
 
   return { prompt: { text, audioUrl, imageUrls } }

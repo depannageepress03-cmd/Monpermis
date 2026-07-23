@@ -364,11 +364,10 @@ export function ExamensTestTakeScreen() {
               {question.prompt?.text ? (
                 <Text style={styles.prompt}>{question.prompt.text}</Text>
               ) : null}
-              {question.prompt?.audioUrl || question.answers.some((a) => a.audioUrl) ? (
+              {question.prompt?.audioUrl ? (
                 <QuestionAudioSequence
                   questionKey={question.id}
                   promptUri={resolveMediaUrl(question.prompt?.audioUrl)}
-                  answerUris={question.answers.map((a) => resolveMediaUrl(a.audioUrl))}
                 />
               ) : null}
               {question.answers.map((answer) => {

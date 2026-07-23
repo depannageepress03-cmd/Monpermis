@@ -208,7 +208,6 @@ export function LearnerChapterQuizPage({
                 key={question.id}
                 questionKey={question.id}
                 promptAudioUrl={question.prompt?.audioUrl}
-                answerAudioUrls={question.answers.map((answer) => answer.audioUrl)}
               />
               <div className="learner-quiz-answers">
                 {question.answers.map((answer) => {

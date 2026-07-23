@@ -1,12 +1,13 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { resolveMediaUrl } from '../utils/mediaUrl'
 
 type Props = {
   questionKey: string
   promptAudioUrl?: string | null
-  answerAudioUrls?: (string | null | undefined)[]
   className?: string
 }
+
+const PAUSE_MS = 600
 
 function cleanUrl(url?: string | null) {
   const value = url?.trim() || ''
@@ -14,43 +15,31 @@ function cleanUrl(url?: string | null) {
 }
 
 /**
- * Enchaîne : audio question → audios des réponses (cachés).
- * L’apprenant ne voit que le lecteur de l’énoncé (pour réécouter).
+ * Joue l’audio unique (question + choix) deux fois d’affilée.
+ * Bouton « Réécouter » relance la double lecture.
  */
-export function QuestionAudioSequence({
-  questionKey,
-  promptAudioUrl,
-  answerAudioUrls = [],
-  className,
-}: Props) {
-  const promptRef = useRef<HTMLAudioElement | null>(null)
-  const answerRefs = useRef<(HTMLAudioElement | null)[]>([])
+export function QuestionAudioSequence({ questionKey, promptAudioUrl, className }: Props) {
+  const audioRef = useRef<HTMLAudioElement | null>(null)
+  const cancelledRef = useRef(false)
   const [status, setStatus] = useState('')
+  const [playing, setPlaying] = useState(false)
 
   const promptUrl = cleanUrl(promptAudioUrl)
-  const answerUrls = useMemo(
-    () => answerAudioUrls.map(cleanUrl).filter(Boolean),
-    [answerAudioUrls],
-  )
 
-  useEffect(() => {
-    let cancelled = false
-    const promptEl = promptRef.current
-    const answerEls = answerRefs.current.filter(Boolean) as HTMLAudioElement[]
+  const playTwice = useCallback(async () => {
+    const el = audioRef.current
+    if (!el || !promptUrl) return
 
-    const stopAll = () => {
-      if (promptEl) {
-        promptEl.pause()
-        promptEl.currentTime = 0
-      }
-      answerEls.forEach((el) => {
-        el.pause()
-        el.currentTime = 0
-      })
-    }
+    cancelledRef.current = false
+    setPlaying(true)
 
-    const playElement = (el: HTMLAudioElement) =>
+    const playOnce = (label: string) =>
       new Promise<void>((resolve) => {
+        if (cancelledRef.current) {
+          resolve()
+          return
+        }
+        setStatus(label)
         const finish = () => {
           el.removeEventListener('ended', finish)
           el.removeEventListener('error', finish)
@@ -62,65 +51,61 @@ export function QuestionAudioSequence({
         void el.play().catch(() => finish())
       })
 
-    const run = async () => {
-      stopAll()
-      if (cancelled) return
+    const wait = (ms: number) =>
+      new Promise<void>((resolve) => {
+        window.setTimeout(resolve, ms)
+      })
 
-      if (promptUrl && promptEl) {
-        setStatus('Écoute de la question…')
-        if (promptEl.readyState < 2) {
-          await new Promise<void>((resolve) => {
-            promptEl.addEventListener('canplay', () => resolve(), { once: true })
-          })
-        }
-        if (cancelled) return
-        await playElement(promptEl)
+    try {
+      if (el.readyState < 2) {
+        await new Promise<void>((resolve) => {
+          el.addEventListener('canplay', () => resolve(), { once: true })
+        })
       }
+      if (cancelledRef.current) return
 
-      for (let i = 0; i < answerEls.length; i += 1) {
-        if (cancelled) return
-        setStatus(`Écoute du choix ${String.fromCharCode(97 + i).toUpperCase()}…`)
-        const el = answerEls[i]
-        if (el.readyState < 2) {
-          await new Promise<void>((resolve) => {
-            el.addEventListener('canplay', () => resolve(), { once: true })
-          })
-        }
-        if (cancelled) return
-        await playElement(el)
+      await playOnce('Première écoute…')
+      if (cancelledRef.current) return
+
+      await wait(PAUSE_MS)
+      if (cancelledRef.current) return
+
+      await playOnce('Deuxième écoute…')
+    } finally {
+      if (!cancelledRef.current) {
+        setStatus('')
+        setPlaying(false)
       }
-
-      if (!cancelled) setStatus('')
     }
+  }, [promptUrl])
 
-    void run()
+  useEffect(() => {
+    cancelledRef.current = false
+    void playTwice()
 
     return () => {
-      cancelled = true
-      stopAll()
+      cancelledRef.current = true
+      const el = audioRef.current
+      if (el) {
+        el.pause()
+        el.currentTime = 0
+      }
     }
-  }, [questionKey, promptUrl, answerUrls])
+  }, [questionKey, promptUrl, playTwice])
 
-  if (!promptUrl && answerUrls.length === 0) return null
+  if (!promptUrl) return null
 
   return (
     <div className={className}>
-      {promptUrl ? (
-        <audio ref={promptRef} controls src={promptUrl} preload="auto" />
-      ) : (
-        <audio ref={promptRef} preload="auto" hidden />
-      )}
-      {answerUrls.map((url, index) => (
-        <audio
-          key={`${questionKey}-ans-${index}-${url}`}
-          ref={(el) => {
-            answerRefs.current[index] = el
-          }}
-          src={url}
-          preload="auto"
-          hidden
-        />
-      ))}
+      <audio ref={audioRef} src={promptUrl} preload="auto" hidden />
+      <button
+        type="button"
+        className="learner-quiz-replay"
+        disabled={playing}
+        onClick={() => void playTwice()}
+      >
+        Réécouter
+      </button>
       {status ? <p className="learner-quiz-audio-status">{status}</p> : null}
     </div>
   )

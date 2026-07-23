@@ -331,41 +331,28 @@
 }
 
 .learner-chapter-actions {
-  display: flex;
-  flex-direction: row;
-  flex-wrap: wrap;
-  justify-content: flex-start;
-  align-items: stretch;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.4rem;
   width: 100%;
 }
 
 .learner-chapter-action {
   display: flex;
-  flex-direction: row;
+  flex-direction: column;
   align-items: center;
-  justify-content: flex-start;
-  gap: 0.45rem;
-  flex: 1 1 0;
+  justify-content: center;
+  gap: 0.25rem;
   min-width: 0;
-  padding: 0.5rem 0.65rem;
+  padding: 0.45rem 0.3rem;
   border-radius: 10px;
   border: 1px solid rgba(0, 16, 48, 0.08);
   background: #fff;
   color: #001030;
   text-decoration: none;
-  text-align: left;
+  text-align: center;
   font-size: 0.7rem;
   font-weight: 700;
-}
-
-.learner-chapter-action--test {
-  flex: 0 0 auto;
-  width: auto;
-  min-width: 7.25rem;
-  max-width: none;
-  background: #eef1f5;
-  border-color: rgba(0, 16, 48, 0.14);
 }
 
 .learner-chapter-action.is-disabled {
@@ -375,6 +362,17 @@
 
 .learner-chapter-card.is-locked {
   opacity: 0.78;
+}
+
+@media (min-width: 768px) {
+  .learner-chapter-actions {
+    gap: 0.55rem;
+  }
+
+  .learner-chapter-action {
+    padding: 0.55rem 0.4rem;
+    font-size: 0.75rem;
+  }
 }
 
 .learner-notes-block {
@@ -480,6 +478,27 @@
   font-size: 0.85rem;
   font-weight: 600;
   color: #64748b;
+}
+
+.learner-quiz-replay {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0 0 0.35rem;
+  padding: 0.55rem 0.9rem;
+  border-radius: 10px;
+  border: 1.5px solid rgba(255, 107, 74, 0.35);
+  background: #fff4f0;
+  color: #0f172a;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.learner-quiz-replay:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .learner-quiz-answer {
