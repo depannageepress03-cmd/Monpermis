@@ -207,11 +207,13 @@ export function LearnerChapterListPage({
                             <span>Questions</span>
                           </span>
                         )}
+                      </div>
+                      <div className="learner-chapter-test-row">
                         {testSubjectUnlocked ? (
                           <Link
                             to={testSubjectPath!(chapter.id)}
                             state={{ chapterName: numberedName }}
-                            className="learner-chapter-action"
+                            className="learner-chapter-action learner-chapter-action--test"
                           >
                             <span className="learner-chapter-action-icon is-test">
                               <ClipboardList size={15} />
@@ -219,7 +221,7 @@ export function LearnerChapterListPage({
                             <span>Sujet test</span>
                           </Link>
                         ) : (
-                          <span className="learner-chapter-action is-disabled">
+                          <span className="learner-chapter-action learner-chapter-action--test is-disabled">
                             <span className="learner-chapter-action-icon">
                               <Lock size={13} />
                             </span>

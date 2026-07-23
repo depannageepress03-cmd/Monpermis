@@ -241,10 +241,13 @@ export function RevisionChapitresScreen() {
                         </View>
                         <Text style={styles.actionLabel}>Questions</Text>
                       </Pressable>
+                    </View>
 
+                    <View style={styles.testRow}>
                       <Pressable
                         style={({ pressed }) => [
                           styles.actionBtn,
+                          styles.testBtn,
                           !testSubjectUnlocked && styles.actionDisabled,
                           pressed && testSubjectUnlocked && styles.pressed,
                         ]}
@@ -347,6 +350,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 8,
   },
+  testRow: {
+    marginTop: 8,
+    flexDirection: 'row',
+    justifyContent: 'flex-start',
+  },
   actionBtn: {
     flex: 1,
     alignItems: 'center',
@@ -357,6 +365,14 @@ const styles = StyleSheet.create({
     backgroundColor: dark.surfaceRaised,
     borderWidth: 1,
     borderColor: dark.border,
+  },
+  testBtn: {
+    flex: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 12,
+    minWidth: 120,
   },
   actionIcon: {
     width: 32,
