@@ -1,5 +1,6 @@
 .learner-container {
-  max-width: 720px;
+  max-width: 100%;
+  width: 100%;
 }
 
 /* Navbar sur fond clair (auth-page blanc) */
@@ -879,12 +880,13 @@
 /* ─── Responsive tablette / desktop ─────────────────────────── */
 @media (min-width: 768px) {
   .learner-container {
-    max-width: 900px;
+    max-width: none;
+    width: 100%;
   }
 
   .learner-courses-lead,
   .learner-courses-detail {
-    max-width: 40rem;
+    max-width: 48rem;
   }
 
   .subscription-plan-list {
@@ -901,7 +903,8 @@
 
 @media (min-width: 1024px) {
   .learner-container {
-    max-width: 1100px;
+    max-width: none;
+    width: 100%;
   }
 
   .subscription-plan-list {
@@ -920,16 +923,21 @@
 
   .learner-courses-lead {
     font-size: 1.35rem;
-    max-width: 48rem;
+    max-width: 56rem;
   }
 
   .learner-courses-detail {
-    max-width: 48rem;
+    max-width: 56rem;
   }
 }
 
 @media (min-width: 1280px) {
   .learner-container {
-    max-width: 1200px;
+    max-width: none;
+    width: 100%;
+  }
+
+  .subscription-plan-list {
+    grid-template-columns: repeat(4, 1fr);
   }
 }
