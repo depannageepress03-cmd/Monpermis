@@ -1,12 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
 import { resolveMediaUrl } from '../utils/mediaUrl'
-import { playCountdown123, playGongSound } from '../utils/quizSounds'
+import {
+  playCountdown5to0,
+  playGongSound,
+  type CountdownValue,
+} from '../utils/quizSounds'
 
 type Props = {
   questionKey: string
   promptAudioUrl?: string | null
   className?: string
-  /** Appelé après double lecture + décompte 1→3 + sonnerie. */
+  /** Après double lecture + décompte 5→0 + sonnerie. */
   onSequenceComplete?: () => void
 }
 
@@ -24,7 +28,7 @@ function wait(ms: number) {
 }
 
 /**
- * Double lecture de l’audio unique, puis décompte 1→3 et sonnerie.
+ * Double lecture, puis décompte 5 → 0 (5 s) et sonnerie.
  */
 export function QuestionAudioSequence({
   questionKey,
@@ -37,7 +41,7 @@ export function QuestionAudioSequence({
   const completeRef = useRef(onSequenceComplete)
   completeRef.current = onSequenceComplete
   const [status, setStatus] = useState('')
-  const [countdown, setCountdown] = useState<1 | 2 | 3 | null>(null)
+  const [countdown, setCountdown] = useState<CountdownValue | null>(null)
 
   const promptUrl = cleanUrl(promptAudioUrl)
 
@@ -84,16 +88,16 @@ export function QuestionAudioSequence({
       }
 
       setStatus('Décompte…')
-      await playCountdown123((n) => {
+      await playCountdown5to0((n) => {
         if (!cancelledRef.current) setCountdown(n)
       })
       if (cancelledRef.current) return
 
-      setCountdown(null)
       setStatus('Temps !')
       await playGongSound()
       if (cancelledRef.current) return
 
+      setCountdown(null)
       setStatus('')
       completeRef.current?.()
     }
@@ -115,7 +119,7 @@ export function QuestionAudioSequence({
   return (
     <div className={className}>
       {promptUrl ? <audio ref={audioRef} src={promptUrl} preload="auto" hidden /> : null}
-      {countdown ? (
+      {countdown !== null ? (
         <div className="learner-quiz-countdown" aria-live="polite">
           {countdown}
         </div>

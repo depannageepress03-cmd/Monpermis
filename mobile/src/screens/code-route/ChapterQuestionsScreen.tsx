@@ -25,7 +25,7 @@ import { QuestionAudioSequence } from '../../components/QuestionAudioSequence'
 import { useRequireAuth } from '../../hooks/useRequireAuth'
 import type { RootStackParamList } from '../../navigation/types'
 import { dark, fonts } from '../../theme'
-import { playFailSound, playSuccessSound } from '../../utils/quizSounds'
+import { playFailSound, playRemoteAudio, playSuccessSound } from '../../utils/quizSounds'
 import { resolveMediaUrl } from '../../utils/mediaUrl'
 
 function wait(ms: number) {
@@ -58,7 +58,6 @@ export function ChapterQuestionsScreen() {
   const [finished, setFinished] = useState(false)
   const [savingTest, setSavingTest] = useState(false)
   const [testSaved, setTestSaved] = useState(false)
-  const [awaitingChoice, setAwaitingChoice] = useState(false)
 
   const selectedIdsRef = useRef(selectedIds)
   selectedIdsRef.current = selectedIds
@@ -95,7 +94,6 @@ export function ChapterQuestionsScreen() {
       setScore({ correct: 0, total: 0 })
       setFinished(false)
       setTestSaved(false)
-      setAwaitingChoice(false)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Chargement impossible')
       setQuestions([])
@@ -134,10 +132,32 @@ export function ChapterQuestionsScreen() {
       setIndex((prev) => prev + 1)
       setSelectedIds(new Set())
       setResult(null)
-      setAwaitingChoice(false)
     },
     [chapterId, isTest],
   )
+
+  const skipMissed = useCallback(async () => {
+    if (checkingRef.current || resultRef.current) return
+    setChecking(true)
+    try {
+      const currentQuestion = questionsRef.current[indexRef.current]
+      const promptUrl = currentQuestion?.prompt?.audioUrl
+        ? resolveMediaUrl(currentQuestion.prompt.audioUrl)
+        : ''
+      setResult({ isCorrect: false, correctAnswerIds: [] })
+      const nextScore = {
+        correct: scoreRef.current.correct,
+        total: scoreRef.current.total + 1,
+      }
+      setScore(nextScore)
+      if (promptUrl) void playRemoteAudio(promptUrl)
+      await playFailSound()
+      await wait(500)
+      await finishOrAdvance(nextScore)
+    } finally {
+      setChecking(false)
+    }
+  }, [finishOrAdvance])
 
   const resolveSelection = useCallback(
     async (ids: string[]) => {
@@ -145,7 +165,6 @@ export function ChapterQuestionsScreen() {
       if (!currentQuestion || ids.length === 0 || checkingRef.current || resultRef.current) return
 
       setChecking(true)
-      setAwaitingChoice(false)
       try {
         const check = await checkQuestionAnswers(chapterId, currentQuestion.id, ids)
         setResult(check)
@@ -173,22 +192,17 @@ export function ChapterQuestionsScreen() {
       void resolveSelection(ids)
       return
     }
-    setAwaitingChoice(true)
-  }, [resolveSelection])
+    void skipMissed()
+  }, [resolveSelection, skipMissed])
 
   const toggleAnswer = (answerId: string) => {
     if (result || checking) return
-    setAwaitingChoice(false)
     setSelectedIds((prev) => {
       const next = new Set(prev)
       if (next.has(answerId)) next.delete(answerId)
       else next.add(answerId)
       return next
     })
-  }
-
-  const onValidate = async () => {
-    await resolveSelection([...selectedIdsRef.current])
   }
 
   if (loading || !user) return <ScreenLoader />
@@ -320,7 +334,7 @@ export function ChapterQuestionsScreen() {
                       showWrong && styles.answerWrong,
                     ]}
                     onPress={() => toggleAnswer(answer.id)}
-                    disabled={Boolean(result)}
+                    disabled={Boolean(result) || checking}
                   >
                     <View style={styles.answerLeft}>
                       {selected ? (
@@ -339,10 +353,6 @@ export function ChapterQuestionsScreen() {
                   </Pressable>
                 )
               })}
-
-              {awaitingChoice && !result ? (
-                <Text style={styles.awaitingText}>Choisissez une réponse, puis validez.</Text>
-              ) : null}
 
               {result ? (
                 <View
@@ -363,20 +373,9 @@ export function ChapterQuestionsScreen() {
               ) : null}
 
               {!result ? (
-                <Pressable
-                  style={[
-                    styles.primaryBtn,
-                    (selectedIds.size === 0 || checking) && styles.primaryBtnDisabled,
-                  ]}
-                  disabled={selectedIds.size === 0 || checking}
-                  onPress={() => void onValidate()}
-                >
-                  {checking ? (
-                    <ActivityIndicator color={'#0B0F1A'} />
-                  ) : (
-                    <Text style={styles.primaryBtnText}>Valider</Text>
-                  )}
-                </Pressable>
+                <Text style={styles.awaitingText}>
+                  Cochez pendant l’écoute / le décompte — passage auto à 0.
+                </Text>
               ) : (
                 <Text style={styles.awaitingText}>Passage automatique…</Text>
               )}
