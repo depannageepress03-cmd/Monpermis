@@ -1850,48 +1850,34 @@
   flex-shrink: 0;
 }
 
+.home-app-path-shade {
+  display: none;
+}
+
+.home-desk-stage {
+  display: none;
+}
+
+.home-mobile-stack {
+  display: block;
+}
+
+.home-desk-footer {
+  margin-top: 0.5rem;
+}
+
 .home-profile-card--light {
   background: #fff;
   color: var(--brand-navy);
 }
 
-/* ─── Responsive tablette / desktop ─────────────────────────── */
+/* ─── Tablette ─────────────────────────────────────────────── */
 @media (min-width: 768px) {
-  .auth-container {
-    max-width: none;
-    width: 100%;
-    margin: 0;
-    padding: 1.75rem 2rem 2.5rem;
-  }
-
-  .auth-container-wide {
-    max-width: none;
-  }
-
   .home-app-inner {
-    max-width: none;
+    max-width: none !important;
     width: 100%;
-    margin: 0;
+    margin: 0 !important;
     padding: 1.5rem 2rem calc(2.5rem + var(--safe-bottom));
-  }
-
-  .home-container {
-    max-width: none;
-    width: 100%;
-    margin: 0;
-  }
-
-  .home-app-hero {
-    margin-bottom: 1.5rem;
-  }
-
-  .home-app-name {
-    font-size: clamp(2rem, 3.5vw, 2.5rem);
-  }
-
-  .home-app-subtitle {
-    max-width: 42rem;
-    font-size: 1.05rem;
   }
 
   .home-app-paths {
@@ -1902,7 +1888,6 @@
 
   .home-app-path {
     min-height: 5.5rem;
-    padding: 0.85rem 1.15rem 0.85rem 0.85rem;
   }
 
   .home-app-path-image {
@@ -1916,59 +1901,262 @@
     gap: 0.85rem;
   }
 
+  .home-app-name {
+    font-size: clamp(2rem, 3.5vw, 2.5rem);
+  }
+
+  .home-app-subtitle {
+    max-width: 36rem;
+    font-size: 1.05rem;
+  }
+}
+
+/* ─── Desktop PC : nouvelle disposition pleine largeur ─────── */
+@media (min-width: 1024px) {
+  .home-app {
+    width: 100%;
+  }
+
+  .home-app-inner {
+    max-width: none !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 0 calc(2.5rem + var(--safe-bottom));
+  }
+
+  .home-app-top {
+    padding: 1rem 2.5rem;
+    margin-bottom: 0;
+    border-bottom: 1px solid var(--color-border);
+    background: #fff;
+  }
+
+  .home-mobile-stack {
+    display: none !important;
+  }
+
+  .home-desk-stage {
+    display: grid;
+    grid-template-columns: minmax(320px, 0.95fr) minmax(420px, 1.25fr);
+    gap: 2rem 2.5rem;
+    align-items: stretch;
+    padding: 2rem 2.5rem 0.5rem;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .home-desk-intro {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 1.25rem;
+    min-width: 0;
+  }
+
+  .home-desk-intro .home-app-hero {
+    margin-bottom: 0;
+  }
+
+  .home-desk-intro .home-app-name {
+    font-size: clamp(2.5rem, 4vw, 3.5rem);
+  }
+
+  .home-desk-intro .home-app-subtitle {
+    max-width: none;
+    font-size: 1.1rem;
+  }
+
+  .home-desk-intro .home-app-sub-strip {
+    margin-bottom: 0;
+    max-width: 28rem;
+  }
+
+  .home-desk-visual {
+    min-width: 0;
+  }
+
+  .home-desk-visual .home-app-section-label {
+    margin-bottom: 0.75rem;
+  }
+
+  .home-desk-visual .home-app-marquee,
+  .home-desk-visual .home-image-marquee {
+    height: min(22rem, 38vh);
+    margin: 0;
+    border-radius: 22px;
+  }
+
+  .home-app-news {
+    padding: 1.25rem 2.5rem 0;
+  }
+
+  .home-app-news-list {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+  }
+
+  .home-desk-paths {
+    padding: 1.5rem 2.5rem 0;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .home-desk-paths .home-app-paths {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.25rem;
+    width: 100%;
+  }
+
+  /* Grandes cartes photo plein panneau */
+  .home-app-path--panel {
+    position: relative;
+    display: block;
+    min-height: 16rem;
+    height: 18rem;
+    padding: 0;
+    overflow: hidden;
+    align-items: stretch;
+    gap: 0;
+  }
+
+  .home-app-path--panel .home-app-path-image {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border-radius: 0;
+    box-shadow: none;
+    border: none;
+    object-fit: cover;
+  }
+
+  .home-app-path--panel .home-app-path-shade {
+    display: block;
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    background: linear-gradient(
+      to top,
+      rgba(0, 16, 48, 0.88) 0%,
+      rgba(0, 16, 48, 0.25) 50%,
+      transparent 100%
+    );
+    pointer-events: none;
+  }
+
+  .home-app-path--panel.home-app-path--code .home-app-path-shade {
+    background: linear-gradient(to top, rgba(0, 100, 50, 0.9), rgba(0, 176, 80, 0.2), transparent);
+  }
+
+  .home-app-path--panel.home-app-path--drive .home-app-path-shade {
+    background: linear-gradient(to top, rgba(140, 50, 30, 0.9), rgba(232, 93, 59, 0.22), transparent);
+  }
+
+  .home-app-path--panel .home-app-path-text {
+    position: absolute;
+    left: 1.25rem;
+    right: 3rem;
+    bottom: 1.25rem;
+    z-index: 2;
+    color: #fff;
+  }
+
+  .home-app-path--panel .home-app-path-text strong {
+    color: #fff;
+    font-size: 1.35rem;
+  }
+
+  .home-app-path--panel .home-app-path-text small {
+    color: rgba(255, 255, 255, 0.92);
+    font-size: 0.95rem;
+    margin-top: 0.35rem;
+  }
+
+  .home-app-path--panel .home-app-path-chevron {
+    position: absolute;
+    right: 1.1rem;
+    bottom: 1.35rem;
+    z-index: 2;
+    color: #fff;
+  }
+
+  .home-desk-footer {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    align-items: end;
+    padding: 2rem 2.5rem 0;
+  }
+}
+
+@media (min-width: 1280px) {
+  .home-app-top,
+  .home-desk-stage,
+  .home-app-news,
+  .home-desk-paths,
+  .home-desk-footer {
+    padding-left: 3rem;
+    padding-right: 3rem;
+  }
+
+  .home-desk-stage {
+    grid-template-columns: minmax(360px, 1fr) minmax(520px, 1.35fr);
+    gap: 2.5rem 3rem;
+  }
+
+  .home-app-path--panel {
+    height: 20rem;
+  }
+}
+
+@media (min-width: 1536px) {
+  .home-app-top,
+  .home-desk-stage,
+  .home-app-news,
+  .home-desk-paths,
+  .home-desk-footer {
+    padding-left: 4rem;
+    padding-right: 4rem;
+  }
+
+  .home-desk-visual .home-app-marquee,
+  .home-desk-visual .home-image-marquee {
+    height: min(26rem, 42vh);
+  }
+
+  .home-app-path--panel {
+    height: 22rem;
+  }
+}
+
+/* Anciennes règles auth-container desktop (pages apprenant) */
+@media (min-width: 768px) {
+  .auth-container {
+    max-width: none !important;
+    width: 100%;
+    margin: 0 !important;
+    padding: 1.75rem 2rem 2.5rem;
+  }
+
+  .auth-container-wide {
+    max-width: none !important;
+  }
+
   .category-grid {
     grid-template-columns: repeat(3, 1fr);
     gap: 1rem;
-    margin-top: 2.5rem;
-  }
-
-  .code-route-subtitle,
-  .code-route-detail {
-    max-width: 48rem;
-  }
-
-  .code-route-banner {
-    min-height: 20rem;
-    height: clamp(20rem, 28vw, 28rem);
+    margin-top: 2rem;
   }
 }
 
 @media (min-width: 1024px) {
-  .auth-container {
-    max-width: none;
+  .auth-container,
+  .auth-container-wide {
+    max-width: none !important;
     width: 100%;
-    margin: 0;
-    padding: 2rem 2.75rem 3rem;
-  }
-
-  .home-app-inner {
-    max-width: none;
-    width: 100%;
-    margin: 0;
-    padding: 1.75rem 2.75rem calc(3rem + var(--safe-bottom));
-  }
-
-  .home-container {
-    max-width: none;
-    width: 100%;
-    margin: 0;
-  }
-
-  .home-app-top {
-    margin-bottom: 2rem;
-  }
-
-  .home-app-news-list {
-    grid-template-columns: repeat(3, 1fr);
-  }
-
-  .home-app-path {
-    min-height: 6.25rem;
-    padding: 1.35rem 1.4rem;
-  }
-
-  .home-app-path-text strong {
-    font-size: 1.125rem;
+    margin: 0 !important;
+    padding: 2rem 2.5rem 3rem;
   }
 
   .category-grid {
@@ -1976,54 +2164,16 @@
     gap: 1.25rem;
   }
 
-  .auth-container-wide {
-    max-width: none;
-    width: 100%;
-    margin: 0;
-  }
-
   .code-route-banner {
     min-height: 22rem;
-    height: clamp(22rem, 30vw, 32rem);
+    height: clamp(22rem, 28vw, 32rem);
   }
 }
 
 @media (min-width: 1280px) {
   .auth-container,
-  .auth-container-wide,
-  .home-app-inner,
-  .home-container {
-    max-width: none;
-    width: 100%;
-    margin: 0;
+  .auth-container-wide {
     padding-left: 3rem;
     padding-right: 3rem;
-  }
-
-  .home-app-paths {
-    gap: 1.25rem;
-  }
-
-  .home-app-news-list {
-    grid-template-columns: repeat(4, 1fr);
-  }
-}
-
-@media (min-width: 1536px) {
-  .auth-container,
-  .auth-container-wide,
-  .home-app-inner,
-  .home-container {
-    padding-left: 3.5rem;
-    padding-right: 3.5rem;
-  }
-
-  .home-app-path-image {
-    width: 6rem;
-    height: 6rem;
-  }
-
-  .category-card--photo {
-    min-height: 16rem;
   }
 }

@@ -46,6 +46,53 @@ export function HomePage() {
   const codeLocked = subscription?.accessCode === false
   const conduiteLocked = subscription?.accessConduite === false
 
+  const subStrip = (
+    <section className="home-app-sub-strip">
+      {subscription?.hasActiveSubscription ? (
+        <>
+          <div>
+            <strong>{subscription.subscription?.planName || 'Abonnement actif'}</strong>
+            <span>Parcours accessibles</span>
+          </div>
+          <button type="button" onClick={() => navigate('/abonnement')}>
+            Gérer
+          </button>
+        </>
+      ) : (
+        <>
+          <div>
+            <strong>
+              {subscription?.pendingSubscription ? 'Paiement en validation' : 'Accès verrouillé'}
+            </strong>
+            <span>
+              {subscription?.pendingSubscription
+                ? 'En attente de validation'
+                : 'Souscris pour débloquer'}
+            </span>
+          </div>
+          <button type="button" onClick={() => navigate('/abonnement')}>
+            Voir les offres
+          </button>
+        </>
+      )}
+    </section>
+  )
+
+  const marquee = (
+    <div className="home-image-marquee home-app-marquee" aria-hidden="true">
+      <div className="home-image-marquee-track">
+        {[1, 2, 3, 4, 5, 1].map((n, i) => (
+          <img
+            key={`${n}-${i}`}
+            src={`/home/i${n}.jpg`}
+            alt=""
+            className="home-image-marquee-item"
+          />
+        ))}
+      </div>
+    </div>
+  )
+
   return (
     <div className="home-app">
       <div className="home-app-inner">
@@ -79,53 +126,35 @@ export function HomePage() {
           </div>
         </header>
 
-        <section className="home-app-hero">
-          <p className="home-app-eyebrow">{greetingWord()}</p>
-          <h2 className="home-app-name">{user.firstName}</h2>
-          <p className="home-app-subtitle">Ton permis commence ici. Choisis ton parcours ci-dessous.</p>
-        </section>
+        {/* Mobile stack */}
+        <div className="home-mobile-stack">
+          <section className="home-app-hero">
+            <p className="home-app-eyebrow">{greetingWord()}</p>
+            <h2 className="home-app-name">{user.firstName}</h2>
+            <p className="home-app-subtitle">
+              Ton permis commence ici. Choisis ton parcours ci-dessous.
+            </p>
+          </section>
+          {subStrip}
+          <p className="home-app-section-label">Sur la route avec Monpermis</p>
+          {marquee}
+        </div>
 
-        <section className="home-app-sub-strip">
-          {subscription?.hasActiveSubscription ? (
-            <>
-              <div>
-                <strong>{subscription.subscription?.planName || 'Abonnement actif'}</strong>
-                <span>Parcours accessibles</span>
-              </div>
-              <button type="button" onClick={() => navigate('/abonnement')}>
-                Gérer
-              </button>
-            </>
-          ) : (
-            <>
-              <div>
-                <strong>
-                  {subscription?.pendingSubscription ? 'Paiement en validation' : 'Accès verrouillé'}
-                </strong>
-                <span>
-                  {subscription?.pendingSubscription
-                    ? 'En attente de validation'
-                    : 'Souscris pour débloquer'}
-                </span>
-              </div>
-              <button type="button" onClick={() => navigate('/abonnement')}>
-                Voir les offres
-              </button>
-            </>
-          )}
-        </section>
-
-        <p className="home-app-section-label">Sur la route avec Monpermis</p>
-        <div className="home-image-marquee home-app-marquee" aria-hidden="true">
-          <div className="home-image-marquee-track">
-            {[1, 2, 3, 4, 5, 1].map((n, i) => (
-              <img
-                key={`${n}-${i}`}
-                src={`/home/i${n}.jpg`}
-                alt=""
-                className="home-image-marquee-item"
-              />
-            ))}
+        {/* Desktop: intro + visuel côte à côte */}
+        <div className="home-desk-stage">
+          <div className="home-desk-intro">
+            <section className="home-app-hero">
+              <p className="home-app-eyebrow">{greetingWord()}</p>
+              <h2 className="home-app-name">{user.firstName}</h2>
+              <p className="home-app-subtitle">
+                Ton permis commence ici. Choisis ton parcours ci-dessous.
+              </p>
+            </section>
+            {subStrip}
+          </div>
+          <div className="home-desk-visual">
+            <p className="home-app-section-label">Sur la route avec Monpermis</p>
+            {marquee}
           </div>
         </div>
 
@@ -133,7 +162,7 @@ export function HomePage() {
           <section className="home-app-news">
             <p className="home-app-section-label">Actualités</p>
             <div className="home-app-news-list">
-              {announcements.slice(0, 3).map((item) => (
+              {announcements.slice(0, 4).map((item) => (
                 <article key={item.id} className={`home-app-news-card home-news-card--${item.kind}`}>
                   <strong>{item.title}</strong>
                   {item.body ? <p>{item.body}</p> : null}
@@ -143,65 +172,69 @@ export function HomePage() {
           </section>
         ) : null}
 
-        <p className="home-app-section-label">Choisis ton parcours</p>
-        <div className="home-app-paths">
-          <button
-            type="button"
-            className={`home-app-path home-app-path--photo home-app-path--code${codeLocked ? ' is-locked' : ''}`}
-            disabled={codeLocked}
-            onClick={() => navigate('/code-de-la-route')}
-          >
-            <img
-              src="/home/paths/code.jpg"
-              alt=""
-              className="home-app-path-image"
-              draggable={false}
-            />
-            <span className="home-app-path-text">
-              <strong>Code de la route</strong>
-              <small>
-                {codeLocked ? (
-                  <>
-                    <Lock size={12} /> Abonnement requis
-                  </>
-                ) : (
-                  'Cours, quiz & examens'
-                )}
-              </small>
-            </span>
-            <ChevronRight size={20} className="home-app-path-chevron" />
-          </button>
+        <section className="home-desk-paths">
+          <p className="home-app-section-label">Choisis ton parcours</p>
+          <div className="home-app-paths">
+            <button
+              type="button"
+              className={`home-app-path home-app-path--photo home-app-path--panel home-app-path--code${codeLocked ? ' is-locked' : ''}`}
+              onClick={() => navigate(codeLocked ? '/abonnement' : '/code-de-la-route')}
+            >
+              <img
+                src="/home/paths/code.jpg"
+                alt=""
+                className="home-app-path-image"
+                draggable={false}
+              />
+              <span className="home-app-path-shade" aria-hidden="true" />
+              <span className="home-app-path-text">
+                <strong>Code de la route</strong>
+                <small>
+                  {codeLocked ? (
+                    <>
+                      <Lock size={12} /> Abonnement requis
+                    </>
+                  ) : (
+                    'Cours, quiz & examens'
+                  )}
+                </small>
+              </span>
+              <ChevronRight size={22} className="home-app-path-chevron" />
+            </button>
 
-          <button
-            type="button"
-            className={`home-app-path home-app-path--photo home-app-path--drive${conduiteLocked ? ' is-locked' : ''}`}
-            disabled={conduiteLocked}
-            onClick={() => navigate('/conduite')}
-          >
-            <img
-              src="/home/paths/conduite.jpg"
-              alt=""
-              className="home-app-path-image"
-              draggable={false}
-            />
-            <span className="home-app-path-text">
-              <strong>Conduite</strong>
-              <small>
-                {conduiteLocked ? (
-                  <>
-                    <Lock size={12} /> Abonnement requis
-                  </>
-                ) : (
-                  'Leçons & réservations'
-                )}
-              </small>
-            </span>
-            <ChevronRight size={20} className="home-app-path-chevron" />
-          </button>
+            <button
+              type="button"
+              className={`home-app-path home-app-path--photo home-app-path--panel home-app-path--drive${conduiteLocked ? ' is-locked' : ''}`}
+              onClick={() => navigate(conduiteLocked ? '/abonnement' : '/conduite')}
+            >
+              <img
+                src="/home/paths/conduite.jpg"
+                alt=""
+                className="home-app-path-image"
+                draggable={false}
+              />
+              <span className="home-app-path-shade" aria-hidden="true" />
+              <span className="home-app-path-text">
+                <strong>Conduite</strong>
+                <small>
+                  {conduiteLocked ? (
+                    <>
+                      <Lock size={12} /> Abonnement requis
+                    </>
+                  ) : (
+                    'Leçons & réservations'
+                  )}
+                </small>
+              </span>
+              <ChevronRight size={22} className="home-app-path-chevron" />
+            </button>
+          </div>
+        </section>
+
+        <div className="home-desk-footer">
+          <HomeBottomAnimation />
+          <LegalFooter />
         </div>
-
-        <HomeBottomAnimation />
-        <LegalFooter />
       </div>
 
       {profileOpen ? (
