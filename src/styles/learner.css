@@ -331,40 +331,41 @@
 }
 
 .learner-chapter-actions {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.4rem;
-}
-
-.learner-chapter-test-row {
   display: flex;
-  justify-content: flex-start;
-  margin-top: 0.45rem;
-}
-
-.learner-chapter-action--test {
-  width: auto;
-  min-width: 7.5rem;
-  max-width: 11rem;
   flex-direction: row;
+  flex-wrap: wrap;
   justify-content: flex-start;
-  gap: 0.45rem;
-  padding: 0.45rem 0.7rem;
+  align-items: stretch;
+  gap: 0.4rem;
+  width: 100%;
 }
 
 .learner-chapter-action {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  gap: 0.25rem;
-  padding: 0.4rem 0.25rem;
+  justify-content: flex-start;
+  gap: 0.45rem;
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 0.5rem 0.65rem;
   border-radius: 10px;
   border: 1px solid rgba(0, 16, 48, 0.08);
   background: #fff;
   color: #001030;
   text-decoration: none;
+  text-align: left;
   font-size: 0.7rem;
   font-weight: 700;
+}
+
+.learner-chapter-action--test {
+  flex: 0 0 auto;
+  width: auto;
+  min-width: 7.25rem;
+  max-width: none;
+  background: #eef1f5;
+  border-color: rgba(0, 16, 48, 0.14);
 }
 
 .learner-chapter-action.is-disabled {
