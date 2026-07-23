@@ -162,10 +162,9 @@ export function LearnerChapterQuizPage({
         total: scoreRef.current.total + 1,
       }
       setScore(nextScore)
-      // Rejoue la question pendant qu’on prépare le passage suivant
+      // Rejoue la question ratée pendant qu’on passe à la suivante (plus de retour possible)
       if (promptUrl) void playRemoteAudio(promptUrl)
-      await playFailSound()
-      await wait(500)
+      void playFailSound()
       await finishOrAdvance(nextScore)
     } finally {
       setChecking(false)
@@ -311,7 +310,8 @@ export function LearnerChapterQuizPage({
               <div className="learner-quiz-actions">
                 {!result ? (
                   <p className="learner-quiz-audio-status">
-                    Cochez pendant l’écoute / le décompte — passage auto à 0.
+                    Cochez pendant l’écoute ou le décompte 5→0. Sans choix à 0 : question ratée,
+                    audio rejoué, passage automatique — retour impossible avant « Recommencer ».
                   </p>
                 ) : (
                   <p className="learner-quiz-audio-status">Passage automatique…</p>

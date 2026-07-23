@@ -353,8 +353,7 @@ export function ECodePermisTakePage() {
       setLiveCorrect(data.liveCorrect)
       setAnsweredCount(data.answeredCount)
       if (promptUrl) void playRemoteAudio(promptUrl)
-      await playFailSound()
-      await wait(500)
+      void playFailSound()
       await finishOrAdvance()
     } catch (err) {
       setError(err instanceof ContentError ? err.message : 'Vérification impossible')
