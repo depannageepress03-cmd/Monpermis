@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native'
 import type { RouteProp } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
@@ -28,7 +28,14 @@ import { ScreenLoader } from '../../components/ScreenLoader'
 import { useRequireAuth } from '../../hooks/useRequireAuth'
 import type { RootStackParamList } from '../../navigation/types'
 import { dark, fonts } from '../../theme'
+import { playFailSound, playSuccessSound } from '../../utils/quizSounds'
 import { resolveMediaUrl } from '../../utils/mediaUrl'
+
+function wait(ms: number) {
+  return new Promise<void>((resolve) => {
+    setTimeout(resolve, ms)
+  })
+}
 
 type ListNav = NativeStackNavigationProp<RootStackParamList, 'ECodePermis'>
 type TakeNav = NativeStackNavigationProp<RootStackParamList, 'ECodePermisTake'>
@@ -241,6 +248,19 @@ export function ECodePermisTakeScreen() {
     passed: boolean
     passScore: number
   } | null>(null)
+  const [awaitingChoice, setAwaitingChoice] = useState(false)
+
+  const selectedIdsRef = useRef(selectedIds)
+  selectedIdsRef.current = selectedIds
+  const resultRef = useRef(result)
+  resultRef.current = result
+  const checkingRef = useRef(checking)
+  checkingRef.current = checking
+  const indexRef = useRef(index)
+  indexRef.current = index
+  const questionsRef = useRef<PracticeExamAttempt['questions']>([])
+  const attemptRef = useRef(attempt)
+  attemptRef.current = attempt
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -255,6 +275,7 @@ export function ECodePermisTakeScreen() {
       setLiveCorrect(started.liveCorrect || 0)
       setAnsweredCount(answered)
       setFinished(started.status === 'completed')
+      setAwaitingChoice(false)
       if (started.status === 'completed') {
         setFinalScore({
           correct: started.correct,
@@ -276,6 +297,7 @@ export function ECodePermisTakeScreen() {
   }, [user, load])
 
   const questions = attempt?.questions || []
+  questionsRef.current = questions
   const question = questions[index]
   const progressLabel = useMemo(() => {
     if (!questions.length) return ''
@@ -284,6 +306,7 @@ export function ECodePermisTakeScreen() {
 
   const toggleAnswer = (answerId: string) => {
     if (result || checking) return
+    setAwaitingChoice(false)
     setSelectedIds((current) =>
       current.includes(answerId)
         ? current.filter((id) => id !== answerId)
@@ -291,26 +314,15 @@ export function ECodePermisTakeScreen() {
     )
   }
 
-  const handleCheck = async () => {
-    if (!attempt || !question || selectedIds.length === 0 || checking) return
-    setChecking(true)
-    try {
-      const data = await checkECodePermisAnswer(attempt.id, question.id, selectedIds)
-      setResult({ isCorrect: data.isCorrect, correctAnswerIds: data.correctAnswerIds })
-      setLiveCorrect(data.liveCorrect)
-      setAnsweredCount(data.answeredCount)
-    } catch (err) {
-      setError(err instanceof ContentError ? err.message : 'Vérification impossible')
-    } finally {
-      setChecking(false)
-    }
-  }
+  const finishOrAdvance = useCallback(async () => {
+    const currentAttempt = attemptRef.current
+    const currentIndex = indexRef.current
+    const list = questionsRef.current
+    if (!currentAttempt) return
 
-  const goNext = async () => {
-    if (!attempt) return
-    if (index + 1 >= questions.length) {
+    if (currentIndex + 1 >= list.length) {
       try {
-        const { attempt: score } = await completeECodePermisExam(attempt.id)
+        const { attempt: score } = await completeECodePermisExam(currentAttempt.id)
         setFinalScore(score)
         setFinished(true)
       } catch (err) {
@@ -321,7 +333,54 @@ export function ECodePermisTakeScreen() {
     setIndex((value) => value + 1)
     setSelectedIds([])
     setResult(null)
+    setAwaitingChoice(false)
+  }, [])
+
+  const resolveSelection = useCallback(
+    async (ids: string[]) => {
+      const currentAttempt = attemptRef.current
+      const currentQuestion = questionsRef.current[indexRef.current]
+      if (
+        !currentAttempt ||
+        !currentQuestion ||
+        ids.length === 0 ||
+        checkingRef.current ||
+        resultRef.current
+      )
+        return
+
+      setChecking(true)
+      setAwaitingChoice(false)
+      try {
+        const data = await checkECodePermisAnswer(currentAttempt.id, currentQuestion.id, ids)
+        setResult({ isCorrect: data.isCorrect, correctAnswerIds: data.correctAnswerIds })
+        setLiveCorrect(data.liveCorrect)
+        setAnsweredCount(data.answeredCount)
+        if (data.isCorrect) await playSuccessSound()
+        else await playFailSound()
+        await wait(900)
+        await finishOrAdvance()
+      } catch (err) {
+        setError(err instanceof ContentError ? err.message : 'Vérification impossible')
+      } finally {
+        setChecking(false)
+      }
+    },
+    [finishOrAdvance],
+  )
+
+  const handleCheck = async () => {
+    await resolveSelection(selectedIdsRef.current)
   }
+
+  const handleSequenceComplete = useCallback(() => {
+    const ids = selectedIdsRef.current
+    if (ids.length > 0) {
+      void resolveSelection(ids)
+      return
+    }
+    setAwaitingChoice(true)
+  }, [resolveSelection])
 
   if (authLoading || !user) return <ScreenLoader />
 
@@ -368,6 +427,7 @@ export function ECodePermisTakeScreen() {
                 <QuestionAudioSequence
                   questionKey={question.id}
                   promptUri={resolveMediaUrl(question.prompt?.audioUrl)}
+                  onSequenceComplete={handleSequenceComplete}
                 />
               ) : null}
               {question.answers.map((answer) => {
@@ -391,6 +451,10 @@ export function ECodePermisTakeScreen() {
                 )
               })}
 
+              {awaitingChoice && !result ? (
+                <Text style={styles.awaitingText}>Choisissez une réponse, puis validez.</Text>
+              ) : null}
+
               {result ? (
                 <Text style={result.isCorrect ? styles.ok : styles.error}>
                   {result.isCorrect ? 'Bonne réponse' : 'Mauvaise réponse'}
@@ -408,11 +472,7 @@ export function ECodePermisTakeScreen() {
                   </Text>
                 </Pressable>
               ) : (
-                <Pressable style={styles.startBtn} onPress={() => void goNext()}>
-                  <Text style={styles.startBtnText}>
-                    {index + 1 >= questions.length ? 'Voir la note /20' : 'Suivant'}
-                  </Text>
-                </Pressable>
+                <Text style={styles.awaitingText}>Passage automatique…</Text>
               )}
             </View>
           ) : null}
@@ -633,5 +693,12 @@ const styles = StyleSheet.create({
     fontFamily: fonts.displayExtraBold,
     fontSize: 28,
     color: dark.green,
+  },
+  awaitingText: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: 14,
+    color: dark.textMuted,
+    textAlign: 'center',
+    marginTop: 4,
   },
 })
