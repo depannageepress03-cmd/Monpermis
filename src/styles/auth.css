@@ -2084,7 +2084,7 @@
   .home-desk-footer {
     display: flex;
     flex-direction: column;
-    align-items: stretch;
+    align-items: center;
     gap: 0.35rem;
     width: 100%;
     box-sizing: border-box;
@@ -2092,8 +2092,10 @@
   }
 
   .home-desk-footer .home-bottom-anim {
-    width: 100%;
+    width: min(100%, 28rem);
     margin-top: 0.25rem;
+    margin-left: auto;
+    margin-right: auto;
   }
 
   .home-desk-footer .home-bottom-anim-scene {
@@ -2106,7 +2108,10 @@
   }
 
   .home-desk-footer .legal-footer {
+    width: min(100%, 28rem);
     margin-top: 0.35rem;
+    margin-left: auto;
+    margin-right: auto;
     padding-top: 0.65rem;
     justify-content: center;
     text-align: center;
