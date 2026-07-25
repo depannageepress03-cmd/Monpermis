@@ -534,7 +534,7 @@ router.patch('/users/:userId/heures', async (req, res) => {
 })
 
 router.post('/upload-vehicle-photo', (req, res) => {
-  imageUpload.single('image')(req, res, (error) => {
+  imageUpload.single('image')(req, res, async (error) => {
     if (error) {
       return res.status(400).json({ success: false, error: error.message })
     }
@@ -543,7 +543,7 @@ router.post('/upload-vehicle-photo', (req, res) => {
     }
 
     try {
-      const saved = writeFile(req.file)
+      const saved = await writeFile(req.file)
       res.status(201).json({
         success: true,
         data: {

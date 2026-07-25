@@ -78,9 +78,7 @@ export function ChapterQuestionsScreen() {
   sequenceLiveRef.current = sequenceLive
 
   useEffect(() => {
-    void import('expo-audio')
-      .then((audio) => audio.setAudioModeAsync({ playsInSilentMode: true }))
-      .catch(() => undefined)
+    void import('../../utils/audioSession').then((m) => m.ensureAudioSession())
   }, [])
 
   const loadQuestions = useCallback(async () => {

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 import { dark, fonts } from '../theme'
+import { ensureAudioSession } from '../utils/audioSession'
 import {
   playCountdown5to0,
   playGongSound,
@@ -15,12 +16,14 @@ type Props = {
 
 type Player = {
   play: () => void
-  seekTo: (n: number) => void
+  seekTo: (n: number) => void | Promise<void>
   pause?: () => void
   remove?: () => void
+  volume?: number
+  isLoaded?: boolean
   addListener?: (
     event: string,
-    cb: (status: { didJustFinish?: boolean }) => void,
+    cb: (status: { didJustFinish?: boolean; isLoaded?: boolean }) => void,
   ) => { remove: () => void }
 }
 
@@ -50,6 +53,29 @@ function wait(ms: number, isCancelled?: () => boolean) {
   })
 }
 
+async function waitUntilLoaded(player: Player, isCancelled?: () => boolean, timeoutMs = 20000) {
+  if (player.isLoaded) return true
+  return new Promise<boolean>((resolve) => {
+    let done = false
+    const finish = (ok: boolean) => {
+      if (done) return
+      done = true
+      sub?.remove?.()
+      clearInterval(cancelWatch)
+      clearTimeout(safety)
+      resolve(ok)
+    }
+    const sub = player.addListener?.('playbackStatusUpdate', (status) => {
+      if (status?.isLoaded || player.isLoaded) finish(true)
+    })
+    const cancelWatch = setInterval(() => {
+      if (isCancelled?.()) finish(false)
+    }, 100)
+    const safety = setTimeout(() => finish(Boolean(player.isLoaded)), timeoutMs)
+    if (player.isLoaded) finish(true)
+  })
+}
+
 async function playUntilEnd(player: Player, isCancelled?: () => boolean) {
   await new Promise<void>((resolve) => {
     let done = false
@@ -68,12 +94,18 @@ async function playUntilEnd(player: Player, isCancelled?: () => boolean) {
       if (isCancelled?.()) finish()
     }, 100)
     const safety = setTimeout(finish, 180000)
-    try {
-      player.seekTo(0)
-      player.play()
-    } catch {
-      finish()
-    }
+    void (async () => {
+      try {
+        await Promise.resolve(player.seekTo(0))
+        if (isCancelled?.()) {
+          finish()
+          return
+        }
+        player.play()
+      } catch {
+        finish()
+      }
+    })()
   })
 }
 
@@ -109,21 +141,36 @@ export function QuestionAudioSequence({ questionKey, promptUri, onSequenceComple
 
     void (async () => {
       try {
+        await ensureAudioSession()
+        if (cancelledRef.current) return
+
         if (promptUrl) {
           const audio: AudioModule = await import('expo-audio')
           if (cancelledRef.current) return
-          localPlayer = audio.createAudioPlayer({ uri: promptUrl }) as Player
+          localPlayer = audio.createAudioPlayer(
+            { uri: promptUrl },
+            { downloadFirst: true },
+          ) as Player
+          if (typeof localPlayer.volume === 'number') localPlayer.volume = 1
 
-          setStatus('Première écoute…')
-          await playUntilEnd(localPlayer, isCancelled)
+          setStatus('Chargement audio…')
+          const loaded = await waitUntilLoaded(localPlayer, isCancelled)
           if (cancelledRef.current) return
+          if (!loaded) {
+            setStatus('Audio indisponible')
+            await wait(800, isCancelled)
+          } else {
+            setStatus('Première écoute…')
+            await playUntilEnd(localPlayer, isCancelled)
+            if (cancelledRef.current) return
 
-          await wait(PAUSE_MS, isCancelled)
-          if (cancelledRef.current) return
+            await wait(PAUSE_MS, isCancelled)
+            if (cancelledRef.current) return
 
-          setStatus('Deuxième écoute…')
-          await playUntilEnd(localPlayer, isCancelled)
-          if (cancelledRef.current) return
+            setStatus('Deuxième écoute…')
+            await playUntilEnd(localPlayer, isCancelled)
+            if (cancelledRef.current) return
+          }
         }
 
         setStatus('Décompte…')

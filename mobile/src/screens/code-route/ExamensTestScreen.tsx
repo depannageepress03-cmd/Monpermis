@@ -264,6 +264,10 @@ export function ExamensTestTakeScreen() {
   const sequenceLiveRef = useRef(sequenceLive)
   sequenceLiveRef.current = sequenceLive
 
+  useEffect(() => {
+    void import('../../utils/audioSession').then((m) => m.ensureAudioSession())
+  }, [])
+
   const load = useCallback(async () => {
     setLoading(true)
     setError(null)

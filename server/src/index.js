@@ -29,6 +29,7 @@ import notificationsRoutes from './routes/notifications.js'
 import announcementsRoutes from './routes/announcements.js'
 import adminAnnouncementsRoutes from './routes/adminAnnouncements.js'
 import fedapayWebhooksRoutes from './routes/fedapayWebhooks.js'
+import { sendMediaAsset } from './middleware/upload.js'
 import { ensureReservationIndexes } from './models/Reservation.js'
 import {
   ensureDefaultPlans,
@@ -127,7 +128,9 @@ app.use(
   fedapayWebhooksRoutes,
 )
 app.use(express.json())
+// Disque local d’abord, puis MongoDB (Render n’a pas de disque persistant).
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')))
+app.get('/uploads/:kind/:filename', sendMediaAsset)
 
 app.get('/api/health', (_req, res) => {
   const dbReady = mongoose.connection.readyState === 1

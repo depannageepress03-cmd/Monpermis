@@ -1,3 +1,5 @@
+import { ensureAudioSession } from './audioSession'
+
 function wait(ms: number) {
   return new Promise<void>((resolve) => {
     setTimeout(resolve, ms)
@@ -47,19 +49,53 @@ function toneWavUri(frequency: number, durationMs: number, volume = 0.35): strin
 
 type Player = {
   play: () => void
-  seekTo: (n: number) => void
+  seekTo: (n: number) => void | Promise<void>
   pause?: () => void
   remove?: () => void
+  volume?: number
+  isLoaded?: boolean
   addListener?: (
     event: string,
-    cb: (status: { didJustFinish?: boolean }) => void,
+    cb: (status: { didJustFinish?: boolean; isLoaded?: boolean }) => void,
   ) => { remove: () => void }
+}
+
+async function waitUntilLoaded(player: Player, timeoutMs = 15000) {
+  if (player.isLoaded) return true
+  return new Promise<boolean>((resolve) => {
+    let done = false
+    const finish = (ok: boolean) => {
+      if (done) return
+      done = true
+      sub?.remove?.()
+      clearTimeout(safety)
+      resolve(ok)
+    }
+    const sub = player.addListener?.('playbackStatusUpdate', (status) => {
+      if (status?.isLoaded || player.isLoaded) finish(true)
+    })
+    const safety = setTimeout(() => finish(Boolean(player.isLoaded)), timeoutMs)
+    if (player.isLoaded) finish(true)
+  })
 }
 
 async function playUri(uri: string, maxMs = 4000) {
   try {
+    await ensureAudioSession()
     const audio = await import('expo-audio')
-    const player = audio.createAudioPlayer({ uri }) as Player
+    const player = audio.createAudioPlayer({ uri }, { downloadFirst: true }) as Player
+    if (typeof player.volume === 'number') player.volume = 1
+
+    const loaded = await waitUntilLoaded(player)
+    if (!loaded) {
+      try {
+        player.remove?.()
+      } catch {
+        // ignore
+      }
+      return
+    }
+
     await new Promise<void>((resolve) => {
       let done = false
       const finish = () => {
@@ -79,12 +115,14 @@ async function playUri(uri: string, maxMs = 4000) {
         if (status?.didJustFinish) finish()
       })
       const safety = setTimeout(finish, maxMs)
-      try {
-        player.seekTo(0)
-        player.play()
-      } catch {
-        finish()
-      }
+      void (async () => {
+        try {
+          await Promise.resolve(player.seekTo(0))
+          player.play()
+        } catch {
+          finish()
+        }
+      })()
     })
   } catch {
     await wait(200)

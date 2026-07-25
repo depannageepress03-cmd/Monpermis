@@ -309,7 +309,7 @@ router.delete('/chapters/:chapterId/test-subjects/:subjectId', async (req, res) 
 })
 
 router.post('/upload-audio', (req, res) => {
-  audioUpload.single('audio')(req, res, (error) => {
+  audioUpload.single('audio')(req, res, async (error) => {
     if (error) {
       return res.status(400).json({ success: false, error: error.message })
     }
@@ -318,7 +318,7 @@ router.post('/upload-audio', (req, res) => {
     }
 
     try {
-      const saved = writeFile(req.file)
+      const saved = await writeFile(req.file)
       res.status(201).json({
         success: true,
         data: {
