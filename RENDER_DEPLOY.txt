@@ -28,6 +28,14 @@ FEDAPAY_PUBLIC_KEY / FEDAPAY_SECRET_KEY / FEDAPAY_ENVIRONMENT=live / FEDAPAY_WEB
 ALLOW_ADMIN_REGISTRATION=true
 MOBILE_SCHEME=monpermis
 
+# Cloudinary (obligatoire pour les audios quiz) — service monpermis-api uniquement
+# Ne pas committer les vraies valeurs : les coller dans Render → Environment
+CLOUDINARY_CLOUD_NAME=...
+CLOUDINARY_API_KEY=...
+CLOUDINARY_API_SECRET=...
+# Optionnel :
+# CLOUDINARY_URL=cloudinary://API_KEY:API_SECRET@CLOUD_NAME
+
 ## 2) Static Site — Admin
 - Name: monpermis-admin
 - Root Directory: administration
