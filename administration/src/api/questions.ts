@@ -86,7 +86,7 @@ export function deleteTestSubject(token: string, chapterId: string, subjectId: s
 export function uploadRevisionAudio(token: string, file: Blob, filename = 'audio.webm') {
   const formData = new FormData()
   formData.append('audio', file, filename)
-  return apiUpload<{ audioUrl: string; mediaBytes: number }>(
+  return apiUpload<{ audioUrl: string; audioPublicId: string; mediaBytes: number }>(
     '/api/admin/revision/upload-audio',
     formData,
     token,

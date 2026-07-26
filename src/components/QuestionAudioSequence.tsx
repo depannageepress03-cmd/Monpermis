@@ -3,6 +3,7 @@ import { resolveMediaUrl } from '../utils/mediaUrl'
 import {
   playCountdown5to0,
   playGongSound,
+  stopAllQuizAudio,
   type CountdownValue,
 } from '../utils/quizSounds'
 
@@ -41,7 +42,7 @@ function wait(ms: number, isCancelled?: () => boolean) {
 
 /**
  * Lance l’audio automatiquement (×2), puis décompte 5→0.
- * Si le parent démonte le composant (Continuer), tout s’arrête sans décompte.
+ * Si le parent démonte le composant (sélection / Continuer / fin), tout s’arrête.
  */
 export function QuestionAudioSequence({
   questionKey,
@@ -82,6 +83,10 @@ export function QuestionAudioSequence({
         el.addEventListener('error', finish, { once: true })
         el.currentTime = 0
         const tryPlay = () => {
+          if (cancelledRef.current) {
+            finish()
+            return
+          }
           void el.play().catch(() => finish())
         }
         if (el.readyState >= 2) tryPlay()
@@ -128,10 +133,10 @@ export function QuestionAudioSequence({
       if (el) {
         el.pause()
         el.currentTime = 0
+        el.removeAttribute('src')
+        el.load()
       }
-      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-        window.speechSynthesis.cancel()
-      }
+      stopAllQuizAudio()
       setCountdown(null)
       setStatus('')
     }

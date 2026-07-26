@@ -79,7 +79,12 @@ export async function playCountdown5to0(
   const steps: CountdownValue[] = [5, 4, 3, 2, 1, 0]
   const started = Date.now()
   for (let i = 0; i < steps.length; i += 1) {
-    if (isCancelled?.()) return
+    if (isCancelled?.()) {
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        window.speechSynthesis.cancel()
+      }
+      return
+    }
     const n = steps[i]
     onTick?.(n)
     if (n > 0) {
@@ -91,7 +96,12 @@ export async function playCountdown5to0(
     if (i < steps.length - 1) {
       const target = started + (i + 1) * 1000
       while (Date.now() < target) {
-        if (isCancelled?.()) return
+        if (isCancelled?.()) {
+          if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+            window.speechSynthesis.cancel()
+          }
+          return
+        }
         await wait(Math.min(100, target - Date.now()))
       }
     } else {
@@ -117,15 +127,37 @@ export async function playFailSound() {
   await playTone(220, 320, { type: 'square', gain: 0.14 })
 }
 
-/** Rejoue un média distant sans bloquer longtemps (fire-and-forget possible). */
+let currentRemoteAudio: HTMLAudioElement | null = null
+
+export function cancelRemoteAudio() {
+  if (currentRemoteAudio) {
+    currentRemoteAudio.pause()
+    currentRemoteAudio.src = ''
+    currentRemoteAudio.load()
+    currentRemoteAudio = null
+  }
+}
+
+/** Coupe audio question, replay distant, et synthèse vocale (décompte). */
+export function stopAllQuizAudio() {
+  cancelRemoteAudio()
+  if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+    window.speechSynthesis.cancel()
+  }
+}
+
+/** Rejoue un média distant. Stoppe toute instance précédente. */
 export function playRemoteAudio(url: string): Promise<void> {
   const src = url.trim()
   if (!src || typeof window === 'undefined') return Promise.resolve()
+  cancelRemoteAudio()
   return new Promise((resolve) => {
     try {
       const audio = new Audio(src)
+      currentRemoteAudio = audio
       audio.preload = 'auto'
       const finish = () => {
+        if (currentRemoteAudio === audio) currentRemoteAudio = null
         audio.removeEventListener('ended', finish)
         audio.removeEventListener('error', finish)
         resolve()

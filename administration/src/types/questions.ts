@@ -8,7 +8,10 @@ export interface QuestionAnswer {
 
 export interface QuestionPrompt {
   text: string
+  /** Cloudinary secure_url (ou ancien /uploads/... le temps de migration). */
   audioUrl: string
+  /** Cloudinary public_id — jamais le secret API. */
+  audioPublicId?: string
   imageUrls: string[]
 }
 

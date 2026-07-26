@@ -172,9 +172,69 @@ export async function playFailSound() {
   await playUri(toneWavUri(180, 320, 0.4))
 }
 
-/** Rejoue l’audio question (peut tourner en parallèle du passage suivant). */
+let currentRemotePlayer: Player | null = null
+
+export function cancelRemoteAudio() {
+  if (currentRemotePlayer) {
+    try {
+      currentRemotePlayer.pause?.()
+      currentRemotePlayer.remove?.()
+    } catch {
+      // ignore
+    }
+    currentRemotePlayer = null
+  }
+}
+
+/** Coupe tout audio quiz (question / replay). */
+export function stopAllQuizAudio() {
+  cancelRemoteAudio()
+}
+
+/** Rejoue l’audio question. Stoppe toute instance précédente. */
 export function playRemoteAudio(url: string): Promise<void> {
   const src = url.trim()
   if (!src) return Promise.resolve()
-  return playUri(src, 120000)
+  cancelRemoteAudio()
+  return (async () => {
+    try {
+      await ensureAudioSession()
+      const audio = await import('expo-audio')
+      const player = audio.createAudioPlayer({ uri: src }, { downloadFirst: true }) as Player
+      currentRemotePlayer = player
+      if (typeof player.volume === 'number') player.volume = 1
+
+      const loaded = await waitUntilLoaded(player)
+      if (!loaded) {
+        try { player.remove?.() } catch { /* ignore */ }
+        if (currentRemotePlayer === player) currentRemotePlayer = null
+        return
+      }
+
+      await new Promise<void>((resolve) => {
+        let done = false
+        const finish = () => {
+          if (done) return
+          done = true
+          sub?.remove?.()
+          clearTimeout(safety)
+          try { player.pause?.(); player.remove?.() } catch { /* ignore */ }
+          if (currentRemotePlayer === player) currentRemotePlayer = null
+          resolve()
+        }
+        const sub = player.addListener?.('playbackStatusUpdate', (status) => {
+          if (status?.didJustFinish) finish()
+        })
+        const safety = setTimeout(finish, 120000)
+        void (async () => {
+          try {
+            await Promise.resolve(player.seekTo(0))
+            player.play()
+          } catch { finish() }
+        })()
+      })
+    } catch {
+      await wait(200)
+    }
+  })()
 }

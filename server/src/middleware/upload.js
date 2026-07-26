@@ -34,16 +34,6 @@ const IMAGE_MAGIC = [
   { ext: 'webp', bytes: [0x52, 0x49, 0x46, 0x46] },
 ]
 
-const AUDIO_MAGIC = [
-  { ext: 'mp3', bytes: [0x49, 0x44, 0x33] }, // ID3
-  { ext: 'mp3-frame', bytes: [0xff, 0xfb] },
-  { ext: 'mp3-frame2', bytes: [0xff, 0xf3] },
-  { ext: 'mp3-frame3', bytes: [0xff, 0xf2] },
-  { ext: 'wav', bytes: [0x52, 0x49, 0x46, 0x46] },
-  { ext: 'ogg', bytes: [0x4f, 0x67, 0x67, 0x53] },
-  { ext: 'webm', bytes: [0x1a, 0x45, 0xdf, 0xa3] },
-]
-
 const MIME_BY_EXT = {
   '.mp3': 'audio/mpeg',
   '.wav': 'audio/wav',
@@ -88,11 +78,16 @@ async function writeFile(file) {
     throw Object.assign(new Error('Fichier vide ou illisible'), { status: 400 })
   }
 
-  const isAudio = file.fieldname === 'audio'
-  const signatures = isAudio ? AUDIO_MAGIC : IMAGE_MAGIC
-  const label = isAudio
-    ? 'Format audio non supporté (MP3, WAV, OGG, WebM)'
-    : 'Format image non supporté (JPEG, PNG, WebP, GIF)'
+  if (file.fieldname === 'audio') {
+    throw Object.assign(
+      new Error('Les audios doivent être uploadés via Cloudinary (upload-audio)'),
+      { status: 400 },
+    )
+  }
+
+  const isAudio = false
+  const signatures = IMAGE_MAGIC
+  const label = 'Format image non supporté (JPEG, PNG, WebP, GIF)'
 
   if (!checkMagic(file.buffer, signatures)) {
     throw Object.assign(new Error(label), { status: 400 })
@@ -100,7 +95,7 @@ async function writeFile(file) {
 
   const kind = resolveKind(file)
   const dest = resolveDir(kind)
-  const ext = path.extname(file.originalname).toLowerCase() || (isAudio ? '.webm' : '.jpg')
+  const ext = path.extname(file.originalname).toLowerCase() || '.jpg'
   const safeName = `${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`
   const fullPath = path.join(dest, safeName)
   fs.writeFileSync(fullPath, file.buffer)

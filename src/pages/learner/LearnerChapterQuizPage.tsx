@@ -13,7 +13,7 @@ import {
 import { QuestionAudioSequence } from '../../components/QuestionAudioSequence'
 import { PageNavbar } from '../../components/PageNavbar'
 import { useAuth } from '../../hooks/useAuth'
-import { playFailSound, playRemoteAudio, playSuccessSound } from '../../utils/quizSounds'
+import { playFailSound, playSuccessSound, stopAllQuizAudio } from '../../utils/quizSounds'
 import { resolveMediaUrl } from '../../utils/mediaUrl'
 import '../../styles/auth.css'
 import '../../styles/learner.css'
@@ -75,6 +75,7 @@ export function LearnerChapterQuizPage({
   sequenceLiveRef.current = sequenceLive
 
   const load = useCallback(async () => {
+    stopAllQuizAudio()
     setLoading(true)
     setError(null)
     try {
@@ -115,7 +116,23 @@ export function LearnerChapterQuizPage({
     setSequenceLive(true)
     setSelectedIds([])
     setResult(null)
+    stopAllQuizAudio()
   }, [index])
+
+  useEffect(() => {
+    if (finished) stopAllQuizAudio()
+  }, [finished])
+
+  /** Dès qu’une réponse est cochée : coupe l’audio ; si tout est décoché : relance. */
+  useEffect(() => {
+    if (finished || result || checking) return
+    if (selectedIds.length > 0) {
+      setSequenceLive(false)
+      stopAllQuizAudio()
+    } else {
+      setSequenceLive(true)
+    }
+  }, [selectedIds, finished, result, checking])
 
   const question = questions[index]
   const progressLabel = useMemo(() => {
@@ -137,6 +154,8 @@ export function LearnerChapterQuizPage({
       const currentIndex = indexRef.current
       const list = questionsRef.current
       if (currentIndex + 1 >= list.length) {
+        stopAllQuizAudio()
+        setSequenceLive(false)
         setFinished(true)
         if (mode === 'test' && !testSavedRef.current) {
           setSavingTest(true)
@@ -151,6 +170,7 @@ export function LearnerChapterQuizPage({
         }
         return
       }
+      stopAllQuizAudio()
       setIndex((value) => value + 1)
       setSelectedIds([])
       setResult(null)
@@ -163,18 +183,14 @@ export function LearnerChapterQuizPage({
     if (checkingRef.current || resultRef.current) return
     setChecking(true)
     setSequenceLive(false)
+    stopAllQuizAudio()
     try {
-      const currentQuestion = questionsRef.current[indexRef.current]
-      const promptUrl = currentQuestion?.prompt?.audioUrl
-        ? resolveMediaUrl(currentQuestion.prompt.audioUrl)
-        : ''
       setResult({ isCorrect: false, correctAnswerIds: [] })
       const nextScore = {
         correct: scoreRef.current.correct,
         total: scoreRef.current.total + 1,
       }
       setScore(nextScore)
-      if (promptUrl) void playRemoteAudio(promptUrl)
       void playFailSound()
       await finishOrAdvance(nextScore)
     } finally {
@@ -189,6 +205,7 @@ export function LearnerChapterQuizPage({
 
       setChecking(true)
       setSequenceLive(false)
+      stopAllQuizAudio()
       try {
         const data = await checkRevisionQuestionAnswers(chapterId, currentQuestion.id, ids)
         setResult(data)
@@ -203,7 +220,7 @@ export function LearnerChapterQuizPage({
         await finishOrAdvance(nextScore)
       } catch (err) {
         setError(err instanceof ContentError ? err.message : 'Vérification impossible')
-        setSequenceLive(true)
+        setSequenceLive(selectedIdsRef.current.length === 0)
       } finally {
         setChecking(false)
       }
@@ -225,6 +242,7 @@ export function LearnerChapterQuizPage({
     const ids = selectedIdsRef.current
     if (ids.length === 0 || checking || result) return
     setSequenceLive(false)
+    stopAllQuizAudio()
     void resolveSelection(ids)
   }
   if (authLoading || !user) return null

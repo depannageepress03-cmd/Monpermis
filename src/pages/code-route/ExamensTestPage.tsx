@@ -13,7 +13,7 @@ import {
 import { QuestionAudioSequence } from '../../components/QuestionAudioSequence'
 import { PageNavbar } from '../../components/PageNavbar'
 import { useAuth } from '../../hooks/useAuth'
-import { playFailSound, playRemoteAudio, playSuccessSound } from '../../utils/quizSounds'
+import { playFailSound, playSuccessSound, stopAllQuizAudio } from '../../utils/quizSounds'
 import { resolveMediaUrl } from '../../utils/mediaUrl'
 import '../../styles/auth.css'
 import '../../styles/learner.css'
@@ -222,6 +222,7 @@ export function ExamensTestTakePage() {
       setLoading(false)
       return
     }
+    stopAllQuizAudio()
     setLoading(true)
     setError(null)
     try {
@@ -234,7 +235,7 @@ export function ExamensTestTakePage() {
       setLiveCorrect(started.liveCorrect || 0)
       setAnsweredCount(answered)
       setFinished(started.status === 'completed')
-      setSequenceLive(true)
+      setSequenceLive(started.status !== 'completed')
       if (started.status === 'completed') {
         setFinalScore({
           correct: started.correct,
@@ -260,7 +261,22 @@ export function ExamensTestTakePage() {
     setSequenceLive(true)
     setSelectedIds([])
     setResult(null)
+    stopAllQuizAudio()
   }, [index])
+
+  useEffect(() => {
+    if (finished) stopAllQuizAudio()
+  }, [finished])
+
+  useEffect(() => {
+    if (finished || result || checking) return
+    if (selectedIds.length > 0) {
+      setSequenceLive(false)
+      stopAllQuizAudio()
+    } else {
+      setSequenceLive(true)
+    }
+  }, [selectedIds, finished, result, checking])
 
   const questions = attempt?.questions || []
   questionsRef.current = questions
@@ -286,6 +302,8 @@ export function ExamensTestTakePage() {
     if (!currentAttempt) return
 
     if (currentIndex + 1 >= list.length) {
+      stopAllQuizAudio()
+      setSequenceLive(false)
       try {
         const { attempt: score } = await completePracticeExam(currentAttempt.id)
         setFinalScore(score)
@@ -295,6 +313,7 @@ export function ExamensTestTakePage() {
       }
       return
     }
+    stopAllQuizAudio()
     setIndex((value) => value + 1)
     setSelectedIds([])
     setResult(null)
@@ -314,15 +333,12 @@ export function ExamensTestTakePage() {
 
     setChecking(true)
     setSequenceLive(false)
+    stopAllQuizAudio()
     try {
-      const promptUrl = currentQuestion.prompt?.audioUrl
-        ? resolveMediaUrl(currentQuestion.prompt.audioUrl)
-        : ''
       const data = await checkPracticeExamAnswer(currentAttempt.id, currentQuestion.id, [])
       setResult({ isCorrect: false, correctAnswerIds: [] })
       setLiveCorrect(data.liveCorrect)
       setAnsweredCount(data.answeredCount)
-      if (promptUrl) void playRemoteAudio(promptUrl)
       void playFailSound()
       await finishOrAdvance()
     } catch (err) {
@@ -347,6 +363,7 @@ export function ExamensTestTakePage() {
 
       setChecking(true)
       setSequenceLive(false)
+      stopAllQuizAudio()
       try {
         const data = await checkPracticeExamAnswer(currentAttempt.id, currentQuestion.id, ids)
         setResult({ isCorrect: data.isCorrect, correctAnswerIds: data.correctAnswerIds })
@@ -358,7 +375,7 @@ export function ExamensTestTakePage() {
         await finishOrAdvance()
       } catch (err) {
         setError(err instanceof ContentError ? err.message : 'Vérification impossible')
-        setSequenceLive(true)
+        setSequenceLive(selectedIdsRef.current.length === 0)
       } finally {
         setChecking(false)
       }
@@ -380,6 +397,7 @@ export function ExamensTestTakePage() {
     const ids = selectedIdsRef.current
     if (ids.length === 0 || checking || result) return
     setSequenceLive(false)
+    stopAllQuizAudio()
     void resolveSelection(ids)
   }
 

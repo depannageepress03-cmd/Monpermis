@@ -22,7 +22,10 @@ const questionSchema = new mongoose.Schema(
     published: { type: Boolean, default: false },
     prompt: {
       text: { type: String, default: '' },
+      /** Cloudinary secure_url (lecture publique). */
       audioUrl: { type: String, default: '' },
+      /** Cloudinary public_id (suppression serveur uniquement). */
+      audioPublicId: { type: String, default: '' },
       imageUrls: { type: [String], default: [] },
     },
     answers: {
@@ -44,6 +47,7 @@ questionSchema.methods.toAdminJSON = function toAdminJSON() {
     prompt: {
       text: this.prompt?.text || '',
       audioUrl: this.prompt?.audioUrl || '',
+      audioPublicId: this.prompt?.audioPublicId || '',
       imageUrls: Array.isArray(this.prompt?.imageUrls) ? this.prompt.imageUrls : [],
     },
     answers: (this.answers || []).map((answer) => ({
@@ -58,7 +62,7 @@ questionSchema.methods.toAdminJSON = function toAdminJSON() {
   }
 }
 
-/** Version client : sans isCorrect (corrigé côté serveur). */
+/** Version client : sans isCorrect ni audioPublicId (secret de gestion serveur). */
 questionSchema.methods.toPublicJSON = function toPublicJSON() {
   return {
     id: this._id,

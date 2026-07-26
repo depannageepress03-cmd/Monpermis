@@ -8,13 +8,16 @@
     "start": "node src/index.js",
     "test:email": "node scripts/test-email.js",
     "verify:user": "node scripts/verify-user.js",
-    "seed:admin": "node scripts/seed-admin.js"
+    "seed:admin": "node scripts/seed-admin.js",
+    "migrate:audios:cloudinary": "node scripts/migrate-audios-to-cloudinary.mjs",
+    "audit:audios": "node scripts/audit-question-audios.mjs"
   },
   "engines": {
     "node": ">=20"
   },
   "dependencies": {
     "bcryptjs": "^3.0.2",
+    "cloudinary": "^2.10.0",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
     "express-rate-limit": "^7.5.0",

@@ -25,7 +25,7 @@ import { QuestionAudioSequence } from '../../components/QuestionAudioSequence'
 import { useRequireAuth } from '../../hooks/useRequireAuth'
 import type { RootStackParamList } from '../../navigation/types'
 import { dark, fonts } from '../../theme'
-import { playFailSound, playRemoteAudio, playSuccessSound } from '../../utils/quizSounds'
+import { playFailSound, playSuccessSound, stopAllQuizAudio } from '../../utils/quizSounds'
 import { resolveMediaUrl } from '../../utils/mediaUrl'
 
 function wait(ms: number) {
@@ -82,6 +82,7 @@ export function ChapterQuestionsScreen() {
   }, [])
 
   const loadQuestions = useCallback(async () => {
+    stopAllQuizAudio()
     setLoadingQuestions(true)
     setError(null)
     try {
@@ -114,7 +115,22 @@ export function ChapterQuestionsScreen() {
     setSequenceLive(true)
     setSelectedIds(new Set())
     setResult(null)
+    stopAllQuizAudio()
   }, [index])
+
+  useEffect(() => {
+    if (finished) stopAllQuizAudio()
+  }, [finished])
+
+  useEffect(() => {
+    if (finished || result || checking) return
+    if (selectedIds.size > 0) {
+      setSequenceLive(false)
+      stopAllQuizAudio()
+    } else {
+      setSequenceLive(true)
+    }
+  }, [selectedIds, finished, result, checking])
 
   const question = questions[index]
 
@@ -123,6 +139,8 @@ export function ChapterQuestionsScreen() {
       const currentIndex = indexRef.current
       const list = questionsRef.current
       if (currentIndex >= list.length - 1) {
+        stopAllQuizAudio()
+        setSequenceLive(false)
         setFinished(true)
         if (isTest && !testSavedRef.current) {
           setSavingTest(true)
@@ -137,6 +155,7 @@ export function ChapterQuestionsScreen() {
         }
         return
       }
+      stopAllQuizAudio()
       setIndex((prev) => prev + 1)
       setSelectedIds(new Set())
       setResult(null)
@@ -149,18 +168,14 @@ export function ChapterQuestionsScreen() {
     if (checkingRef.current || resultRef.current) return
     setChecking(true)
     setSequenceLive(false)
+    stopAllQuizAudio()
     try {
-      const currentQuestion = questionsRef.current[indexRef.current]
-      const promptUrl = currentQuestion?.prompt?.audioUrl
-        ? resolveMediaUrl(currentQuestion.prompt.audioUrl)
-        : ''
       setResult({ isCorrect: false, correctAnswerIds: [] })
       const nextScore = {
         correct: scoreRef.current.correct,
         total: scoreRef.current.total + 1,
       }
       setScore(nextScore)
-      if (promptUrl) void playRemoteAudio(promptUrl)
       void playFailSound()
       await finishOrAdvance(nextScore)
     } finally {
@@ -175,6 +190,7 @@ export function ChapterQuestionsScreen() {
 
       setChecking(true)
       setSequenceLive(false)
+      stopAllQuizAudio()
       try {
         const check = await checkQuestionAnswers(chapterId, currentQuestion.id, ids)
         setResult(check)
@@ -189,7 +205,7 @@ export function ChapterQuestionsScreen() {
         await finishOrAdvance(nextScore)
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Vérification impossible')
-        setSequenceLive(true)
+        setSequenceLive(selectedIdsRef.current.size === 0)
       } finally {
         setChecking(false)
       }
@@ -211,6 +227,7 @@ export function ChapterQuestionsScreen() {
     const ids = [...selectedIdsRef.current]
     if (ids.length === 0 || checking || result) return
     setSequenceLive(false)
+    stopAllQuizAudio()
     void resolveSelection(ids)
   }
 

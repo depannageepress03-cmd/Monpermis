@@ -5,6 +5,7 @@ import { ensureAudioSession } from '../utils/audioSession'
 import {
   playCountdown5to0,
   playGongSound,
+  stopAllQuizAudio,
   type CountdownValue,
 } from '../utils/quizSounds'
 
@@ -196,6 +197,7 @@ export function QuestionAudioSequence({ questionKey, promptUri, onSequenceComple
     return () => {
       cancelledRef.current = true
       cleanup()
+      stopAllQuizAudio()
       setCountdown(null)
       setStatus('')
     }

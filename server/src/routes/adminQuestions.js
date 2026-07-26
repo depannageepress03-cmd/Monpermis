@@ -3,7 +3,8 @@ import { Chapter } from '../models/Chapter.js'
 import { Question } from '../models/Question.js'
 import { TEST_SUBJECT_SIZE, TestSubject } from '../models/TestSubject.js'
 import { requireAdminAuth } from '../middleware/adminAuth.js'
-import { audioUpload, writeFile } from '../middleware/upload.js'
+import { audioUpload } from '../middleware/upload.js'
+import { destroyAudioByPublicId, uploadAudioBuffer } from '../services/cloudinary.js'
 import { logger } from '../utils/logger.js'
 
 const router = Router()
@@ -48,6 +49,7 @@ function normalizeAnswers(rawAnswers) {
 function normalizePrompt(rawPrompt = {}) {
   const text = String(rawPrompt.text || '').trim()
   const audioUrl = String(rawPrompt.audioUrl || '').trim()
+  const audioPublicId = String(rawPrompt.audioPublicId || '').trim()
   const imageUrls = Array.isArray(rawPrompt.imageUrls)
     ? rawPrompt.imageUrls.map((url) => String(url).trim()).filter(Boolean)
     : []
@@ -56,7 +58,13 @@ function normalizePrompt(rawPrompt = {}) {
     return { error: 'L’audio unique (question + choix) est obligatoire' }
   }
 
-  return { prompt: { text, audioUrl, imageUrls } }
+  return { prompt: { text, audioUrl, audioPublicId, imageUrls } }
+}
+
+async function destroyPromptAudio(prompt) {
+  const publicId = String(prompt?.audioPublicId || '').trim()
+  if (!publicId) return
+  await destroyAudioByPublicId(publicId)
 }
 
 async function ensureChapter(chapterId) {
@@ -151,7 +159,12 @@ router.patch('/chapters/:chapterId/questions/:questionId', async (req, res) => {
       if (promptResult.error) {
         return res.status(400).json({ success: false, error: promptResult.error })
       }
+      const previousPublicId = String(question.prompt?.audioPublicId || '').trim()
+      const nextPublicId = String(promptResult.prompt.audioPublicId || '').trim()
       question.prompt = promptResult.prompt
+      if (previousPublicId && previousPublicId !== nextPublicId) {
+        await destroyAudioByPublicId(previousPublicId)
+      }
     }
 
     if (req.body.answers !== undefined) {
@@ -187,6 +200,8 @@ router.delete('/chapters/:chapterId/questions/:questionId', async (req, res) => 
     if (!question) {
       return res.status(404).json({ success: false, error: 'Question introuvable' })
     }
+
+    await destroyPromptAudio(question.prompt)
 
     res.json({ success: true, data: { deleted: true, id: String(question._id) } })
   } catch (error) {
@@ -318,15 +333,47 @@ router.post('/upload-audio', (req, res) => {
     }
 
     try {
-      const saved = await writeFile(req.file)
+      const buffer = req.file.buffer
+      if (!buffer?.length) {
+        return res.status(400).json({ success: false, error: 'Fichier vide ou illisible' })
+      }
+
+      const AUDIO_MAGIC = [
+        { bytes: [0x49, 0x44, 0x33] },
+        { bytes: [0xff, 0xfb] },
+        { bytes: [0xff, 0xf3] },
+        { bytes: [0xff, 0xf2] },
+        { bytes: [0x52, 0x49, 0x46, 0x46] },
+        { bytes: [0x4f, 0x67, 0x67, 0x53] },
+        { bytes: [0x1a, 0x45, 0xdf, 0xa3] },
+      ]
+      const magicOk = AUDIO_MAGIC.some(
+        (sig) =>
+          buffer.length >= sig.bytes.length &&
+          sig.bytes.every((byte, i) => buffer[i] === byte),
+      )
+      if (!magicOk) {
+        return res.status(400).json({
+          success: false,
+          error: 'Format audio non supporté (MP3, WAV, OGG, WebM)',
+        })
+      }
+
+      const uploaded = await uploadAudioBuffer(buffer, {
+        mimeType: req.file.mimetype,
+        originalName: req.file.originalname,
+      })
+
       res.status(201).json({
         success: true,
         data: {
-          audioUrl: `/uploads/audio/${saved.filename}`,
-          mediaBytes: saved.size,
+          audioUrl: uploaded.audioUrl,
+          audioPublicId: uploaded.audioPublicId,
+          mediaBytes: uploaded.bytes,
         },
       })
     } catch (err) {
+      logger.error('Upload audio Cloudinary:', err)
       return res.status(err.status || 400).json({
         success: false,
         error: err.message || 'Enregistrement audio impossible',

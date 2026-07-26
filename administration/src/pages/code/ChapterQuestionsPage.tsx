@@ -35,7 +35,7 @@ const PAGE_SIZE = 50
 type FormStep = 'Q' | 'A'
 
 function emptyPrompt(): QuestionPrompt {
-  return { text: '', audioUrl: '', imageUrls: [] }
+  return { text: '', audioUrl: '', audioPublicId: '', imageUrls: [] }
 }
 
 function defaultAnswers(): QuestionAnswer[] {
@@ -186,6 +186,7 @@ export function ChapterQuestionsPage() {
     setPrompt({
       text: question.prompt.text || '',
       audioUrl: question.prompt.audioUrl,
+      audioPublicId: question.prompt.audioPublicId || '',
       imageUrls: [...question.prompt.imageUrls],
     })
     setAnswers(question.answers.length > 0 ? cloneAnswers(question.answers) : defaultAnswers())
@@ -225,8 +226,8 @@ export function ChapterQuestionsPage() {
     setUploading(true)
     setError(null)
     try {
-      const { audioUrl } = await uploadAudioFile(file, file.name)
-      setPrompt((current) => ({ ...current, audioUrl }))
+      const { audioUrl, audioPublicId } = await uploadAudioFile(file, file.name)
+      setPrompt((current) => ({ ...current, audioUrl, audioPublicId: audioPublicId || '' }))
     } catch (err) {
       setError(isAuthError(err) ? err.message : 'Import audio impossible')
     } finally {
@@ -255,8 +256,8 @@ export function ChapterQuestionsPage() {
         const blob = new Blob(chunks, { type: recorder.mimeType || 'audio/webm' })
         setUploading(true)
         try {
-          const { audioUrl } = await uploadAudioFile(blob, 'recording.webm')
-          setPrompt((current) => ({ ...current, audioUrl }))
+          const { audioUrl, audioPublicId } = await uploadAudioFile(blob, 'recording.webm')
+          setPrompt((current) => ({ ...current, audioUrl, audioPublicId: audioPublicId || '' }))
         } catch (err) {
           setError(isAuthError(err) ? err.message : 'Enregistrement impossible')
         } finally {
@@ -320,6 +321,7 @@ export function ChapterQuestionsPage() {
       prompt: {
         text: prompt.text.trim(),
         audioUrl: prompt.audioUrl,
+        audioPublicId: prompt.audioPublicId || '',
         imageUrls: prompt.imageUrls,
       },
       answers: answers.map(({ label, isCorrect }) => ({
@@ -528,7 +530,9 @@ export function ChapterQuestionsPage() {
                     <button
                       type="button"
                       className="btn-text-danger"
-                      onClick={() => setPrompt((current) => ({ ...current, audioUrl: '' }))}
+                      onClick={() =>
+                        setPrompt((current) => ({ ...current, audioUrl: '', audioPublicId: '' }))
+                      }
                     >
                       Retirer l’audio
                     </button>
