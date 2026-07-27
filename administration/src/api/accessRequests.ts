@@ -14,6 +14,7 @@ export type AccessRequestStatus =
 export type PaymentMethod = 'fedapay' | 'manual'
 export type PaymentStatus = 'pending' | 'approved' | 'declined' | 'canceled' | 'failed'
 export type MobileMoneyOperator = 'mtn' | 'moov' | 'celtiis'
+export type SubscriptionSource = 'payment' | 'admin'
 
 export interface AccessModulePricing {
   key: AccessModuleKey
@@ -55,6 +56,14 @@ export interface AccessRequest {
   updatedAt: string
 }
 
+export interface Subscriber extends AccessRequest {
+  durationLabel: string
+  remainingMs: number | null
+  remainingLabel: string
+  source: SubscriptionSource
+  soldeHeures: number | null
+}
+
 export interface AccessAuditEntry {
   id: string
   fromStatus: string
@@ -88,6 +97,8 @@ export interface AccessPayment {
   adminNote: string
   createdAt: string
   updatedAt: string
+  module?: AccessModuleKey | null
+  modules?: AccessModuleKey[]
 }
 
 export interface AccessStats {
@@ -113,39 +124,43 @@ export function unitLabel(unit: AccessModuleUnit) {
   return 'unique'
 }
 
-export function fetchAccessRequests(
+export function fetchSubscribers(
   token: string,
-  filters: { status?: AccessRequestStatus | ''; module?: AccessModuleKey | ''; page?: number } = {},
+  filters: { module?: AccessModuleKey | ''; q?: string; page?: number } = {},
 ) {
   const params = new URLSearchParams()
-  if (filters.status) params.set('status', filters.status)
   if (filters.module) params.set('module', filters.module)
+  if (filters.q) params.set('q', filters.q)
   if (filters.page) params.set('page', String(filters.page))
   const query = params.toString() ? `?${params.toString()}` : ''
   return apiFetch<{
-    accessRequests: AccessRequest[]
+    subscribers: Subscriber[]
     pagination: { page: number; limit: number; total: number; pages: number }
-  }>(`/api/admin/access-requests${query}`, {}, token)
+  }>(`/api/admin/access-requests/subscribers${query}`, {}, token)
 }
 
-export function fetchAccessRequestDetail(token: string, id: string) {
-  return apiFetch<{ accessRequest: AccessRequest; audit: AccessAuditEntry[]; payments: AccessPayment[] }>(
-    `/api/admin/access-requests/${id}`,
-    {},
-    token,
-  )
-}
-
-export function validateAccessRequest(
+export function grantSubscription(
   token: string,
-  id: string,
-  payload: { decision: 'valide' | 'rejete'; note: string },
+  payload: { userId: string; module: AccessModuleKey; quantity: number; note?: string },
 ) {
-  return apiFetch<{ accessRequest: AccessRequest }>(
-    `/api/admin/access-requests/${id}/validate`,
+  return apiFetch<{ subscriber: Subscriber }>(
+    '/api/admin/access-requests/grant',
     { method: 'POST', body: JSON.stringify(payload) },
     token,
   )
+}
+
+export function fetchApprovedPayments(
+  token: string,
+  filters: { page?: number } = {},
+) {
+  const params = new URLSearchParams()
+  if (filters.page) params.set('page', String(filters.page))
+  const query = params.toString() ? `?${params.toString()}` : ''
+  return apiFetch<{
+    payments: AccessPayment[]
+    pagination: { page: number; limit: number; total: number; pages: number }
+  }>(`/api/admin/access-requests/payments${query}`, {}, token)
 }
 
 export function fetchAccessModulePricing(token: string) {
@@ -169,14 +184,15 @@ export function fetchAccessStats(token: string) {
 }
 
 /**
- * Flux SSE partagé avec le dashboard Paiements (server/src/services/paymentEvents.js) :
- * on filtre ici les événements 'access_request.updated'. Même approche fetch-stream
- * que subscribeToPaymentEvents (EventSource ne permet pas d'en-tête Authorization).
+ * Flux SSE partagé avec le dashboard (server/src/services/paymentEvents.js).
  */
-export function subscribeToAccessRequestEvents(
+export function subscribeToPaymentStream(
   token: string,
-  onUpdate: (accessRequest: AccessRequest) => void,
-  onStatusChange?: (connected: boolean) => void,
+  handlers: {
+    onPayment?: (payment: AccessPayment) => void
+    onSubscriber?: (accessRequest: AccessRequest) => void
+    onStatusChange?: (connected: boolean) => void
+  },
 ): () => void {
   const controller = new AbortController()
 
@@ -189,7 +205,7 @@ export function subscribeToAccessRequestEvents(
         })
         if (!response.ok || !response.body) throw new Error('Flux indisponible')
 
-        onStatusChange?.(true)
+        handlers.onStatusChange?.(true)
         const reader = response.body.getReader()
         const decoder = new TextDecoder()
         let buffer = ''
@@ -208,9 +224,13 @@ export function subscribeToAccessRequestEvents(
               const parsed = JSON.parse(line.slice(6)) as {
                 type: string
                 accessRequest?: AccessRequest
+                payment?: AccessPayment
               }
               if (parsed.type === 'access_request.updated' && parsed.accessRequest) {
-                onUpdate(parsed.accessRequest)
+                handlers.onSubscriber?.(parsed.accessRequest)
+              }
+              if (parsed.type === 'payment.updated' && parsed.payment) {
+                handlers.onPayment?.(parsed.payment)
               }
             } catch {
               // ignore trame invalide
@@ -220,7 +240,7 @@ export function subscribeToAccessRequestEvents(
       } catch {
         if (controller.signal.aborted) return
       }
-      onStatusChange?.(false)
+      handlers.onStatusChange?.(false)
       if (controller.signal.aborted) return
       await new Promise((resolve) => setTimeout(resolve, 3000))
     }

@@ -6,14 +6,27 @@ import { AccessAuditLog } from '../models/AccessAuditLog.js'
 import { Payment } from '../models/Payment.js'
 import { User } from '../models/User.js'
 import { Admin } from '../models/Admin.js'
-import { adminValidateAccessRequest } from '../utils/accessRequests.js'
+import {
+  adminGrantModuleAccess,
+  adminValidateAccessRequest,
+  expireDueAccessRequests,
+  remainingForAccessRequest,
+} from '../utils/accessRequests.js'
 import { addPaymentEventClient, removePaymentEventClient } from '../services/paymentEvents.js'
 import { logger } from '../utils/logger.js'
 
 const router = Router()
 router.use(requireAdminAuth)
 
-/** Flux SSE temps réel (demandes d’accès / paiements). */
+function durationLabel(quantity, unit) {
+  const qty = Math.max(1, Number(quantity) || 1)
+  if (unit === 'hour') return `${qty} heure${qty > 1 ? 's' : ''}`
+  if (unit === 'week') return `${qty} semaine${qty > 1 ? 's' : ''}`
+  if (unit === 'month') return `${qty} mois`
+  return 'Accès unique'
+}
+
+/** Flux SSE temps réel (abonnements / paiements). */
 router.get('/payments/stream', (req, res) => {
   res.writeHead(200, {
     'Content-Type': 'text/event-stream',
@@ -29,6 +42,166 @@ router.get('/payments/stream', (req, res) => {
   req.on('close', () => {
     removePaymentEventClient(res)
   })
+})
+
+/** Liste des abonnements actifs (type + durée restante). */
+router.get('/subscribers', async (req, res) => {
+  try {
+    await expireDueAccessRequests()
+
+    const filter = {
+      $or: [{ status: 'actif' }, { status: 'valide', module: 'conduite_heures' }],
+    }
+    if (ACCESS_MODULES.includes(req.query.module)) filter.module = req.query.module
+
+    const q = String(req.query.q || '').trim()
+    if (q) {
+      const regex = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i')
+      const matchedUsers = await User.find({
+        $or: [{ firstName: regex }, { lastName: regex }, { email: regex }, { phone: regex }],
+      })
+        .select('_id')
+        .limit(200)
+      filter.userId = { $in: matchedUsers.map((u) => u._id) }
+    }
+
+    const page = Math.max(1, parseInt(req.query.page) || 1)
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 40))
+    const skip = (page - 1) * limit
+
+    const [requests, total] = await Promise.all([
+      AccessRequest.find(filter).sort({ endAt: 1, updatedAt: -1 }).skip(skip).limit(limit),
+      AccessRequest.countDocuments(filter),
+    ])
+
+    const userIds = [...new Set(requests.map((r) => String(r.userId)))]
+    const users = await User.find({ _id: { $in: userIds } }).select(
+      'firstName lastName email phone soldeHeures',
+    )
+    const userMap = new Map(users.map((u) => [String(u._id), u]))
+    const now = new Date()
+
+    res.json({
+      success: true,
+      data: {
+        pagination: { page, limit, total, pages: Math.ceil(total / limit) || 1 },
+        subscribers: requests.map((r) => {
+          const learner = userMap.get(String(r.userId))
+          const remaining = remainingForAccessRequest(r, now)
+          const granted = Number(r.amount) === 0
+          return {
+            ...r.toAdminJSON(learner),
+            durationLabel: durationLabel(r.quantity, r.unit),
+            remainingMs: remaining.remainingMs,
+            remainingLabel:
+              r.module === 'conduite_heures'
+                ? `${learner?.soldeHeures ?? 0} h restantes (solde)`
+                : remaining.remainingLabel,
+            source: granted ? 'admin' : 'payment',
+            soldeHeures: learner?.soldeHeures ?? null,
+          }
+        }),
+      },
+    })
+  } catch (error) {
+    logger.error('Erreur liste abonnés:', { error: error.message })
+    res.status(500).json({ success: false, error: 'Chargement impossible' })
+  }
+})
+
+/** Attribution manuelle exceptionnelle d’un abonnement. */
+router.post('/grant', async (req, res) => {
+  try {
+    const { userId, module, quantity, note } = req.body ?? {}
+    if (!userId) {
+      return res.status(400).json({ success: false, error: 'Apprenant requis' })
+    }
+    const request = await adminGrantModuleAccess({
+      userId,
+      module,
+      quantity,
+      note,
+      admin: req.admin,
+    })
+    const user = await User.findById(request.userId).select('firstName lastName email phone soldeHeures')
+    const remaining = remainingForAccessRequest(request)
+    res.status(201).json({
+      success: true,
+      data: {
+        subscriber: {
+          ...request.toAdminJSON(user),
+          durationLabel: durationLabel(request.quantity, request.unit),
+          remainingMs: remaining.remainingMs,
+          remainingLabel:
+            request.module === 'conduite_heures'
+              ? `${user?.soldeHeures ?? 0} h restantes (solde)`
+              : remaining.remainingLabel,
+          source: 'admin',
+          soldeHeures: user?.soldeHeures ?? null,
+        },
+      },
+    })
+  } catch (error) {
+    logger.error('Erreur attribution abonnement:', { error: error.message })
+    res.status(error.status || 500).json({
+      success: false,
+      error: error.message || 'Attribution impossible',
+    })
+  }
+})
+
+/** Flux des paiements réussis (Mobile Money). */
+router.get('/payments', async (req, res) => {
+  try {
+    const filter = { status: 'approved' }
+    if (req.query.from || req.query.to) {
+      filter.activatedAt = {}
+      if (req.query.from) filter.activatedAt.$gte = new Date(req.query.from)
+      if (req.query.to) filter.activatedAt.$lte = new Date(req.query.to)
+    }
+
+    const page = Math.max(1, parseInt(req.query.page) || 1)
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 40))
+    const skip = (page - 1) * limit
+
+    const [payments, total] = await Promise.all([
+      Payment.find(filter).sort({ activatedAt: -1, createdAt: -1 }).skip(skip).limit(limit),
+      Payment.countDocuments(filter),
+    ])
+
+    const userIds = [...new Set(payments.map((p) => String(p.userId)))]
+    const users = await User.find({ _id: { $in: userIds } }).select('firstName lastName email phone')
+    const userMap = new Map(users.map((u) => [String(u._id), u]))
+
+    const linkedIds = [
+      ...new Set(
+        payments.flatMap((p) => (p.linkedRequestIds?.() || []).map((id) => String(id))).filter(Boolean),
+      ),
+    ]
+    const linkedRequests = linkedIds.length
+      ? await AccessRequest.find({ _id: { $in: linkedIds } }).select('module quantity unit status')
+      : []
+    const requestMap = new Map(linkedRequests.map((r) => [String(r._id), r]))
+
+    res.json({
+      success: true,
+      data: {
+        pagination: { page, limit, total, pages: Math.ceil(total / limit) || 1 },
+        payments: payments.map((p) => {
+          const ids = (p.linkedRequestIds?.() || []).map((id) => String(id))
+          const modules = ids.map((id) => requestMap.get(id)?.module).filter(Boolean)
+          return {
+            ...p.toAdminJSON(userMap.get(String(p.userId))),
+            modules,
+            module: modules[0] || null,
+          }
+        }),
+      },
+    })
+  } catch (error) {
+    logger.error('Erreur liste paiements réussis:', { error: error.message })
+    res.status(500).json({ success: false, error: 'Chargement impossible' })
+  }
 })
 
 router.get('/', async (req, res) => {

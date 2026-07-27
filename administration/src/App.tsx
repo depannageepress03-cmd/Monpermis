@@ -13,7 +13,7 @@ import { AnnouncementsPage } from './pages/AnnouncementsPage'
 import { CreateAdminPage } from './pages/CreateAdminPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { LoginPage } from './pages/LoginPage'
-import { AccessRequestsPage } from './pages/AccessRequestsPage'
+import { AbonnementsPage } from './pages/AbonnementsPage'
 import { UsersPage } from './pages/UsersPage'
 import { LearnerProgressDetailPage, LearnerProgressListPage } from './pages/code/LearnerProgressPage'
 
@@ -26,8 +26,8 @@ export default function App() {
         <Route element={<AdminLayout />}>
           <Route path="/" element={<DashboardPage />} />
           <Route path="/utilisateurs" element={<UsersPage />} />
-          <Route path="/abonnements" element={<Navigate to="/demandes-acces" replace />} />
-          <Route path="/demandes-acces" element={<AccessRequestsPage />} />
+          <Route path="/abonnements" element={<AbonnementsPage />} />
+          <Route path="/demandes-acces" element={<Navigate to="/abonnements" replace />} />
           <Route path="/annonces" element={<AnnouncementsPage />} />
           <Route path="/creer-admin" element={<CreateAdminPage />} />
           <Route path="/parcours" element={<Navigate to="/code/revision-chapitres" replace />} />

@@ -239,7 +239,7 @@ export function ReservationsPage() {
         backLabel="Conduite"
         kicker="Gestion"
         title="Réservations & moniteurs"
-        subtitle="Moniteurs, créneaux et suivi des réservations. Les heures sont prépayées via Demandes d’accès."
+        subtitle="Moniteurs, créneaux et suivi des réservations. Les heures sont prépayées via les abonnements."
       />
 
       {error ? <p className="form-error">{error}</p> : null}

@@ -4,7 +4,7 @@ import {
   TIME_BASED_MODULES,
   QUANTITY_BASED_MODULES,
 } from '../models/AccessRequest.js'
-import { AccessModulePricing } from '../models/AccessModulePricing.js'
+import { AccessModulePricing, ACCESS_MODULES } from '../models/AccessModulePricing.js'
 import { AccessAuditLog } from '../models/AccessAuditLog.js'
 import { Payment } from '../models/Payment.js'
 import { User } from '../models/User.js'
@@ -712,6 +712,118 @@ export async function declareManualPayment() {
   const error = new Error('Le paiement manuel n’est plus disponible. Utilisez le paiement Mobile Money en ligne.')
   error.status = 410
   throw error
+}
+
+/** Durée restante affichable pour un abonnement temporel. */
+export function remainingForAccessRequest(request, now = new Date()) {
+  if (QUANTITY_BASED_MODULES.includes(request.module)) {
+    return {
+      remainingMs: null,
+      remainingLabel: request.hoursCredited
+        ? `${request.quantity} h créditées`
+        : `${request.quantity} h`,
+    }
+  }
+  if (!request.endAt || request.status !== 'actif') {
+    return { remainingMs: 0, remainingLabel: 'Expiré' }
+  }
+  const remainingMs = Math.max(0, new Date(request.endAt).getTime() - now.getTime())
+  if (remainingMs <= 0) return { remainingMs: 0, remainingLabel: 'Expiré' }
+  const days = Math.floor(remainingMs / (24 * 60 * 60 * 1000))
+  const hours = Math.floor((remainingMs % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000))
+  if (days >= 1) {
+    return {
+      remainingMs,
+      remainingLabel: hours > 0 ? `${days} j ${hours} h` : `${days} jour${days > 1 ? 's' : ''}`,
+    }
+  }
+  const minutes = Math.floor((remainingMs % (60 * 60 * 1000)) / (60 * 1000))
+  if (hours >= 1) {
+    return {
+      remainingMs,
+      remainingLabel: minutes > 0 ? `${hours} h ${minutes} min` : `${hours} h`,
+    }
+  }
+  return { remainingMs, remainingLabel: `${Math.max(1, minutes)} min` }
+}
+
+/**
+ * Attribution manuelle exceptionnelle d’un abonnement / pack par un admin
+ * (sans paiement). Active immédiatement l’accès.
+ */
+export async function adminGrantModuleAccess({ userId, module, quantity = 1, note = '', admin }) {
+  if (!ACCESS_MODULES.includes(module)) {
+    const error = new Error('Module inconnu')
+    error.status = 400
+    throw error
+  }
+  const user = await User.findById(userId)
+  if (!user) {
+    const error = new Error('Apprenant introuvable')
+    error.status = 404
+    throw error
+  }
+
+  const pricing = await AccessModulePricing.findOne({ key: module })
+  if (!pricing) {
+    const error = new Error('Tarif module non configuré')
+    error.status = 404
+    throw error
+  }
+
+  const qty = Math.max(1, Math.floor(Number(quantity) || 1))
+  const trimmedNote = String(note || '').trim() || 'Attribution manuelle exceptionnelle'
+  const actor = `admin:${admin._id}`
+  const actorLabel = admin.fullName || 'Admin'
+
+  const request = new AccessRequest({
+    userId: user._id,
+    module,
+    status: 'en_attente',
+    quantity: qty,
+    amount: 0,
+    currency: pricing.currency || 'XOF',
+    unit: pricing.unit,
+    lastDecisionNote: trimmedNote,
+  })
+
+  if (QUANTITY_BASED_MODULES.includes(module)) {
+    request.status = 'valide'
+    await User.findByIdAndUpdate(user._id, { $inc: { soldeHeures: qty } })
+    request.hoursCredited = true
+    await request.save()
+    await AccessAuditLog.create({
+      accessRequestId: request._id,
+      fromStatus: '',
+      toStatus: 'valide',
+      actor,
+      actorLabel,
+      note: trimmedNote,
+    })
+  } else {
+    request.status = 'actif'
+    request.startAt = new Date()
+    request.endAt = new Date(request.startAt.getTime() + durationMsForRequest(request))
+    await request.save()
+    await AccessAuditLog.create({
+      accessRequestId: request._id,
+      fromStatus: '',
+      toStatus: 'actif',
+      actor,
+      actorLabel,
+      note: trimmedNote,
+    })
+  }
+
+  void notifyUser(user._id, {
+    type: 'access_validated',
+    title: 'Abonnement activé ✅',
+    body: `Un accès « ${pricing.label || module} » t’a été attribué par l’auto-école.`,
+    link: 'abonnement',
+  })
+  void broadcastAccessRequestUpdate(request, user)
+
+  return request
 }
 
 /** Décision admin sur une demande en_attente ou paiement_declare — note obligatoire. */

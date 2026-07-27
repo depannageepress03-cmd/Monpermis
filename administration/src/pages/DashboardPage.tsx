@@ -12,7 +12,7 @@ import {
   Zap,
 } from 'lucide-react'
 import { MiniDonut } from '../components/AdminCharts'
-import { StatusBadge, type StatusTone } from '../components/StatusBadge'
+import { StatusBadge } from '../components/StatusBadge'
 import {
   fetchDashboardSummary,
   paymentStatusLabel,
@@ -20,7 +20,7 @@ import {
   type DashboardPayment,
   type DashboardSummary,
 } from '../api/dashboard'
-import type { AccessModuleKey, PaymentStatus } from '../api/accessRequests'
+import type { AccessModuleKey } from '../api/accessRequests'
 import { paymentChannelLabel } from '../api/accessRequests'
 import { getAdminToken, isAuthError, useAdminAuth } from '../context/AdminAuthContext'
 
@@ -66,12 +66,6 @@ function formatRelativeTime(value: string) {
   if (hours < 24) return `il y a ${hours} h`
   const days = Math.round(hours / 24)
   return `il y a ${days} j`
-}
-
-function paymentTone(status: PaymentStatus): StatusTone {
-  if (status === 'approved') return 'success'
-  if (status === 'pending') return 'warning'
-  return 'danger'
 }
 
 function learnerName(payment: DashboardPayment) {
@@ -159,17 +153,16 @@ export function DashboardPage() {
       : '0'
 
   const monthLabel = new Date().toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })
-  const pendingPaymentsTotal = summary.payments.pending + summary.accessRequests.pending
 
   const rows = useMemo(
     () => [
       {
-        space: 'Demandes d’accès',
-        indicator: `${summary.accessRequests.pending} en attente · ${summary.payments.pending} paiements`,
-        tone: pendingPaymentsTotal > 0 ? ('warning' as const) : ('success' as const),
-        badge: pendingPaymentsTotal > 0 ? 'À traiter' : 'À jour',
+        space: 'Abonnés',
+        indicator: `${summary.accessRequests.active} abonnements actifs · ${summary.revenue.transactions} paiements`,
+        tone: 'success' as const,
+        badge: `${summary.accessRequests.active} actifs`,
         access: 'Admin',
-        to: '/demandes-acces',
+        to: '/abonnements',
       },
       {
         space: 'Code de la route',
@@ -189,7 +182,7 @@ export function DashboardPage() {
       },
       {
         space: 'Réservations',
-        indicator: `${summary.conduite.reservationsPending} paiements en attente`,
+        indicator: `${summary.conduite.reservationsPending} en attente`,
         tone: summary.conduite.reservationsPending > 0 ? ('warning' as const) : ('success' as const),
         badge: summary.conduite.reservationsPending > 0 ? 'En attente' : 'À jour',
         access: 'Admin',
@@ -204,7 +197,12 @@ export function DashboardPage() {
         to: '/utilisateurs',
       },
     ],
-    [summary, pendingPaymentsTotal],
+    [summary],
+  )
+
+  const approvedLivePayments = useMemo(
+    () => payments.filter((payment) => payment.status === 'approved'),
+    [payments],
   )
 
   return (
@@ -214,7 +212,7 @@ export function DashboardPage() {
           <p className="admin-module-kicker">Aperçu général</p>
           <h1 className="admin-module-title">Tableau de bord</h1>
           <p className="admin-module-subtitle" style={{ marginTop: 4 }}>
-            Suivi live des paiements Mobile Money (MTN / Moov / Celtiis) et des accès modules.
+            Suivi live des paiements Mobile Money réussis et des abonnements actifs.
           </p>
           <div className="admin-module-accent-row" aria-hidden>
             <span className="admin-module-accent is-green" />
@@ -279,21 +277,21 @@ export function DashboardPage() {
 
         <div className="dash-stat-card">
           <div className="dash-stat-head">
-            <p className="dash-stat-label">Paiements en attente</p>
+            <p className="dash-stat-label">Paiements réussis</p>
             <div className="dash-stat-icon is-violet">
               <Wallet size={14} strokeWidth={2} />
             </div>
           </div>
-          <p className="dash-stat-num">{loading ? '…' : summary.payments.pending}</p>
-          <div className="dash-stat-foot is-red">
+          <p className="dash-stat-num">{loading ? '…' : summary.revenue.transactions}</p>
+          <div className="dash-stat-foot is-green">
             <TrendingUp size={12} strokeWidth={2} />
-            {summary.accessRequests.pending} demandes · {summary.conduite.reservationsPending} réservations
+            {formatXof(summary.revenue.month)} ce mois
           </div>
         </div>
 
         <div className="dash-stat-card">
           <div className="dash-stat-head">
-            <p className="dash-stat-label">Accès actifs</p>
+            <p className="dash-stat-label">Abonnements actifs</p>
             <div className="dash-stat-icon is-violet">
               <CreditCard size={14} strokeWidth={2} />
             </div>
@@ -397,20 +395,20 @@ export function DashboardPage() {
             <div className="dash-payments-head-title">
               <Activity size={14} color="#00B050" strokeWidth={2} />
               <div>
-                <h3>Paiements en temps réel</h3>
+                <h3>Paiements réussis</h3>
                 <p>
                   {liveConnected ? 'Flux SSE connecté' : 'Connexion au flux…'}
                   {admin?.fullName ? ` · ${admin.fullName}` : ''}
                 </p>
               </div>
             </div>
-            <Link to="/demandes-acces" className="dash-filter-btn" style={{ textDecoration: 'none' }}>
+            <Link to="/abonnements?tab=payments" className="dash-filter-btn" style={{ textDecoration: 'none' }}>
               Voir tout
             </Link>
           </div>
 
           <div className="dash-activity-list">
-            {loading && payments.length === 0 ? (
+            {loading && approvedLivePayments.length === 0 ? (
               <div className="dash-activity-item">
                 <span className="dash-activity-dot" style={{ background: '#94a3b8' }} />
                 <div>
@@ -418,16 +416,16 @@ export function DashboardPage() {
                   <span>Récupération des derniers paiements</span>
                 </div>
               </div>
-            ) : payments.length === 0 ? (
+            ) : approvedLivePayments.length === 0 ? (
               <div className="dash-activity-item">
                 <span className="dash-activity-dot" style={{ background: '#00B050' }} />
                 <div>
-                  <strong>Aucun paiement récent</strong>
+                  <strong>Aucun paiement réussi récent</strong>
                   <span>Les nouveaux paiements apparaîtront ici automatiquement</span>
                 </div>
               </div>
             ) : (
-              payments.map((payment) => {
+              approvedLivePayments.map((payment) => {
                 const modules =
                   payment.modules && payment.modules.length > 0
                     ? payment.modules
@@ -438,20 +436,12 @@ export function DashboardPage() {
                 return (
                   <Link
                     key={payment.id}
-                    to={`/demandes-acces`}
+                    to="/abonnements?tab=payments"
                     className="dash-activity-item dash-payment-item"
-                    state={{ selectedId: payment.accessRequestId }}
                   >
                     <span
                       className="dash-activity-dot"
-                      style={{
-                        background:
-                          payment.status === 'approved'
-                            ? '#00B050'
-                            : payment.status === 'pending'
-                              ? '#FFC000'
-                              : '#dc2626',
-                      }}
+                      style={{ background: '#00B050' }}
                     />
                     <div>
                       <strong>{learnerName(payment)}</strong>
@@ -462,7 +452,7 @@ export function DashboardPage() {
                         {` · ${paymentChannelLabel(payment)}`}
                       </span>
                       <small>
-                        <StatusBadge tone={paymentTone(payment.status)}>
+                        <StatusBadge tone="success">
                           {paymentStatusLabel(payment.status)}
                         </StatusBadge>
                         {' · '}
@@ -479,7 +469,8 @@ export function DashboardPage() {
 
       <div className="dash-quick-links">
         {[
-          { to: '/demandes-acces', label: 'Demandes d’accès' },
+          { to: '/abonnements', label: 'Abonnés' },
+          { to: '/abonnements?tab=payments', label: 'Paiements réussis' },
           { to: '/code/revision-chapitres', label: 'Révision chapitres' },
           { to: '/conduite/lecons', label: 'Leçons conduite' },
           { to: '/conduite/reservations', label: 'Réservations' },
