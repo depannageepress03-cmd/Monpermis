@@ -1,5 +1,5 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
-import { CalendarPlus, Check, ImagePlus, Plus, Trash2 } from 'lucide-react'
+import { CalendarPlus, ImagePlus, Plus, Trash2 } from 'lucide-react'
 import {
   createMoniteur,
   deleteAdminReservation,
@@ -8,7 +8,6 @@ import {
   fetchMoniteurs,
   generateCreneaux,
   uploadVehiclePhoto,
-  validateReservationPayment,
 } from '../../api/reservations'
 import { AdminSectionHeader } from '../../components/AdminSectionHeader'
 import { getAdminToken, isAuthError } from '../../context/AdminAuthContext'
@@ -204,21 +203,6 @@ export function ReservationsPage() {
     }
   }
 
-  const markPaid = async (reservation: ReservationAdmin) => {
-    const token = getAdminToken()
-    if (!token) return
-    try {
-      await validateReservationPayment(token, reservation.id, {
-        paymentStatus: 'paid',
-        paymentRef: reservation.paymentRef,
-      })
-      setSuccess('Paiement validé — réservation confirmée.')
-      await load({ silent: true })
-    } catch (err) {
-      setError(isAuthError(err) ? err.message : 'Validation impossible')
-    }
-  }
-
   const handleDeleteReservation = async (reservation: ReservationAdmin) => {
     const token = getAdminToken()
     if (!token) return
@@ -255,7 +239,7 @@ export function ReservationsPage() {
         backLabel="Conduite"
         kicker="Gestion"
         title="Réservations & moniteurs"
-        subtitle="Moniteurs, créneaux et validation des paiements."
+        subtitle="Moniteurs, créneaux et suivi des réservations. Les heures sont prépayées via Demandes d’accès."
       />
 
       {error ? <p className="form-error">{error}</p> : null}
@@ -467,8 +451,9 @@ export function ReservationsPage() {
                         ? ` · ${reservation.moniteur.vehicleBrand}`
                         : ''}{' '}
                       · {reservation.vehicleType} ·{' '}
-                      {(reservation.priceFcfa || 0).toLocaleString('fr-FR')} FCFA
-                      {reservation.paymentRef ? ` · Ref. ${reservation.paymentRef}` : ''}
+                      {reservation.heuresDebitees > 0
+                        ? `${reservation.heuresDebitees} h débitée${reservation.heuresDebitees > 1 ? 's' : ''}`
+                        : `${(reservation.priceFcfa || 0).toLocaleString('fr-FR')} FCFA`}
                     </span>
                     {reservation.cancellationReason ? (
                       <span className="admin-muted">
@@ -485,21 +470,8 @@ export function ReservationsPage() {
                 </div>
                 <div className="admin-list-actions">
                   <span className="admin-chip">{reservation.status}</span>
-                  <span className="admin-chip">{reservation.paymentStatus}</span>
-                  {reservation.status !== 'cancelled' &&
-                  reservation.paymentStatus !== 'paid' ? (
-                    <button
-                      type="button"
-                      className="btn-outline-sm"
-                      onClick={() => void markPaid(reservation)}
-                    >
-                      <Check size={15} />
-                      Valider
-                    </button>
-                  ) : null}
-                  {reservation.paymentStatus === 'paid' &&
-                  reservation.status !== 'cancelled' ? (
-                    <span className="admin-chip is-success">Payé</span>
+                  {reservation.heuresDebitees > 0 ? (
+                    <span className="admin-chip is-success">Prépayé</span>
                   ) : null}
                   <button
                     type="button"

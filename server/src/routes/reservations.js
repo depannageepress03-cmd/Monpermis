@@ -3,6 +3,7 @@ import mongoose from 'mongoose'
 import { Moniteur } from '../models/Moniteur.js'
 import { Creneau } from '../models/Creneau.js'
 import { Reservation } from '../models/Reservation.js'
+import { User } from '../models/User.js'
 import { requireUserAuth } from '../middleware/userAuth.js'
 import { requireSubscriptionAccess } from '../middleware/subscriptionAccess.js'
 import {
@@ -15,6 +16,7 @@ import {
   formatLocalDate,
   normalizeVehicleType,
 } from '../utils/localDate.js'
+import { computeCreneauHeures } from '../utils/creneauDuration.js'
 
 const router = Router()
 const withConduiteAccess = [requireUserAuth, requireSubscriptionAccess('conduite')]
@@ -250,7 +252,6 @@ router.post('/reservations', ...withConduiteAccess, async (req, res) => {
     const creneauId = asId(req.body.creneauId)
     const vehicleType = normalizeVehicleType(req.body.vehicleType)
     const moniteurId = req.body.moniteurId ? asId(req.body.moniteurId) : null
-    const paymentRef = String(req.body.paymentRef || '').trim()
 
     if (!creneauId) {
       return res.status(400).json({ success: false, error: 'Créneau requis' })
@@ -284,6 +285,32 @@ router.post('/reservations', ...withConduiteAccess, async (req, res) => {
       })
     }
 
+    async function releaseCreneau() {
+      await Creneau.findByIdAndUpdate(creneau._id, {
+        status: 'libre',
+        lockedUntil: null,
+        lockedBy: null,
+      })
+    }
+
+    // Les heures sont prépayées (pack d'heures) : on débite le solde à la réservation,
+    // pas à la complétion. Débit atomique conditionnel pour éviter tout découvert
+    // en cas de double réservation concurrente.
+    const heures = computeCreneauHeures(creneau)
+    const debited = await User.findOneAndUpdate(
+      { _id: req.user._id, soldeHeures: { $gte: heures } },
+      { $inc: { soldeHeures: -heures } },
+      { new: true },
+    )
+    if (!debited) {
+      await releaseCreneau()
+      return res.status(403).json({
+        success: false,
+        error: `Solde d’heures insuffisant (${heures} h requises). Achetez un pack d’heures pour réserver.`,
+        code: 'INSUFFICIENT_HOURS',
+      })
+    }
+
     const assignedMoniteurId = moniteurId || asId(creneau.moniteurId)
 
     let reservation
@@ -293,18 +320,14 @@ router.post('/reservations', ...withConduiteAccess, async (req, res) => {
         moniteurId: assignedMoniteurId,
         creneauId: creneau._id,
         vehicleType: creneau.vehicleType || vehicleType,
-        status: 'pending_payment',
-        paymentStatus: paymentRef ? 'pending_validation' : 'unpaid',
-        paymentRef,
+        status: 'confirmed',
         priceFcfa: creneau.priceFcfa || 5000,
+        heuresDebitees: heures,
       })
     } catch (error) {
-      // rollback créneau uniquement si la réservation n’a pas été créée
-      await Creneau.findByIdAndUpdate(creneau._id, {
-        status: 'libre',
-        lockedUntil: null,
-        lockedBy: null,
-      })
+      // rollback créneau + recrédit des heures si la réservation n’a pas été créée
+      await releaseCreneau()
+      await User.findByIdAndUpdate(req.user._id, { $inc: { soldeHeures: heures } })
       if (error?.code === 11000) {
         return res.status(409).json({ success: false, error: 'Créneau déjà réservé' })
       }
@@ -352,41 +375,6 @@ router.post('/reservations', ...withConduiteAccess, async (req, res) => {
   }
 })
 
-router.post('/reservations/:id/payment-ref', ...withConduiteAccess, async (req, res) => {
-  try {
-    const paymentRef = String(req.body.paymentRef || '').trim()
-    if (paymentRef.length < 4) {
-      return res.status(400).json({
-        success: false,
-        error: 'Référence Mobile Money invalide',
-      })
-    }
-
-    const reservation = await Reservation.findOne({
-      _id: req.params.id,
-      userId: req.user._id,
-    })
-    if (!reservation) {
-      return res.status(404).json({ success: false, error: 'Réservation introuvable' })
-    }
-    if (reservation.status === 'cancelled') {
-      return res.status(400).json({ success: false, error: 'Réservation annulée' })
-    }
-
-    reservation.paymentRef = paymentRef
-    reservation.paymentStatus = 'pending_validation'
-    await reservation.save()
-
-    res.json({
-      success: true,
-      data: { reservation: await hydrateReservation(reservation) },
-    })
-  } catch (error) {
-    console.error('Erreur paiement ref:', error)
-    res.status(500).json({ success: false, error: 'Enregistrement impossible' })
-  }
-})
-
 router.post('/reservations/:id/cancel', ...withConduiteAccess, async (req, res) => {
   try {
     const reason = String(req.body.reason || req.body.cancellationReason || '').trim()
@@ -429,6 +417,10 @@ router.post('/reservations/:id/cancel', ...withConduiteAccess, async (req, res) 
     reservation.cancellationReason = reason
     reservation.cancelledBy = 'learner'
     await reservation.save()
+
+    if (reservation.heuresDebitees > 0) {
+      await User.findByIdAndUpdate(req.user._id, { $inc: { soldeHeures: reservation.heuresDebitees } })
+    }
 
     await Creneau.findByIdAndUpdate(reservation.creneauId._id, {
       status: 'libre',

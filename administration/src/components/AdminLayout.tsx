@@ -13,6 +13,7 @@ import {
   Search,
   UserPlus,
   Users,
+  Wallet,
   X,
 } from 'lucide-react'
 import { FormEvent, useEffect, useState } from 'react'
@@ -59,6 +60,7 @@ const navItems: NavItem[] = [
   },
   { to: '/utilisateurs', label: 'Utilisateurs', icon: Users },
   { to: '/abonnements', label: 'Abonnements', icon: CreditCard },
+  { to: '/demandes-acces', label: 'Demandes d’accès', icon: Wallet },
   { to: '/annonces', label: 'Annonces', icon: Megaphone },
   { to: '/creer-admin', label: 'Créer un admin', icon: UserPlus },
 ]
@@ -67,6 +69,7 @@ function pageLabel(pathname: string) {
   if (pathname === '/') return 'Tableau de bord'
   if (pathname.startsWith('/utilisateurs')) return 'Utilisateurs'
   if (pathname.startsWith('/abonnements')) return 'Abonnements'
+  if (pathname.startsWith('/demandes-acces')) return 'Demandes d’accès'
   if (pathname.startsWith('/creer-admin')) return 'Créer un admin'
   if (pathname.includes('/questions')) return 'Questions'
   if (pathname.startsWith('/code/revision-chapitres')) return 'Révision par chapitres'

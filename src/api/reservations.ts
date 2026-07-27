@@ -114,7 +114,6 @@ export const createReservation = (payload: {
   creneauId: string
   vehicleType: string
   moniteurId?: string
-  paymentRef?: string
 }) =>
   request<{
     reservation: ReservationItem

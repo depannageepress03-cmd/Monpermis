@@ -186,7 +186,21 @@ export function cancelRemoteAudio() {
   }
 }
 
-/** Coupe tout audio quiz (question / replay). */
+/**
+ * Déclare le lecteur actuellement actif pour que stopAllQuizAudio() puisse
+ * réellement le couper. À appeler par tout composant qui crée un player
+ * (ex. QuestionAudioSequence).
+ */
+export function registerActiveAudioPlayer(player: Player | null) {
+  currentRemotePlayer = player
+}
+
+/** Désenregistre `player`, sans effet si un autre player a déjà pris le relai entretemps. */
+export function unregisterActiveAudioPlayer(player: Player | null) {
+  if (currentRemotePlayer === player) currentRemotePlayer = null
+}
+
+/** Coupe tout audio quiz (question / replay) — y compris le lecteur enregistré via registerActiveAudioPlayer. */
 export function stopAllQuizAudio() {
   cancelRemoteAudio()
 }

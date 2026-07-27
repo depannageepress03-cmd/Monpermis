@@ -10,6 +10,7 @@ import {
   type MoniteurPublic,
   type ReservationSlot,
 } from '../../api/reservations'
+import { fetchAccessMe } from '../../api/accessRequests'
 import { PageNavbar } from '../../components/PageNavbar'
 import { useAuth } from '../../hooks/useAuth'
 import { resolveMediaUrl } from '../../utils/mediaUrl'
@@ -43,7 +44,7 @@ export function ReservationPage() {
   const [moniteurs, setMoniteurs] = useState<MoniteurPublic[]>([])
   const [days, setDays] = useState<{ date: string; creneaux: ReservationSlot[] }[]>([])
   const [selected, setSelected] = useState<ReservationSlot | null>(null)
-  const [paymentRef, setPaymentRef] = useState('')
+  const [soldeHeures, setSoldeHeures] = useState<number | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [whatsappLink, setWhatsappLink] = useState('')
@@ -91,6 +92,12 @@ export function ReservationPage() {
   }, [step, loadMoniteurs])
 
   useEffect(() => {
+    fetchAccessMe()
+      .then((data) => setSoldeHeures(data.user.soldeHeures))
+      .catch(() => setSoldeHeures(null))
+  }, [])
+
+  useEffect(() => {
     if (step === 'calendar') void loadCreneaux()
   }, [step, loadCreneaux])
 
@@ -123,7 +130,6 @@ export function ReservationPage() {
         creneauId: String(selected.id),
         vehicleType: selected.vehicleType || vehicleType || 'voiture',
         moniteurId: chosenMoniteurId ? String(chosenMoniteurId) : undefined,
-        paymentRef: paymentRef.trim() || undefined,
       })
       setWhatsappLink(data.whatsappLink)
       const start = `${data.calendarHint.date.replace(/-/g, '')}T${data.calendarHint.startTime.replace(':', '')}00`
@@ -167,8 +173,8 @@ export function ReservationPage() {
                 </p>
                 <p>
                   Une fois le moniteur sélectionné, vous pourrez consulter ses créneaux libres
-                  sur les 14 prochains jours, puis confirmer la séance et transmettre votre
-                  référence Mobile Money pour validation.
+                  sur les 14 prochains jours, puis confirmer la séance. Le nombre d’heures
+                  correspondant sera débité de votre solde d’heures prépayées.
                 </p>
               </div>
 
@@ -312,15 +318,14 @@ export function ReservationPage() {
           {step === 'payment' && selected ? (
             <form className="reservation-step" onSubmit={onConfirm}>
               <div className="reservation-intro">
-                <h2>Confirmez et payez</h2>
+                <h2>Confirmez votre réservation</h2>
                 <p>
-                  Vérifiez le récapitulatif ci-dessous. Indiquez la référence de votre
-                  transaction Mobile Money (Moov ou MTN) pour que l’administration valide
-                  le paiement. Sans référence, la demande reste en attente.
+                  Vérifiez le récapitulatif ci-dessous. Les heures correspondantes seront
+                  débitées de votre solde d’heures prépayées dès la confirmation.
                 </p>
               </div>
 
-              <h3 className="section-title">3. Récapitulatif & paiement</h3>
+              <h3 className="section-title">3. Récapitulatif</h3>
               <div className="recap-card">
                 {selectedMoniteur?.vehiclePhotoUrl || selected.moniteur?.vehiclePhotoUrl ? (
                   <img
@@ -341,19 +346,22 @@ export function ReservationPage() {
                   {selectedMoniteur?.vehicleBrand || selected.moniteur?.vehicleBrand || 'Véhicule'} ·{' '}
                   {selected.vehicleType || vehicleType}
                 </p>
-                <p className="price">{selected.priceFcfa.toLocaleString('fr-FR')} FCFA</p>
               </div>
-              <label className="field-label">Référence Mobile Money</label>
               <p className="subtitle">
-                Exemple : MTN-123456 ou le numéro de transaction reçu par SMS.
+                Solde actuel : <strong>{soldeHeures ?? '…'} h</strong>
+                {soldeHeures !== null && soldeHeures <= 0 ? (
+                  <>
+                    {' '}
+                    — insuffisant pour réserver.{' '}
+                    <a href="/abonnement">Acheter un pack d’heures</a>
+                  </>
+                ) : null}
               </p>
-              <input
-                className="field-input"
-                value={paymentRef}
-                onChange={(e) => setPaymentRef(e.target.value)}
-                placeholder="Ex. MTN-123456"
-              />
-              <button type="submit" className="btn-primary reservation-calendar-btn" disabled={busy}>
+              <button
+                type="submit"
+                className="btn-primary reservation-calendar-btn"
+                disabled={busy || soldeHeures === 0}
+              >
                 {busy ? 'Confirmation…' : 'Confirmer la réservation'}
               </button>
             </form>
@@ -366,8 +374,7 @@ export function ReservationPage() {
               </div>
               <h2>Séance réservée</h2>
               <p className="subtitle">
-                Votre demande est enregistrée. Elle apparaît dans votre espace Conduite et
-                sera traitée par l’administration pour la validation du paiement.
+                Votre séance est confirmée et apparaît dans votre espace Conduite.
               </p>
               <p className="subtitle">
                 Pensez à ajouter la séance à votre agenda et, si besoin, à notifier votre

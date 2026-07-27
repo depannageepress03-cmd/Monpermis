@@ -10,7 +10,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native'
 import {
@@ -19,10 +18,10 @@ import {
   fetchPublicMoniteurs,
   lockCreneau,
   ReservationError,
-  submitPaymentRef,
   type MoniteurPublic,
   type ReservationSlot,
 } from '../../api/reservations'
+import { fetchAccessMe } from '../../api/accessRequests'
 import { DarkScreen } from '../../components/DarkScreen'
 import { PageNavbar } from '../../components/PageNavbar'
 import { ScreenLoader } from '../../components/ScreenLoader'
@@ -54,7 +53,7 @@ export function ReservationFlowScreen() {
   const [moniteurs, setMoniteurs] = useState<MoniteurPublic[]>([])
   const [days, setDays] = useState<{ date: string; creneaux: ReservationSlot[] }[]>([])
   const [selected, setSelected] = useState<ReservationSlot | null>(null)
-  const [paymentRef, setPaymentRef] = useState('')
+  const [soldeHeures, setSoldeHeures] = useState<number | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [whatsappLink, setWhatsappLink] = useState('')
@@ -64,7 +63,6 @@ export function ReservationFlowScreen() {
     startTime: string
     endTime: string
   } | null>(null)
-  const [reservationId, setReservationId] = useState<string | null>(null)
 
   const selectedMoniteur = useMemo(
     () => moniteurs.find((item) => item.id === moniteurId) ?? null,
@@ -112,7 +110,11 @@ export function ReservationFlowScreen() {
     if (step === 'calendar') void loadCreneaux()
   }, [step, loadCreneaux])
 
-  const selectedPrice = selected?.priceFcfa ?? 0
+  useEffect(() => {
+    fetchAccessMe()
+      .then((data) => setSoldeHeures(data.user.soldeHeures))
+      .catch(() => setSoldeHeures(null))
+  }, [])
 
   const onSelectSlot = async (slot: ReservationSlot) => {
     if (!slot.available) return
@@ -141,14 +143,9 @@ export function ReservationFlowScreen() {
         creneauId: String(selected.id),
         vehicleType: selected.vehicleType || vehicleType || 'voiture',
         moniteurId: chosenMoniteurId ? String(chosenMoniteurId) : undefined,
-        paymentRef: paymentRef.trim() || undefined,
       })
-      setReservationId(String(data.reservation.id))
       setWhatsappLink(data.whatsappLink)
       setCalendarHint(data.calendarHint)
-      if (paymentRef.trim() && data.reservation.id) {
-        await submitPaymentRef(String(data.reservation.id), paymentRef.trim())
-      }
       setStep('success')
     } catch (err) {
       setError(err instanceof ReservationError ? err.message : 'Réservation impossible')
@@ -189,8 +186,8 @@ export function ReservationFlowScreen() {
                 décider.
               </Text>
               <Text style={styles.introText}>
-                Ensuite, consultez les créneaux libres sur 14 jours, confirmez la séance et
-                transmettez votre référence Mobile Money pour validation.
+                Ensuite, consultez les créneaux libres sur 14 jours et confirmez la séance.
+                Le nombre d’heures correspondant sera débité de votre solde prépayé.
               </Text>
 
               <Text style={styles.section}>1. Choisissez un moniteur</Text>
@@ -350,12 +347,12 @@ export function ReservationFlowScreen() {
 
           {step === 'payment' && selected ? (
             <View>
-              <Text style={styles.introTitle}>Confirmez et payez</Text>
+              <Text style={styles.introTitle}>Confirmez votre réservation</Text>
               <Text style={styles.introText}>
-                Vérifiez le récapitulatif. Indiquez la référence Mobile Money (Moov / MTN)
-                pour validation. Sans référence, la demande reste en attente.
+                Vérifiez le récapitulatif. Les heures correspondantes seront débitées de
+                votre solde prépayé dès la confirmation.
               </Text>
-              <Text style={styles.section}>3. Récapitulatif & paiement</Text>
+              <Text style={styles.section}>3. Récapitulatif</Text>
               <View style={styles.recap}>
                 {selectedMoniteur?.vehiclePhotoUrl ? (
                   <Image
@@ -371,21 +368,16 @@ export function ReservationFlowScreen() {
                   {selectedMoniteur?.vehicleBrand || 'Véhicule'} ·{' '}
                   {selected.vehicleType || vehicleType}
                 </Text>
-                <Text style={styles.price}>{selectedPrice.toLocaleString('fr-FR')} FCFA</Text>
               </View>
               <Text style={styles.hint}>
-                Exemple : MTN-123456 ou le numéro de transaction reçu par SMS.
+                Solde actuel : {soldeHeures ?? '…'} h
+                {soldeHeures !== null && soldeHeures <= 0
+                  ? ' — insuffisant pour réserver. Achète un pack d’heures depuis Mon abonnement.'
+                  : ''}
               </Text>
-              <TextInput
-                style={styles.input}
-                value={paymentRef}
-                onChangeText={setPaymentRef}
-                placeholder="Réf. Mobile Money"
-                placeholderTextColor={dark.textMuted}
-              />
               <Pressable
-                style={[styles.primaryBtn, busy && styles.disabled]}
-                disabled={busy}
+                style={[styles.primaryBtn, (busy || soldeHeures === 0) && styles.disabled]}
+                disabled={busy || soldeHeures === 0}
                 onPress={() => void onConfirm()}
               >
                 <Text style={styles.primaryBtnText}>
@@ -402,9 +394,7 @@ export function ReservationFlowScreen() {
               </View>
               <Text style={styles.successTitle}>Séance réservée</Text>
               <Text style={styles.successText}>
-                Votre demande est enregistrée
-                {reservationId ? ' et en attente de validation du paiement' : ''}. Elle
-                apparaît dans votre espace Conduite.
+                Votre séance est confirmée et apparaît dans votre espace Conduite.
               </Text>
               <Text style={styles.successText}>
                 Ajoutez la séance à votre agenda ou notifiez votre moniteur via WhatsApp.
@@ -631,29 +621,12 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bodySemiBold,
     marginBottom: 4,
   },
-  price: {
-    marginTop: 8,
-    fontFamily: fonts.displayExtraBold,
-    fontSize: 22,
-    color: dark.textPrimary,
-  },
   hint: {
     fontFamily: fonts.body,
     fontSize: 13,
     color: dark.textMuted,
     lineHeight: 18,
     marginBottom: 10,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: dark.border,
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    color: dark.textPrimary,
-    backgroundColor: dark.surface,
-    marginBottom: 8,
-    fontFamily: fonts.body,
   },
   successBox: { alignItems: 'center', paddingTop: 12 },
   successIcon: {

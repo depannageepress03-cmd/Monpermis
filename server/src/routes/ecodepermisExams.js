@@ -3,7 +3,7 @@ import { Question } from '../models/Question.js'
 import { ECodePermisExam } from '../models/ECodePermisExam.js'
 import { ECodePermisExamAttempt } from '../models/ECodePermisExamAttempt.js'
 import { requireUserAuth } from '../middleware/userAuth.js'
-import { requireSubscriptionAccess } from '../middleware/subscriptionAccess.js'
+import { requireModuleAccess } from '../middleware/moduleAccess.js'
 import {
   ECODEPERMIS_EXAM_COUNT,
   ECODEPERMIS_EXAM_PASS_SCORE,
@@ -16,7 +16,7 @@ import { Chapter } from '../models/Chapter.js'
 import { allRevisionCoursesCompleted } from '../utils/progress.js'
 
 const router = Router()
-const withECodeAccess = [requireUserAuth, requireSubscriptionAccess('eCodepermis')]
+const withECodeAccess = [requireUserAuth, requireModuleAccess('ecodepermis')]
 
 async function assertECodePermisUnlocked(user) {
   const chapters = await Chapter.find({ published: true }).sort({ order: 1, createdAt: 1 })

@@ -37,6 +37,8 @@ const reservationSchema = new mongoose.Schema(
     },
     paymentRef: { type: String, default: '', trim: true },
     priceFcfa: { type: Number, default: 0 },
+    /** Heures prépayées débitées de soldeHeures à la réservation (pour recrédit exact si annulation). */
+    heuresDebitees: { type: Number, default: 0 },
     reminderSentAt: { type: Date, default: null },
     cancelledAt: { type: Date, default: null },
     /** Motif d’annulation fourni par l’élève (ou l’admin). */
@@ -79,6 +81,7 @@ reservationSchema.methods.toJSONSafe = function toJSONSafe(extras = {}) {
     paymentStatus: this.paymentStatus,
     paymentRef: this.paymentRef || '',
     priceFcfa: this.priceFcfa || 0,
+    heuresDebitees: this.heuresDebitees || 0,
     reminderSentAt: this.reminderSentAt,
     cancelledAt: this.cancelledAt,
     cancellationReason: this.cancellationReason || '',

@@ -5,7 +5,9 @@ import { ensureAudioSession } from '../utils/audioSession'
 import {
   playCountdown5to0,
   playGongSound,
+  registerActiveAudioPlayer,
   stopAllQuizAudio,
+  unregisterActiveAudioPlayer,
   type CountdownValue,
 } from '../utils/quizSounds'
 
@@ -138,6 +140,7 @@ export function QuestionAudioSequence({ questionKey, promptUri, onSequenceComple
       } catch {
         // ignore
       }
+      unregisterActiveAudioPlayer(localPlayer)
     }
 
     void (async () => {
@@ -152,6 +155,7 @@ export function QuestionAudioSequence({ questionKey, promptUri, onSequenceComple
             { uri: promptUrl },
             { downloadFirst: true },
           ) as Player
+          registerActiveAudioPlayer(localPlayer)
           if (typeof localPlayer.volume === 'number') localPlayer.volume = 1
 
           setStatus('Chargement audio…')

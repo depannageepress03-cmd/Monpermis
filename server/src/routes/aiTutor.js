@@ -2,7 +2,7 @@ import { Router } from 'express'
 import rateLimit from 'express-rate-limit'
 import { Chapter } from '../models/Chapter.js'
 import { requireUserAuth } from '../middleware/userAuth.js'
-import { requireSubscriptionAccess } from '../middleware/subscriptionAccess.js'
+import { requireModuleAccess } from '../middleware/moduleAccess.js'
 import {
   buildCourseContext,
   buildTutorSystemPrompt,
@@ -11,7 +11,7 @@ import {
 import { publishedCourses } from '../utils/progress.js'
 
 const router = Router()
-const withAiChatAccess = [requireUserAuth, requireSubscriptionAccess('aiChat')]
+const withAiChatAccess = [requireUserAuth, requireModuleAccess('aiChat')]
 
 const chatLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,

@@ -1,11 +1,28 @@
 import { PaymentTransaction } from '../models/PaymentTransaction.js'
 import { UserSubscription } from '../models/UserSubscription.js'
+import { User } from '../models/User.js'
+import { SubscriptionPlan } from '../models/SubscriptionPlan.js'
 import { activateSubscription } from './subscriptions.js'
+import { broadcastPaymentEvent } from '../services/paymentEvents.js'
 import {
   createFedaPayCheckout,
   mapFedaPayStatus,
   retrieveFedaPayTransaction,
 } from '../services/fedapay.js'
+
+/** Notifie en direct le dashboard admin (onglet Paiements) d'un changement de statut. */
+async function broadcastPaymentUpdate(payment, user = null, plan = null) {
+  try {
+    const learner = user || (await User.findById(payment.userId).select('firstName lastName email phone'))
+    const planDoc = plan || (await SubscriptionPlan.findById(payment.planId).select('name'))
+    broadcastPaymentEvent({
+      type: 'payment.updated',
+      payment: payment.toAdminJSON(learner, planDoc),
+    })
+  } catch {
+    // La diffusion temps réel est un confort d'affichage, jamais bloquant pour le paiement lui-même.
+  }
+}
 
 function callbackBase() {
   return (
@@ -69,6 +86,8 @@ export async function startSubscriptionPayment({ user, subscription, plan }) {
   subscription.paymentNote = `FedaPay ${checkout.reference || checkout.transactionId}`
   await subscription.save()
 
+  void broadcastPaymentUpdate(payment, user, plan)
+
   return payment
 }
 
@@ -98,6 +117,7 @@ export async function applyApprovedPayment(payment, { eventName = '', eventId = 
 
   payment.errorMessage = ''
   await payment.save()
+  void broadcastPaymentUpdate(payment)
   return { payment, subscription, alreadyProcessed: false }
 }
 
@@ -116,6 +136,7 @@ export async function applyFailedPayment(
   payment.rawLastEvent = raw
   if (eventId) payment.processedEventIds.push(String(eventId))
   await payment.save()
+  void broadcastPaymentUpdate(payment)
   return { payment, alreadyProcessed: false }
 }
 

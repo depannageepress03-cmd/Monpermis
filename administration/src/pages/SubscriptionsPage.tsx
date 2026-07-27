@@ -1,4 +1,4 @@
-import { FormEvent, useCallback, useEffect, useState } from 'react'
+import { FormEvent, useCallback, useEffect, useRef, useState } from 'react'
 import { Check, Pencil, Plus, RefreshCw, X } from 'lucide-react'
 import {
   activateSubscription,
@@ -7,11 +7,15 @@ import {
   cancelSubscription,
   createSubscriptionPlan,
   deactivateSubscriptionPlan,
+  fetchPayments,
   fetchSubscriptionLearners,
   fetchSubscriptionPlans,
+  subscribeToPaymentEvents,
   type CustomDurationUnit,
   type DurationType,
   type LearnerSubscription,
+  type PaymentStatus,
+  type PaymentTransaction,
   type SubscriptionPlan,
   type SubscriptionPlanPayload,
   type SubscriptionStatus,
@@ -21,7 +25,26 @@ import { fetchUsers, type AppUser } from '../api/users'
 import { StatusBadge, type StatusTone } from '../components/StatusBadge'
 import { getAdminToken, isAuthError } from '../context/AdminAuthContext'
 
-type Tab = 'plans' | 'learners'
+type Tab = 'plans' | 'learners' | 'payments'
+
+const paymentStatusOptions: { value: PaymentStatus | ''; label: string }[] = [
+  { value: '', label: 'Tous' },
+  { value: 'pending', label: 'En attente' },
+  { value: 'approved', label: 'Approuvés' },
+  { value: 'declined', label: 'Refusés' },
+  { value: 'canceled', label: 'Annulés' },
+  { value: 'failed', label: 'Échoués' },
+]
+
+function paymentStatusTone(status: PaymentStatus): StatusTone {
+  if (status === 'approved') return 'success'
+  if (status === 'pending') return 'warning'
+  return 'danger'
+}
+
+function paymentStatusLabel(status: PaymentStatus) {
+  return paymentStatusOptions.find((option) => option.value === status)?.label ?? status
+}
 
 /** Convertit un ancien type prédéfini en (unité, quantité) pour le sélecteur unique. */
 function presetToUnit(durationType: DurationType): { unit: CustomDurationUnit; amount: number } {
@@ -132,6 +155,12 @@ export function SubscriptionsPage() {
   const [activateNow, setActivateNow] = useState(false)
   const [paymentNote, setPaymentNote] = useState('')
 
+  const [payments, setPayments] = useState<PaymentTransaction[]>([])
+  const [paymentsLoading, setPaymentsLoading] = useState(false)
+  const [paymentStatusFilter, setPaymentStatusFilter] = useState<PaymentStatus | ''>('')
+  const [liveConnected, setLiveConnected] = useState(false)
+  const unsubscribeRef = useRef<(() => void) | null>(null)
+
   const loadPlans = useCallback(async () => {
     const token = getAdminToken()
     if (!token) throw new Error('Session expirée. Reconnectez-vous.')
@@ -165,6 +194,57 @@ export function SubscriptionsPage() {
   useEffect(() => {
     void load()
   }, [load])
+
+  const loadPayments = useCallback(async () => {
+    const token = getAdminToken()
+    if (!token) return setError('Session expirée. Reconnectez-vous.')
+    setPaymentsLoading(true)
+    try {
+      const { payments: data } = await fetchPayments(token, paymentStatusFilter)
+      setPayments(data)
+    } catch (err) {
+      setError(isAuthError(err) ? err.message : 'Chargement des paiements impossible.')
+    } finally {
+      setPaymentsLoading(false)
+    }
+  }, [paymentStatusFilter])
+
+  useEffect(() => {
+    if (tab !== 'payments') return
+    void loadPayments()
+  }, [tab, loadPayments])
+
+  /** Connecte le flux temps réel uniquement quand l'onglet Paiements est actif. */
+  useEffect(() => {
+    if (tab !== 'payments') {
+      unsubscribeRef.current?.()
+      unsubscribeRef.current = null
+      setLiveConnected(false)
+      return
+    }
+    const token = getAdminToken()
+    if (!token) return
+
+    unsubscribeRef.current = subscribeToPaymentEvents(
+      token,
+      (updated) => {
+        setPayments((current) => {
+          const exists = current.some((item) => item.id === updated.id)
+          if (!exists) {
+            if (paymentStatusFilter && updated.status !== paymentStatusFilter) return current
+            return [updated, ...current]
+          }
+          return current.map((item) => (item.id === updated.id ? updated : item))
+        })
+      },
+      setLiveConnected,
+    )
+
+    return () => {
+      unsubscribeRef.current?.()
+      unsubscribeRef.current = null
+    }
+  }, [tab, paymentStatusFilter])
 
   const openNewPlan = () => {
     setEditingPlan(null)
@@ -310,6 +390,9 @@ export function SubscriptionsPage() {
         <button type="button" role="tab" aria-selected={tab === 'learners'} className={tab === 'learners' ? 'active' : ''} onClick={() => setTab('learners')}>
           Apprenants <span>{learners.length}</span>
         </button>
+        <button type="button" role="tab" aria-selected={tab === 'payments'} className={tab === 'payments' ? 'active' : ''} onClick={() => setTab('payments')}>
+          Paiements <span>{payments.length}</span>
+        </button>
         <button type="button" className="dash-filter-btn subscriptions-refresh" onClick={() => void load()} disabled={loading}>
           <RefreshCw size={13} className={loading ? 'spin' : undefined} /> Actualiser
         </button>
@@ -394,7 +477,7 @@ export function SubscriptionsPage() {
             ))}
           </div>
         </section>
-      ) : (
+      ) : tab === 'learners' ? (
         <div className="subscriptions-learners-layout">
           <section className="subscriptions-panel">
             <div className="subscriptions-panel-head">
@@ -458,6 +541,79 @@ export function SubscriptionsPage() {
             </form>
           </aside>
         </div>
+      ) : (
+        <section className="subscriptions-panel">
+          <div className="subscriptions-panel-head">
+            <div>
+              <h2>
+                Paiements
+                <span className={`subscriptions-live-dot${liveConnected ? ' is-live' : ''}`} aria-hidden="true" />
+                <span className="subscriptions-live-label">{liveConnected ? 'En direct' : 'Connexion…'}</span>
+              </h2>
+              <p>Chaque changement de statut FedaPay apparaît ici automatiquement, sans rechargement.</p>
+            </div>
+            <label className="subscriptions-status-filter">
+              Statut
+              <select
+                value={paymentStatusFilter}
+                onChange={(event) => setPaymentStatusFilter(event.target.value as PaymentStatus | '')}
+              >
+                {paymentStatusOptions.map((option) => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <div className="admin-data-table-wrap">
+            <table className="admin-data-table subscriptions-table">
+              <thead>
+                <tr>
+                  <th>Apprenant</th>
+                  <th>Plan</th>
+                  <th>Montant</th>
+                  <th>Statut</th>
+                  <th>Méthode</th>
+                  <th>Référence</th>
+                  <th>Date</th>
+                </tr>
+              </thead>
+              <tbody>
+                {paymentsLoading && payments.length === 0 ? (
+                  <tr><td colSpan={7} className="muted">Chargement…</td></tr>
+                ) : null}
+                {!paymentsLoading && payments.length === 0 ? (
+                  <tr><td colSpan={7} className="muted">Aucun paiement pour ce filtre.</td></tr>
+                ) : null}
+                {payments.map((payment) => (
+                  <tr key={payment.id}>
+                    <td>
+                      {payment.learner ? (
+                        <>
+                          <strong>{payment.learner.firstName} {payment.learner.lastName}</strong>
+                          <br />
+                          <span className="muted">{payment.learner.email || payment.learner.phone || '—'}</span>
+                        </>
+                      ) : '—'}
+                    </td>
+                    <td>{payment.planName || '—'}</td>
+                    <td>{formatMoney(payment.amount, payment.currency)}</td>
+                    <td>
+                      <StatusBadge tone={paymentStatusTone(payment.status)}>
+                        {paymentStatusLabel(payment.status)}
+                      </StatusBadge>
+                      {payment.errorMessage ? (
+                        <div className="subscriptions-payment-error">{payment.errorMessage}</div>
+                      ) : null}
+                    </td>
+                    <td>{payment.paymentMethod || '—'}</td>
+                    <td>{payment.fedapayReference || '—'}</td>
+                    <td>{formatDate(payment.createdAt)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
       )}
     </div>
   )

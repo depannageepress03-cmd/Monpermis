@@ -2,14 +2,14 @@ import { Router } from 'express'
 import { ConduiteChapter } from '../models/ConduiteChapter.js'
 import { MIN_COURSE_SECONDS } from '../models/User.js'
 import { requireUserAuth } from '../middleware/userAuth.js'
-import { requireSubscriptionAccess } from '../middleware/subscriptionAccess.js'
+import { requireModuleAccess } from '../middleware/moduleAccess.js'
 import {
   allChapterCoursesCompleted,
   serializeProgress,
 } from '../utils/progress.js'
 
 const router = Router()
-const withConduiteAccess = [requireUserAuth, requireSubscriptionAccess('conduite')]
+const withConduiteAccess = [requireUserAuth, requireModuleAccess('conduite_videos')]
 
 router.get('/chapters', ...withConduiteAccess, async (_req, res) => {
   try {

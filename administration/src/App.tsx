@@ -14,6 +14,7 @@ import { CreateAdminPage } from './pages/CreateAdminPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { LoginPage } from './pages/LoginPage'
 import { SubscriptionsPage } from './pages/SubscriptionsPage'
+import { AccessRequestsPage } from './pages/AccessRequestsPage'
 import { UsersPage } from './pages/UsersPage'
 import { LearnerProgressDetailPage, LearnerProgressListPage } from './pages/code/LearnerProgressPage'
 
@@ -27,6 +28,7 @@ export default function App() {
           <Route path="/" element={<DashboardPage />} />
           <Route path="/utilisateurs" element={<UsersPage />} />
           <Route path="/abonnements" element={<SubscriptionsPage />} />
+          <Route path="/demandes-acces" element={<AccessRequestsPage />} />
           <Route path="/annonces" element={<AnnouncementsPage />} />
           <Route path="/creer-admin" element={<CreateAdminPage />} />
           <Route path="/parcours" element={<Navigate to="/code/revision-chapitres" replace />} />

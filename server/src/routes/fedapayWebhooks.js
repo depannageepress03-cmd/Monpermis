@@ -1,16 +1,24 @@
 import { Router } from 'express'
+import { constructFedaPayEvent, mapFedaPayStatus } from '../services/fedapay.js'
 import {
-  constructFedaPayEvent,
-  mapFedaPayStatus,
-} from '../services/fedapay.js'
-import {
-  applyApprovedPayment,
-  applyFailedPayment,
+  applyApprovedAccessPayment,
+  applyFailedAccessPayment,
   findPaymentFromFedaEvent,
+} from '../utils/accessRequests.js'
+import {
+  applyApprovedPayment as applyApprovedLegacyPayment,
+  applyFailedPayment as applyFailedLegacyPayment,
+  findPaymentFromFedaEvent as findLegacyPaymentFromFedaEvent,
 } from '../utils/payments.js'
 
 const router = Router()
 
+/**
+ * Un seul endpoint pour FedaPay. On cherche d'abord côté nouveau système
+ * (Payment/AccessRequest) ; si absent, on retombe sur l'ancien système
+ * (PaymentTransaction/UserSubscription) pour les paiements déjà en vol au
+ * moment de la bascule — voir la note de migration dans le plan.
+ */
 router.post('/', async (req, res) => {
   const signature = req.headers['x-fedapay-signature']
   let event
@@ -28,44 +36,43 @@ router.post('/', async (req, res) => {
 
   try {
     const payment = await findPaymentFromFedaEvent(object)
-    if (!payment) {
+    const applyApproved = payment ? applyApprovedAccessPayment : applyApprovedLegacyPayment
+    const applyFailed = payment ? applyFailedAccessPayment : applyFailedLegacyPayment
+    const legacyPayment = payment ? null : await findLegacyPaymentFromFedaEvent(object)
+    const target = payment || legacyPayment
+
+    if (!target) {
       console.warn('Webhook FedaPay sans paiement local:', eventName, object?.id)
       return res.status(200).json({ received: true, ignored: true })
     }
 
     if (eventName === 'transaction.approved' || mapFedaPayStatus(object.status) === 'approved') {
-      await applyApprovedPayment(payment, {
+      await applyApproved(target, {
         eventName: eventName || 'transaction.approved',
         eventId,
         raw: event,
       })
-    } else if (
-      eventName === 'transaction.declined' ||
-      mapFedaPayStatus(object.status) === 'declined'
-    ) {
-      await applyFailedPayment(payment, 'declined', {
+    } else if (eventName === 'transaction.declined' || mapFedaPayStatus(object.status) === 'declined') {
+      await applyFailed(target, 'declined', {
         eventName: eventName || 'transaction.declined',
         eventId,
         message: 'Paiement refusé par l’opérateur Mobile Money',
         raw: event,
       })
-    } else if (
-      eventName === 'transaction.canceled' ||
-      mapFedaPayStatus(object.status) === 'canceled'
-    ) {
-      await applyFailedPayment(payment, 'canceled', {
+    } else if (eventName === 'transaction.canceled' || mapFedaPayStatus(object.status) === 'canceled') {
+      await applyFailed(target, 'canceled', {
         eventName: eventName || 'transaction.canceled',
         eventId,
         message: 'Paiement annulé',
         raw: event,
       })
     } else {
-      payment.lastEventName = eventName
-      payment.rawLastEvent = event
-      if (!payment.processedEventIds.includes(eventId) && eventId) {
-        payment.processedEventIds.push(eventId)
+      target.lastEventName = eventName
+      target.rawLastEvent = event
+      if (!target.processedEventIds.includes(eventId) && eventId) {
+        target.processedEventIds.push(eventId)
       }
-      await payment.save()
+      await target.save()
     }
 
     return res.status(200).json({ received: true })

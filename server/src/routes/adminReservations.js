@@ -14,6 +14,7 @@ import {
   normalizeVehicleType,
   parseLocalDate,
 } from '../utils/localDate.js'
+import { computeCreneauHeures } from '../utils/creneauDuration.js'
 
 function asObjectId(value) {
   if (!value) return null
@@ -358,47 +359,7 @@ router.get('/reservations', async (req, res) => {
   }
 })
 
-router.patch('/reservations/:id/payment', async (req, res) => {
-  try {
-    const reservation = await Reservation.findById(req.params.id)
-    if (!reservation) {
-      return res.status(404).json({ success: false, error: 'Réservation introuvable' })
-    }
-
-    const paymentStatus = String(req.body.paymentStatus || '')
-    if (!['unpaid', 'pending_validation', 'paid', 'refunded'].includes(paymentStatus)) {
-      return res.status(400).json({ success: false, error: 'Statut paiement invalide' })
-    }
-
-    reservation.paymentStatus = paymentStatus
-    if (req.body.paymentRef !== undefined) {
-      reservation.paymentRef = String(req.body.paymentRef).trim()
-    }
-    const wasConfirmed = reservation.status !== 'confirmed'
-    if (paymentStatus === 'paid' && reservation.status === 'pending_payment') {
-      reservation.status = 'confirmed'
-    }
-    await reservation.save()
-
-    if (paymentStatus === 'paid' && reservation.userId) {
-      await notifyUser(reservation.userId, {
-        type: 'payment_validated',
-        title: 'Paiement validé ✅',
-        body: wasConfirmed
-          ? 'Ta leçon de conduite est confirmée. Rendez-vous au créneau réservé !'
-          : 'Ton paiement de leçon a bien été validé.',
-        link: 'conduite',
-      })
-    }
-
-    res.json({ success: true, data: { reservation: reservation.toJSONSafe() } })
-  } catch (error) {
-    logger.error('Erreur validation paiement:', error)
-    res.status(500).json({ success: false, error: 'Mise à jour impossible' })
-  }
-})
-
-/** Supprime une réservation et libère le créneau associé. */
+/** Supprime une réservation, libère le créneau et recrédite les heures si non effectuée. */
 router.delete('/reservations/:id', async (req, res) => {
   try {
     const reservation = await Reservation.findById(req.params.id)
@@ -407,6 +368,9 @@ router.delete('/reservations/:id', async (req, res) => {
     }
 
     const creneauId = reservation.creneauId
+    if (reservation.status !== 'completed' && reservation.heuresDebitees > 0 && reservation.userId) {
+      await User.findByIdAndUpdate(reservation.userId, { $inc: { soldeHeures: reservation.heuresDebitees } })
+    }
     await Reservation.findByIdAndDelete(reservation._id)
 
     if (creneauId) {
@@ -437,23 +401,28 @@ router.patch('/reservations/:id', async (req, res) => {
       }
 
       if (req.body.status === 'completed' && reservation.status !== 'completed') {
-        const creneau = reservation.creneauId
-          ? await Creneau.findById(reservation.creneauId)
-          : null
-        const dureeHeures = creneau
-          ? (parseInt(creneau.endTime?.split(':')[0] || 0) - parseInt(creneau.startTime?.split(':')[0] || 0)) +
-            (parseInt(creneau.endTime?.split(':')[1] || 0) - parseInt(creneau.startTime?.split(':')[1] || 0)) / 60
-          : 1
-        const heures = Math.max(0.5, Math.round(dureeHeures * 2) / 2)
+        // Réservations post-pack d'heures : déjà débitées à la réservation, on ne
+        // fait qu'enregistrer les heures effectuées. Réservations antérieures
+        // (heuresDebitees=0, ancien flux) : comportement historique conservé.
+        if (reservation.heuresDebitees > 0) {
+          if (reservation.userId) {
+            await User.findByIdAndUpdate(reservation.userId, {
+              $inc: { heuresEffectuees: reservation.heuresDebitees },
+            })
+          }
+        } else {
+          const creneau = reservation.creneauId ? await Creneau.findById(reservation.creneauId) : null
+          const heures = computeCreneauHeures(creneau)
 
-        if (reservation.userId) {
-          await User.findByIdAndUpdate(reservation.userId, {
-            $inc: { heuresEffectuees: heures, soldeHeures: -heures },
-          })
-          logger.info('Heures auto-incrémentées', {
-            userId: String(reservation.userId),
-            heures,
-          })
+          if (reservation.userId) {
+            await User.findByIdAndUpdate(reservation.userId, {
+              $inc: { heuresEffectuees: heures, soldeHeures: -heures },
+            })
+            logger.info('Heures auto-incrémentées (ancien flux)', {
+              userId: String(reservation.userId),
+              heures,
+            })
+          }
         }
       }
 
@@ -480,11 +449,17 @@ router.post('/reservations/:id/cancel', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Déjà annulée' })
     }
 
+    const shouldRefundHours = reservation.status !== 'completed' && reservation.heuresDebitees > 0
+
     reservation.status = 'cancelled'
     reservation.cancelledAt = new Date()
     reservation.cancellationReason = reason || 'Annulée par l’administration'
     reservation.cancelledBy = 'admin'
     await reservation.save()
+
+    if (shouldRefundHours) {
+      await User.findByIdAndUpdate(reservation.userId, { $inc: { soldeHeures: reservation.heuresDebitees } })
+    }
 
     if (reservation.userId) {
       await notifyUser(reservation.userId, {

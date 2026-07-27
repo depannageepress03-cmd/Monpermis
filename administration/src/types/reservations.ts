@@ -29,6 +29,7 @@ export interface ReservationAdmin {
   paymentStatus: string
   paymentRef: string
   priceFcfa: number
+  heuresDebitees: number
   vehicleType: string
   cancellationReason?: string
   cancelledBy?: string

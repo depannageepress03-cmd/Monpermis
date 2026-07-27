@@ -1,4 +1,5 @@
 import { apiFetch } from './client'
+import { getApiOrigin } from '../utils/mediaUrl'
 
 export type DurationType = 'monthly' | 'quarterly' | 'semiannual' | 'yearly' | 'custom'
 export type CustomDurationUnit = 'days' | 'weeks' | 'months' | 'years'
@@ -80,6 +81,34 @@ export interface AssignSubscriptionPayload {
   paymentNote?: string
 }
 
+export type PaymentStatus = 'pending' | 'approved' | 'declined' | 'canceled' | 'failed'
+
+export interface PaymentTransaction {
+  id: string
+  userId: string
+  subscriptionId: string
+  planId: string
+  planName: string
+  amount: number
+  currency: string
+  description: string
+  status: PaymentStatus
+  paymentUrl: string
+  paymentMethod: string
+  fedapayReference: string
+  errorMessage: string
+  activatedAt: string | null
+  createdAt: string
+  updatedAt: string
+  learner: {
+    id: string
+    firstName: string
+    lastName: string
+    email: string
+    phone: string
+  } | null
+}
+
 export function fetchSubscriptionPlans(token: string) {
   return apiFetch<{ plans: SubscriptionPlan[] }>('/api/admin/subscriptions/plans', {}, token)
 }
@@ -154,4 +183,68 @@ export function assignSubscription(token: string, payload: AssignSubscriptionPay
     { method: 'POST', body: JSON.stringify(payload) },
     token,
   )
+}
+
+export function fetchPayments(token: string, status?: PaymentStatus | '') {
+  const query = status ? `?status=${status}` : ''
+  return apiFetch<{
+    payments: PaymentTransaction[]
+    pagination: { page: number; limit: number; total: number; pages: number }
+  }>(`/api/admin/subscriptions/payments${query}`, {}, token)
+}
+
+/**
+ * Flux SSE des paiements. EventSource ne permet pas d'en-tête Authorization,
+ * donc on lit le flux nous-mêmes via fetch (headers standards, cohérent avec apiFetch).
+ * Retourne une fonction pour se désabonner (ferme la connexion).
+ */
+export function subscribeToPaymentEvents(
+  token: string,
+  onPayment: (payment: PaymentTransaction) => void,
+  onStatusChange?: (connected: boolean) => void,
+): () => void {
+  const controller = new AbortController()
+
+  void (async () => {
+    while (!controller.signal.aborted) {
+      try {
+        const response = await fetch(`${getApiOrigin()}/api/admin/subscriptions/payments/stream`, {
+          headers: { Authorization: `Bearer ${token}` },
+          signal: controller.signal,
+        })
+        if (!response.ok || !response.body) throw new Error('Flux indisponible')
+
+        onStatusChange?.(true)
+        const reader = response.body.getReader()
+        const decoder = new TextDecoder()
+        let buffer = ''
+
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+          buffer += decoder.decode(value, { stream: true })
+
+          const events = buffer.split('\n\n')
+          buffer = events.pop() ?? ''
+          for (const chunk of events) {
+            const line = chunk.split('\n').find((l) => l.startsWith('data: '))
+            if (!line) continue
+            try {
+              const parsed = JSON.parse(line.slice(6)) as { type: string; payment: PaymentTransaction }
+              if (parsed.type === 'payment.updated') onPayment(parsed.payment)
+            } catch {
+              // ignore trame invalide
+            }
+          }
+        }
+      } catch {
+        if (controller.signal.aborted) return
+      }
+      onStatusChange?.(false)
+      if (controller.signal.aborted) return
+      await new Promise((resolve) => setTimeout(resolve, 3000))
+    }
+  })()
+
+  return () => controller.abort()
 }

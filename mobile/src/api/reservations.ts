@@ -141,7 +141,6 @@ export function createReservation(payload: {
   creneauId: string
   vehicleType: string
   moniteurId?: string
-  paymentRef?: string
 }) {
   return request<{
     reservation: ReservationItem
@@ -156,13 +155,6 @@ export function createReservation(payload: {
     method: 'POST',
     body: JSON.stringify(payload),
   })
-}
-
-export function submitPaymentRef(reservationId: string, paymentRef: string) {
-  return request<{ reservation: ReservationItem }>(
-    `/reservations/reservations/${reservationId}/payment-ref`,
-    { method: 'POST', body: JSON.stringify({ paymentRef }) },
-  )
 }
 
 export function cancelReservation(reservationId: string, reason: string) {

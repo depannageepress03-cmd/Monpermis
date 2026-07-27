@@ -7,6 +7,8 @@ export const NOTIFICATION_TYPES = [
   'reservation_confirmed',
   'reservation_cancelled',
   'payment_validated',
+  'access_validated',
+  'access_rejected',
   'announcement',
   'general',
 ]

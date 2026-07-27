@@ -1,0 +1,240 @@
+/* ——— Demandes d'accès ——— */
+.access-requests-page {
+  gap: 12px;
+}
+
+.ar-stats-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.ar-alert-card {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border-radius: var(--r-md);
+  background: var(--error-light);
+  color: var(--error);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.ar-stat-card {
+  min-width: 150px;
+  flex: 1 1 150px;
+  padding: 12px 14px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--hairline);
+  background: #fff;
+}
+
+.ar-stat-card-muted {
+  background: #fafbfc;
+}
+
+.ar-stat-label {
+  margin: 0 0 4px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--navy-muted);
+}
+
+.ar-stat-value {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--navy);
+}
+
+.ar-stat-meta {
+  margin: 2px 0 0;
+  font-size: 12.5px;
+  color: var(--navy-muted);
+}
+
+.ar-filters {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.ar-row {
+  cursor: pointer;
+}
+.ar-row:hover {
+  background: var(--green-light);
+}
+
+.ar-detail {
+  margin-top: 0;
+}
+
+.ar-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.ar-detail-label {
+  margin: 0 0 4px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--navy-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.ar-section-title {
+  margin: 18px 0 8px;
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--navy);
+}
+
+.ar-audit-trail {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-left: 2px solid var(--hairline);
+}
+
+.ar-audit-trail li {
+  position: relative;
+  padding: 4px 0 12px 16px;
+}
+.ar-audit-trail li::before {
+  content: '';
+  position: absolute;
+  left: -5px;
+  top: 9px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--green);
+}
+
+.ar-audit-line {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 15px;
+}
+
+.ar-audit-transition {
+  font-weight: 700;
+  color: var(--navy);
+}
+
+.ar-audit-date {
+  font-size: 13px;
+  color: var(--navy-muted);
+  white-space: nowrap;
+}
+
+.ar-audit-actor {
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: var(--navy-muted);
+}
+
+.ar-audit-note {
+  margin: 4px 0 0;
+  font-size: 14px;
+  color: var(--navy);
+  background: #fafbfc;
+  border-radius: var(--r-sm);
+  padding: 6px 10px;
+}
+
+.ar-payment-card {
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-sm);
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+.ar-payment-card p {
+  margin: 2px 0;
+}
+
+.ar-validate-form {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px dashed var(--hairline);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ar-decision-row {
+  display: flex;
+  gap: 18px;
+  font-size: 15px;
+  font-weight: 700;
+}
+.ar-decision-row label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.ar-validate-form textarea {
+  width: 100%;
+  margin-top: 4px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-sm);
+  padding: 8px 10px;
+  font: inherit;
+  font-size: 15px;
+  resize: vertical;
+}
+
+.ar-pricing-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 14px;
+  padding: 16px;
+}
+
+.ar-pricing-card {
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-md);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.ar-pricing-card h3 {
+  margin: 0;
+  font-size: 16px;
+  color: var(--navy);
+}
+
+.ar-price-input {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--navy-muted);
+}
+.ar-price-input input {
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-sm);
+  padding: 7px 9px;
+  font: inherit;
+  font-size: 15px;
+  color: var(--navy);
+}
+
+.ar-pricing-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}

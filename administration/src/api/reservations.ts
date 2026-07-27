@@ -98,18 +98,6 @@ export function fetchAdminReservations(token: string) {
   )
 }
 
-export function validateReservationPayment(
-  token: string,
-  id: string,
-  payload: { paymentStatus: string; paymentRef?: string },
-) {
-  return apiFetch<{ reservation: ReservationAdmin }>(
-    `/api/admin/conduite/reservations/${id}/payment`,
-    { method: 'PATCH', body: JSON.stringify(payload) },
-    token,
-  )
-}
-
 export function deleteAdminReservation(token: string, id: string) {
   return apiFetch<{ deleted: boolean; id: string }>(
     `/api/admin/conduite/reservations/${id}`,

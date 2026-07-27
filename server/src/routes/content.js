@@ -3,7 +3,7 @@ import { Chapter } from '../models/Chapter.js'
 import { Question } from '../models/Question.js'
 import { MIN_COURSE_SECONDS } from '../models/User.js'
 import { requireUserAuth } from '../middleware/userAuth.js'
-import { requireSubscriptionAccess } from '../middleware/subscriptionAccess.js'
+import { requireModuleAccess } from '../middleware/moduleAccess.js'
 import {
   allChapterCoursesCompleted,
   serializeProgress,
@@ -16,7 +16,7 @@ import {
 } from '../utils/chapterTestSubjects.js'
 
 const router = Router()
-const withCodeAccess = [requireUserAuth, requireSubscriptionAccess('code')]
+const withCodeAccess = [requireUserAuth, requireModuleAccess('code')]
 
 router.get('/chapters', ...withCodeAccess, async (_req, res) => {
   try {

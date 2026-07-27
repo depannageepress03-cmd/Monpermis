@@ -1,8 +1,10 @@
 import { Router } from 'express'
 import { SubscriptionPlan, DURATION_TYPES, CUSTOM_DURATION_UNITS } from '../models/SubscriptionPlan.js'
 import { UserSubscription } from '../models/UserSubscription.js'
+import { PaymentTransaction, PAYMENT_STATUSES } from '../models/PaymentTransaction.js'
 import { User } from '../models/User.js'
 import { requireAdminAuth } from '../middleware/adminAuth.js'
+import { addPaymentEventClient, removePaymentEventClient } from '../services/paymentEvents.js'
 import {
   activateSubscription,
   createPendingSubscription,
@@ -207,6 +209,63 @@ router.get('/pending', async (_req, res) => {
     console.error('Erreur abonnements en attente:', error)
     res.status(500).json({ success: false, error: 'Chargement impossible' })
   }
+})
+
+router.get('/payments', async (req, res) => {
+  try {
+    const status = String(req.query.status || '').trim()
+    const filter = {}
+    if (PAYMENT_STATUSES.includes(status)) filter.status = status
+
+    const page = Math.max(1, parseInt(req.query.page) || 1)
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 30))
+    const skip = (page - 1) * limit
+
+    const [transactions, total] = await Promise.all([
+      PaymentTransaction.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit),
+      PaymentTransaction.countDocuments(filter),
+    ])
+
+    const userIds = [...new Set(transactions.map((t) => String(t.userId)))]
+    const planIds = [...new Set(transactions.map((t) => String(t.planId)))]
+    const [users, plans] = await Promise.all([
+      User.find({ _id: { $in: userIds } }).select('firstName lastName email phone'),
+      SubscriptionPlan.find({ _id: { $in: planIds } }).select('name'),
+    ])
+    const userMap = new Map(users.map((u) => [String(u._id), u]))
+    const planMap = new Map(plans.map((p) => [String(p._id), p]))
+
+    res.json({
+      success: true,
+      data: {
+        pagination: { page, limit, total, pages: Math.ceil(total / limit) },
+        payments: transactions.map((t) =>
+          t.toAdminJSON(userMap.get(String(t.userId)), planMap.get(String(t.planId))),
+        ),
+      },
+    })
+  } catch (error) {
+    console.error('Erreur liste paiements admin:', error)
+    res.status(500).json({ success: false, error: 'Chargement impossible' })
+  }
+})
+
+/** Flux SSE temps réel : chaque changement de statut de paiement est poussé ici. */
+router.get('/payments/stream', (req, res) => {
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache, no-transform',
+    Connection: 'keep-alive',
+    'X-Accel-Buffering': 'no',
+  })
+  res.write('retry: 3000\n\n')
+  res.write(': connected\n\n')
+
+  addPaymentEventClient(res)
+
+  req.on('close', () => {
+    removePaymentEventClient(res)
+  })
 })
 
 router.post('/:subscriptionId/activate', async (req, res) => {

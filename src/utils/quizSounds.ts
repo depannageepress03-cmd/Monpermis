@@ -138,6 +138,19 @@ export function cancelRemoteAudio() {
   }
 }
 
+/**
+ * Déclare l’élément <audio> actuellement actif pour que stopAllQuizAudio()
+ * puisse réellement le couper (ex. QuestionAudioSequence).
+ */
+export function registerActiveAudioElement(el: HTMLAudioElement | null) {
+  currentRemoteAudio = el
+}
+
+/** Désenregistre `el`, sans effet si un autre élément a déjà pris le relai entretemps. */
+export function unregisterActiveAudioElement(el: HTMLAudioElement | null) {
+  if (currentRemoteAudio === el) currentRemoteAudio = null
+}
+
 /** Coupe audio question, replay distant, et synthèse vocale (décompte). */
 export function stopAllQuizAudio() {
   cancelRemoteAudio()

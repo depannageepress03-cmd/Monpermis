@@ -21,6 +21,16 @@ function ensureGoogleConfigured() {
   configured = true
 }
 
+/** Code natif Android quand (package + SHA-1) ne correspond à aucun client OAuth Google. */
+const ANDROID_DEVELOPER_ERROR = '10'
+
+function isDeveloperError(error: { code?: unknown; message?: string }): boolean {
+  return (
+    String(error.code ?? '') === ANDROID_DEVELOPER_ERROR ||
+    String(error.message || '').includes('DEVELOPER_ERROR')
+  )
+}
+
 function mapGoogleError(error: unknown): string {
   if (isErrorWithCode(error)) {
     if (error.code === statusCodes.SIGN_IN_CANCELLED) {
@@ -31,6 +41,9 @@ function mapGoogleError(error: unknown): string {
     }
     if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
       return 'Google Play Services indisponible sur cet appareil'
+    }
+    if (isDeveloperError(error)) {
+      return 'Cette version de l’application n’est pas autorisée par Google. L’empreinte SHA-1 de ce build doit être ajoutée au client OAuth Android (com.monpermis.app) dans Google Cloud Console.'
     }
     if (error.message) return error.message
   }

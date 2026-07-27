@@ -3,26 +3,28 @@ import { useNavigation } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { LinearGradient } from 'expo-linear-gradient'
 import * as WebBrowser from 'expo-web-browser'
-import { Check, CreditCard, Crown, History, Lock, RefreshCw } from 'lucide-react-native'
+import { Check, Clock, CreditCard, History, Lock, RefreshCw } from 'lucide-react-native'
 import {
   ActivityIndicator,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native'
 import {
-  fetchPaymentStatus,
-  fetchSubscriptionMe,
-  fetchSubscriptionPlans,
-  subscribeToPlan,
-  syncPaymentStatus,
-  SubscriptionError,
-  type PaymentTransaction,
-  type SubscriptionAccess,
-  type SubscriptionPlan,
-} from '../api/subscriptions'
+  createAccessRequest,
+  declareAccessPayment,
+  fetchAccessMe,
+  fetchAccessModules,
+  syncAccessRequest,
+  AccessRequestError,
+  type AccessMe,
+  type AccessModule,
+  type AccessModuleKey,
+} from '../api/accessRequests'
+import { fetchSubscriptionMe, SubscriptionError, type SubscriptionAccess } from '../api/subscriptions'
 import { Bouncy } from '../components/Bouncy'
 import { DarkScreen } from '../components/DarkScreen'
 import { PageNavbar } from '../components/PageNavbar'
@@ -34,48 +36,54 @@ import { dark, fonts, gradients } from '../theme'
 type Nav = NativeStackNavigationProp<RootStackParamList, 'Abonnement'>
 
 function formatDate(value: string | null) {
-  return value
-    ? new Intl.DateTimeFormat('fr-FR', { dateStyle: 'long' }).format(new Date(value))
-    : '—'
+  return value ? new Intl.DateTimeFormat('fr-FR', { dateStyle: 'long' }).format(new Date(value)) : '—'
 }
 
-function formatDateTime(value: string | null | undefined) {
-  return value
-    ? new Intl.DateTimeFormat('fr-FR', { dateStyle: 'medium', timeStyle: 'short' }).format(
-        new Date(value),
-      )
-    : '—'
+function formatPrice(price: number, currency = 'XOF') {
+  return new Intl.NumberFormat('fr-FR', { style: 'currency', currency, maximumFractionDigits: 0 }).format(price)
 }
 
-function formatPrice(price: number, currency: string) {
-  return new Intl.NumberFormat('fr-FR', { style: 'currency', currency }).format(price)
+const statusLabels: Record<string, string> = {
+  en_attente: 'En attente',
+  paiement_declare: 'Paiement déclaré, en vérification',
+  en_verification: 'Paiement en cours de confirmation',
+  valide: 'Validé',
+  actif: 'Actif',
+  expire: 'Expiré',
+  rejete: 'Rejeté',
 }
 
-function paymentStatusLabel(status: PaymentTransaction['status']) {
-  switch (status) {
-    case 'approved':
-      return 'Payé'
-    case 'declined':
-      return 'Refusé'
-    case 'canceled':
-      return 'Annulé'
-    case 'failed':
-      return 'Échoué'
-    default:
-      return 'En cours de traitement'
-  }
+const unitSuffix: Record<AccessModule['unit'], string> = {
+  flat: '',
+  month: ' / mois',
+  hour: ' / heure',
+  week: ' / semaine',
+}
+
+const legacyFlagByModule: Partial<Record<AccessModuleKey, keyof SubscriptionAccess>> = {
+  code: 'accessCode',
+  conduite_videos: 'accessConduite',
+  ecodepermis: 'accessECodepermis',
+  aiChat: 'accessAiChat',
 }
 
 export function AbonnementScreen() {
   const navigation = useNavigation<Nav>()
   const { user, loading: authLoading } = useRequireAuth(navigation)
-  const [access, setAccess] = useState<SubscriptionAccess | null>(null)
-  const [plans, setPlans] = useState<SubscriptionPlan[]>([])
+
+  const [legacyAccess, setLegacyAccess] = useState<SubscriptionAccess | null>(null)
+  const [modules, setModules] = useState<AccessModule[]>([])
+  const [me, setMe] = useState<AccessMe | null>(null)
   const [loading, setLoading] = useState(true)
-  const [subscribingPlanId, setSubscribingPlanId] = useState<string | null>(null)
-  const [trackingPaymentId, setTrackingPaymentId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
+
+  const [busyModule, setBusyModule] = useState<AccessModuleKey | null>(null)
+  const [quantityByModule, setQuantityByModule] = useState<Record<string, string>>({})
+  const [manualFormFor, setManualFormFor] = useState<AccessModuleKey | null>(null)
+  const [declaredReference, setDeclaredReference] = useState('')
+  const [declareNote, setDeclareNote] = useState('')
+
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const stopPolling = useCallback(() => {
@@ -89,64 +97,20 @@ export function AbonnementScreen() {
     setLoading(true)
     setError(null)
     try {
-      const [currentAccess, catalog] = await Promise.all([
-        fetchSubscriptionMe(),
-        fetchSubscriptionPlans(),
+      const [legacy, moduleCatalog, meResult] = await Promise.all([
+        fetchSubscriptionMe().catch(() => null),
+        fetchAccessModules(),
+        fetchAccessMe(),
       ])
-      setAccess(currentAccess)
-      setPlans(catalog)
-      return currentAccess
+      setLegacyAccess(legacy)
+      setModules(moduleCatalog)
+      setMe(meResult)
     } catch (err) {
-      setError(err instanceof SubscriptionError ? err.message : 'Chargement impossible')
-      return null
+      setError(err instanceof AccessRequestError ? err.message : 'Chargement impossible')
     } finally {
       setLoading(false)
     }
   }, [])
-
-  const applyPaymentResult = useCallback(
-    (payment: PaymentTransaction, nextAccess: SubscriptionAccess) => {
-      setAccess(nextAccess)
-      if (payment.status === 'approved') {
-        setSuccess('Paiement confirmé. Votre abonnement est maintenant actif.')
-        setError(null)
-        setTrackingPaymentId(null)
-        stopPolling()
-        return
-      }
-      if (payment.status === 'declined' || payment.status === 'canceled' || payment.status === 'failed') {
-        setError(
-          payment.errorMessage ||
-            'Le paiement n’a pas abouti. Vous pouvez réessayer avec Mobile Money.',
-        )
-        setSuccess(null)
-        setTrackingPaymentId(null)
-        stopPolling()
-        return
-      }
-      setTrackingPaymentId(payment.id)
-      setSuccess('Paiement en cours de traitement. Confirmation Mobile Money en attente…')
-    },
-    [stopPolling],
-  )
-
-  const pollPayment = useCallback(
-    (paymentId: string) => {
-      setTrackingPaymentId(paymentId)
-      stopPolling()
-      pollRef.current = setInterval(() => {
-        void (async () => {
-          try {
-            const result = await fetchPaymentStatus(paymentId)
-            applyPaymentResult(result.payment, result.access)
-          } catch {
-            /* ignore */
-          }
-        })()
-      }, 4000)
-    },
-    [applyPaymentResult, stopPolling],
-  )
 
   useEffect(() => {
     if (user) void load()
@@ -154,433 +118,307 @@ export function AbonnementScreen() {
 
   useEffect(() => () => stopPolling(), [stopPolling])
 
-  const openCheckout = async (payment: PaymentTransaction) => {
-    if (!payment.paymentUrl) {
-      setError('Lien de paiement FedaPay indisponible. Réessayez dans un instant.')
-      return
-    }
-    setTrackingPaymentId(payment.id)
-    setSuccess('Paiement en cours de traitement. Confirmation Mobile Money en attente…')
-    await WebBrowser.openBrowserAsync(payment.paymentUrl)
-    try {
-      const result = await syncPaymentStatus(payment.id)
-      applyPaymentResult(result.payment, result.access)
-      if (result.payment.status === 'pending') pollPayment(payment.id)
-    } catch (err) {
-      setError(err instanceof SubscriptionError ? err.message : 'Vérification du paiement impossible')
-      pollPayment(payment.id)
-    }
-  }
+  const pollPendingRequest = useCallback(
+    (id: string) => {
+      stopPolling()
+      pollRef.current = setInterval(() => {
+        void (async () => {
+          try {
+            const result = await syncAccessRequest(id)
+            setMe(result.access)
+            if (result.accessRequest.status !== 'en_verification') {
+              stopPolling()
+              if (result.accessRequest.status === 'actif' || result.accessRequest.status === 'valide') {
+                setSuccess('Paiement confirmé. Ton accès est maintenant actif.')
+              } else if (result.accessRequest.status === 'rejete') {
+                setError('Le paiement n’a pas abouti. Tu peux réessayer.')
+              }
+            }
+          } catch {
+            /* ignore transient poll errors */
+          }
+        })()
+      }, 4000)
+    },
+    [stopPolling],
+  )
 
-  const subscribe = async (planId: string) => {
-    setSubscribingPlanId(planId)
+  const buyWithFedaPay = async (module: AccessModule) => {
+    setBusyModule(module.key)
     setError(null)
     setSuccess(null)
     try {
-      const result = await subscribeToPlan(planId)
-      setAccess(result.access)
-      setSuccess(result.message)
-      await openCheckout(result.payment)
+      const quantity = Math.max(1, Number(quantityByModule[module.key]) || 1)
+      const result = await createAccessRequest({ module: module.key, quantity, method: 'fedapay' })
+      if (!result.paymentUrl) {
+        setError('Lien de paiement FedaPay indisponible. Réessaie dans un instant.')
+        return
+      }
+      setSuccess('Paiement en cours de traitement. Confirmation Mobile Money en attente…')
+      await WebBrowser.openBrowserAsync(result.paymentUrl)
+      try {
+        const synced = await syncAccessRequest(result.accessRequest.id)
+        setMe(synced.access)
+        if (synced.accessRequest.status === 'en_verification') {
+          pollPendingRequest(result.accessRequest.id)
+        } else if (synced.accessRequest.status === 'actif' || synced.accessRequest.status === 'valide') {
+          setSuccess('Paiement confirmé. Ton accès est maintenant actif.')
+        }
+      } catch {
+        pollPendingRequest(result.accessRequest.id)
+      }
     } catch (err) {
-      setError(err instanceof SubscriptionError ? err.message : 'Souscription impossible')
+      setError(err instanceof AccessRequestError ? err.message : 'Paiement impossible à initier')
     } finally {
-      setSubscribingPlanId(null)
+      setBusyModule(null)
     }
   }
 
-  const resumePayment = async () => {
-    const payment = access?.latestPayment
-    if (payment?.paymentUrl && payment.status === 'pending') {
-      await openCheckout(payment)
+  const openManualForm = (module: AccessModuleKey) => {
+    setManualFormFor(module)
+    setDeclaredReference('')
+    setDeclareNote('')
+    setError(null)
+  }
+
+  const submitManualDeclaration = async (module: AccessModule) => {
+    if (declaredReference.trim().length < 3) {
+      setError('Indique une référence de paiement valide.')
       return
     }
-    setError('Aucun paiement à reprendre. Choisissez une offre pour payer.')
+    setBusyModule(module.key)
+    setError(null)
+    try {
+      const quantity = Math.max(1, Number(quantityByModule[module.key]) || 1)
+      const { accessRequest } = await createAccessRequest({ module: module.key, quantity, method: 'manual' })
+      await declareAccessPayment(accessRequest.id, {
+        declaredReference: declaredReference.trim(),
+        note: declareNote.trim(),
+      })
+      setSuccess('Déclaration envoyée. Un administrateur va vérifier ton paiement.')
+      setManualFormFor(null)
+      setMe(await fetchAccessMe())
+    } catch (err) {
+      setError(err instanceof AccessRequestError ? err.message : 'Déclaration impossible')
+    } finally {
+      setBusyModule(null)
+    }
   }
 
-  const refreshPayment = async () => {
-    const paymentId = trackingPaymentId || access?.latestPayment?.id
-    if (!paymentId) {
+  const refresh = async () => {
+    const pending = me?.pendingRequest
+    if (!pending) {
       await load()
       return
     }
     try {
-      const result = await syncPaymentStatus(paymentId)
-      applyPaymentResult(result.payment, result.access)
-      if (result.payment.status === 'pending') pollPayment(paymentId)
+      const result = await syncAccessRequest(pending.id)
+      setMe(result.access)
     } catch (err) {
-      setError(err instanceof SubscriptionError ? err.message : 'Actualisation impossible')
+      setError(err instanceof AccessRequestError ? err.message : 'Actualisation impossible')
     }
   }
 
   if (authLoading || !user) return <ScreenLoader />
 
-  const active = access?.subscription
-  const pending = access?.pendingSubscription
-  const latestPayment = access?.latestPayment
-  const payments = access?.payments || []
-  const paymentPending = latestPayment?.status === 'pending'
-  const paymentFailed =
-    latestPayment &&
-    (latestPayment.status === 'declined' ||
-      latestPayment.status === 'canceled' ||
-      latestPayment.status === 'failed')
+  const legacyActive = legacyAccess?.subscription
 
   return (
     <DarkScreen>
-        <PageNavbar
-          title="Mon abonnement"
-          icon={CreditCard}
-          onBack={() => navigation.navigate('Home')}
-        />
-        <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-          <View style={styles.introRow}>
-            <Text style={styles.intro}>
-              Choisis une formule et paie par Mobile Money (MTN ou Moov).
-            </Text>
-            <Bouncy scaleTo={0.96} onPress={() => navigation.navigate('HistoriquePaiements')}>
-              <View style={styles.historyBtn}>
-                <History size={15} color={dark.green} />
-                <Text style={styles.historyBtnText}>Historique</Text>
-              </View>
-            </Bouncy>
+      <PageNavbar title="Mon abonnement" icon={CreditCard} onBack={() => navigation.navigate('Home')} />
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        <Text style={styles.intro}>Choisis un accès et paie par Mobile Money, ou déclare un paiement hors plateforme.</Text>
+
+        {loading ? (
+          <View style={styles.empty}>
+            <ActivityIndicator color={dark.green} />
+            <Text style={styles.emptyText}>Chargement…</Text>
           </View>
+        ) : (
+          <>
+            {error ? <Text style={styles.error}>{error}</Text> : null}
+            {success ? <Text style={styles.success}>{success}</Text> : null}
 
-          {loading ? (
-            <View style={styles.empty}>
-              <ActivityIndicator color={dark.green} />
-              <Text style={styles.emptyText}>Chargement de votre abonnement…</Text>
-            </View>
-          ) : (
-            <>
-              {error ? (
-                <View style={styles.errorBox}>
-                  <Text style={styles.error}>{error}</Text>
-                  <Pressable
-                    style={({ pressed }) => [styles.retryBtn, pressed && styles.pressed]}
-                    onPress={() => void load()}
-                  >
-                    <RefreshCw size={15} color={dark.green} />
-                    <Text style={styles.retryBtnText}>Réessayer</Text>
-                  </Pressable>
-                </View>
-              ) : null}
-              {success ? <Text style={styles.success}>{success}</Text> : null}
+            {legacyActive ? (
+              <LinearGradient colors={gradients.greenDeep} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.statusCard}>
+                <Text style={styles.kickerOnColor}>Abonnement actif (ancienne formule)</Text>
+                <Text style={styles.statusTitleOnColor}>{legacyActive.planName}</Text>
+                <Text style={styles.statusCopyOnColor}>Valable jusqu’au {formatDate(legacyActive.endAt)}.</Text>
+              </LinearGradient>
+            ) : null}
 
-              {active ? (
-                <LinearGradient
-                  colors={gradients.greenDeep}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={[styles.statusCard, styles.statusCardActive]}
-                >
-                  <View style={styles.crownBadge}>
-                    <Crown size={16} color={'#0B0F1A'} />
-                  </View>
-                  <Text style={styles.kickerOnColor}>Abonnement actif</Text>
-                  <Text style={styles.statusTitleOnColor}>{active.planName}</Text>
-                  <Text style={styles.statusCopyOnColor}>Valable jusqu’au {formatDate(active.endAt)}.</Text>
-                  <View style={styles.rights}>
-                    {active.accessCode ? <Right label="Code" onColor /> : null}
-                    {active.accessConduite ? <Right label="Conduite" onColor /> : null}
-                    {active.accessECodepermis ? <Right label="E-Codepermis" onColor /> : null}
-                    {active.accessAiChat ? <Right label="Chat IA" onColor /> : null}
-                  </View>
-                </LinearGradient>
-              ) : (
-              <View style={styles.statusCard}>
-                {pending ? (
+            {me ? (
+              <View style={styles.statusCardOutline}>
+                <Text style={styles.kicker}>
+                  <Clock size={13} color={dark.green} /> Solde heures de conduite
+                </Text>
+                <Text style={styles.statusTitle}>{me.user.soldeHeures} h</Text>
+                {me.pendingRequest ? (
                   <>
-                    <Text style={styles.kicker}>
-                      {paymentPending || trackingPaymentId
-                        ? 'Paiement en cours'
-                        : paymentFailed
-                          ? 'Paiement non abouti'
-                          : 'En attente de paiement'}
-                    </Text>
-                    <Text style={styles.statusTitle}>{pending.planName}</Text>
                     <Text style={styles.statusCopy}>
-                      {paymentPending || trackingPaymentId
-                        ? 'Validez le paiement sur votre téléphone (MTN / Moov). L’abonnement s’activera automatiquement.'
-                        : paymentFailed
-                          ? latestPayment?.errorMessage ||
-                            'Le paiement a échoué ou a été annulé. Vous pouvez réessayer.'
-                          : 'Appuyez sur Payer pour ouvrir le checkout FedaPay sécurisé.'}
+                      Demande « {me.pendingRequest.module} » : {statusLabels[me.pendingRequest.status]}
                     </Text>
-                    <View style={styles.actions}>
-                      {paymentPending && latestPayment?.paymentUrl ? (
-                        <Bouncy onPress={() => void resumePayment()} scaleTo={0.97}>
-                          <LinearGradient
-                            colors={gradients.green}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 0 }}
-                            style={styles.subscribeButton}
-                          >
-                            <Text style={styles.subscribeText}>Reprendre le paiement</Text>
-                          </LinearGradient>
-                        </Bouncy>
-                      ) : null}
-                      <Pressable
-                        style={({ pressed }) => [styles.outlineButton, pressed && styles.pressed]}
-                        onPress={() => void refreshPayment()}
-                      >
-                        <RefreshCw size={16} color={dark.textPrimary} />
-                        <Text style={styles.outlineText}>Actualiser le statut</Text>
-                      </Pressable>
-                    </View>
+                    <Pressable style={({ pressed }) => [styles.outlineButton, pressed && styles.pressed]} onPress={() => void refresh()}>
+                      <RefreshCw size={16} color={dark.textPrimary} />
+                      <Text style={styles.outlineText}>Actualiser le statut</Text>
+                    </Pressable>
                   </>
-                ) : (
-                  <>
-                    <View style={styles.lockIcon}><Lock size={26} color={dark.textMuted} /></View>
-                    <Text style={styles.statusTitle}>Vos parcours sont verrouillés</Text>
-                    <Text style={styles.statusCopy}>
-                      Souscrivez à une offre et payez par Mobile Money pour accéder au code et à la conduite.
-                    </Text>
-                  </>
-                )}
+                ) : null}
               </View>
-              )}
+            ) : null}
 
-              <Text style={styles.catalogTitle}>Nos offres</Text>
-              {plans.length === 0 ? (
-                <Text style={styles.noPlans}>Aucune offre n’est disponible pour le moment.</Text>
-              ) : (
-                <View style={styles.planList}>
-                  {plans.map((plan) => {
-                    const isCurrentPending = pending && String(pending.planId) === String(plan.id)
-                    const freeOfferBlocked = plan.isFreeOffer && access?.freeOfferUsed && !isCurrentPending
-                    return (
-                      <View key={plan.id} style={styles.plan}>
-                        <View style={styles.planHeader}>
-                          <View style={styles.planCopy}>
-                            <Text style={styles.planName}>{plan.name}</Text>
-                            {plan.description ? (
-                              <Text style={styles.planDescription}>{plan.description}</Text>
-                            ) : null}
-                            <Text style={styles.duration}>{plan.durationLabel}</Text>
+            <Text style={styles.catalogTitle}>Nos accès</Text>
+
+            <View style={styles.planList}>
+              {modules.map((module) => {
+                const legacyFlag = legacyFlagByModule[module.key]
+                const isActive = me?.access[module.key] || (legacyFlag ? Boolean(legacyAccess?.[legacyFlag]) : false)
+                const showsQuantity = module.unit === 'hour' || module.unit === 'week'
+                const quantity = Math.max(1, Number(quantityByModule[module.key]) || 1)
+                const isBusy = busyModule === module.key
+
+                return (
+                  <View key={module.key} style={styles.plan}>
+                    <View style={styles.planHeader}>
+                      <View style={styles.planCopy}>
+                        <Text style={styles.planName}>{module.label}</Text>
+                        <Text style={styles.duration}>
+                          {module.unit === 'hour' ? 'À l’heure' : module.unit === 'week' ? 'À la semaine' : 'Mensuel'}
+                        </Text>
+                      </View>
+                      <Text style={styles.price}>
+                        {formatPrice(module.price)}
+                        {unitSuffix[module.unit]}
+                      </Text>
+                    </View>
+
+                    {isActive ? (
+                      <View style={styles.activeRow}>
+                        <Check size={16} color={dark.green} />
+                        <Text style={styles.activeText}>Accès actif</Text>
+                      </View>
+                    ) : (
+                      <>
+                        {showsQuantity ? (
+                          <View style={styles.quantityField}>
+                            <Text style={styles.fieldLabel}>
+                              {module.unit === 'hour' ? 'Nombre d’heures' : 'Nombre de semaines'}
+                            </Text>
+                            <TextInput
+                              style={styles.input}
+                              keyboardType="number-pad"
+                              value={quantityByModule[module.key] ?? '1'}
+                              onChangeText={(text) =>
+                                setQuantityByModule((current) => ({ ...current, [module.key]: text }))
+                              }
+                            />
                           </View>
-                          <Text style={styles.price}>{formatPrice(plan.price, plan.currency)}</Text>
-                        </View>
-                        <View style={styles.planRights}>
-                          {plan.accessCode ? <Right label="Code" /> : null}
-                          {plan.accessConduite ? <Right label="Conduite" /> : null}
-                          {plan.accessECodepermis ? <Right label="E-Codepermis" /> : null}
-                          {plan.accessAiChat ? <Right label="Chat IA tuteur" /> : null}
-                          {plan.heuresIncluses > 0 ? (
-                            <Right label={`${plan.heuresIncluses} h de conduite`} />
-                          ) : null}
-                        </View>
-                        {freeOfferBlocked ? (
-                          <Text style={styles.freeOfferUsedText}>Offre gratuite déjà utilisée</Text>
                         ) : null}
-                        <Bouncy
-                          disabled={Boolean(active) || subscribingPlanId !== null || freeOfferBlocked}
-                          scaleTo={0.97}
-                          style={(Boolean(active) || subscribingPlanId !== null || freeOfferBlocked) && styles.disabled}
-                          onPress={() => void subscribe(plan.id)}
-                        >
-                          <LinearGradient
-                            colors={gradients.green}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 0 }}
-                            style={styles.subscribeButton}
-                          >
+                        <Text style={styles.totalText}>
+                          Total : {formatPrice(module.price * (showsQuantity ? quantity : 1))}
+                        </Text>
+
+                        <Bouncy onPress={() => void buyWithFedaPay(module)} scaleTo={0.97} disabled={isBusy}>
+                          <LinearGradient colors={gradients.green} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.subscribeButton}>
                             <Text style={styles.subscribeText}>
-                              {subscribingPlanId === plan.id
-                                ? plan.isFreeOffer
-                                  ? 'Activation…'
-                                  : 'Ouverture du paiement…'
-                                : freeOfferBlocked
-                                  ? 'Offre gratuite déjà utilisée'
-                                  : isCurrentPending
-                                    ? paymentFailed
-                                      ? 'Réessayer le paiement'
-                                      : plan.isFreeOffer
-                                        ? 'Essayer l’offre gratuite'
-                                        : 'Payer'
-                                    : plan.isFreeOffer
-                                      ? 'Essayer l’offre gratuite'
-                                      : 'Payer'}
+                              {isBusy ? 'Ouverture du paiement…' : 'Payer par Mobile Money'}
                             </Text>
                           </LinearGradient>
                         </Bouncy>
-                      </View>
-                    )
-                  })}
-                </View>
-              )}
 
-              {payments.length > 0 ? (
-                <Bouncy scaleTo={0.98} style={styles.historyLinkWrap} onPress={() => navigation.navigate('HistoriquePaiements')}>
-                  <View style={styles.historyLink}>
-                    <History size={16} color={dark.green} />
-                    <Text style={styles.historyLinkText}>Voir tout l’historique des paiements</Text>
+                        {manualFormFor === module.key ? (
+                          <View style={styles.manualForm}>
+                            <Text style={styles.fieldLabel}>Référence de paiement</Text>
+                            <TextInput
+                              style={styles.input}
+                              value={declaredReference}
+                              onChangeText={setDeclaredReference}
+                              placeholder="Référence Mobile Money, reçu…"
+                              placeholderTextColor={dark.textMuted}
+                            />
+                            <Text style={styles.fieldLabel}>Note (facultatif)</Text>
+                            <TextInput
+                              style={[styles.input, styles.textarea]}
+                              value={declareNote}
+                              onChangeText={setDeclareNote}
+                              placeholder="Précise le mode de paiement utilisé"
+                              placeholderTextColor={dark.textMuted}
+                              multiline
+                              numberOfLines={2}
+                            />
+                            <View style={styles.manualActions}>
+                              <Pressable
+                                style={({ pressed }) => [styles.primaryOutlineBtn, pressed && styles.pressed]}
+                                disabled={isBusy}
+                                onPress={() => void submitManualDeclaration(module)}
+                              >
+                                <Text style={styles.primaryOutlineBtnText}>{isBusy ? 'Envoi…' : 'Envoyer'}</Text>
+                              </Pressable>
+                              <Pressable
+                                style={({ pressed }) => [styles.outlineButton, pressed && styles.pressed]}
+                                onPress={() => setManualFormFor(null)}
+                              >
+                                <Text style={styles.outlineText}>Annuler</Text>
+                              </Pressable>
+                            </View>
+                          </View>
+                        ) : (
+                          <Pressable
+                            style={({ pressed }) => [styles.outlineButton, pressed && styles.pressed]}
+                            onPress={() => openManualForm(module.key)}
+                          >
+                            <Text style={styles.outlineText}>J’ai déjà payé autrement</Text>
+                          </Pressable>
+                        )}
+                      </>
+                    )}
                   </View>
-                </Bouncy>
-              ) : null}
-            </>
-          )}
-        </ScrollView>
-      </DarkScreen>
-  )
-}
+                )
+              })}
+            </View>
 
-function Right({ label, onColor }: { label: string; onColor?: boolean }) {
-  return (
-    <View style={styles.right}>
-      <Check size={15} color={onColor ? '#FFFFFF' : dark.green} />
-      <Text style={[styles.rightText, onColor && styles.rightTextOnColor]}>{label}</Text>
-    </View>
+            {!legacyActive && !modules.some((m) => me?.access[m.key]) ? (
+              <View style={styles.statusCardOutline}>
+                <Lock size={26} color={dark.textMuted} />
+                <Text style={styles.statusCopy}>Achète un accès ci-dessus pour débloquer le code, la conduite ou l’E-Codepermis.</Text>
+              </View>
+            ) : null}
+          </>
+        )}
+      </ScrollView>
+    </DarkScreen>
   )
 }
 
 const styles = StyleSheet.create({
   scroll: { paddingHorizontal: 22, paddingBottom: 40, paddingTop: 8 },
-  intro: {
-    flex: 1,
-    fontFamily: fonts.body,
-    fontSize: 15,
-    lineHeight: 22,
-    color: dark.textMuted,
-  },
+  intro: { fontFamily: fonts.body, fontSize: 15, lineHeight: 22, color: dark.textMuted, marginBottom: 20 },
   empty: { alignItems: 'center', gap: 12, paddingVertical: 44 },
-  emptyText: {
-    color: dark.textMuted,
-    fontSize: 15,
-    fontFamily: fonts.body,
-  },
-  error: { color: dark.coral, fontFamily: fonts.body, flex: 1 },
-  errorBox: {
-    marginBottom: 12,
-    gap: 10,
-  },
-  retryBtn: {
-    alignSelf: 'flex-start',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: 'rgba(0,176,80,0.35)',
-    backgroundColor: 'rgba(0,176,80,0.08)',
-  },
-  retryBtnText: {
-    fontFamily: fonts.bodySemiBold,
-    fontSize: 13,
-    color: dark.green,
-  },
+  emptyText: { color: dark.textMuted, fontSize: 15, fontFamily: fonts.body },
+  error: { color: dark.coral, marginBottom: 12, fontFamily: fonts.body },
   success: { color: dark.green, marginBottom: 12, fontFamily: fonts.body },
-  statusCard: {
+  statusCard: { borderRadius: 18, padding: 18, marginBottom: 16 },
+  statusCardOutline: {
     borderRadius: 18,
     borderWidth: 1,
     borderColor: dark.border,
     backgroundColor: dark.surface,
     padding: 18,
-    marginBottom: 28,
+    marginBottom: 16,
+    gap: 6,
   },
-  statusCardActive: {
-    borderWidth: 0,
-    shadowColor: dark.green,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.24,
-    shadowRadius: 18,
-    elevation: 5,
-  },
-  crownBadge: {
-    position: 'absolute',
-    top: 14,
-    right: 14,
-    width: 32,
-    height: 32,
-    borderRadius: 999,
-    backgroundColor: dark.coral,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  kicker: {
-    fontFamily: fonts.displayBold,
-    fontSize: 12,
-    color: dark.green,
-    textTransform: 'uppercase',
-    letterSpacing: 0.6,
-    marginBottom: 6,
-  },
-  kickerOnColor: {
-    fontFamily: fonts.displayBold,
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.75)',
-    textTransform: 'uppercase',
-    letterSpacing: 0.6,
-    marginBottom: 6,
-  },
-  statusTitle: {
-    fontFamily: fonts.displayExtraBold,
-    fontSize: 22,
-    color: dark.textPrimary,
-    marginBottom: 8,
-  },
-  statusTitleOnColor: {
-    fontFamily: fonts.displayExtraBold,
-    fontSize: 22,
-    color: '#FFFFFF',
-    marginBottom: 8,
-  },
-  statusCopy: {
-    fontFamily: fonts.body,
-    fontSize: 15,
-    lineHeight: 22,
-    color: dark.textMuted,
-  },
-  statusCopyOnColor: {
-    fontFamily: fonts.body,
-    fontSize: 15,
-    lineHeight: 22,
-    color: 'rgba(255,255,255,0.85)',
-  },
-  lockIcon: { marginBottom: 12 },
-  rights: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 16 },
-  right: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  rightText: {
-    fontFamily: fonts.bodySemiBold,
-    fontSize: 13,
-    color: dark.textPrimary,
-  },
-  rightTextOnColor: { color: '#FFFFFF' },
-  actions: { gap: 10, marginTop: 16 },
-  catalogTitle: {
-    fontFamily: fonts.displayExtraBold,
-    fontSize: 22,
-    color: dark.textPrimary,
-    marginBottom: 14,
-  },
-  noPlans: {
-    fontFamily: fonts.body,
-    fontSize: 15,
-    color: dark.textMuted,
-  },
+  kicker: { fontFamily: fonts.displayBold, fontSize: 12, color: dark.green, textTransform: 'uppercase', letterSpacing: 0.6 },
+  kickerOnColor: { fontFamily: fonts.displayBold, fontSize: 12, color: 'rgba(255,255,255,0.75)', textTransform: 'uppercase', letterSpacing: 0.6 },
+  statusTitle: { fontFamily: fonts.displayExtraBold, fontSize: 22, color: dark.textPrimary, marginTop: 4 },
+  statusTitleOnColor: { fontFamily: fonts.displayExtraBold, fontSize: 22, color: '#FFFFFF', marginTop: 4 },
+  statusCopy: { fontFamily: fonts.body, fontSize: 15, lineHeight: 22, color: dark.textMuted },
+  statusCopyOnColor: { fontFamily: fonts.body, fontSize: 15, lineHeight: 22, color: 'rgba(255,255,255,0.85)' },
+  catalogTitle: { fontFamily: fonts.displayExtraBold, fontSize: 22, color: dark.textPrimary, marginBottom: 14 },
   planList: { gap: 14 },
-  plan: {
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: dark.border,
-    padding: 16,
-    backgroundColor: dark.surface,
-  },
+  plan: { borderRadius: 18, borderWidth: 1, borderColor: dark.border, padding: 16, backgroundColor: dark.surface, gap: 10 },
   planHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
   planCopy: { flex: 1 },
-  planName: {
-    color: dark.textPrimary,
-    fontFamily: fonts.displayBold,
-    fontSize: 18,
-  },
-  planDescription: {
-    color: dark.textMuted,
-    fontFamily: fonts.body,
-    fontSize: 14,
-    lineHeight: 20,
-    marginTop: 5,
-  },
+  planName: { color: dark.textPrimary, fontFamily: fonts.displayBold, fontSize: 18 },
   duration: {
     alignSelf: 'flex-start',
     color: dark.textMuted,
@@ -590,32 +428,40 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     paddingHorizontal: 8,
     paddingVertical: 4,
-    marginTop: 9,
+    marginTop: 6,
   },
-  price: {
-    color: dark.textPrimary,
-    fontFamily: fonts.displayBold,
-    fontSize: 17,
-  },
-  planRights: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-    marginTop: 16,
-    marginBottom: 16,
-  },
-  freeOfferUsedText: {
-    color: dark.coral,
-    fontSize: 12,
-    fontFamily: fonts.bodyBold,
-    marginBottom: 8,
-  },
-  subscribeButton: { alignItems: 'center', borderRadius: 12, paddingVertical: 13 },
-  subscribeText: {
-    color: '#0B0F1A',
-    fontFamily: fonts.displayBold,
+  price: { color: dark.textPrimary, fontFamily: fonts.displayBold, fontSize: 17 },
+  activeRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  activeText: { fontFamily: fonts.bodyBold, fontSize: 15, color: dark.green },
+  quantityField: { gap: 4 },
+  fieldLabel: { fontFamily: fonts.bodyBold, fontSize: 13, color: dark.textMuted },
+  input: {
+    borderWidth: 1,
+    borderColor: dark.border,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontFamily: fonts.body,
     fontSize: 15,
+    color: dark.textPrimary,
+    backgroundColor: dark.surfaceRaised,
   },
+  textarea: { minHeight: 60, textAlignVertical: 'top' },
+  totalText: { fontFamily: fonts.bodySemiBold, fontSize: 14, color: dark.textMuted },
+  subscribeButton: { alignItems: 'center', borderRadius: 12, paddingVertical: 13 },
+  subscribeText: { color: '#0B0F1A', fontFamily: fonts.displayBold, fontSize: 15 },
+  manualForm: { gap: 8, paddingTop: 6, borderTopWidth: 1, borderTopColor: dark.border, borderStyle: 'dashed' },
+  manualActions: { flexDirection: 'row', gap: 10 },
+  primaryOutlineBtn: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: dark.green,
+    paddingVertical: 12,
+  },
+  primaryOutlineBtnText: { color: dark.green, fontFamily: fonts.bodyBold, fontSize: 14 },
   outlineButton: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -627,52 +473,6 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     backgroundColor: dark.surfaceRaised,
   },
-  outlineText: {
-    color: dark.textPrimary,
-    fontFamily: fonts.bodyBold,
-    fontSize: 14,
-  },
-  disabled: { opacity: 0.55 },
+  outlineText: { color: dark.textPrimary, fontFamily: fonts.bodyBold, fontSize: 14 },
   pressed: { opacity: 0.88 },
-  introRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 12,
-    marginBottom: 20,
-  },
-  historyBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 999,
-    backgroundColor: dark.surface,
-    borderWidth: 1,
-    borderColor: dark.border,
-  },
-  historyBtnText: {
-    fontFamily: fonts.bodySemiBold,
-    fontSize: 12.5,
-    color: dark.green,
-  },
-  historyLinkWrap: {
-    marginTop: 24,
-  },
-  historyLink: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 14,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: dark.border,
-    backgroundColor: dark.surface,
-  },
-  historyLinkText: {
-    fontFamily: fonts.bodyBold,
-    fontSize: 14,
-    color: dark.textPrimary,
-  },
 })

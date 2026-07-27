@@ -3,7 +3,9 @@ import { resolveMediaUrl } from '../utils/mediaUrl'
 import {
   playCountdown5to0,
   playGongSound,
+  registerActiveAudioElement,
   stopAllQuizAudio,
+  unregisterActiveAudioElement,
   type CountdownValue,
 } from '../utils/quizSounds'
 
@@ -66,6 +68,7 @@ export function QuestionAudioSequence({
     setStatus('')
 
     const el = audioRef.current
+    registerActiveAudioElement(el)
 
     const playOnce = (label: string) =>
       new Promise<void>((resolve) => {
@@ -136,6 +139,7 @@ export function QuestionAudioSequence({
         el.removeAttribute('src')
         el.load()
       }
+      unregisterActiveAudioElement(el)
       stopAllQuizAudio()
       setCountdown(null)
       setStatus('')

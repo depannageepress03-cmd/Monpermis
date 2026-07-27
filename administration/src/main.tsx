@@ -9,6 +9,7 @@ import './styles/admin-content.css'
 import './styles/admin-users.css'
 import './styles/admin-questions.css'
 import './styles/admin-subscriptions.css'
+import './styles/admin-access-requests.css'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

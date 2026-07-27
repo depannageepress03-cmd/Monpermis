@@ -29,6 +29,8 @@ import notificationsRoutes from './routes/notifications.js'
 import announcementsRoutes from './routes/announcements.js'
 import adminAnnouncementsRoutes from './routes/adminAnnouncements.js'
 import fedapayWebhooksRoutes from './routes/fedapayWebhooks.js'
+import accessRequestsRoutes from './routes/accessRequests.js'
+import adminAccessRequestsRoutes from './routes/adminAccessRequests.js'
 import { sendMediaAsset } from './middleware/upload.js'
 import { ensureReservationIndexes } from './models/Reservation.js'
 import {
@@ -37,6 +39,7 @@ import {
   grantGraceToUsersWithoutSubscription,
   notifyExpiringSubscriptions,
 } from './utils/subscriptions.js'
+import { ensureAccessModulePricing, expireDueAccessRequests } from './utils/accessRequests.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const app = express()
@@ -169,6 +172,8 @@ app.use('/api/admin/users', adminUsersRoutes)
 app.use('/api/admin/dashboard', adminDashboardRoutes)
 app.use('/api/admin/subscriptions', adminSubscriptionsRoutes)
 app.use('/api/subscriptions', subscriptionsRoutes)
+app.use('/api/admin/access-requests', adminAccessRequestsRoutes)
+app.use('/api/access-requests', accessRequestsRoutes)
 app.use('/api/ai', aiTutorRoutes)
 app.use('/api/content/revision', contentRoutes)
 app.use('/api/content/revision', practiceExamsRoutes)
@@ -297,11 +302,19 @@ async function connectMongo() {
     if (expiring.sent > 0) {
       logger.info(`Avertissements expiration envoyés à ${expiring.sent} apprenant(s)`)
     }
+
+    const pricingSeed = await ensureAccessModulePricing()
+    if (pricingSeed.created > 0) {
+      logger.info(`Tarifs modules d'accès initialisés (${pricingSeed.created})`)
+    }
+    await expireDueAccessRequests()
+
     setInterval(async () => {
       try {
         await expireDueSubscriptions()
         const result = await notifyExpiringSubscriptions()
         if (result.sent > 0) logger.info(`Avertissements expiration envoyés à ${result.sent} apprenant(s)`)
+        await expireDueAccessRequests()
       } catch (e) {
         logger.error('Erreur vérification expirations', { error: e.message })
       }
