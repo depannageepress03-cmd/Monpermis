@@ -2,8 +2,8 @@ import { Check, Clock, CreditCard, LoaderCircle, Lock, RefreshCw } from 'lucide-
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
+  cancelAccessRequest,
   createAccessRequest,
-  declareAccessPayment,
   fetchAccessMe,
   fetchAccessModules,
   syncAccessRequest,
@@ -25,11 +25,19 @@ function formatPrice(price: number, currency = 'XOF') {
 const statusLabels: Record<AccessRequest['status'], string> = {
   en_attente: 'En attente',
   paiement_declare: 'Paiement déclaré, en vérification',
-  en_verification: 'Paiement en cours de confirmation',
+  en_verification: 'Paiement Mobile Money en confirmation',
   valide: 'Validé',
   actif: 'Actif',
   expire: 'Expiré',
   rejete: 'Rejeté',
+}
+
+const moduleLabels: Record<AccessModuleKey, string> = {
+  code: 'Code de la route',
+  conduite_heures: 'Heures de conduite',
+  conduite_videos: 'Vidéos conduite',
+  ecodepermis: 'E-Codepermis',
+  aiChat: 'Chat IA',
 }
 
 const unitSuffix: Record<AccessModule['unit'], string> = {
@@ -52,9 +60,7 @@ export function AbonnementPage() {
 
   const [busyModule, setBusyModule] = useState<AccessModuleKey | null>(null)
   const [quantityByModule, setQuantityByModule] = useState<Record<string, number>>({})
-  const [manualFormFor, setManualFormFor] = useState<AccessModuleKey | null>(null)
-  const [declaredReference, setDeclaredReference] = useState('')
-  const [declareNote, setDeclareNote] = useState('')
+  const [cancelling, setCancelling] = useState(false)
 
   const pollRef = useRef<number | null>(null)
 
@@ -65,6 +71,46 @@ export function AbonnementPage() {
     }
   }, [])
 
+  const applySyncResult = useCallback(
+    (result: { accessRequest: AccessRequest; access: AccessMe }) => {
+      setMe(result.access)
+      if (result.accessRequest.status === 'actif' || result.accessRequest.status === 'valide') {
+        stopPolling()
+        setSuccess('Paiement confirmé. Votre accès est maintenant actif.')
+        setError(null)
+        return 'done'
+      }
+      if (result.accessRequest.status === 'rejete') {
+        stopPolling()
+        setError('Le paiement n’a pas abouti. Vous pouvez réessayer.')
+        setSuccess(null)
+        return 'done'
+      }
+      return 'pending'
+    },
+    [stopPolling],
+  )
+
+  const pollPendingRequest = useCallback(
+    (id: string) => {
+      stopPolling()
+      let ticks = 0
+      pollRef.current = window.setInterval(() => {
+        void (async () => {
+          ticks += 1
+          try {
+            const result = await syncAccessRequest(id)
+            const state = applySyncResult(result)
+            if (state === 'done' || ticks >= 45) stopPolling()
+          } catch {
+            /* ignore transient poll errors */
+          }
+        })()
+      }, 3000)
+    },
+    [applySyncResult, stopPolling],
+  )
+
   const load = useCallback(async () => {
     setLoading(true)
     setError(null)
@@ -72,37 +118,16 @@ export function AbonnementPage() {
       const [moduleCatalog, meResult] = await Promise.all([fetchAccessModules(), fetchAccessMe()])
       setModules(moduleCatalog)
       setMe(meResult)
+      if (meResult.pendingRequest?.status === 'en_verification') {
+        setSuccess('Paiement Mobile Money en confirmation…')
+        pollPendingRequest(meResult.pendingRequest.id)
+      }
     } catch (err) {
       setError(err instanceof AccessRequestError ? err.message : 'Chargement impossible')
     } finally {
       setLoading(false)
     }
-  }, [])
-
-  const pollPendingRequest = useCallback(
-    (id: string) => {
-      stopPolling()
-      pollRef.current = window.setInterval(() => {
-        void (async () => {
-          try {
-            const result = await syncAccessRequest(id)
-            setMe(result.access)
-            if (result.accessRequest.status !== 'en_verification') {
-              stopPolling()
-              if (result.accessRequest.status === 'actif' || result.accessRequest.status === 'valide') {
-                setSuccess('Paiement confirmé. Votre accès est maintenant actif.')
-              } else if (result.accessRequest.status === 'rejete') {
-                setError('Le paiement n’a pas abouti. Vous pouvez réessayer.')
-              }
-            }
-          } catch {
-            /* ignore transient poll errors */
-          }
-        })()
-      }, 4000)
-    },
-    [stopPolling],
-  )
+  }, [pollPendingRequest])
 
   useEffect(() => {
     if (user) void load()
@@ -115,17 +140,13 @@ export function AbonnementPage() {
     if (!user || !accessRequestId) return
 
     void (async () => {
-      setSuccess('Paiement en cours de traitement. Confirmation Mobile Money en attente…')
+      setSuccess('Confirmation du paiement Mobile Money…')
       try {
         const result = await syncAccessRequest(accessRequestId)
-        setMe(result.access)
-        if (result.accessRequest.status === 'actif' || result.accessRequest.status === 'valide') {
-          setSuccess('Paiement confirmé. Votre accès est maintenant actif.')
-        } else if (result.accessRequest.status === 'en_verification') {
+        const state = applySyncResult(result)
+        if (state === 'pending') {
+          setSuccess('Paiement en cours de confirmation Mobile Money…')
           pollPendingRequest(accessRequestId)
-        } else if (result.accessRequest.status === 'rejete') {
-          setError('Le paiement n’a pas abouti. Vous pouvez réessayer.')
-          setSuccess(null)
         }
       } catch (err) {
         setError(err instanceof AccessRequestError ? err.message : 'Vérification du paiement impossible')
@@ -134,54 +155,32 @@ export function AbonnementPage() {
         setSearchParams({}, { replace: true })
       }
     })()
-  }, [user, searchParams, setSearchParams, pollPendingRequest])
+  }, [user, searchParams, setSearchParams, pollPendingRequest, applySyncResult])
 
-  const buyWithFedaPay = async (module: AccessModule) => {
+  const buyWithFedaPay = async (module: AccessModule, replace = false) => {
     setBusyModule(module.key)
     setError(null)
     setSuccess(null)
     try {
       const quantity = Math.max(1, quantityByModule[module.key] ?? 1)
-      const result = await createAccessRequest({ module: module.key, quantity, method: 'fedapay' })
-      if (!result.paymentUrl) {
-        setError('Lien de paiement FedaPay indisponible. Réessayez dans un instant.')
+      const result = await createAccessRequest({ module: module.key, quantity, replace })
+      if (result.alreadyActive && result.access) {
+        setMe(result.access)
+        setSuccess('Votre accès est déjà actif.')
         return
       }
+      if (!result.paymentUrl) {
+        setError('Lien de paiement Mobile Money indisponible. Réessayez dans un instant.')
+        return
+      }
+      setSuccess(
+        result.resumed
+          ? 'Reprise du paiement Mobile Money en cours…'
+          : 'Redirection vers Mobile Money…',
+      )
       window.location.assign(result.paymentUrl)
     } catch (err) {
       setError(err instanceof AccessRequestError ? err.message : 'Paiement impossible à initier')
-    } finally {
-      setBusyModule(null)
-    }
-  }
-
-  const openManualForm = (module: AccessModuleKey) => {
-    setManualFormFor(module)
-    setDeclaredReference('')
-    setDeclareNote('')
-    setError(null)
-  }
-
-  const submitManualDeclaration = async (module: AccessModule) => {
-    if (declaredReference.trim().length < 3) {
-      setError('Indiquez une référence de paiement valide.')
-      return
-    }
-    setBusyModule(module.key)
-    setError(null)
-    try {
-      const quantity = Math.max(1, quantityByModule[module.key] ?? 1)
-      const { accessRequest } = await createAccessRequest({ module: module.key, quantity, method: 'manual' })
-      await declareAccessPayment(accessRequest.id, {
-        declaredReference: declaredReference.trim(),
-        note: declareNote.trim(),
-      })
-      setSuccess('Déclaration envoyée. Un administrateur va vérifier votre paiement.')
-      setManualFormFor(null)
-      const meResult = await fetchAccessMe()
-      setMe(meResult)
-    } catch (err) {
-      setError(err instanceof AccessRequestError ? err.message : 'Déclaration impossible')
     } finally {
       setBusyModule(null)
     }
@@ -195,9 +194,29 @@ export function AbonnementPage() {
     }
     try {
       const result = await syncAccessRequest(pending.id)
-      setMe(result.access)
+      const state = applySyncResult(result)
+      if (state === 'pending') {
+        setSuccess('Paiement toujours en cours de confirmation…')
+        pollPendingRequest(pending.id)
+      }
     } catch (err) {
       setError(err instanceof AccessRequestError ? err.message : 'Actualisation impossible')
+    }
+  }
+
+  const cancelPending = async () => {
+    if (!me?.pendingRequest) return
+    setCancelling(true)
+    setError(null)
+    try {
+      const result = await cancelAccessRequest(me.pendingRequest.id)
+      stopPolling()
+      setMe(result.access)
+      setSuccess('Paiement annulé. Vous pouvez relancer un paiement en ligne.')
+    } catch (err) {
+      setError(err instanceof AccessRequestError ? err.message : 'Annulation impossible')
+    } finally {
+      setCancelling(false)
     }
   }
 
@@ -206,10 +225,10 @@ export function AbonnementPage() {
   return (
     <div className="auth-page">
       <div className="auth-container learner-container">
-        <PageNavbar title="Mon abonnement" icon={<CreditCard size={25} />} onBack={() => navigate('/accueil')} />
+        <PageNavbar title="Mes accès" icon={<CreditCard size={25} />} onBack={() => navigate('/accueil')} />
 
         <header className="auth-header learner-header">
-          <p>Choisissez un accès et payez par Mobile Money, ou déclarez un paiement hors plateforme.</p>
+          <p>Payez uniquement en ligne par Mobile Money (FedaPay).</p>
         </header>
 
         {loading ? (
@@ -232,19 +251,46 @@ export function AbonnementPage() {
                 {me.pendingRequest ? (
                   <>
                     <p className="subscription-status-copy">
-                      Demande « {me.pendingRequest.module} » : {statusLabels[me.pendingRequest.status]}
+                      {moduleLabels[me.pendingRequest.module] || me.pendingRequest.module}
+                      {' · '}
+                      {formatPrice(me.pendingRequest.amount, me.pendingRequest.currency)}
+                      <br />
+                      {statusLabels[me.pendingRequest.status]}
                     </p>
-                    <button type="button" className="btn-outline" onClick={() => void refresh()}>
-                      <RefreshCw size={16} aria-hidden="true" />
-                      Actualiser le statut
-                    </button>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                      {me.pendingRequest.status === 'en_verification' ? (
+                        <button
+                          type="button"
+                          className="btn-primary"
+                          disabled={Boolean(busyModule)}
+                          onClick={() => {
+                            const module = modules.find((item) => item.key === me.pendingRequest?.module)
+                            if (module) void buyWithFedaPay(module, false)
+                          }}
+                        >
+                          Reprendre le paiement
+                        </button>
+                      ) : null}
+                      <button type="button" className="btn-outline" onClick={() => void refresh()}>
+                        <RefreshCw size={16} aria-hidden="true" />
+                        Actualiser
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-outline"
+                        disabled={cancelling}
+                        onClick={() => void cancelPending()}
+                      >
+                        {cancelling ? 'Annulation…' : 'Annuler'}
+                      </button>
+                    </div>
                   </>
                 ) : null}
               </section>
             ) : null}
 
             <section className="subscription-catalog">
-              <h2>Nos accès</h2>
+              <h2>Paiement en ligne</h2>
               {modules.length === 0 ? (
                 <p className="subtitle">Aucun accès n’est disponible pour le moment.</p>
               ) : (
@@ -254,13 +300,20 @@ export function AbonnementPage() {
                     const quantity = quantityByModule[module.key] ?? 1
                     const showsQuantity = module.unit === 'hour' || module.unit === 'week'
                     const isBusy = busyModule === module.key
+                    const hasPendingSame =
+                      me?.pendingRequest?.module === module.key &&
+                      me.pendingRequest.status === 'en_verification'
 
                     return (
                       <article className="subscription-plan" key={module.key}>
                         <div>
                           <h3>{module.label}</h3>
                           <span className="subscription-duration">
-                            {module.unit === 'hour' ? 'À l’heure' : module.unit === 'week' ? 'À la semaine' : 'Mensuel'}
+                            {module.unit === 'hour'
+                              ? 'À l’heure'
+                              : module.unit === 'week'
+                                ? 'À la semaine'
+                                : 'Mensuel'}
                           </span>
                         </div>
                         <strong className="subscription-price">
@@ -298,50 +351,14 @@ export function AbonnementPage() {
                               type="button"
                               className="btn-primary"
                               disabled={isBusy}
-                              onClick={() => void buyWithFedaPay(module)}
+                              onClick={() => void buyWithFedaPay(module, false)}
                             >
-                              {isBusy ? 'Ouverture du paiement…' : 'Payer par Mobile Money'}
+                              {isBusy
+                                ? 'Ouverture Mobile Money…'
+                                : hasPendingSame
+                                  ? 'Continuer le paiement'
+                                  : 'Payer en ligne (Mobile Money)'}
                             </button>
-
-                            {manualFormFor === module.key ? (
-                              <div className="access-manual-form">
-                                <label>
-                                  Référence de paiement
-                                  <input
-                                    type="text"
-                                    value={declaredReference}
-                                    onChange={(event) => setDeclaredReference(event.target.value)}
-                                    placeholder="Référence Mobile Money, reçu…"
-                                  />
-                                </label>
-                                <label>
-                                  Note (facultatif)
-                                  <textarea
-                                    rows={2}
-                                    value={declareNote}
-                                    onChange={(event) => setDeclareNote(event.target.value)}
-                                    placeholder="Précisez le mode de paiement utilisé"
-                                  />
-                                </label>
-                                <div className="access-manual-actions">
-                                  <button
-                                    type="button"
-                                    className="btn-primary"
-                                    disabled={isBusy}
-                                    onClick={() => void submitManualDeclaration(module)}
-                                  >
-                                    {isBusy ? 'Envoi…' : 'Envoyer la déclaration'}
-                                  </button>
-                                  <button type="button" className="btn-outline" onClick={() => setManualFormFor(null)}>
-                                    Annuler
-                                  </button>
-                                </div>
-                              </div>
-                            ) : (
-                              <button type="button" className="btn-outline" onClick={() => openManualForm(module.key)}>
-                                J’ai déjà payé autrement
-                              </button>
-                            )}
                           </>
                         )}
                       </article>

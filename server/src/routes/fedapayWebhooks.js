@@ -9,7 +9,10 @@ import {
 const router = Router()
 
 router.post('/', async (req, res) => {
-  const signature = req.headers['x-fedapay-signature']
+  const signature =
+    req.headers['x-fedapay-signature'] ||
+    req.headers['X-FEDAPAY-SIGNATURE'] ||
+    req.headers['x-FEDAPAY-signature']
   let event
 
   try {
@@ -49,6 +52,13 @@ router.post('/', async (req, res) => {
         eventName: eventName || 'transaction.canceled',
         eventId,
         message: 'Paiement annulé',
+        raw: event,
+      })
+    } else if (eventName === 'transaction.failed' || mapFedaPayStatus(object.status) === 'failed') {
+      await applyFailedAccessPayment(payment, 'failed', {
+        eventName: eventName || 'transaction.failed',
+        eventId,
+        message: 'Paiement échoué',
         raw: event,
       })
     } else {

@@ -11,6 +11,8 @@ import { User } from '../models/User.js'
 import {
   createFedaPayCheckout,
   mapFedaPayStatus,
+  normalizeBeninPhone,
+  refreshFedaPayPaymentUrl,
   retrieveFedaPayTransaction,
 } from '../services/fedapay.js'
 import { notifyUser } from '../services/notifications.js'
@@ -194,11 +196,28 @@ export async function getUserModuleAccess(userId) {
     })
   }
 
-  const pending = requests.find((r) => ['en_attente', 'paiement_declare', 'en_verification'].includes(r.status))
+  const pending = requests.find((r) =>
+    ['en_attente', 'paiement_declare', 'en_verification'].includes(r.status),
+  )
+
+  let pendingPayment = null
+  if (pending) {
+    const payment = await Payment.findOne({
+      accessRequestId: pending._id,
+      method: 'fedapay',
+    }).sort({ createdAt: -1 })
+    if (payment) {
+      pendingPayment = {
+        ...payment.toPublicJSON(),
+        callbackUrl: `${callbackBase()}?accessRequest=${pending._id}`,
+      }
+    }
+  }
 
   return {
     access,
     pendingRequest: pending ? pending.toPublicJSON() : null,
+    pendingPayment,
     requests: requests.map((r) => r.toPublicJSON()),
   }
 }
@@ -252,14 +271,30 @@ export async function createAccessRequest({ user, module, quantity = 1 }) {
 }
 
 function callbackBase() {
-  return (
-    process.env.FEDAPAY_CALLBACK_URL ||
-    `${String(process.env.CLIENT_URL || 'http://localhost:5173').replace(/\/$/, '')}/abonnement`
-  )
+  const configured = String(process.env.FEDAPAY_CALLBACK_URL || process.env.CLIENT_URL || '')
+    .trim()
+    .replace(/\/$/, '')
+  if (!configured) {
+    // En prod, l’API sert aussi la SPA apprenant.
+    const apiPublic = String(process.env.API_PUBLIC_URL || '').trim().replace(/\/$/, '')
+    if (apiPublic.startsWith('http')) {
+      return `${apiPublic}/abonnement`
+    }
+    return 'http://localhost:5173/abonnement'
+  }
+  return configured.endsWith('/abonnement') ? configured : `${configured}/abonnement`
 }
 
 /** Démarre un paiement FedaPay pour une demande en_attente : crée le Payment, ouvre le checkout, passe en en_verification. */
 export async function startFedaPayForRequest(user, request) {
+  const phone = normalizeBeninPhone(user.phone)
+  if (!phone) {
+    logger.warn('Checkout FedaPay sans téléphone normalisé', {
+      userId: String(user._id),
+      phone: user.phone || null,
+    })
+  }
+
   const payment = await Payment.create({
     accessRequestId: request._id,
     userId: user._id,
@@ -270,60 +305,185 @@ export async function startFedaPayForRequest(user, request) {
   })
 
   const callbackUrl = `${callbackBase()}?accessRequest=${request._id}`
-  const checkout = await createFedaPayCheckout({
-    amount: request.amount,
-    description: `${request.module} — Monpermis.bj`,
-    customer: {
-      firstName: user.firstName,
-      lastName: user.lastName,
-      email: user.email,
-      phone: user.phone,
-    },
-    callbackUrl,
-    customMetadata: {
-      paymentId: String(payment._id),
-      accessRequestId: String(request._id),
-      userId: String(user._id),
-      module: request.module,
-    },
-  })
 
-  payment.fedapayTransactionId = checkout.transactionId
-  payment.fedapayReference = checkout.reference
-  payment.paymentUrl = checkout.paymentUrl
-  payment.status = mapFedaPayStatus(checkout.status)
-  await payment.save()
-  void broadcastPaymentUpdate(payment, { user, module: request.module })
+  try {
+    const checkout = await createFedaPayCheckout({
+      amount: request.amount,
+      description: `${request.module} — Monpermis.bj`,
+      customer: {
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        phone: user.phone,
+      },
+      callbackUrl,
+      customMetadata: {
+        paymentId: String(payment._id),
+        accessRequestId: String(request._id),
+        userId: String(user._id),
+        module: request.module,
+      },
+    })
 
-  await transitionAccessRequest(request, 'en_verification', { actor: 'user', note: 'Paiement FedaPay initié' })
+    payment.fedapayTransactionId = checkout.transactionId
+    payment.fedapayReference = checkout.reference
+    payment.paymentUrl = checkout.paymentUrl
+    payment.status = mapFedaPayStatus(checkout.status) || 'pending'
+    if (payment.status !== 'pending' && payment.status !== 'approved') {
+      payment.status = 'pending'
+    }
+    await payment.save()
+    void broadcastPaymentUpdate(payment, { user, module: request.module })
 
-  return { request, payment, checkout: { ...checkout, callbackUrl } }
+    await transitionAccessRequest(request, 'en_verification', {
+      actor: 'user',
+      note: 'Paiement FedaPay initié',
+    })
+
+    return { request, payment, checkout: { ...checkout, callbackUrl } }
+  } catch (error) {
+    payment.status = 'failed'
+    payment.errorMessage = error.message || 'Échec initiation FedaPay'
+    await payment.save()
+    void broadcastPaymentUpdate(payment, { user, module: request.module })
+    throw error
+  }
 }
 
-/** Déclaration d'un paiement hors plateforme par l'utilisateur (cash, virement direct…). */
-export async function declareManualPayment(user, request, { declaredReference, note = '' }) {
-  const reference = String(declaredReference || '').trim()
-  if (reference.length < 3) {
-    const error = new Error('Référence de paiement invalide')
+async function cancelPendingRequestAndPayment(request, user, note) {
+  if (!['en_attente', 'paiement_declare', 'en_verification'].includes(request.status)) {
+    return request
+  }
+  await transitionAccessRequest(request, 'rejete', { actor: 'user', note })
+  const payment = await Payment.findOne({ accessRequestId: request._id }).sort({ createdAt: -1 })
+  if (payment && payment.status === 'pending') {
+    payment.status = 'canceled'
+    payment.errorMessage = note
+    await payment.save()
+    void broadcastPaymentUpdate(payment, { user, module: request.module })
+  }
+  return request
+}
+
+/**
+ * Achat en ligne uniquement (FedaPay) :
+ * - reprend un checkout pending existant
+ * - synchronise d’abord si une demande est déjà en cours
+ * - remplace une demande bloquée / échouée
+ */
+export async function purchaseOnlineAccess({ user, module, quantity = 1, replace = false }) {
+  let existing = await AccessRequest.findOne({
+    userId: user._id,
+    module,
+    status: { $in: ['en_attente', 'paiement_declare', 'en_verification'] },
+  })
+
+  if (existing) {
+    const payment = await Payment.findOne({
+      accessRequestId: existing._id,
+      method: 'fedapay',
+    }).sort({ createdAt: -1 })
+
+    if (payment?.fedapayTransactionId) {
+      try {
+        await syncAccessPaymentFromProvider(payment)
+      } catch (error) {
+        logger.warn('Sync préalable checkout FedaPay', { error: error.message, id: String(existing._id) })
+      }
+
+      existing = await AccessRequest.findById(existing._id)
+      const refreshedPayment = await Payment.findById(payment._id)
+
+      if (existing && ['actif', 'valide'].includes(existing.status)) {
+        return {
+          kind: 'already_active',
+          accessRequest: existing,
+          payment: refreshedPayment,
+        }
+      }
+
+      if (!replace && existing?.status === 'en_verification' && refreshedPayment?.status === 'pending') {
+        // Les liens FedaPay sont à usage unique / 24h → toujours régénérer avant reprise.
+        try {
+          const refreshedCheckout = await refreshFedaPayPaymentUrl(refreshedPayment.fedapayTransactionId)
+          refreshedPayment.paymentUrl = refreshedCheckout.paymentUrl
+          refreshedPayment.fedapayReference =
+            refreshedCheckout.reference || refreshedPayment.fedapayReference
+          await refreshedPayment.save()
+          void broadcastPaymentUpdate(refreshedPayment, { user, module })
+        } catch (error) {
+          logger.warn('Régénération lien FedaPay impossible, nouveau checkout', {
+            error: error.message,
+            id: String(existing._id),
+          })
+          await cancelPendingRequestAndPayment(
+            existing,
+            user,
+            'Lien de paiement expiré — nouveau paiement requis',
+          )
+          // tombe dans la création d’un nouveau checkout ci-dessous
+          existing = null
+        }
+
+        if (existing) {
+          const latestPayment = await Payment.findById(refreshedPayment._id)
+          return {
+            kind: 'resume',
+            accessRequest: existing,
+            payment: latestPayment,
+            paymentUrl: latestPayment.paymentUrl,
+            callbackUrl: `${callbackBase()}?accessRequest=${existing._id}`,
+          }
+        }
+      }
+
+      if (existing && ['en_attente', 'paiement_declare', 'en_verification'].includes(existing.status)) {
+        await cancelPendingRequestAndPayment(
+          existing,
+          user,
+          replace ? 'Remplacé par un nouveau paiement en ligne' : 'Ancien paiement abandonné ou échoué',
+        )
+      }
+    } else if (existing) {
+      await cancelPendingRequestAndPayment(existing, user, 'Demande incomplète remplacée par un paiement en ligne')
+    }
+  }
+
+  const request = await createAccessRequest({ user, module, quantity })
+  const { payment, checkout } = await startFedaPayForRequest(user, request)
+  const refreshed = await AccessRequest.findById(request._id)
+
+  return {
+    kind: 'created',
+    accessRequest: refreshed,
+    payment,
+    paymentUrl: checkout.paymentUrl,
+    callbackUrl: checkout.callbackUrl,
+  }
+}
+
+/** Annule une demande d’accès encore en cours (paiement non finalisé). */
+export async function cancelPendingOnlinePayment(user, requestId) {
+  const request = await AccessRequest.findOne({ _id: requestId, userId: user._id })
+  if (!request) {
+    const error = new Error('Demande introuvable')
+    error.status = 404
+    throw error
+  }
+  if (!['en_attente', 'paiement_declare', 'en_verification'].includes(request.status)) {
+    const error = new Error('Cette demande ne peut plus être annulée')
     error.status = 400
     throw error
   }
+  await cancelPendingRequestAndPayment(request, user, 'Paiement annulé par l’utilisateur')
+  return AccessRequest.findById(request._id)
+}
 
-  const payment = await Payment.create({
-    accessRequestId: request._id,
-    userId: user._id,
-    method: 'manual',
-    amount: request.amount,
-    currency: request.currency,
-    status: 'pending',
-    declaredReference: reference,
-    declaredAt: new Date(),
-  })
-
-  await transitionAccessRequest(request, 'paiement_declare', { actor: 'user', note })
-  void broadcastPaymentUpdate(payment, { user, module: request.module })
-
-  return { request, payment }
+/** Déclaration d'un paiement hors plateforme — désactivée (paiement en ligne uniquement). */
+export async function declareManualPayment() {
+  const error = new Error('Le paiement manuel n’est plus disponible. Utilisez le paiement Mobile Money en ligne.')
+  error.status = 410
+  throw error
 }
 
 /** Décision admin sur une demande en_attente ou paiement_declare — note obligatoire. */

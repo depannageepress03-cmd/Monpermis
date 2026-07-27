@@ -50,6 +50,8 @@ services:
         value: live
       - key: FEDAPAY_WEBHOOK_SECRET
         sync: false
+      - key: FEDAPAY_CALLBACK_URL
+        sync: false
       - key: ALLOW_ADMIN_REGISTRATION
         value: "false"
       - key: MOBILE_SCHEME

@@ -51,7 +51,6 @@ export type AccessRequestStatus =
   | 'actif'
   | 'expire'
   | 'rejete'
-export type PaymentMethod = 'fedapay' | 'manual'
 
 export interface AccessModule {
   key: AccessModuleKey
@@ -77,11 +76,37 @@ export interface AccessRequest {
   updatedAt: string
 }
 
+export interface AccessPaymentSummary {
+  id: string
+  accessRequestId: string
+  method: 'fedapay'
+  amount: number
+  currency: string
+  status: 'pending' | 'approved' | 'declined' | 'canceled' | 'failed'
+  paymentUrl: string
+  fedapayReference: string
+  callbackUrl?: string
+  errorMessage: string
+  createdAt: string
+  updatedAt: string
+}
+
 export interface AccessMe {
   access: Record<AccessModuleKey, boolean>
   pendingRequest: AccessRequest | null
+  pendingPayment: AccessPaymentSummary | null
   requests: AccessRequest[]
   user: { soldeHeures: number }
+}
+
+export interface CheckoutResult {
+  accessRequest: AccessRequest
+  payment?: AccessPaymentSummary | null
+  paymentUrl?: string
+  callbackUrl?: string
+  resumed?: boolean
+  alreadyActive?: boolean
+  access?: AccessMe
 }
 
 export const fetchAccessModules = () =>
@@ -89,27 +114,23 @@ export const fetchAccessModules = () =>
 
 export const fetchAccessMe = () => request<AccessMe>('/access-requests/me')
 
-export const createAccessRequest = (payload: { module: AccessModuleKey; quantity: number; method: PaymentMethod }) =>
-  request<{
-    accessRequest: AccessRequest
-    payment?: { id: string }
-    paymentUrl?: string
-    callbackUrl?: string
-  }>('/access-requests/', {
+export const createAccessRequest = (payload: {
+  module: AccessModuleKey
+  quantity: number
+  replace?: boolean
+}) =>
+  request<CheckoutResult>('/access-requests/', {
     method: 'POST',
     body: JSON.stringify(payload),
   })
 
-export const declareAccessPayment = (
-  id: string,
-  payload: { declaredReference: string; note: string },
-) =>
-  request<{ accessRequest: AccessRequest }>(`/access-requests/${id}/declare-payment`, {
+export const cancelAccessRequest = (id: string) =>
+  request<{ accessRequest: AccessRequest; access: AccessMe }>(`/access-requests/${id}/cancel`, {
     method: 'POST',
-    body: JSON.stringify(payload),
   })
 
 export const syncAccessRequest = (id: string) =>
-  request<{ accessRequest: AccessRequest; access: AccessMe }>(`/access-requests/${id}/sync`, {
-    method: 'POST',
-  })
+  request<{ accessRequest: AccessRequest; payment?: AccessPaymentSummary; access: AccessMe }>(
+    `/access-requests/${id}/sync`,
+    { method: 'POST' },
+  )

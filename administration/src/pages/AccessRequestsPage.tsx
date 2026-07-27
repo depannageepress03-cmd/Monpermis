@@ -273,7 +273,7 @@ export function AccessRequestsPage() {
         <p className="admin-module-kicker">Accès et paiements</p>
         <h1 className="admin-module-title">Demandes d’accès</h1>
         <p className="admin-module-subtitle">
-          Suivez chaque demande de A à Z — paiement automatique ou validation manuelle, avec journal d’audit complet.
+          Suivez chaque demande de A à Z — paiements Mobile Money (FedaPay) en ligne, avec journal d’audit complet.
         </p>
         <div className="accent-row" aria-hidden>
           <span className="accent accent-green" />
@@ -444,7 +444,7 @@ export function AccessRequestsPage() {
                       {detail.payments.map((payment) => (
                         <div className="ar-payment-card" key={payment.id}>
                           <p>
-                            <strong>{payment.method === 'fedapay' ? 'FedaPay' : 'Déclaration manuelle'}</strong>
+                            <strong>{payment.method === 'fedapay' ? 'FedaPay (Mobile Money)' : 'Ancien paiement hors ligne'}</strong>
                             {' · '}
                             {formatMoney(payment.amount, payment.currency)}
                             {' · '}

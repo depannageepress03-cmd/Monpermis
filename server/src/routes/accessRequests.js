@@ -5,10 +5,9 @@ import { AccessRequest } from '../models/AccessRequest.js'
 import { Payment } from '../models/Payment.js'
 import { User } from '../models/User.js'
 import {
-  createAccessRequest,
-  declareManualPayment,
+  cancelPendingOnlinePayment,
   getUserModuleAccess,
-  startFedaPayForRequest,
+  purchaseOnlineAccess,
   syncAccessPaymentFromProvider,
 } from '../utils/accessRequests.js'
 import { configureFedaPay } from '../services/fedapay.js'
@@ -43,84 +42,70 @@ router.get('/me', async (req, res) => {
   }
 })
 
+/** Paiement en ligne uniquement (FedaPay / Mobile Money). */
 router.post('/', async (req, res) => {
   try {
-    const { module, quantity = 1, method } = req.body ?? {}
+    const { module, quantity = 1, replace = false } = req.body ?? {}
     if (!ACCESS_MODULES.includes(module)) {
       return res.status(400).json({ success: false, error: 'Module invalide' })
     }
-    if (!['fedapay', 'manual'].includes(method)) {
-      return res.status(400).json({ success: false, error: 'Méthode de paiement invalide' })
-    }
 
-    const existingPending = await AccessRequest.findOne({
-      userId: req.user._id,
+    configureFedaPay()
+    const result = await purchaseOnlineAccess({
+      user: req.user,
       module,
-      status: { $in: ['en_attente', 'paiement_declare', 'en_verification'] },
+      quantity,
+      replace: Boolean(replace),
     })
-    if (existingPending) {
-      return res.status(409).json({
-        success: false,
-        error: 'Une demande pour ce module est déjà en cours. Terminez-la ou attendez sa résolution.',
-      })
-    }
 
-    const request = await createAccessRequest({ user: req.user, module, quantity })
-
-    if (method === 'fedapay') {
-      configureFedaPay()
-      const { payment, checkout } = await startFedaPayForRequest(req.user, request)
-      return res.status(201).json({
+    if (result.kind === 'already_active') {
+      const access = await getUserModuleAccess(req.user._id)
+      return res.status(200).json({
         success: true,
         data: {
-          accessRequest: request.toPublicJSON(),
-          payment: payment.toPublicJSON(),
-          paymentUrl: checkout.paymentUrl,
-          callbackUrl: checkout.callbackUrl,
+          accessRequest: result.accessRequest.toPublicJSON(),
+          payment: result.payment?.toPublicJSON?.() || null,
+          access: { ...access, user: { soldeHeures: req.user.soldeHeures || 0 } },
+          alreadyActive: true,
         },
       })
     }
 
-    // method === 'manual' : la demande reste en_attente, l'utilisateur déclarera
-    // sa preuve ensuite via POST /:id/declare-payment.
-    return res.status(201).json({
+    return res.status(result.kind === 'resume' ? 200 : 201).json({
       success: true,
-      data: { accessRequest: request.toPublicJSON() },
+      data: {
+        accessRequest: result.accessRequest.toPublicJSON(),
+        payment: result.payment.toPublicJSON(),
+        paymentUrl: result.paymentUrl,
+        callbackUrl: result.callbackUrl,
+        resumed: result.kind === 'resume',
+      },
     })
   } catch (error) {
-    logger.error('Erreur création demande d’accès:', { error: error.message })
+    logger.error('Erreur création paiement en ligne:', { error: error.message })
     res.status(error.status || 500).json({
       success: false,
-      error: error.message || 'Création impossible',
+      error: error.message || 'Paiement impossible à initier',
     })
   }
 })
 
-router.post('/:id/declare-payment', async (req, res) => {
+router.post('/:id/cancel', async (req, res) => {
   try {
-    const request = await AccessRequest.findOne({ _id: req.params.id, userId: req.user._id })
-    if (!request) {
-      return res.status(404).json({ success: false, error: 'Demande introuvable' })
-    }
-    if (request.status !== 'en_attente') {
-      return res.status(400).json({
-        success: false,
-        error: 'Seule une demande en attente peut faire l’objet d’une déclaration de paiement',
-      })
-    }
-
-    const { declaredReference, note } = req.body ?? {}
-    const { payment } = await declareManualPayment(req.user, request, { declaredReference, note })
-
+    const request = await cancelPendingOnlinePayment(req.user, req.params.id)
+    const access = await getUserModuleAccess(req.user._id)
     res.json({
       success: true,
-      data: { accessRequest: request.toPublicJSON(), payment: payment.toPublicJSON() },
+      data: {
+        accessRequest: request.toPublicJSON(),
+        access: { ...access, user: { soldeHeures: req.user.soldeHeures || 0 } },
+      },
     })
   } catch (error) {
-    logger.error('Erreur déclaration paiement:', { error: error.message })
+    logger.error('Erreur annulation paiement:', { error: error.message })
     res.status(error.status || 500).json({
       success: false,
-      error: error.message || 'Déclaration impossible',
+      error: error.message || 'Annulation impossible',
     })
   }
 })
@@ -141,6 +126,7 @@ router.post('/:id/sync', async (req, res) => {
 
     await syncAccessPaymentFromProvider(payment)
     const refreshed = await AccessRequest.findById(request._id)
+    const refreshedPayment = await Payment.findById(payment._id)
     const access = await getUserModuleAccess(req.user._id)
     const user = await User.findById(req.user._id).select('soldeHeures')
 
@@ -148,6 +134,7 @@ router.post('/:id/sync', async (req, res) => {
       success: true,
       data: {
         accessRequest: refreshed.toPublicJSON(),
+        payment: refreshedPayment.toPublicJSON(),
         access: {
           ...access,
           user: { soldeHeures: user?.soldeHeures || 0 },

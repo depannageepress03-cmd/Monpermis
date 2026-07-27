@@ -29,6 +29,7 @@ import adminAnnouncementsRoutes from './routes/adminAnnouncements.js'
 import fedapayWebhooksRoutes from './routes/fedapayWebhooks.js'
 import accessRequestsRoutes from './routes/accessRequests.js'
 import adminAccessRequestsRoutes from './routes/adminAccessRequests.js'
+import { isFedaPayConfigured } from './services/fedapay.js'
 import { sendMediaAsset } from './middleware/upload.js'
 import { ensureReservationIndexes } from './models/Reservation.js'
 import { ensureAccessModulePricing, expireDueAccessRequests } from './utils/accessRequests.js'
@@ -135,6 +136,7 @@ app.get('/api/health', (_req, res) => {
       ? 'API Monpermis.bj op\u00e9rationnelle'
       : 'Service temporairement indisponible',
     db: dbReady ? 'connected' : 'disconnected',
+    fedapay: isFedaPayConfigured() ? 'configured' : 'missing',
   })
 })
 
@@ -303,6 +305,15 @@ async function connectMongo() {
 async function start() {
   app.listen(PORT, '0.0.0.0', () => {
     logger.info(`Serveur démarré sur http://localhost:${PORT}`)
+    if (isFedaPayConfigured()) {
+      logger.info('FedaPay configuré', {
+        environment: process.env.FEDAPAY_ENVIRONMENT === 'sandbox' ? 'sandbox' : 'live',
+        callback: process.env.FEDAPAY_CALLBACK_URL || process.env.CLIENT_URL || '(défaut)',
+        webhookSecret: process.env.FEDAPAY_WEBHOOK_SECRET ? 'présent' : 'manquant',
+      })
+    } else {
+      logger.error('FedaPay NON configuré — les paiements en ligne échoueront')
+    }
   })
 
   try {

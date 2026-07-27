@@ -16,8 +16,8 @@ import {
   View,
 } from 'react-native'
 import {
+  cancelAccessRequest,
   createAccessRequest,
-  declareAccessPayment,
   fetchAccessMe,
   fetchAccessModules,
   syncAccessRequest,
@@ -93,9 +93,7 @@ export function AbonnementScreen() {
 
   const [busyModule, setBusyModule] = useState<AccessModuleKey | null>(null)
   const [quantityByModule, setQuantityByModule] = useState<Record<string, string>>({})
-  const [manualFormFor, setManualFormFor] = useState<AccessModuleKey | null>(null)
-  const [declaredReference, setDeclaredReference] = useState('')
-  const [declareNote, setDeclareNote] = useState('')
+  const [cancelling, setCancelling] = useState(false)
 
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const pendingSyncIdRef = useRef<string | null>(null)
@@ -207,20 +205,25 @@ export function AbonnementScreen() {
     return () => sub.remove()
   }, [me?.pendingRequest?.id, pollPendingRequest, syncPending])
 
-  const buyWithFedaPay = async (module: AccessModule) => {
+  const buyWithFedaPay = async (module: AccessModule, replace = false) => {
     setBusyModule(module.key)
     setError(null)
     setSuccess(null)
     try {
       const quantity = Math.max(1, Number(quantityByModule[module.key]) || 1)
-      const result = await createAccessRequest({ module: module.key, quantity, method: 'fedapay' })
+      const result = await createAccessRequest({ module: module.key, quantity, replace })
+      if (result.alreadyActive && result.access) {
+        setMe(result.access)
+        setSuccess('Ton accès est déjà actif.')
+        return
+      }
       if (!result.paymentUrl) {
         setError('Lien de paiement Mobile Money indisponible. Réessaie dans un instant.')
         return
       }
 
       pendingSyncIdRef.current = result.accessRequest.id
-      setSuccess('Ouverture du paiement Mobile Money…')
+      setSuccess(result.resumed ? 'Reprise du paiement Mobile Money…' : 'Ouverture du paiement Mobile Money…')
 
       const redirectPrefix = callbackRedirectPrefix(result.callbackUrl)
       if (redirectPrefix) {
@@ -242,34 +245,20 @@ export function AbonnementScreen() {
     }
   }
 
-  const openManualForm = (module: AccessModuleKey) => {
-    setManualFormFor(module)
-    setDeclaredReference('')
-    setDeclareNote('')
-    setError(null)
-  }
-
-  const submitManualDeclaration = async (module: AccessModule) => {
-    if (declaredReference.trim().length < 3) {
-      setError('Indique une référence de paiement valide.')
-      return
-    }
-    setBusyModule(module.key)
+  const cancelPending = async () => {
+    if (!me?.pendingRequest) return
+    setCancelling(true)
     setError(null)
     try {
-      const quantity = Math.max(1, Number(quantityByModule[module.key]) || 1)
-      const { accessRequest } = await createAccessRequest({ module: module.key, quantity, method: 'manual' })
-      await declareAccessPayment(accessRequest.id, {
-        declaredReference: declaredReference.trim(),
-        note: declareNote.trim(),
-      })
-      setSuccess('Déclaration envoyée. Un administrateur va vérifier ton paiement.')
-      setManualFormFor(null)
-      setMe(await fetchAccessMe())
+      const result = await cancelAccessRequest(me.pendingRequest.id)
+      stopPolling()
+      pendingSyncIdRef.current = null
+      setMe(result.access)
+      setSuccess('Paiement annulé. Tu peux relancer un paiement en ligne.')
     } catch (err) {
-      setError(err instanceof AccessRequestError ? err.message : 'Déclaration impossible')
+      setError(err instanceof AccessRequestError ? err.message : 'Annulation impossible')
     } finally {
-      setBusyModule(null)
+      setCancelling(false)
     }
   }
 
@@ -299,9 +288,7 @@ export function AbonnementScreen() {
       <PageNavbar title="Mes accès" icon={CreditCard} onBack={() => navigation.navigate('Home')} />
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <View style={styles.introRow}>
-          <Text style={styles.intro}>
-            Paie en ligne par Mobile Money, ou déclare un paiement hors plateforme.
-          </Text>
+          <Text style={styles.intro}>Paie uniquement en ligne par Mobile Money.</Text>
           <Pressable
             style={({ pressed }) => [styles.historyBtn, pressed && styles.pressed]}
             onPress={() => navigation.navigate('HistoriquePaiements')}
@@ -336,12 +323,40 @@ export function AbonnementScreen() {
                       {'\n'}
                       {statusLabels[me.pendingRequest.status]}
                     </Text>
+                    {me.pendingRequest.status === 'en_verification' ? (
+                      <Bouncy
+                        scaleTo={0.97}
+                        disabled={Boolean(busyModule)}
+                        onPress={() => {
+                          const module = modules.find((item) => item.key === me.pendingRequest?.module)
+                          if (module) void buyWithFedaPay(module, false)
+                        }}
+                      >
+                        <LinearGradient
+                          colors={gradients.green}
+                          start={{ x: 0, y: 0 }}
+                          end={{ x: 1, y: 0 }}
+                          style={styles.subscribeButton}
+                        >
+                          <Text style={styles.subscribeText}>Reprendre le paiement</Text>
+                        </LinearGradient>
+                      </Bouncy>
+                    ) : null}
                     <Pressable
                       style={({ pressed }) => [styles.outlineButton, pressed && styles.pressed]}
                       onPress={() => void refresh()}
                     >
                       <RefreshCw size={16} color={dark.textPrimary} />
                       <Text style={styles.outlineText}>Actualiser le paiement</Text>
+                    </Pressable>
+                    <Pressable
+                      style={({ pressed }) => [styles.outlineButton, pressed && styles.pressed]}
+                      disabled={cancelling}
+                      onPress={() => void cancelPending()}
+                    >
+                      <Text style={styles.outlineText}>
+                        {cancelling ? 'Annulation…' : 'Annuler le paiement'}
+                      </Text>
                     </Pressable>
                   </>
                 ) : null}
@@ -356,6 +371,9 @@ export function AbonnementScreen() {
                 const showsQuantity = module.unit === 'hour' || module.unit === 'week'
                 const quantity = Math.max(1, Number(quantityByModule[module.key]) || 1)
                 const isBusy = busyModule === module.key
+                const hasPendingSame =
+                  me?.pendingRequest?.module === module.key &&
+                  me.pendingRequest.status === 'en_verification'
 
                 return (
                   <View key={module.key} style={styles.plan}>
@@ -402,7 +420,11 @@ export function AbonnementScreen() {
                           Total : {formatPrice(module.price * (showsQuantity ? quantity : 1))}
                         </Text>
 
-                        <Bouncy onPress={() => void buyWithFedaPay(module)} scaleTo={0.97} disabled={isBusy}>
+                        <Bouncy
+                          onPress={() => void buyWithFedaPay(module, false)}
+                          scaleTo={0.97}
+                          disabled={isBusy}
+                        >
                           <LinearGradient
                             colors={gradients.green}
                             start={{ x: 0, y: 0 }}
@@ -410,57 +432,14 @@ export function AbonnementScreen() {
                             style={styles.subscribeButton}
                           >
                             <Text style={styles.subscribeText}>
-                              {isBusy ? 'Ouverture Mobile Money…' : 'Payer en ligne (Mobile Money)'}
+                              {isBusy
+                                ? 'Ouverture Mobile Money…'
+                                : hasPendingSame
+                                  ? 'Continuer le paiement'
+                                  : 'Payer en ligne (Mobile Money)'}
                             </Text>
                           </LinearGradient>
                         </Bouncy>
-
-                        {manualFormFor === module.key ? (
-                          <View style={styles.manualForm}>
-                            <Text style={styles.fieldLabel}>Référence de paiement</Text>
-                            <TextInput
-                              style={styles.input}
-                              value={declaredReference}
-                              onChangeText={setDeclaredReference}
-                              placeholder="Référence Mobile Money, reçu…"
-                              placeholderTextColor={dark.textMuted}
-                            />
-                            <Text style={styles.fieldLabel}>Note (facultatif)</Text>
-                            <TextInput
-                              style={[styles.input, styles.textarea]}
-                              value={declareNote}
-                              onChangeText={setDeclareNote}
-                              placeholder="Précise le mode de paiement utilisé"
-                              placeholderTextColor={dark.textMuted}
-                              multiline
-                              numberOfLines={2}
-                            />
-                            <View style={styles.manualActions}>
-                              <Pressable
-                                style={({ pressed }) => [styles.primaryOutlineBtn, pressed && styles.pressed]}
-                                disabled={isBusy}
-                                onPress={() => void submitManualDeclaration(module)}
-                              >
-                                <Text style={styles.primaryOutlineBtnText}>
-                                  {isBusy ? 'Envoi…' : 'Envoyer'}
-                                </Text>
-                              </Pressable>
-                              <Pressable
-                                style={({ pressed }) => [styles.outlineButton, pressed && styles.pressed]}
-                                onPress={() => setManualFormFor(null)}
-                              >
-                                <Text style={styles.outlineText}>Annuler</Text>
-                              </Pressable>
-                            </View>
-                          </View>
-                        ) : (
-                          <Pressable
-                            style={({ pressed }) => [styles.outlineButton, pressed && styles.pressed]}
-                            onPress={() => openManualForm(module.key)}
-                          >
-                            <Text style={styles.outlineText}>J’ai déjà payé autrement</Text>
-                          </Pressable>
-                        )}
                       </>
                     )}
                   </View>
@@ -562,7 +541,6 @@ const styles = StyleSheet.create({
     fontFamily: fonts.body,
     backgroundColor: dark.surfaceRaised,
   },
-  textarea: { minHeight: 64, textAlignVertical: 'top' },
   totalText: { color: dark.textPrimary, fontFamily: fonts.bodyBold, fontSize: 14 },
   subscribeButton: {
     borderRadius: 14,
@@ -583,17 +561,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   outlineText: { color: dark.textPrimary, fontFamily: fonts.bodyBold, fontSize: 14 },
-  primaryOutlineBtn: {
-    flex: 1,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: dark.green,
-    backgroundColor: 'rgba(0,176,80,0.12)',
-    paddingVertical: 12,
-    alignItems: 'center',
-  },
-  primaryOutlineBtnText: { color: dark.green, fontFamily: fonts.displayBold, fontSize: 14 },
-  manualForm: { gap: 8 },
-  manualActions: { flexDirection: 'row', gap: 8, marginTop: 4 },
   pressed: { opacity: 0.85 },
 })
