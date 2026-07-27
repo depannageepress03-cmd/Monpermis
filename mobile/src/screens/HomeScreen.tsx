@@ -205,7 +205,7 @@ export function HomeScreen() {
                 {codeLocked ? (
                   <View style={styles.pathDescRow}>
                     <Lock size={12} color={dark.textMuted} />
-                    <Text style={styles.pathDesc}>Abonnement requis</Text>
+                    <Text style={styles.pathDesc}>Accès requis</Text>
                   </View>
                 ) : (
                   <Text style={styles.pathDesc}>Cours, quiz & examens</Text>
@@ -231,7 +231,7 @@ export function HomeScreen() {
                 {conduiteLocked ? (
                   <View style={styles.pathDescRow}>
                     <Lock size={12} color={dark.textMuted} />
-                    <Text style={styles.pathDesc}>Abonnement requis</Text>
+                    <Text style={styles.pathDesc}>Accès requis</Text>
                   </View>
                 ) : (
                   <Text style={styles.pathDesc}>Leçons & réservations</Text>

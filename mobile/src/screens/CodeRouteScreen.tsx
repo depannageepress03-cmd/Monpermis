@@ -193,7 +193,7 @@ export function CodeRouteScreen() {
                         {eCodeLocked ? (
                           <View style={styles.lockRow}>
                             <Lock size={12} color="#fff" />
-                            <Text style={styles.cardSubtitle}>Abonnement adapté requis</Text>
+                            <Text style={styles.cardSubtitle}>Accès E-Codepermis requis</Text>
                           </View>
                         ) : null}
                       </View>

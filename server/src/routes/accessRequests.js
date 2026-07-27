@@ -76,6 +76,7 @@ router.post('/', async (req, res) => {
           accessRequest: request.toPublicJSON(),
           payment: payment.toPublicJSON(),
           paymentUrl: checkout.paymentUrl,
+          callbackUrl: checkout.callbackUrl,
         },
       })
     }

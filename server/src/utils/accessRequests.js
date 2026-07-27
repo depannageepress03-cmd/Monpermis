@@ -269,6 +269,7 @@ export async function startFedaPayForRequest(user, request) {
     status: 'pending',
   })
 
+  const callbackUrl = `${callbackBase()}?accessRequest=${request._id}`
   const checkout = await createFedaPayCheckout({
     amount: request.amount,
     description: `${request.module} — Monpermis.bj`,
@@ -278,7 +279,7 @@ export async function startFedaPayForRequest(user, request) {
       email: user.email,
       phone: user.phone,
     },
-    callbackUrl: `${callbackBase()}?accessRequest=${request._id}`,
+    callbackUrl,
     customMetadata: {
       paymentId: String(payment._id),
       accessRequestId: String(request._id),
@@ -296,7 +297,7 @@ export async function startFedaPayForRequest(user, request) {
 
   await transitionAccessRequest(request, 'en_verification', { actor: 'user', note: 'Paiement FedaPay initié' })
 
-  return { request, payment, checkout }
+  return { request, payment, checkout: { ...checkout, callbackUrl } }
 }
 
 /** Déclaration d'un paiement hors plateforme par l'utilisateur (cash, virement direct…). */

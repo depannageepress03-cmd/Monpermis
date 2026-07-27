@@ -90,7 +90,12 @@ export const fetchAccessModules = () =>
 export const fetchAccessMe = () => request<AccessMe>('/access-requests/me')
 
 export const createAccessRequest = (payload: { module: AccessModuleKey; quantity: number; method: PaymentMethod }) =>
-  request<{ accessRequest: AccessRequest; payment?: { id: string }; paymentUrl?: string }>('/access-requests/', {
+  request<{
+    accessRequest: AccessRequest
+    payment?: { id: string }
+    paymentUrl?: string
+    callbackUrl?: string
+  }>('/access-requests/', {
     method: 'POST',
     body: JSON.stringify(payload),
   })
