@@ -22,8 +22,6 @@ import contentConduiteRoutes from './routes/contentConduite.js'
 import reservationsRoutes from './routes/reservations.js'
 import adminPracticeExamsRoutes from './routes/adminPracticeExams.js'
 import adminEcodepermisExamsRoutes from './routes/adminEcodepermisExams.js'
-import adminSubscriptionsRoutes from './routes/adminSubscriptions.js'
-import subscriptionsRoutes from './routes/subscriptions.js'
 import aiTutorRoutes from './routes/aiTutor.js'
 import notificationsRoutes from './routes/notifications.js'
 import announcementsRoutes from './routes/announcements.js'
@@ -33,12 +31,6 @@ import accessRequestsRoutes from './routes/accessRequests.js'
 import adminAccessRequestsRoutes from './routes/adminAccessRequests.js'
 import { sendMediaAsset } from './middleware/upload.js'
 import { ensureReservationIndexes } from './models/Reservation.js'
-import {
-  ensureDefaultPlans,
-  expireDueSubscriptions,
-  grantGraceToUsersWithoutSubscription,
-  notifyExpiringSubscriptions,
-} from './utils/subscriptions.js'
 import { ensureAccessModulePricing, expireDueAccessRequests } from './utils/accessRequests.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -170,8 +162,6 @@ app.use('/api/admin/conduite', adminConduiteRoutes)
 app.use('/api/admin/conduite', adminReservationsRoutes)
 app.use('/api/admin/users', adminUsersRoutes)
 app.use('/api/admin/dashboard', adminDashboardRoutes)
-app.use('/api/admin/subscriptions', adminSubscriptionsRoutes)
-app.use('/api/subscriptions', subscriptionsRoutes)
 app.use('/api/admin/access-requests', adminAccessRequestsRoutes)
 app.use('/api/access-requests', accessRequestsRoutes)
 app.use('/api/ai', aiTutorRoutes)
@@ -292,17 +282,6 @@ async function connectMongo() {
   logger.info('Connecté à MongoDB Atlas')
   await ensureReservationIndexes()
   try {
-    await ensureDefaultPlans()
-    const grace = await grantGraceToUsersWithoutSubscription()
-    if (grace.granted > 0) {
-      logger.info(`Période de grâce attribuée à ${grace.granted} apprenant(s)`)
-    }
-    await expireDueSubscriptions()
-    const expiring = await notifyExpiringSubscriptions()
-    if (expiring.sent > 0) {
-      logger.info(`Avertissements expiration envoyés à ${expiring.sent} apprenant(s)`)
-    }
-
     const pricingSeed = await ensureAccessModulePricing()
     if (pricingSeed.created > 0) {
       logger.info(`Tarifs modules d'accès initialisés (${pricingSeed.created})`)
@@ -311,16 +290,13 @@ async function connectMongo() {
 
     setInterval(async () => {
       try {
-        await expireDueSubscriptions()
-        const result = await notifyExpiringSubscriptions()
-        if (result.sent > 0) logger.info(`Avertissements expiration envoyés à ${result.sent} apprenant(s)`)
         await expireDueAccessRequests()
       } catch (e) {
         logger.error('Erreur vérification expirations', { error: e.message })
       }
     }, 15 * 60 * 1000)
   } catch (err) {
-    logger.error('Initialisation abonnements', { error: err.message })
+    logger.error('Initialisation accès modules', { error: err.message })
   }
 }
 

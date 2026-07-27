@@ -8,7 +8,7 @@ import {
   markCourseCompleted,
   startCourseSession,
 } from '../../api/revision'
-import { fetchSubscriptionMe } from '../../api/subscriptions'
+import { fetchAccessMe } from '../../api/accessRequests'
 import { MediaContent } from '../../components/MediaContent'
 import { DarkScreen } from '../../components/DarkScreen'
 import { PageNavbar } from '../../components/PageNavbar'
@@ -85,8 +85,8 @@ export function CourseDetailScreen() {
 
   useEffect(() => {
     if (!user) return
-    void fetchSubscriptionMe()
-      .then((access) => setAccessAiChat(Boolean(access.accessAiChat)))
+    void fetchAccessMe()
+      .then((access) => setAccessAiChat(Boolean(access.access.aiChat)))
       .catch(() => setAccessAiChat(false))
   }, [user])
 
@@ -174,12 +174,12 @@ export function CourseDetailScreen() {
             )}
             <View style={styles.chatCopy}>
               <Text style={styles.chatTitle}>
-                {accessAiChat ? 'Discuter du cours avec l’IA' : 'Chat IA (formule Pack)'}
+                {accessAiChat ? 'Discuter du cours avec l’IA' : 'Chat IA verrouillé'}
               </Text>
               <Text style={styles.chatSubtitle}>
                 {accessAiChat
                   ? 'Pose tes questions sur ce cours'
-                  : 'Inclus dans le Pack complet — voir les offres'}
+                  : 'Achète l’accès Chat IA — voir les offres'}
               </Text>
             </View>
             <ChevronRight size={18} color={accessAiChat ? dark.green : dark.textMuted} />

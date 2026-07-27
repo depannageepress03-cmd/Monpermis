@@ -31,7 +31,7 @@ const emptySummary: DashboardSummary = {
   },
   admins: { total: 0 },
   revenue: { currency: 'XOF', total: 0, month: 0, transactions: 0 },
-  subscriptions: { active: 0, pending: 0, expired: 0 },
+  accessRequests: { active: 0, pending: 0, expired: 0 },
 }
 
 function formatXof(value: number) {
@@ -228,17 +228,17 @@ export function DashboardPage() {
 
         <div className="dash-stat-card">
           <div className="dash-stat-head">
-            <p className="dash-stat-label">Abonnements actifs</p>
+            <p className="dash-stat-label">Accès actifs</p>
             <div className="dash-stat-icon is-violet">
               <CreditCard size={14} strokeWidth={2} />
             </div>
           </div>
           <p className="dash-stat-num">
-            {loading ? '…' : summary.subscriptions.active}
+            {loading ? '…' : summary.accessRequests.active}
           </p>
           <div className="dash-stat-foot is-red">
             <TrendingUp size={12} strokeWidth={2} />
-            {summary.subscriptions.pending} en attente · {summary.subscriptions.expired} expirés
+            {summary.accessRequests.pending} en attente · {summary.accessRequests.expired} expirés
           </div>
         </div>
 

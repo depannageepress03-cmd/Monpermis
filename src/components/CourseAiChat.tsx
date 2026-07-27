@@ -2,7 +2,7 @@ import { FormEvent, useEffect, useRef, useState } from 'react'
 import { Lock, MessageCircle, Send, X } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { AiTutorError, sendCourseTutorMessage, type AiChatMessage } from '../api/aiTutor'
-import { fetchSubscriptionMe } from '../api/subscriptions'
+import { fetchAccessMe } from '../api/accessRequests'
 import '../styles/ai-chat.css'
 
 const WELCOME: AiChatMessage = {
@@ -34,8 +34,8 @@ export function CourseAiChatPanel({
 
   useEffect(() => {
     if (!open) return
-    void fetchSubscriptionMe()
-      .then((access) => setAllowed(Boolean(access.accessAiChat)))
+    void fetchAccessMe()
+      .then((access) => setAllowed(Boolean(access.access.aiChat)))
       .catch(() => setAllowed(false))
   }, [open])
 
@@ -87,15 +87,12 @@ export function CourseAiChatPanel({
         </header>
 
         {allowed === null ? (
-          <p className="ai-chat-status">Vérification de ton abonnement…</p>
+          <p className="ai-chat-status">Vérification de ton accès…</p>
         ) : !allowed ? (
           <div className="ai-chat-locked">
             <Lock size={28} />
             <h3>Chat IA réservé</h3>
-            <p>
-              Inclus dans certaines formules (ex. Pack complet). Souscris une offre qui inclut le chat
-              IA tuteur.
-            </p>
+            <p>Achetez l’accès Chat IA pour poser vos questions sur ce cours.</p>
             <button type="button" className="btn-primary" onClick={() => navigate('/abonnement')}>
               Voir les offres
             </button>
@@ -148,8 +145,8 @@ export function CourseAiChatButton({
   const [accessAiChat, setAccessAiChat] = useState(false)
 
   useEffect(() => {
-    void fetchSubscriptionMe()
-      .then((access) => setAccessAiChat(Boolean(access.accessAiChat)))
+    void fetchAccessMe()
+      .then((access) => setAccessAiChat(Boolean(access.access.aiChat)))
       .catch(() => setAccessAiChat(false))
   }, [])
 
@@ -165,11 +162,11 @@ export function CourseAiChatButton({
       >
         {accessAiChat ? <MessageCircle size={18} /> : <Lock size={18} />}
         <span>
-          <strong>{accessAiChat ? 'Discuter du cours avec l’IA' : 'Chat IA (formule Pack)'}</strong>
+          <strong>{accessAiChat ? 'Discuter du cours avec l’IA' : 'Chat IA verrouillé'}</strong>
           <small>
             {accessAiChat
               ? 'Pose tes questions sur ce cours'
-              : 'Inclus dans le Pack complet — voir les offres'}
+              : 'Achetez l’accès Chat IA — voir les offres'}
           </small>
         </span>
       </button>

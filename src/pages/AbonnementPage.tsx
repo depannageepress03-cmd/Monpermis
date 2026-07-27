@@ -13,15 +13,10 @@ import {
   type AccessModuleKey,
   type AccessRequest,
 } from '../api/accessRequests'
-import { fetchSubscriptionMe, SubscriptionError, type SubscriptionAccess } from '../api/subscriptions'
 import { PageNavbar } from '../components/PageNavbar'
 import { useAuth } from '../hooks/useAuth'
 import '../styles/auth.css'
 import '../styles/learner.css'
-
-function formatDate(value: string | null) {
-  return value ? new Intl.DateTimeFormat('fr-FR', { dateStyle: 'long' }).format(new Date(value)) : '—'
-}
 
 function formatPrice(price: number, currency = 'XOF') {
   return new Intl.NumberFormat('fr-FR', { style: 'currency', currency }).format(price)
@@ -44,20 +39,11 @@ const unitSuffix: Record<AccessModule['unit'], string> = {
   week: ' / semaine',
 }
 
-/** Modules couverts par un flag de l'ancien système d'abonnement (grandfathering). */
-const legacyFlagByModule: Partial<Record<AccessModuleKey, keyof SubscriptionAccess>> = {
-  code: 'accessCode',
-  conduite_videos: 'accessConduite',
-  ecodepermis: 'accessECodepermis',
-  aiChat: 'accessAiChat',
-}
-
 export function AbonnementPage() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const { user, loading: authLoading } = useAuth()
 
-  const [legacyAccess, setLegacyAccess] = useState<SubscriptionAccess | null>(null)
   const [modules, setModules] = useState<AccessModule[]>([])
   const [me, setMe] = useState<AccessMe | null>(null)
   const [loading, setLoading] = useState(true)
@@ -83,12 +69,7 @@ export function AbonnementPage() {
     setLoading(true)
     setError(null)
     try {
-      const [legacy, moduleCatalog, meResult] = await Promise.all([
-        fetchSubscriptionMe().catch(() => null),
-        fetchAccessModules(),
-        fetchAccessMe(),
-      ])
-      setLegacyAccess(legacy)
+      const [moduleCatalog, meResult] = await Promise.all([fetchAccessModules(), fetchAccessMe()])
       setModules(moduleCatalog)
       setMe(meResult)
     } catch (err) {
@@ -222,8 +203,6 @@ export function AbonnementPage() {
 
   if (authLoading || !user) return null
 
-  const legacyActive = legacyAccess?.subscription
-
   return (
     <div className="auth-page">
       <div className="auth-container learner-container">
@@ -242,20 +221,6 @@ export function AbonnementPage() {
           <>
             {error ? <p className="form-error">{error}</p> : null}
             {success ? <p className="form-success">{success}</p> : null}
-
-            {legacyActive ? (
-              <section className="auth-card learner-card subscription-status-card">
-                <p className="learner-kicker">Abonnement actif (ancienne formule)</p>
-                <h2>{legacyActive.planName}</h2>
-                <p className="subscription-status-copy">Valable jusqu’au {formatDate(legacyActive.endAt)}.</p>
-                <div className="subscription-rights">
-                  {legacyActive.accessCode ? <span><Check size={15} /> Code</span> : null}
-                  {legacyActive.accessConduite ? <span><Check size={15} /> Conduite</span> : null}
-                  {legacyActive.accessECodepermis ? <span><Check size={15} /> E-Codepermis</span> : null}
-                  {legacyActive.accessAiChat ? <span><Check size={15} /> Chat IA</span> : null}
-                </div>
-              </section>
-            ) : null}
 
             {me ? (
               <section className="auth-card learner-card subscription-status-card">
@@ -285,9 +250,7 @@ export function AbonnementPage() {
               ) : (
                 <div className="subscription-plan-list">
                   {modules.map((module) => {
-                    const legacyFlag = legacyFlagByModule[module.key]
-                    const isActive =
-                      me?.access[module.key] || (legacyFlag ? Boolean(legacyAccess?.[legacyFlag]) : false)
+                    const isActive = Boolean(me?.access[module.key])
                     const quantity = quantityByModule[module.key] ?? 1
                     const showsQuantity = module.unit === 'hour' || module.unit === 'week'
                     const isBusy = busyModule === module.key
@@ -388,7 +351,7 @@ export function AbonnementPage() {
               )}
             </section>
 
-            {!legacyActive && !modules.some((m) => me?.access[m.key]) ? (
+            {!modules.some((m) => me?.access[m.key]) && !(me && me.user.soldeHeures > 0) ? (
               <section className="auth-card learner-card subscription-status-card">
                 <Lock size={28} className="subscription-lock-icon" aria-hidden="true" />
                 <p className="subscription-status-copy">

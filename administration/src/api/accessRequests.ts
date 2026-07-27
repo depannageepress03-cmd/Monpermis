@@ -161,7 +161,7 @@ export function subscribeToAccessRequestEvents(
   void (async () => {
     while (!controller.signal.aborted) {
       try {
-        const response = await fetch(`${getApiOrigin()}/api/admin/subscriptions/payments/stream`, {
+        const response = await fetch(`${getApiOrigin()}/api/admin/access-requests/payments/stream`, {
           headers: { Authorization: `Bearer ${token}` },
           signal: controller.signal,
         })

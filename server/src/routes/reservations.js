@@ -5,7 +5,6 @@ import { Creneau } from '../models/Creneau.js'
 import { Reservation } from '../models/Reservation.js'
 import { User } from '../models/User.js'
 import { requireUserAuth } from '../middleware/userAuth.js'
-import { requireSubscriptionAccess } from '../middleware/subscriptionAccess.js'
 import {
   buildWhatsAppLink,
   formatReservationReminder,
@@ -19,7 +18,8 @@ import {
 import { computeCreneauHeures } from '../utils/creneauDuration.js'
 
 const router = Router()
-const withConduiteAccess = [requireUserAuth, requireSubscriptionAccess('conduite')]
+/** Réservations : auth seule — le solde d’heures est contrôlé à la création. */
+const withConduiteAccess = [requireUserAuth]
 const LOCK_MS = 15 * 60 * 1000
 
 function asObjectId(value) {

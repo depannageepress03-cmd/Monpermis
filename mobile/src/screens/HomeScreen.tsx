@@ -14,7 +14,7 @@ import {
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { fetchAnnouncements, type Announcement } from '../api/announcements'
-import { fetchSubscriptionMe, type SubscriptionAccess } from '../api/subscriptions'
+import { fetchAccessMe, type AccessMe } from '../api/accessRequests'
 import { Bouncy } from '../components/Bouncy'
 import { LegalFooter } from '../components/LegalFooter'
 import { BrandName } from '../components/BrandName'
@@ -41,13 +41,13 @@ export function HomeScreen() {
   const { signOut } = useAuth()
   const { user, loading } = useRequireAuth(navigation)
   const [profileOpen, setProfileOpen] = useState(false)
-  const [subscription, setSubscription] = useState<SubscriptionAccess | null>(null)
+  const [accessMe, setAccessMe] = useState<AccessMe | null>(null)
   const [announcements, setAnnouncements] = useState<Announcement[]>([])
   const unreadCount = useUnreadNotifications(Boolean(user))
 
   useEffect(() => {
     if (!user) return
-    void fetchSubscriptionMe().then(setSubscription).catch(() => setSubscription(null))
+    void fetchAccessMe().then(setAccessMe).catch(() => setAccessMe(null))
     void fetchAnnouncements().then(setAnnouncements).catch(() => setAnnouncements([]))
   }, [user])
 
@@ -67,8 +67,14 @@ export function HomeScreen() {
   if (loading || !user) return <ScreenLoader />
 
   const fullName = `${user.firstName} ${user.lastName}`.trim()
-  const codeLocked = subscription?.accessCode === false
-  const conduiteLocked = subscription?.accessConduite === false
+  const codeLocked = accessMe ? !accessMe.access.code : false
+  const conduiteLocked = accessMe
+    ? !(accessMe.access.conduite_videos || accessMe.access.conduite_heures || accessMe.user.soldeHeures > 0)
+    : false
+  const hasActiveAccess =
+    Boolean(accessMe) &&
+    (Object.values(accessMe!.access).some(Boolean) || accessMe!.user.soldeHeures > 0)
+  const pendingRequest = accessMe?.pendingRequest
 
   return (
     <View style={styles.root}>
@@ -128,18 +134,18 @@ export function HomeScreen() {
             <View
               style={[
                 styles.statusDot,
-                subscription?.hasActiveSubscription ? styles.statusDotActive : styles.statusDotOff,
+                hasActiveAccess ? styles.statusDotActive : styles.statusDotOff,
               ]}
             />
             <Text style={styles.statusText} numberOfLines={1}>
-              {subscription?.hasActiveSubscription
-                ? subscription.subscription?.planName || 'Abonnement actif'
-                : subscription?.pendingSubscription
+              {hasActiveAccess
+                ? 'Accès actifs'
+                : pendingRequest
                   ? 'Paiement en cours de validation'
-                  : 'Aucun abonnement actif'}
+                  : 'Aucun accès actif'}
             </Text>
             <Text style={styles.statusAction}>
-              {subscription?.hasActiveSubscription ? 'Gérer' : 'Voir les offres'}
+              {hasActiveAccess ? 'Gérer' : 'Voir les offres'}
             </Text>
             <ChevronRight size={16} color={dark.textMuted} />
           </Pressable>

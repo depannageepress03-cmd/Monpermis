@@ -4,12 +4,11 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { History } from 'lucide-react-native'
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native'
 import {
-  fetchSubscriptionMe,
-  SubscriptionError,
-  type PaymentTransaction,
-  type SubscriptionAccess,
-  type UserSubscription,
-} from '../api/subscriptions'
+  AccessRequestError,
+  fetchAccessMe,
+  type AccessMe,
+  type AccessRequest,
+} from '../api/accessRequests'
 import { DarkScreen, DarkHeader } from '../components/DarkScreen'
 import { ScreenLoader } from '../components/ScreenLoader'
 import { useRequireAuth } from '../hooks/useRequireAuth'
@@ -18,12 +17,12 @@ import { dark, fonts } from '../theme'
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'HistoriquePaiements'>
 
-function formatDateTime(value: string | null | undefined) {
-  return value
-    ? new Intl.DateTimeFormat('fr-FR', { dateStyle: 'medium', timeStyle: 'short' }).format(
-        new Date(value),
-      )
-    : '—'
+const moduleLabels: Record<AccessRequest['module'], string> = {
+  code: 'Code de la route',
+  conduite_heures: 'Heures de conduite',
+  conduite_videos: 'Vidéos conduite',
+  ecodepermis: 'E-Codepermis',
+  aiChat: 'Chat IA',
 }
 
 function formatDate(value: string | null | undefined) {
@@ -33,32 +32,22 @@ function formatDate(value: string | null | undefined) {
 }
 
 function formatPrice(price: number, currency: string) {
-  return new Intl.NumberFormat('fr-FR', { style: 'currency', currency, maximumFractionDigits: 0 }).format(price)
+  return new Intl.NumberFormat('fr-FR', {
+    style: 'currency',
+    currency,
+    maximumFractionDigits: 0,
+  }).format(price)
 }
 
-function paymentStatus(status: PaymentTransaction['status']) {
+function requestStatus(status: AccessRequest['status']) {
   switch (status) {
-    case 'approved':
-      return { label: 'Payé', color: dark.green, soft: dark.greenSoft }
-    case 'declined':
-      return { label: 'Refusé', color: dark.coral, soft: dark.coralSoft }
-    case 'canceled':
-      return { label: 'Annulé', color: dark.textMuted, soft: dark.surfaceRaised }
-    case 'failed':
-      return { label: 'Échoué', color: dark.coral, soft: dark.coralSoft }
-    default:
-      return { label: 'En traitement', color: '#F0B429', soft: 'rgba(240,180,41,0.14)' }
-  }
-}
-
-function subscriptionStatus(status: UserSubscription['status']) {
-  switch (status) {
-    case 'active':
+    case 'actif':
+    case 'valide':
       return { label: 'Actif', color: dark.green, soft: dark.greenSoft }
-    case 'expired':
+    case 'expire':
       return { label: 'Expiré', color: dark.textMuted, soft: dark.surfaceRaised }
-    case 'cancelled':
-      return { label: 'Annulé', color: dark.textMuted, soft: dark.surfaceRaised }
+    case 'rejete':
+      return { label: 'Rejeté', color: dark.coral, soft: dark.coralSoft }
     default:
       return { label: 'En attente', color: '#F0B429', soft: 'rgba(240,180,41,0.14)' }
   }
@@ -67,7 +56,7 @@ function subscriptionStatus(status: UserSubscription['status']) {
 export function PaymentHistoryScreen() {
   const navigation = useNavigation<Nav>()
   const { user, loading: authLoading } = useRequireAuth(navigation)
-  const [access, setAccess] = useState<SubscriptionAccess | null>(null)
+  const [access, setAccess] = useState<AccessMe | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -75,9 +64,9 @@ export function PaymentHistoryScreen() {
     setLoading(true)
     setError(null)
     try {
-      setAccess(await fetchSubscriptionMe())
+      setAccess(await fetchAccessMe())
     } catch (err) {
-      setError(err instanceof SubscriptionError ? err.message : 'Chargement impossible')
+      setError(err instanceof AccessRequestError ? err.message : 'Chargement impossible')
     } finally {
       setLoading(false)
     }
@@ -89,8 +78,7 @@ export function PaymentHistoryScreen() {
 
   if (authLoading || !user) return <ScreenLoader />
 
-  const payments = access?.payments || []
-  const subscriptions = access?.history || []
+  const requests = access?.requests || []
 
   return (
     <DarkScreen>
@@ -106,72 +94,31 @@ export function PaymentHistoryScreen() {
           <Text style={styles.error}>{error}</Text>
         ) : (
           <>
-            <Text style={styles.sectionLabel}>Mes abonnements</Text>
-            {subscriptions.length === 0 ? (
+            <Text style={styles.sectionLabel}>Mes demandes d’accès</Text>
+            {requests.length === 0 ? (
               <View style={styles.emptyCard}>
-                <Text style={styles.emptyText}>Aucun abonnement pour le moment.</Text>
+                <Text style={styles.emptyText}>Aucune demande pour le moment.</Text>
               </View>
             ) : (
-              subscriptions.map((sub) => {
-                const st = subscriptionStatus(sub.status)
+              requests.map((req) => {
+                const st = requestStatus(req.status)
                 return (
-                  <View key={sub.id} style={styles.card}>
+                  <View key={req.id} style={styles.card}>
                     <View style={styles.cardTop}>
                       <Text style={styles.cardTitle} numberOfLines={1}>
-                        {sub.planName}
+                        {moduleLabels[req.module] || req.module}
                       </Text>
                       <View style={[styles.badge, { backgroundColor: st.soft }]}>
                         <Text style={[styles.badgeText, { color: st.color }]}>{st.label}</Text>
                       </View>
                     </View>
                     <Text style={styles.cardMeta}>
-                      {formatPrice(sub.price, sub.currency)} · {sub.durationDays} jours
+                      {formatPrice(req.amount, req.currency)}
+                      {req.quantity > 1 ? ` · ×${req.quantity}` : ''}
                     </Text>
-                    {sub.startAt ? (
-                      <Text style={styles.cardMeta}>
-                        Du {formatDate(sub.startAt)} au {formatDate(sub.endAt)}
-                      </Text>
-                    ) : (
-                      <Text style={styles.cardMeta}>Créé le {formatDate(sub.createdAt)}</Text>
-                    )}
-                    <View style={styles.rights}>
-                      {sub.accessCode ? <Text style={styles.rightPill}>Code</Text> : null}
-                      {sub.accessConduite ? <Text style={styles.rightPill}>Conduite</Text> : null}
-                      {sub.accessECodepermis ? <Text style={styles.rightPill}>E-Codepermis</Text> : null}
-                      {sub.accessAiChat ? <Text style={styles.rightPill}>Chat IA</Text> : null}
-                    </View>
-                  </View>
-                )
-              })
-            )}
-
-            <Text style={[styles.sectionLabel, styles.secondSection]}>Mes paiements</Text>
-            {payments.length === 0 ? (
-              <View style={styles.emptyCard}>
-                <Text style={styles.emptyText}>Aucun paiement enregistré.</Text>
-              </View>
-            ) : (
-              payments.map((payment) => {
-                const st = paymentStatus(payment.status)
-                return (
-                  <View key={payment.id} style={styles.card}>
-                    <View style={styles.cardTop}>
-                      <Text style={styles.cardAmount}>
-                        {formatPrice(payment.amount, payment.currency)}
-                      </Text>
-                      <View style={[styles.badge, { backgroundColor: st.soft }]}>
-                        <Text style={[styles.badgeText, { color: st.color }]}>{st.label}</Text>
-                      </View>
-                    </View>
-                    <Text style={styles.cardMeta}>
-                      {formatDateTime(payment.createdAt)}
-                      {payment.paymentMethod ? ` · ${payment.paymentMethod}` : ' · Mobile Money'}
-                    </Text>
-                    {payment.fedapayReference ? (
-                      <Text style={styles.cardMeta}>Réf. {payment.fedapayReference}</Text>
-                    ) : null}
-                    {payment.errorMessage ? (
-                      <Text style={styles.errorSmall}>{payment.errorMessage}</Text>
+                    <Text style={styles.cardMeta}>Demandé le {formatDate(req.createdAt)}</Text>
+                    {req.endAt ? (
+                      <Text style={styles.cardMeta}>Valable jusqu’au {formatDate(req.endAt)}</Text>
                     ) : null}
                   </View>
                 )
@@ -185,57 +132,38 @@ export function PaymentHistoryScreen() {
 }
 
 const styles = StyleSheet.create({
-  scroll: { paddingHorizontal: 22, paddingTop: 12, paddingBottom: 32 },
-  center: { alignItems: 'center', gap: 12, paddingVertical: 44 },
-  centerText: { color: dark.textMuted, fontSize: 14, fontFamily: fonts.body },
-  error: { color: dark.coral, fontFamily: fonts.body, marginTop: 12 },
+  scroll: { paddingHorizontal: 20, paddingBottom: 40, gap: 10 },
+  center: { alignItems: 'center', paddingVertical: 40, gap: 12 },
+  centerText: { fontFamily: fonts.body, color: dark.textMuted },
+  error: { fontFamily: fonts.body, color: dark.coral, marginTop: 12 },
   sectionLabel: {
-    fontFamily: fonts.display,
-    fontSize: 11.5,
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
+    fontFamily: fonts.displayBold,
+    fontSize: 13,
     color: dark.textMuted,
-    marginBottom: 10,
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+    marginTop: 8,
+    marginBottom: 4,
   },
-  secondSection: { marginTop: 26 },
   emptyCard: {
     borderRadius: 16,
     borderWidth: 1,
     borderColor: dark.border,
     backgroundColor: dark.surface,
-    padding: 16,
+    padding: 18,
   },
-  emptyText: { color: dark.textMuted, fontFamily: fonts.body, fontSize: 13 },
+  emptyText: { fontFamily: fonts.body, color: dark.textMuted },
   card: {
     borderRadius: 16,
     borderWidth: 1,
     borderColor: dark.border,
     backgroundColor: dark.surface,
-    padding: 14,
-    marginBottom: 10,
+    padding: 16,
+    gap: 4,
   },
-  cardTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 10,
-    marginBottom: 4,
-  },
-  cardTitle: { flex: 1, fontFamily: fonts.displayBold, fontSize: 15, color: dark.textPrimary },
-  cardAmount: { fontFamily: fonts.displayBold, fontSize: 17, color: dark.textPrimary },
-  cardMeta: { fontFamily: fonts.body, fontSize: 12.5, lineHeight: 18, color: dark.textMuted },
-  badge: { paddingVertical: 3, paddingHorizontal: 9, borderRadius: 999 },
-  badgeText: { fontFamily: fonts.bodyBold, fontSize: 11 },
-  rights: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 },
-  rightPill: {
-    fontFamily: fonts.bodySemiBold,
-    fontSize: 11,
-    color: dark.green,
-    backgroundColor: dark.greenSoft,
-    paddingVertical: 3,
-    paddingHorizontal: 9,
-    borderRadius: 999,
-    overflow: 'hidden',
-  },
-  errorSmall: { color: dark.coral, fontFamily: fonts.body, fontSize: 12, marginTop: 4 },
+  cardTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  cardTitle: { flex: 1, fontFamily: fonts.displayBold, fontSize: 16, color: dark.textPrimary },
+  badge: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
+  badgeText: { fontFamily: fonts.displayBold, fontSize: 12 },
+  cardMeta: { fontFamily: fonts.body, fontSize: 13, color: dark.textMuted },
 })

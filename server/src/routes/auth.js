@@ -2,7 +2,9 @@ import { Router } from 'express'
 import jwt from 'jsonwebtoken'
 import { User } from '../models/User.js'
 import { Notification } from '../models/Notification.js'
-import { UserSubscription } from '../models/UserSubscription.js'
+import { AccessRequest } from '../models/AccessRequest.js'
+import { Payment } from '../models/Payment.js'
+import { AccessAuditLog } from '../models/AccessAuditLog.js'
 import {
   sendVerificationEmail,
   sendWelcomeEmail,
@@ -327,9 +329,12 @@ router.delete('/account', requireUserAuth, async (req, res) => {
     }
 
     const userId = user._id
+    const accessRequestIds = await AccessRequest.find({ userId }).distinct('_id')
     await Promise.all([
       Notification.deleteMany({ userId }),
-      UserSubscription.deleteMany({ userId }),
+      AccessAuditLog.deleteMany({ accessRequestId: { $in: accessRequestIds } }),
+      Payment.deleteMany({ userId }),
+      AccessRequest.deleteMany({ userId }),
       User.findByIdAndDelete(userId),
     ])
 

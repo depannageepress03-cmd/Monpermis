@@ -14,7 +14,7 @@ import {
   View,
 } from 'react-native'
 import { AiTutorError, sendCourseTutorMessage, type AiChatMessage } from '../../api/aiTutor'
-import { fetchSubscriptionMe } from '../../api/subscriptions'
+import { fetchAccessMe } from '../../api/accessRequests'
 import { DarkScreen } from '../../components/DarkScreen'
 import { PageNavbar } from '../../components/PageNavbar'
 import { ScreenLoader } from '../../components/ScreenLoader'
@@ -46,8 +46,8 @@ export function CourseAiChatScreen() {
 
   useEffect(() => {
     if (!user) return
-    void fetchSubscriptionMe()
-      .then((access) => setAllowed(Boolean(access.accessAiChat)))
+    void fetchAccessMe()
+      .then((access) => setAllowed(Boolean(access.access.aiChat)))
       .catch(() => setAllowed(false))
   }, [user])
 
@@ -85,8 +85,7 @@ export function CourseAiChatScreen() {
         <View style={styles.locked}>
           <Text style={styles.lockedTitle}>Chat IA réservé</Text>
           <Text style={styles.lockedCopy}>
-            Cette fonctionnalité est incluse dans certaines formules (ex. Pack complet). Souscris une
-            offre qui inclut le chat IA tuteur.
+            Achète l’accès Chat IA pour poser tes questions sur ce cours.
           </Text>
           <Pressable style={styles.upgradeBtn} onPress={() => navigation.navigate('Abonnement')}>
             <Text style={styles.upgradeBtnText}>Voir les offres</Text>

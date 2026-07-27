@@ -32,7 +32,7 @@ export interface DashboardSummary {
     month: number
     transactions: number
   }
-  subscriptions: {
+  accessRequests: {
     active: number
     pending: number
     expired: number

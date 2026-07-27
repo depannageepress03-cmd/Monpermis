@@ -24,7 +24,6 @@ import {
   type AccessModule,
   type AccessModuleKey,
 } from '../api/accessRequests'
-import { fetchSubscriptionMe, SubscriptionError, type SubscriptionAccess } from '../api/subscriptions'
 import { Bouncy } from '../components/Bouncy'
 import { DarkScreen } from '../components/DarkScreen'
 import { PageNavbar } from '../components/PageNavbar'
@@ -34,10 +33,6 @@ import type { RootStackParamList } from '../navigation/types'
 import { dark, fonts, gradients } from '../theme'
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'Abonnement'>
-
-function formatDate(value: string | null) {
-  return value ? new Intl.DateTimeFormat('fr-FR', { dateStyle: 'long' }).format(new Date(value)) : '—'
-}
 
 function formatPrice(price: number, currency = 'XOF') {
   return new Intl.NumberFormat('fr-FR', { style: 'currency', currency, maximumFractionDigits: 0 }).format(price)
@@ -60,18 +55,10 @@ const unitSuffix: Record<AccessModule['unit'], string> = {
   week: ' / semaine',
 }
 
-const legacyFlagByModule: Partial<Record<AccessModuleKey, keyof SubscriptionAccess>> = {
-  code: 'accessCode',
-  conduite_videos: 'accessConduite',
-  ecodepermis: 'accessECodepermis',
-  aiChat: 'accessAiChat',
-}
-
 export function AbonnementScreen() {
   const navigation = useNavigation<Nav>()
   const { user, loading: authLoading } = useRequireAuth(navigation)
 
-  const [legacyAccess, setLegacyAccess] = useState<SubscriptionAccess | null>(null)
   const [modules, setModules] = useState<AccessModule[]>([])
   const [me, setMe] = useState<AccessMe | null>(null)
   const [loading, setLoading] = useState(true)
@@ -97,12 +84,7 @@ export function AbonnementScreen() {
     setLoading(true)
     setError(null)
     try {
-      const [legacy, moduleCatalog, meResult] = await Promise.all([
-        fetchSubscriptionMe().catch(() => null),
-        fetchAccessModules(),
-        fetchAccessMe(),
-      ])
-      setLegacyAccess(legacy)
+      const [moduleCatalog, meResult] = await Promise.all([fetchAccessModules(), fetchAccessMe()])
       setModules(moduleCatalog)
       setMe(meResult)
     } catch (err) {
@@ -221,8 +203,6 @@ export function AbonnementScreen() {
 
   if (authLoading || !user) return <ScreenLoader />
 
-  const legacyActive = legacyAccess?.subscription
-
   return (
     <DarkScreen>
       <PageNavbar title="Mon abonnement" icon={CreditCard} onBack={() => navigation.navigate('Home')} />
@@ -238,14 +218,6 @@ export function AbonnementScreen() {
           <>
             {error ? <Text style={styles.error}>{error}</Text> : null}
             {success ? <Text style={styles.success}>{success}</Text> : null}
-
-            {legacyActive ? (
-              <LinearGradient colors={gradients.greenDeep} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.statusCard}>
-                <Text style={styles.kickerOnColor}>Abonnement actif (ancienne formule)</Text>
-                <Text style={styles.statusTitleOnColor}>{legacyActive.planName}</Text>
-                <Text style={styles.statusCopyOnColor}>Valable jusqu’au {formatDate(legacyActive.endAt)}.</Text>
-              </LinearGradient>
-            ) : null}
 
             {me ? (
               <View style={styles.statusCardOutline}>
@@ -271,8 +243,7 @@ export function AbonnementScreen() {
 
             <View style={styles.planList}>
               {modules.map((module) => {
-                const legacyFlag = legacyFlagByModule[module.key]
-                const isActive = me?.access[module.key] || (legacyFlag ? Boolean(legacyAccess?.[legacyFlag]) : false)
+                const isActive = Boolean(me?.access[module.key])
                 const showsQuantity = module.unit === 'hour' || module.unit === 'week'
                 const quantity = Math.max(1, Number(quantityByModule[module.key]) || 1)
                 const isBusy = busyModule === module.key
@@ -377,7 +348,7 @@ export function AbonnementScreen() {
               })}
             </View>
 
-            {!legacyActive && !modules.some((m) => me?.access[m.key]) ? (
+            {!modules.some((m) => me?.access[m.key]) && !(me && me.user.soldeHeures > 0) ? (
               <View style={styles.statusCardOutline}>
                 <Lock size={26} color={dark.textMuted} />
                 <Text style={styles.statusCopy}>Achète un accès ci-dessus pour débloquer le code, la conduite ou l’E-Codepermis.</Text>

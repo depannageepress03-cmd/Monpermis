@@ -4,7 +4,7 @@ import { Bell, ChevronRight, Lock, LogOut, Settings, User, X } from 'lucide-reac
 import { clearSession } from '../api/auth'
 import { fetchAnnouncements, type Announcement } from '../api/announcements'
 import { fetchUnreadCount } from '../api/notifications'
-import { fetchSubscriptionMe, type SubscriptionAccess } from '../api/subscriptions'
+import { fetchAccessMe, type AccessMe } from '../api/accessRequests'
 import { BrandName } from '../components/BrandName'
 import { HomeBottomAnimation } from '../components/HomeBottomAnimation'
 import { LegalFooter } from '../components/LegalFooter'
@@ -22,13 +22,13 @@ export function HomePage() {
   const navigate = useNavigate()
   const { user, loading } = useAuth()
   const [profileOpen, setProfileOpen] = useState(false)
-  const [subscription, setSubscription] = useState<SubscriptionAccess | null>(null)
+  const [accessMe, setAccessMe] = useState<AccessMe | null>(null)
   const [announcements, setAnnouncements] = useState<Announcement[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
 
   useEffect(() => {
     if (!user) return
-    void fetchSubscriptionMe().then(setSubscription).catch(() => setSubscription(null))
+    void fetchAccessMe().then(setAccessMe).catch(() => setAccessMe(null))
     void fetchAnnouncements().then(setAnnouncements).catch(() => setAnnouncements([]))
     void fetchUnreadCount()
       .then(({ unreadCount: count }) => setUnreadCount(count))
@@ -43,15 +43,21 @@ export function HomePage() {
   if (loading || !user) return null
 
   const fullName = `${user.firstName} ${user.lastName}`.trim()
-  const codeLocked = subscription?.accessCode === false
-  const conduiteLocked = subscription?.accessConduite === false
+  const codeLocked = accessMe ? !accessMe.access.code : false
+  const conduiteLocked = accessMe
+    ? !(accessMe.access.conduite_videos || accessMe.access.conduite_heures || accessMe.user.soldeHeures > 0)
+    : false
+  const hasActiveAccess =
+    Boolean(accessMe) &&
+    (Object.values(accessMe!.access).some(Boolean) || accessMe!.user.soldeHeures > 0)
+  const pendingRequest = accessMe?.pendingRequest
 
   const subStrip = (
     <section className="home-app-sub-strip">
-      {subscription?.hasActiveSubscription ? (
+      {hasActiveAccess ? (
         <>
           <div>
-            <strong>{subscription.subscription?.planName || 'Abonnement actif'}</strong>
+            <strong>Accès actifs</strong>
             <span>Parcours accessibles</span>
           </div>
           <button type="button" onClick={() => navigate('/abonnement')}>
@@ -61,13 +67,9 @@ export function HomePage() {
       ) : (
         <>
           <div>
-            <strong>
-              {subscription?.pendingSubscription ? 'Paiement en validation' : 'Accès verrouillé'}
-            </strong>
+            <strong>{pendingRequest ? 'Paiement en validation' : 'Accès verrouillé'}</strong>
             <span>
-              {subscription?.pendingSubscription
-                ? 'En attente de validation'
-                : 'Souscris pour débloquer'}
+              {pendingRequest ? 'En attente de validation' : 'Achetez un accès pour débloquer'}
             </span>
           </div>
           <button type="button" onClick={() => navigate('/abonnement')}>

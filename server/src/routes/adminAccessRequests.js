@@ -7,10 +7,29 @@ import { Payment } from '../models/Payment.js'
 import { User } from '../models/User.js'
 import { Admin } from '../models/Admin.js'
 import { adminValidateAccessRequest } from '../utils/accessRequests.js'
+import { addPaymentEventClient, removePaymentEventClient } from '../services/paymentEvents.js'
 import { logger } from '../utils/logger.js'
 
 const router = Router()
 router.use(requireAdminAuth)
+
+/** Flux SSE temps réel (demandes d’accès / paiements). */
+router.get('/payments/stream', (req, res) => {
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache, no-transform',
+    Connection: 'keep-alive',
+    'X-Accel-Buffering': 'no',
+  })
+  res.write('retry: 3000\n\n')
+  res.write(': connected\n\n')
+
+  addPaymentEventClient(res)
+
+  req.on('close', () => {
+    removePaymentEventClient(res)
+  })
+})
 
 router.get('/', async (req, res) => {
   try {

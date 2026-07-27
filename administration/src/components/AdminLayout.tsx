@@ -1,7 +1,6 @@
 import {
   Bell,
   BookOpen,
-  CreditCard,
   CalendarDays,
   Car,
   ChevronRight,
@@ -59,7 +58,6 @@ const navItems: NavItem[] = [
       pathname.startsWith('/conduite/reservations') || pathname.startsWith('/conduite/moniteurs'),
   },
   { to: '/utilisateurs', label: 'Utilisateurs', icon: Users },
-  { to: '/abonnements', label: 'Abonnements', icon: CreditCard },
   { to: '/demandes-acces', label: 'Demandes d’accès', icon: Wallet },
   { to: '/annonces', label: 'Annonces', icon: Megaphone },
   { to: '/creer-admin', label: 'Créer un admin', icon: UserPlus },
@@ -68,8 +66,9 @@ const navItems: NavItem[] = [
 function pageLabel(pathname: string) {
   if (pathname === '/') return 'Tableau de bord'
   if (pathname.startsWith('/utilisateurs')) return 'Utilisateurs'
-  if (pathname.startsWith('/abonnements')) return 'Abonnements'
-  if (pathname.startsWith('/demandes-acces')) return 'Demandes d’accès'
+  if (pathname.startsWith('/abonnements') || pathname.startsWith('/demandes-acces')) {
+    return 'Demandes d’accès'
+  }
   if (pathname.startsWith('/creer-admin')) return 'Créer un admin'
   if (pathname.includes('/questions')) return 'Questions'
   if (pathname.startsWith('/code/revision-chapitres')) return 'Révision par chapitres'
@@ -122,7 +121,7 @@ export function AdminLayout() {
       .then(({ summary }) => {
         if (cancelled) return
         setNotifCount(
-          (summary.subscriptions?.pending ?? 0) + (summary.conduite?.reservationsPending ?? 0),
+          (summary.accessRequests?.pending ?? 0) + (summary.conduite?.reservationsPending ?? 0),
         )
       })
       .catch(() => {
@@ -287,8 +286,8 @@ export function AdminLayout() {
                 : 'Aucun élément en attente'
             }
             data-count={notifCount > 0 ? notifCount : undefined}
-            onClick={() => navigate('/abonnements')}
-            title="Paiements / réservations en attente"
+            onClick={() => navigate('/demandes-acces')}
+            title="Demandes d’accès / réservations en attente"
           >
             <Bell size={16} strokeWidth={1.8} />
           </button>

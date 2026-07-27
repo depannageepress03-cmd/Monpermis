@@ -10,7 +10,7 @@ import {
   type PracticeExamAttempt,
   type PracticeExamsOverview,
 } from '../../api/content'
-import { fetchSubscriptionMe } from '../../api/subscriptions'
+import { fetchAccessMe } from '../../api/accessRequests'
 import { QuestionAudioSequence } from '../../components/QuestionAudioSequence'
 import { PageNavbar } from '../../components/PageNavbar'
 import { useAuth } from '../../hooks/useAuth'
@@ -38,22 +38,18 @@ export function ECodePermisPage() {
     setLoading(true)
     setError(null)
     try {
-      const access = await fetchSubscriptionMe()
-      if (!access.accessECodepermis) {
+      const access = await fetchAccessMe()
+      if (!access.access.ecodepermis) {
         setSubscriptionLocked(true)
         setData(null)
-        setError(
-          access.hasActiveSubscription
-            ? 'Votre abonnement actuel n’inclut pas E-Codepermis. Choisissez une offre adaptée.'
-            : 'Souscrivez un abonnement avec E-Codepermis pour accéder à ce module.',
-        )
+        setError('Achetez l’accès E-Codepermis pour accéder à ce module.')
         return
       }
       setSubscriptionLocked(false)
       setData(await fetchECodePermisExams())
     } catch (err) {
       const contentErr = err instanceof ContentError ? err : null
-      if (contentErr?.status === 403 || contentErr?.code === 'SUBSCRIPTION_REQUIRED') {
+      if (contentErr?.status === 403 || contentErr?.code === 'ACCESS_REQUIRED' || contentErr?.code === 'SUBSCRIPTION_REQUIRED') {
         setSubscriptionLocked(true)
       }
       setError(contentErr?.message ?? 'Chargement impossible')

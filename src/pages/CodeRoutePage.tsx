@@ -1,7 +1,7 @@
 import { Lock } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { fetchSubscriptionMe, type SubscriptionAccess } from '../api/subscriptions'
+import { fetchAccessMe, type AccessMe } from '../api/accessRequests'
 import { CodeRouteBanner } from '../components/CodeRouteBanner'
 import { CodeModuleIcon } from '../components/ModuleIcons'
 import { PageNavbar } from '../components/PageNavbar'
@@ -43,15 +43,15 @@ const categories = [
 export function CodeRoutePage() {
   const navigate = useNavigate()
   const { user, loading } = useAuth()
-  const [subscription, setSubscription] = useState<SubscriptionAccess | null>(null)
-  const [subscriptionLoading, setSubscriptionLoading] = useState(true)
+  const [accessMe, setAccessMe] = useState<AccessMe | null>(null)
+  const [accessLoading, setAccessLoading] = useState(true)
 
   useEffect(() => {
     if (!user) return
-    void fetchSubscriptionMe()
-      .then(setSubscription)
-      .catch(() => setSubscription(null))
-      .finally(() => setSubscriptionLoading(false))
+    void fetchAccessMe()
+      .then(setAccessMe)
+      .catch(() => setAccessMe(null))
+      .finally(() => setAccessLoading(false))
   }, [user])
 
   if (loading || !user) return null
@@ -65,15 +65,15 @@ export function CodeRoutePage() {
           onBack={() => navigate('/accueil')}
         />
 
-        {subscriptionLoading ? (
+        {accessLoading ? (
           <div className="auth-card learner-card learner-empty">
             <p>Vérification de votre accès…</p>
           </div>
-        ) : !subscription?.accessCode ? (
+        ) : !accessMe?.access.code ? (
           <div className="auth-card learner-card learner-empty subscription-locked-state">
             <Lock size={32} aria-hidden="true" />
             <h2>Le module Code est verrouillé</h2>
-            <p>Votre abonnement doit inclure l’accès au Code de la route.</p>
+            <p>Achetez l’accès au Code de la route pour continuer.</p>
             <button type="button" className="btn-primary" onClick={() => navigate('/abonnement')}>
               Voir les offres
             </button>

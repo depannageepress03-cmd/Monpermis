@@ -8,8 +8,8 @@ import { Moniteur } from '../models/Moniteur.js'
 import { Reservation } from '../models/Reservation.js'
 import { Creneau } from '../models/Creneau.js'
 import { Admin } from '../models/Admin.js'
-import { PaymentTransaction } from '../models/PaymentTransaction.js'
-import { UserSubscription } from '../models/UserSubscription.js'
+import { Payment } from '../models/Payment.js'
+import { AccessRequest } from '../models/AccessRequest.js'
 import { formatLocalDate } from '../utils/localDate.js'
 
 const router = Router()
@@ -37,24 +37,25 @@ router.get('/summary', async (_req, res) => {
       Admin.countDocuments(),
     ])
 
-    // Revenus : somme des transactions approuvées (total + mois en cours).
     const startOfMonth = new Date()
     startOfMonth.setDate(1)
     startOfMonth.setHours(0, 0, 0, 0)
 
-    const [revenueTotalAgg, revenueMonthAgg, subsActive, subsPending, subsExpired] =
+    const [revenueTotalAgg, revenueMonthAgg, accessActive, accessPending, accessExpired] =
       await Promise.all([
-        PaymentTransaction.aggregate([
+        Payment.aggregate([
           { $match: { status: 'approved' } },
           { $group: { _id: null, total: { $sum: '$amount' }, count: { $sum: 1 } } },
         ]),
-        PaymentTransaction.aggregate([
+        Payment.aggregate([
           { $match: { status: 'approved', createdAt: { $gte: startOfMonth } } },
           { $group: { _id: null, total: { $sum: '$amount' } } },
         ]),
-        UserSubscription.countDocuments({ status: 'active' }),
-        UserSubscription.countDocuments({ status: 'pending_payment' }),
-        UserSubscription.countDocuments({ status: 'expired' }),
+        AccessRequest.countDocuments({ status: 'actif' }),
+        AccessRequest.countDocuments({
+          status: { $in: ['en_attente', 'paiement_declare', 'en_verification'] },
+        }),
+        AccessRequest.countDocuments({ status: 'expire' }),
       ])
 
     const revenueTotal = revenueTotalAgg[0]?.total || 0
@@ -122,10 +123,10 @@ router.get('/summary', async (_req, res) => {
             month: revenueMonth,
             transactions: revenueTransactions,
           },
-          subscriptions: {
-            active: subsActive,
-            pending: subsPending,
-            expired: subsExpired,
+          accessRequests: {
+            active: accessActive,
+            pending: accessPending,
+            expired: accessExpired,
           },
         },
       },

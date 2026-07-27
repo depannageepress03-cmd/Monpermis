@@ -3,6 +3,7 @@ import { requireUserAuth } from '../middleware/userAuth.js'
 import { AccessModulePricing, ACCESS_MODULES } from '../models/AccessModulePricing.js'
 import { AccessRequest } from '../models/AccessRequest.js'
 import { Payment } from '../models/Payment.js'
+import { User } from '../models/User.js'
 import {
   createAccessRequest,
   declareManualPayment,
@@ -140,10 +141,17 @@ router.post('/:id/sync', async (req, res) => {
     await syncAccessPaymentFromProvider(payment)
     const refreshed = await AccessRequest.findById(request._id)
     const access = await getUserModuleAccess(req.user._id)
+    const user = await User.findById(req.user._id).select('soldeHeures')
 
     res.json({
       success: true,
-      data: { accessRequest: refreshed.toPublicJSON(), access },
+      data: {
+        accessRequest: refreshed.toPublicJSON(),
+        access: {
+          ...access,
+          user: { soldeHeures: user?.soldeHeures || 0 },
+        },
+      },
     })
   } catch (error) {
     logger.error('Erreur synchronisation paiement:', { error: error.message })

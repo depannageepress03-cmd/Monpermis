@@ -13,7 +13,7 @@ import {
 } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { fetchSubscriptionMe, type SubscriptionAccess } from '../api/subscriptions'
+import { fetchAccessMe, type AccessMe } from '../api/accessRequests'
 import { Bouncy } from '../components/Bouncy'
 import { CodeRouteBanner } from '../components/CodeRouteBanner'
 import { FadeUp } from '../components/FadeUp'
@@ -70,8 +70,8 @@ const toneShade: Record<Tone, readonly [string, string, string]> = {
 export function CodeRouteScreen() {
   const navigation = useNavigation<Nav>()
   const { user, loading } = useRequireAuth(navigation)
-  const [subscription, setSubscription] = useState<SubscriptionAccess | null>(null)
-  const [subscriptionLoading, setSubscriptionLoading] = useState(true)
+  const [accessMe, setAccessMe] = useState<AccessMe | null>(null)
+  const [accessLoading, setAccessLoading] = useState(true)
 
   useFocusEffect(
     useCallback(() => {
@@ -82,10 +82,10 @@ export function CodeRouteScreen() {
 
   useEffect(() => {
     if (!user) return
-    void fetchSubscriptionMe()
-      .then(setSubscription)
-      .catch(() => setSubscription(null))
-      .finally(() => setSubscriptionLoading(false))
+    void fetchAccessMe()
+      .then(setAccessMe)
+      .catch(() => setAccessMe(null))
+      .finally(() => setAccessLoading(false))
   }, [user])
 
   if (loading || !user) return <ScreenLoader />
@@ -108,7 +108,7 @@ export function CodeRouteScreen() {
     </View>
   )
 
-  if (subscriptionLoading) {
+  if (accessLoading) {
     return (
       <View style={styles.root}>
         <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
@@ -121,7 +121,7 @@ export function CodeRouteScreen() {
     )
   }
 
-  if (!subscription?.accessCode) {
+  if (!accessMe?.access.code) {
     return (
       <View style={styles.root}>
         <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
@@ -132,7 +132,7 @@ export function CodeRouteScreen() {
             </View>
             <Text style={styles.accessStateTitle}>Module Code verrouillé</Text>
             <Text style={styles.accessStateCopy}>
-              Ton abonnement doit inclure l’accès au Code de la route.
+              Achète l’accès au Code de la route pour continuer.
             </Text>
             <Bouncy scaleTo={0.97} onPress={() => navigation.navigate('Abonnement')}>
               <View style={styles.accessButton}>
@@ -164,7 +164,7 @@ export function CodeRouteScreen() {
 
           <View style={styles.grid}>
             {categories.map((category, index) => {
-              const eCodeLocked = Boolean(category.needsECode && !subscription?.accessECodepermis)
+              const eCodeLocked = Boolean(category.needsECode && !accessMe?.access.ecodepermis)
               return (
                 <FadeUp key={category.id} delay={200 + index * 70} style={styles.gridItem}>
                   <Bouncy

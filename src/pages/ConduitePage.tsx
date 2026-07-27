@@ -8,7 +8,7 @@ import {
   type DrivingProgress,
   type ReservationItem,
 } from '../api/reservations'
-import { fetchSubscriptionMe, type SubscriptionAccess } from '../api/subscriptions'
+import { fetchAccessMe, type AccessMe } from '../api/accessRequests'
 import { DriveModuleIcon } from '../components/ModuleIcons'
 import { PageNavbar } from '../components/PageNavbar'
 import { useAuth } from '../hooks/useAuth'
@@ -32,8 +32,8 @@ export function ConduitePage() {
   const [cancelTarget, setCancelTarget] = useState<ReservationItem | null>(null)
   const [cancelReason, setCancelReason] = useState('')
   const [cancelling, setCancelling] = useState(false)
-  const [subscription, setSubscription] = useState<SubscriptionAccess | null>(null)
-  const [subscriptionLoading, setSubscriptionLoading] = useState(true)
+  const [accessMe, setAccessMe] = useState<AccessMe | null>(null)
+  const [accessLoading, setAccessLoading] = useState(true)
 
   const load = useCallback(async () => {
     try {
@@ -47,15 +47,22 @@ export function ConduitePage() {
 
   useEffect(() => {
     if (!user) return
-    void fetchSubscriptionMe()
-      .then(setSubscription)
-      .catch(() => setSubscription(null))
-      .finally(() => setSubscriptionLoading(false))
+    void fetchAccessMe()
+      .then(setAccessMe)
+      .catch(() => setAccessMe(null))
+      .finally(() => setAccessLoading(false))
   }, [user])
 
+  const conduiteUnlocked = Boolean(
+    accessMe &&
+      (accessMe.access.conduite_videos ||
+        accessMe.access.conduite_heures ||
+        accessMe.user.soldeHeures > 0),
+  )
+
   useEffect(() => {
-    if (subscription?.accessConduite) void load()
-  }, [subscription, load])
+    if (conduiteUnlocked) void load()
+  }, [conduiteUnlocked, load])
 
   const openCancel = (item: ReservationItem) => {
     setError(null)
@@ -96,15 +103,15 @@ export function ConduitePage() {
           onBack={() => navigate('/accueil')}
         />
 
-        {subscriptionLoading ? (
+        {accessLoading ? (
           <div className="auth-card learner-card learner-empty">
             <p>Vérification de votre accès…</p>
           </div>
-        ) : !subscription?.accessConduite ? (
+        ) : !conduiteUnlocked ? (
           <div className="auth-card learner-card learner-empty subscription-locked-state">
             <BookOpen size={32} aria-hidden="true" />
             <h2>Le module Conduite est verrouillé</h2>
-            <p>Votre abonnement doit inclure l’accès aux leçons et réservations de conduite.</p>
+            <p>Achetez des heures de conduite ou l’accès aux vidéos pour continuer.</p>
             <button type="button" className="btn-primary" onClick={() => navigate('/abonnement')}>
               Voir les offres
             </button>

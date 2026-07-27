@@ -24,7 +24,7 @@ import {
   type ReservationItem,
   ReservationError,
 } from '../api/reservations'
-import { fetchSubscriptionMe, type SubscriptionAccess } from '../api/subscriptions'
+import { fetchAccessMe, type AccessMe } from '../api/accessRequests'
 import { Bouncy } from '../components/Bouncy'
 import { DarkHeader, DarkScreen } from '../components/DarkScreen'
 import { ProgressBar } from '../components/ProgressBar'
@@ -54,8 +54,8 @@ export function ConduiteScreen() {
   const [cancelTarget, setCancelTarget] = useState<ReservationItem | null>(null)
   const [cancelReason, setCancelReason] = useState('')
   const [cancelling, setCancelling] = useState(false)
-  const [subscription, setSubscription] = useState<SubscriptionAccess | null>(null)
-  const [subscriptionLoading, setSubscriptionLoading] = useState(true)
+  const [accessMe, setAccessMe] = useState<AccessMe | null>(null)
+  const [accessLoading, setAccessLoading] = useState(true)
 
   const load = useCallback(async () => {
     setLoadingDash(true)
@@ -94,15 +94,22 @@ export function ConduiteScreen() {
 
   useEffect(() => {
     if (!user) return
-    void fetchSubscriptionMe()
-      .then(setSubscription)
-      .catch(() => setSubscription(null))
-      .finally(() => setSubscriptionLoading(false))
+    void fetchAccessMe()
+      .then(setAccessMe)
+      .catch(() => setAccessMe(null))
+      .finally(() => setAccessLoading(false))
   }, [user])
 
+  const conduiteUnlocked = Boolean(
+    accessMe &&
+      (accessMe.access.conduite_videos ||
+        accessMe.access.conduite_heures ||
+        accessMe.user.soldeHeures > 0),
+  )
+
   useEffect(() => {
-    if (subscription?.accessConduite) void load()
-  }, [subscription, load])
+    if (conduiteUnlocked) void load()
+  }, [conduiteUnlocked, load])
 
   if (loading || !user) return <ScreenLoader />
 
@@ -110,7 +117,7 @@ export function ConduiteScreen() {
     <DarkHeader title="Conduite" icon={DriveModuleIcon} onBack={() => navigation.navigate('Home')} />
   )
 
-  if (subscriptionLoading) {
+  if (accessLoading) {
     return (
       <DarkScreen>
         {header}
@@ -121,7 +128,7 @@ export function ConduiteScreen() {
     )
   }
 
-  if (!subscription?.accessConduite) {
+  if (!conduiteUnlocked) {
     return (
       <DarkScreen>
         {header}
@@ -129,7 +136,7 @@ export function ConduiteScreen() {
           <View style={styles.accessLock}><Lock size={30} color={dark.textMuted} /></View>
           <Text style={styles.accessStateTitle}>Module Conduite verrouillé</Text>
           <Text style={styles.accessStateCopy}>
-            Ton abonnement doit inclure l’accès à la Conduite.
+            Achète des heures de conduite ou l’accès aux vidéos pour continuer.
           </Text>
           <Bouncy scaleTo={0.97} onPress={() => navigation.navigate('Abonnement')}>
             <View style={styles.accessButton}>
