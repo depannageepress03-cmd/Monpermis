@@ -11,6 +11,12 @@ const paymentSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    /** Toutes les demandes couvertes par ce paiement (panier multi-offres). */
+    accessRequestIds: {
+      type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'AccessRequest' }],
+      default: [],
+      index: true,
+    },
     userId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
@@ -58,10 +64,18 @@ const paymentSchema = new mongoose.Schema(
   { timestamps: true },
 )
 
+paymentSchema.methods.linkedRequestIds = function linkedRequestIds() {
+  const ids = Array.isArray(this.accessRequestIds) ? this.accessRequestIds.filter(Boolean) : []
+  if (ids.length > 0) return ids
+  return this.accessRequestId ? [this.accessRequestId] : []
+}
+
 paymentSchema.methods.toPublicJSON = function toPublicJSON() {
+  const linked = this.linkedRequestIds().map((id) => String(id))
   return {
     id: this._id,
     accessRequestId: this.accessRequestId,
+    accessRequestIds: linked,
     method: this.method,
     amount: this.amount,
     currency: this.currency || 'XOF',

@@ -21,6 +21,7 @@ import {
   type DashboardSummary,
 } from '../api/dashboard'
 import type { AccessModuleKey, PaymentStatus } from '../api/accessRequests'
+import { paymentChannelLabel } from '../api/accessRequests'
 import { getAdminToken, isAuthError, useAdminAuth } from '../context/AdminAuthContext'
 
 const emptySummary: DashboardSummary = {
@@ -212,6 +213,9 @@ export function DashboardPage() {
         <header className="admin-module-header">
           <p className="admin-module-kicker">Aperçu général</p>
           <h1 className="admin-module-title">Tableau de bord</h1>
+          <p className="admin-module-subtitle" style={{ marginTop: 4 }}>
+            Suivi live des paiements Mobile Money (MTN / Moov / Celtiis) et des accès modules.
+          </p>
           <div className="admin-module-accent-row" aria-hidden>
             <span className="admin-module-accent is-green" />
             <span className="admin-module-accent is-gold" />
@@ -423,40 +427,51 @@ export function DashboardPage() {
                 </div>
               </div>
             ) : (
-              payments.map((payment) => (
-                <Link
-                  key={payment.id}
-                  to="/demandes-acces"
-                  className="dash-activity-item dash-payment-item"
-                >
-                  <span
-                    className="dash-activity-dot"
-                    style={{
-                      background:
-                        payment.status === 'approved'
-                          ? '#00B050'
-                          : payment.status === 'pending'
-                            ? '#FFC000'
-                            : '#dc2626',
-                    }}
-                  />
-                  <div>
-                    <strong>{learnerName(payment)}</strong>
-                    <span>
-                      {formatXof(payment.amount)}
-                      {payment.module ? ` · ${moduleLabels[payment.module] || payment.module}` : ''}
-                      {` · ${payment.method === 'fedapay' ? 'Mobile Money' : 'Manuel'}`}
-                    </span>
-                    <small>
-                      <StatusBadge tone={paymentTone(payment.status)}>
-                        {paymentStatusLabel(payment.status)}
-                      </StatusBadge>
-                      {' · '}
-                      {formatRelativeTime(payment.updatedAt || payment.createdAt)}
-                    </small>
-                  </div>
-                </Link>
-              ))
+              payments.map((payment) => {
+                const modules =
+                  payment.modules && payment.modules.length > 0
+                    ? payment.modules
+                    : payment.module
+                      ? [payment.module]
+                      : []
+                const moduleText = modules.map((key) => moduleLabels[key] || key).join(' + ')
+                return (
+                  <Link
+                    key={payment.id}
+                    to={`/demandes-acces`}
+                    className="dash-activity-item dash-payment-item"
+                    state={{ selectedId: payment.accessRequestId }}
+                  >
+                    <span
+                      className="dash-activity-dot"
+                      style={{
+                        background:
+                          payment.status === 'approved'
+                            ? '#00B050'
+                            : payment.status === 'pending'
+                              ? '#FFC000'
+                              : '#dc2626',
+                      }}
+                    />
+                    <div>
+                      <strong>{learnerName(payment)}</strong>
+                      <span>
+                        {formatXof(payment.amount)}
+                        {moduleText ? ` · ${moduleText}` : ''}
+                        {modules.length > 1 ? ` (${modules.length} offres)` : ''}
+                        {` · ${paymentChannelLabel(payment)}`}
+                      </span>
+                      <small>
+                        <StatusBadge tone={paymentTone(payment.status)}>
+                          {paymentStatusLabel(payment.status)}
+                        </StatusBadge>
+                        {' · '}
+                        {formatRelativeTime(payment.updatedAt || payment.createdAt)}
+                      </small>
+                    </div>
+                  </Link>
+                )
+              })
             )}
           </div>
         </div>

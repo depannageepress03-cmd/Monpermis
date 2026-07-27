@@ -1,43 +1,28 @@
-import { Check, Clock, CreditCard, LoaderCircle, Lock, RefreshCw } from 'lucide-react'
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { Check, Clock, CreditCard, LoaderCircle, Lock } from 'lucide-react'
+import { useCallback, useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
-  cancelAccessRequest,
-  createAccessRequest,
+  computeModuleAmount,
   fetchAccessMe,
   fetchAccessModules,
-  syncAccessRequest,
   AccessRequestError,
   type AccessMe,
   type AccessModule,
   type AccessModuleKey,
-  type AccessRequest,
+  type CheckoutCartItem,
 } from '../api/accessRequests'
+import { MobileMoneyCheckout } from '../components/MobileMoneyCheckout'
 import { PageNavbar } from '../components/PageNavbar'
 import { useAuth } from '../hooks/useAuth'
 import '../styles/auth.css'
 import '../styles/learner.css'
 
 function formatPrice(price: number, currency = 'XOF') {
-  return new Intl.NumberFormat('fr-FR', { style: 'currency', currency }).format(price)
-}
-
-const statusLabels: Record<AccessRequest['status'], string> = {
-  en_attente: 'En attente',
-  paiement_declare: 'Paiement déclaré, en vérification',
-  en_verification: 'Paiement Mobile Money en confirmation',
-  valide: 'Validé',
-  actif: 'Actif',
-  expire: 'Expiré',
-  rejete: 'Rejeté',
-}
-
-const moduleLabels: Record<AccessModuleKey, string> = {
-  code: 'Code de la route',
-  conduite_heures: 'Heures de conduite',
-  conduite_videos: 'Vidéos conduite',
-  ecodepermis: 'E-Codepermis',
-  aiChat: 'Chat IA',
+  return new Intl.NumberFormat('fr-FR', {
+    style: 'currency',
+    currency,
+    maximumFractionDigits: 0,
+  }).format(price)
 }
 
 const unitSuffix: Record<AccessModule['unit'], string> = {
@@ -47,69 +32,19 @@ const unitSuffix: Record<AccessModule['unit'], string> = {
   week: ' / semaine',
 }
 
+const PRIMARY_KEYS: AccessModuleKey[] = ['code', 'conduite_videos', 'conduite_heures']
+
 export function AbonnementPage() {
   const navigate = useNavigate()
-  const [searchParams, setSearchParams] = useSearchParams()
   const { user, loading: authLoading } = useAuth()
 
   const [modules, setModules] = useState<AccessModule[]>([])
   const [me, setMe] = useState<AccessMe | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [success, setSuccess] = useState<string | null>(null)
-
-  const [busyModule, setBusyModule] = useState<AccessModuleKey | null>(null)
+  const [selected, setSelected] = useState<Partial<Record<AccessModuleKey, boolean>>>({})
   const [quantityByModule, setQuantityByModule] = useState<Record<string, number>>({})
-  const [cancelling, setCancelling] = useState(false)
-
-  const pollRef = useRef<number | null>(null)
-
-  const stopPolling = useCallback(() => {
-    if (pollRef.current != null) {
-      window.clearInterval(pollRef.current)
-      pollRef.current = null
-    }
-  }, [])
-
-  const applySyncResult = useCallback(
-    (result: { accessRequest: AccessRequest; access: AccessMe }) => {
-      setMe(result.access)
-      if (result.accessRequest.status === 'actif' || result.accessRequest.status === 'valide') {
-        stopPolling()
-        setSuccess('Paiement confirmé. Votre accès est maintenant actif.')
-        setError(null)
-        return 'done'
-      }
-      if (result.accessRequest.status === 'rejete') {
-        stopPolling()
-        setError('Le paiement n’a pas abouti. Vous pouvez réessayer.')
-        setSuccess(null)
-        return 'done'
-      }
-      return 'pending'
-    },
-    [stopPolling],
-  )
-
-  const pollPendingRequest = useCallback(
-    (id: string) => {
-      stopPolling()
-      let ticks = 0
-      pollRef.current = window.setInterval(() => {
-        void (async () => {
-          ticks += 1
-          try {
-            const result = await syncAccessRequest(id)
-            const state = applySyncResult(result)
-            if (state === 'done' || ticks >= 45) stopPolling()
-          } catch {
-            /* ignore transient poll errors */
-          }
-        })()
-      }, 3000)
-    },
-    [applySyncResult, stopPolling],
-  )
+  const [checkoutOpen, setCheckoutOpen] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -118,109 +53,45 @@ export function AbonnementPage() {
       const [moduleCatalog, meResult] = await Promise.all([fetchAccessModules(), fetchAccessMe()])
       setModules(moduleCatalog)
       setMe(meResult)
-      if (meResult.pendingRequest?.status === 'en_verification') {
-        setSuccess('Paiement Mobile Money en confirmation…')
-        pollPendingRequest(meResult.pendingRequest.id)
-      }
     } catch (err) {
       setError(err instanceof AccessRequestError ? err.message : 'Chargement impossible')
     } finally {
       setLoading(false)
     }
-  }, [pollPendingRequest])
+  }, [])
 
   useEffect(() => {
     if (user) void load()
   }, [user, load])
 
-  useEffect(() => () => stopPolling(), [stopPolling])
-
-  useEffect(() => {
-    const accessRequestId = searchParams.get('accessRequest')
-    if (!user || !accessRequestId) return
-
-    void (async () => {
-      setSuccess('Confirmation du paiement Mobile Money…')
-      try {
-        const result = await syncAccessRequest(accessRequestId)
-        const state = applySyncResult(result)
-        if (state === 'pending') {
-          setSuccess('Paiement en cours de confirmation Mobile Money…')
-          pollPendingRequest(accessRequestId)
-        }
-      } catch (err) {
-        setError(err instanceof AccessRequestError ? err.message : 'Vérification du paiement impossible')
-        pollPendingRequest(accessRequestId)
-      } finally {
-        setSearchParams({}, { replace: true })
-      }
-    })()
-  }, [user, searchParams, setSearchParams, pollPendingRequest, applySyncResult])
-
-  const buyWithFedaPay = async (module: AccessModule, replace = false) => {
-    setBusyModule(module.key)
-    setError(null)
-    setSuccess(null)
-    try {
-      const quantity = Math.max(1, quantityByModule[module.key] ?? 1)
-      const result = await createAccessRequest({ module: module.key, quantity, replace })
-      if (result.alreadyActive && result.access) {
-        setMe(result.access)
-        setSuccess('Votre accès est déjà actif.')
-        return
-      }
-      if (!result.paymentUrl) {
-        setError('Lien de paiement Mobile Money indisponible. Réessayez dans un instant.')
-        return
-      }
-      setSuccess(
-        result.resumed
-          ? 'Reprise du paiement Mobile Money en cours…'
-          : 'Redirection vers Mobile Money…',
-      )
-      window.location.assign(result.paymentUrl)
-    } catch (err) {
-      setError(err instanceof AccessRequestError ? err.message : 'Paiement impossible à initier')
-    } finally {
-      setBusyModule(null)
-    }
-  }
-
-  const refresh = async () => {
-    const pending = me?.pendingRequest
-    if (!pending) {
-      await load()
-      return
-    }
-    try {
-      const result = await syncAccessRequest(pending.id)
-      const state = applySyncResult(result)
-      if (state === 'pending') {
-        setSuccess('Paiement toujours en cours de confirmation…')
-        pollPendingRequest(pending.id)
-      }
-    } catch (err) {
-      setError(err instanceof AccessRequestError ? err.message : 'Actualisation impossible')
-    }
-  }
-
-  const cancelPending = async () => {
-    if (!me?.pendingRequest) return
-    setCancelling(true)
-    setError(null)
-    try {
-      const result = await cancelAccessRequest(me.pendingRequest.id)
-      stopPolling()
-      setMe(result.access)
-      setSuccess('Paiement annulé. Vous pouvez relancer un paiement en ligne.')
-    } catch (err) {
-      setError(err instanceof AccessRequestError ? err.message : 'Annulation impossible')
-    } finally {
-      setCancelling(false)
-    }
-  }
-
   if (authLoading || !user) return null
+
+  const cartItems: CheckoutCartItem[] = modules
+    .filter((module) => {
+      if (!selected[module.key]) return false
+      if (module.key !== 'conduite_heures' && me?.access[module.key]) return false
+      return true
+    })
+    .map((module) => ({
+      module: module.key,
+      quantity: Math.max(1, quantityByModule[module.key] ?? 1),
+    }))
+
+  const cartTotal = cartItems.reduce((sum, item) => {
+    const module = modules.find((m) => m.key === item.module)
+    if (!module) return sum
+    return sum + computeModuleAmount(item.module, module.price, item.quantity)
+  }, 0)
+
+  const toggle = (key: AccessModuleKey) => {
+    setSelected((current) => ({ ...current, [key]: !current[key] }))
+  }
+
+  const sortedModules = [...modules].sort((a, b) => {
+    const ai = PRIMARY_KEYS.indexOf(a.key)
+    const bi = PRIMARY_KEYS.indexOf(b.key)
+    return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi)
+  })
 
   return (
     <div className="auth-page">
@@ -228,7 +99,7 @@ export function AbonnementPage() {
         <PageNavbar title="Mes accès" icon={<CreditCard size={25} />} onBack={() => navigate('/accueil')} />
 
         <header className="auth-header learner-header">
-          <p>Payez uniquement en ligne par Mobile Money (FedaPay).</p>
+          <p>Choisissez une ou plusieurs offres, puis payez par Mobile Money (MTN, Moov, Celtiis).</p>
         </header>
 
         {loading ? (
@@ -239,7 +110,6 @@ export function AbonnementPage() {
         ) : (
           <>
             {error ? <p className="form-error">{error}</p> : null}
-            {success ? <p className="form-success">{success}</p> : null}
 
             {me ? (
               <section className="auth-card learner-card subscription-status-card">
@@ -249,133 +119,107 @@ export function AbonnementPage() {
                 </p>
                 <h2>{me.user.soldeHeures} h</h2>
                 {me.pendingRequest ? (
-                  <>
-                    <p className="subscription-status-copy">
-                      {moduleLabels[me.pendingRequest.module] || me.pendingRequest.module}
-                      {' · '}
-                      {formatPrice(me.pendingRequest.amount, me.pendingRequest.currency)}
-                      <br />
-                      {statusLabels[me.pendingRequest.status]}
-                    </p>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                      {me.pendingRequest.status === 'en_verification' ? (
-                        <button
-                          type="button"
-                          className="btn-primary"
-                          disabled={Boolean(busyModule)}
-                          onClick={() => {
-                            const module = modules.find((item) => item.key === me.pendingRequest?.module)
-                            if (module) void buyWithFedaPay(module, false)
-                          }}
-                        >
-                          Reprendre le paiement
-                        </button>
-                      ) : null}
-                      <button type="button" className="btn-outline" onClick={() => void refresh()}>
-                        <RefreshCw size={16} aria-hidden="true" />
-                        Actualiser
-                      </button>
-                      <button
-                        type="button"
-                        className="btn-outline"
-                        disabled={cancelling}
-                        onClick={() => void cancelPending()}
-                      >
-                        {cancelling ? 'Annulation…' : 'Annuler'}
-                      </button>
-                    </div>
-                  </>
+                  <p className="subscription-status-copy">
+                    Paiement en confirmation… Actualisez après validation sur votre téléphone.
+                  </p>
                 ) : null}
               </section>
             ) : null}
 
             <section className="subscription-catalog">
-              <h2>Paiement en ligne</h2>
-              {modules.length === 0 ? (
+              <h2>Offres disponibles</h2>
+              {sortedModules.length === 0 ? (
                 <p className="subtitle">Aucun accès n’est disponible pour le moment.</p>
               ) : (
-                <div className="subscription-plan-list">
-                  {modules.map((module) => {
-                    const isActive = Boolean(me?.access[module.key])
+                <div className="offer-pick-list">
+                  {sortedModules.map((module) => {
+                    const isActive = Boolean(me?.access[module.key]) && module.key !== 'conduite_heures'
+                    const showsQuantity = module.unit === 'hour'
                     const quantity = quantityByModule[module.key] ?? 1
-                    const showsQuantity = module.unit === 'hour' || module.unit === 'week'
-                    const isBusy = busyModule === module.key
-                    const hasPendingSame =
-                      me?.pendingRequest?.module === module.key &&
-                      me.pendingRequest.status === 'en_verification'
+                    const amount = computeModuleAmount(module.key, module.price, showsQuantity ? quantity : 1)
+                    const checked = Boolean(selected[module.key])
 
                     return (
-                      <article className="subscription-plan" key={module.key}>
-                        <div>
-                          <h3>{module.label}</h3>
-                          <span className="subscription-duration">
-                            {module.unit === 'hour'
-                              ? 'À l’heure'
-                              : module.unit === 'week'
-                                ? 'À la semaine'
-                                : 'Mensuel'}
-                          </span>
-                        </div>
-                        <strong className="subscription-price">
+                      <button
+                        key={module.key}
+                        type="button"
+                        className={`offer-pick${checked ? ' is-selected' : ''}`}
+                        disabled={isActive}
+                        onClick={() => toggle(module.key)}
+                      >
+                        <h3>
+                          {module.label}
+                          {isActive ? ' · Actif' : ''}
+                        </h3>
+                        <p>
                           {formatPrice(module.price)}
                           {unitSuffix[module.unit]}
-                        </strong>
-
+                          {!isActive ? ` · total ${formatPrice(amount)}` : ''}
+                          {module.key === 'conduite_heures' && quantity >= 2 ? ' (−1 000 FCFA)' : ''}
+                        </p>
+                        {showsQuantity && !isActive ? (
+                          <label
+                            className="access-quantity-field"
+                            onClick={(event) => event.stopPropagation()}
+                            onKeyDown={(event) => event.stopPropagation()}
+                          >
+                            Nombre d’heures
+                            <input
+                              type="number"
+                              min={1}
+                              value={quantity}
+                              onChange={(event) =>
+                                setQuantityByModule((current) => ({
+                                  ...current,
+                                  [module.key]: Math.max(1, Number(event.target.value) || 1),
+                                }))
+                              }
+                            />
+                          </label>
+                        ) : null}
                         {isActive ? (
                           <p className="subscription-free-used" style={{ color: 'var(--green, #00b050)' }}>
                             <Check size={15} /> Accès actif
                           </p>
-                        ) : (
-                          <>
-                            {showsQuantity ? (
-                              <label className="access-quantity-field">
-                                {module.unit === 'hour' ? 'Nombre d’heures' : 'Nombre de semaines'}
-                                <input
-                                  type="number"
-                                  min={1}
-                                  value={quantity}
-                                  onChange={(event) =>
-                                    setQuantityByModule((current) => ({
-                                      ...current,
-                                      [module.key]: Math.max(1, Number(event.target.value) || 1),
-                                    }))
-                                  }
-                                />
-                              </label>
-                            ) : null}
-                            <p className="subscription-price" style={{ fontSize: '15px' }}>
-                              Total : {formatPrice(module.price * (showsQuantity ? quantity : 1))}
-                            </p>
-
-                            <button
-                              type="button"
-                              className="btn-primary"
-                              disabled={isBusy}
-                              onClick={() => void buyWithFedaPay(module, false)}
-                            >
-                              {isBusy
-                                ? 'Ouverture Mobile Money…'
-                                : hasPendingSame
-                                  ? 'Continuer le paiement'
-                                  : 'Payer en ligne (Mobile Money)'}
-                            </button>
-                          </>
-                        )}
-                      </article>
+                        ) : null}
+                      </button>
                     )
                   })}
                 </div>
               )}
+
+              <button
+                type="button"
+                className="btn-primary"
+                disabled={cartItems.length === 0}
+                onClick={() => setCheckoutOpen(true)}
+                style={{ marginTop: 16 }}
+              >
+                Payer {formatPrice(cartTotal)}
+              </button>
             </section>
 
             {!modules.some((m) => me?.access[m.key]) && !(me && me.user.soldeHeures > 0) ? (
               <section className="auth-card learner-card subscription-status-card">
                 <Lock size={28} className="subscription-lock-icon" aria-hidden="true" />
                 <p className="subscription-status-copy">
-                  Achetez un accès ci-dessus pour débloquer le code, la conduite ou l’E-Codepermis.
+                  Sélectionnez au moins une offre ci-dessus pour débloquer vos parcours.
                 </p>
               </section>
             ) : null}
+
+            <MobileMoneyCheckout
+              open={checkoutOpen}
+              items={cartItems}
+              modules={modules}
+              defaultPhone={user.phone}
+              onClose={() => setCheckoutOpen(false)}
+              onSuccess={(access) => {
+                setMe(access)
+                setSelected({})
+                setCheckoutOpen(false)
+              }}
+            />
           </>
         )}
       </div>

@@ -1,11 +1,14 @@
 import { FormEvent, useCallback, useEffect, useRef, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import { AlertTriangle, Check, RefreshCw, X } from 'lucide-react'
 import {
   fetchAccessModulePricing,
   fetchAccessRequestDetail,
   fetchAccessRequests,
   fetchAccessStats,
+  paymentChannelLabel,
   subscribeToAccessRequestEvents,
+  unitLabel,
   updateAccessModulePricing,
   validateAccessRequest,
   type AccessAuditEntry,
@@ -24,8 +27,8 @@ type Tab = 'requests' | 'pricing'
 const statusOptions: { value: AccessRequestStatus | ''; label: string }[] = [
   { value: '', label: 'Tous' },
   { value: 'en_attente', label: 'En attente' },
-  { value: 'paiement_declare', label: 'Paiement déclaré' },
-  { value: 'en_verification', label: 'En vérification' },
+  { value: 'paiement_declare', label: 'Paiement déclaré (legacy)' },
+  { value: 'en_verification', label: 'Mobile Money en confirmation' },
   { value: 'valide', label: 'Validé' },
   { value: 'actif', label: 'Actif' },
   { value: 'expire', label: 'Expiré' },
@@ -71,6 +74,7 @@ function formatDateTime(value: string | null | undefined) {
 }
 
 export function AccessRequestsPage() {
+  const location = useLocation()
   const [tab, setTab] = useState<Tab>('requests')
 
   const [requests, setRequests] = useState<AccessRequest[]>([])
@@ -199,6 +203,12 @@ export function AccessRequestsPage() {
     void loadDetailFor(id)
   }
 
+  useEffect(() => {
+    const selectedFromNav = (location.state as { selectedId?: string } | null)?.selectedId
+    if (selectedFromNav) openDetail(selectedFromNav)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state])
+
   const closeDetail = () => {
     setSelectedId(null)
     setDetail(null)
@@ -265,6 +275,28 @@ export function AccessRequestsPage() {
     }
   }
 
+  const handleMigrateVideosToMonth = async (module: AccessModulePricing) => {
+    const token = getAdminToken()
+    if (!token) return
+    setPricingBusy(module.key)
+    setError(null)
+    setSuccess(null)
+    try {
+      const { module: updated } = await updateAccessModulePricing(token, module.key, {
+        unit: 'month',
+        price: 1500,
+        label: 'Vidéos pédagogiques conduite',
+      })
+      setPricing((current) => current.map((item) => (item.key === module.key ? updated : item)))
+      setPricingDrafts((current) => ({ ...current, [module.key]: '1500' }))
+      setSuccess('Tarif vidéos migré vers 1 500 FCFA / mois.')
+    } catch (err) {
+      setError(isAuthError(err) ? err.message : 'Migration impossible.')
+    } finally {
+      setPricingBusy(null)
+    }
+  }
+
   const selectedRequest = requests.find((r) => r.id === selectedId) || null
 
   return (
@@ -273,7 +305,8 @@ export function AccessRequestsPage() {
         <p className="admin-module-kicker">Accès et paiements</p>
         <h1 className="admin-module-title">Demandes d’accès</h1>
         <p className="admin-module-subtitle">
-          Suivez chaque demande de A à Z — paiements Mobile Money (FedaPay) en ligne, avec journal d’audit complet.
+          Paiements Mobile Money (MTN, Moov, Celtiis via FedaPay), paniers multi-offres et tarifs modules
+          indépendants.
         </p>
         <div className="accent-row" aria-hidden>
           <span className="accent accent-green" />
@@ -302,7 +335,7 @@ export function AccessRequestsPage() {
           ))}
           {stats.revenueByMethod.map((row) => (
             <div className="ar-stat-card ar-stat-card-muted" key={row.method}>
-              <p className="ar-stat-label">{row.method === 'fedapay' ? 'FedaPay' : 'Manuel'}</p>
+              <p className="ar-stat-label">{row.method === 'fedapay' ? 'Mobile Money' : 'Hors ligne'}</p>
               <p className="ar-stat-value">{formatMoney(row.total)}</p>
               <p className="ar-stat-meta">{row.count} paiement{row.count > 1 ? 's' : ''}</p>
             </div>
@@ -379,7 +412,10 @@ export function AccessRequestsPage() {
                       ) : '—'}
                     </td>
                     <td>{moduleLabel(request.module)}</td>
-                    <td>{request.quantity} {request.unit === 'hour' ? 'h' : request.unit === 'week' ? 'sem.' : ''}</td>
+                    <td>
+                      {request.quantity}
+                      {request.unit === 'hour' ? ' h' : request.unit === 'week' ? ' sem.' : request.unit === 'month' ? ' mois' : ''}
+                    </td>
                     <td>{formatMoney(request.amount, request.currency)}</td>
                     <td><StatusBadge tone={statusTone(request.status)}>{statusLabel(request.status)}</StatusBadge></td>
                     <td>{formatDateTime(request.createdAt)}</td>
@@ -441,26 +477,44 @@ export function AccessRequestsPage() {
                   {detail.payments.length > 0 ? (
                     <>
                       <h4 className="ar-section-title">Paiement(s)</h4>
-                      {detail.payments.map((payment) => (
-                        <div className="ar-payment-card" key={payment.id}>
-                          <p>
-                            <strong>{payment.method === 'fedapay' ? 'FedaPay (Mobile Money)' : 'Ancien paiement hors ligne'}</strong>
-                            {' · '}
-                            {formatMoney(payment.amount, payment.currency)}
-                            {' · '}
-                            {payment.status}
-                          </p>
-                          {payment.declaredReference ? <p className="muted">Référence déclarée : {payment.declaredReference}</p> : null}
-                          {payment.fedapayReference ? <p className="muted">Référence FedaPay : {payment.fedapayReference}</p> : null}
-                          {payment.adminNote ? <p className="muted">Note admin : {payment.adminNote}</p> : null}
-                        </div>
-                      ))}
+                      {detail.payments.map((payment) => {
+                        const linkedCount = payment.accessRequestIds?.length || 1
+                        return (
+                          <div className="ar-payment-card" key={payment.id}>
+                            <p>
+                              <strong>{paymentChannelLabel(payment)}</strong>
+                              {' · '}
+                              {formatMoney(payment.amount, payment.currency)}
+                              {' · '}
+                              {payment.status}
+                            </p>
+                            {linkedCount > 1 ? (
+                              <p className="muted">Panier multi-offres · {linkedCount} demandes liées</p>
+                            ) : null}
+                            {payment.paymentMethod ? (
+                              <p className="muted">Opérateur : {String(payment.paymentMethod).toUpperCase()}</p>
+                            ) : null}
+                            {payment.declaredReference ? (
+                              <p className="muted">Référence déclarée (legacy) : {payment.declaredReference}</p>
+                            ) : null}
+                            {payment.fedapayReference ? (
+                              <p className="muted">Référence FedaPay : {payment.fedapayReference}</p>
+                            ) : null}
+                            {payment.errorMessage ? <p className="muted">Erreur : {payment.errorMessage}</p> : null}
+                            {payment.adminNote ? <p className="muted">Note admin : {payment.adminNote}</p> : null}
+                          </div>
+                        )
+                      })}
                     </>
                   ) : null}
 
                   {['en_attente', 'paiement_declare'].includes(selectedRequest.status) ? (
                     <form className="ar-validate-form" onSubmit={handleValidate}>
-                      <h4 className="ar-section-title">Décision admin</h4>
+                      <h4 className="ar-section-title">Décision admin (legacy / exception)</h4>
+                      <p className="muted">
+                        Les paiements Mobile Money en ligne passent automatiquement en confirmation. Cette
+                        validation manuelle reste pour les anciennes demandes hors plateforme.
+                      </p>
                       <div className="ar-decision-row">
                         <label>
                           <input type="radio" name="decision" checked={decision === 'valide'} onChange={() => setDecision('valide')} /> Valider
@@ -488,7 +542,10 @@ export function AccessRequestsPage() {
           <div className="subscriptions-panel-head">
             <div>
               <h2>Tarifs des modules</h2>
-              <p>Modifiables sans redéploiement — appliqué immédiatement au catalogue apprenant.</p>
+              <p>
+                Code 2 000 / mois · Vidéos 1 500 / mois · Heures 5 000 (−1 000 dès 2 h). Modifiables sans
+                redéploiement.
+              </p>
             </div>
           </div>
           <div className="ar-pricing-grid">
@@ -496,9 +553,20 @@ export function AccessRequestsPage() {
               <article className="ar-pricing-card" key={module.key}>
                 <div>
                   <h3>{module.label}</h3>
-                  <p className="muted">
-                    {module.unit === 'hour' ? 'par heure' : module.unit === 'week' ? 'par semaine' : module.unit === 'month' ? 'par mois' : 'unique'}
-                  </p>
+                  <p className="muted">{unitLabel(module.unit)}</p>
+                  {module.key === 'conduite_heures' ? (
+                    <p className="muted">
+                      Remise panier : −{module.hoursDiscount ?? 1000} FCFA dès 2 h
+                      {module.amountForTwoHours != null
+                        ? ` (ex. 2 h = ${formatMoney(module.amountForTwoHours)})`
+                        : ''}
+                    </p>
+                  ) : null}
+                  {module.key === 'conduite_videos' && module.unit === 'week' ? (
+                    <p className="form-error" role="status">
+                      Tarif legacy « semaine » — migrer vers mois (1 500 FCFA) recommandé.
+                    </p>
+                  ) : null}
                 </div>
                 <label className="ar-price-input">
                   Prix (FCFA)
@@ -506,7 +574,9 @@ export function AccessRequestsPage() {
                     type="number"
                     min="0"
                     value={pricingDrafts[module.key] ?? String(module.price)}
-                    onChange={(event) => setPricingDrafts((current) => ({ ...current, [module.key]: event.target.value }))}
+                    onChange={(event) =>
+                      setPricingDrafts((current) => ({ ...current, [module.key]: event.target.value }))
+                    }
                   />
                 </label>
                 <div className="ar-pricing-actions">
@@ -518,6 +588,16 @@ export function AccessRequestsPage() {
                   >
                     Enregistrer
                   </button>
+                  {module.key === 'conduite_videos' && module.unit === 'week' ? (
+                    <button
+                      type="button"
+                      className="btn-outline-sm"
+                      disabled={pricingBusy === module.key}
+                      onClick={() => void handleMigrateVideosToMonth(module)}
+                    >
+                      Passer en mois / 1500
+                    </button>
+                  ) : null}
                   <label className="subscription-checkline">
                     <input
                       type="checkbox"

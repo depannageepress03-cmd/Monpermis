@@ -51,6 +51,7 @@ export type AccessRequestStatus =
   | 'actif'
   | 'expire'
   | 'rejete'
+export type MobileMoneyOperator = 'mtn' | 'moov' | 'celtiis'
 
 export interface AccessModule {
   key: AccessModuleKey
@@ -59,6 +60,8 @@ export interface AccessModule {
   price: number
   currency: string
   active: boolean
+  hoursDiscount?: number
+  amountForTwoHours?: number | null
 }
 
 export interface AccessRequest {
@@ -79,11 +82,13 @@ export interface AccessRequest {
 export interface AccessPaymentSummary {
   id: string
   accessRequestId: string
+  accessRequestIds?: string[]
   method: 'fedapay'
   amount: number
   currency: string
   status: 'pending' | 'approved' | 'declined' | 'canceled' | 'failed'
   paymentUrl: string
+  paymentMethod?: string
   fedapayReference: string
   callbackUrl?: string
   errorMessage: string
@@ -99,6 +104,22 @@ export interface AccessMe {
   user: { soldeHeures: number }
 }
 
+export interface CheckoutCartItem {
+  module: AccessModuleKey
+  quantity: number
+}
+
+export interface MobileMoneyCheckoutResult {
+  payment: AccessPaymentSummary
+  accessRequest: AccessRequest
+  accessRequests: AccessRequest[]
+  operator: MobileMoneyOperator
+  phone: string
+  country: string
+  access: AccessMe
+  message: string
+}
+
 export interface CheckoutResult {
   accessRequest: AccessRequest
   payment?: AccessPaymentSummary | null
@@ -109,10 +130,48 @@ export interface CheckoutResult {
   access?: AccessMe
 }
 
+/** Même règle serveur : −1000 FCFA si N≥2 heures. */
+export function computeModuleAmount(module: AccessModuleKey, unitPrice: number, quantity = 1) {
+  const qty = Math.max(1, Number(quantity) || 1)
+  let amount = Math.round(Number(unitPrice) || 0) * qty
+  if (module === 'conduite_heures' && qty >= 2) amount = Math.max(0, amount - 1000)
+  return amount
+}
+
 export const fetchAccessModules = () =>
-  request<{ modules: AccessModule[] }>('/access-requests/modules').then((data) => data.modules)
+  request<{ modules: AccessModule[]; operators?: MobileMoneyOperator[] }>('/access-requests/modules').then(
+    (data) => data.modules,
+  )
 
 export const fetchAccessMe = () => request<AccessMe>('/access-requests/me')
+
+export const quoteAccessCart = (items: CheckoutCartItem[]) =>
+  request<{
+    lines: Array<{
+      module: AccessModuleKey
+      label: string
+      quantity: number
+      amount: number
+      discountApplied: number
+    }>
+    total: number
+    currency: string
+  }>('/access-requests/quote', {
+    method: 'POST',
+    body: JSON.stringify({ items }),
+  })
+
+export const checkoutMobileMoney = (payload: {
+  items: CheckoutCartItem[]
+  operator: MobileMoneyOperator
+  country?: string
+  phone: string
+  replace?: boolean
+}) =>
+  request<MobileMoneyCheckoutResult>('/access-requests/checkout', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
 
 export const createAccessRequest = (payload: {
   module: AccessModuleKey
@@ -130,7 +189,9 @@ export const cancelAccessRequest = (id: string) =>
   })
 
 export const syncAccessRequest = (id: string) =>
-  request<{ accessRequest: AccessRequest; payment?: AccessPaymentSummary; access: AccessMe }>(
-    `/access-requests/${id}/sync`,
-    { method: 'POST' },
-  )
+  request<{
+    accessRequest: AccessRequest
+    accessRequests?: AccessRequest[]
+    payment?: AccessPaymentSummary
+    access: AccessMe
+  }>(`/access-requests/${id}/sync`, { method: 'POST' })

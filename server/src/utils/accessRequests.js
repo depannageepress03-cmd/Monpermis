@@ -14,6 +14,8 @@ import {
   normalizeBeninPhone,
   refreshFedaPayPaymentUrl,
   retrieveFedaPayTransaction,
+  sendFedaPayMobileMoney,
+  FEDAPAY_MOBILE_OPERATORS,
 } from '../services/fedapay.js'
 import { notifyUser } from '../services/notifications.js'
 import { broadcastPaymentEvent } from '../services/paymentEvents.js'
@@ -71,7 +73,12 @@ async function broadcastAccessRequestUpdate(request, user = null) {
 async function broadcastPaymentUpdate(payment, { user = null, module = null } = {}) {
   try {
     const learner = user || (await User.findById(payment.userId).select('firstName lastName email phone'))
-    let moduleKey = module
+    const linkedIds = payment.linkedRequestIds?.() || (payment.accessRequestId ? [payment.accessRequestId] : [])
+    const linkedRequests = linkedIds.length
+      ? await AccessRequest.find({ _id: { $in: linkedIds } }).select('module status')
+      : []
+    const modules = linkedRequests.map((r) => r.module).filter(Boolean)
+    let moduleKey = module || modules[0] || null
     if (!moduleKey && payment.accessRequestId) {
       const request = await AccessRequest.findById(payment.accessRequestId).select('module')
       moduleKey = request?.module || null
@@ -81,6 +88,7 @@ async function broadcastPaymentUpdate(payment, { user = null, module = null } = 
       payment: {
         ...payment.toAdminJSON(learner),
         module: moduleKey,
+        modules,
       },
     })
   } catch {
@@ -203,8 +211,8 @@ export async function getUserModuleAccess(userId) {
   let pendingPayment = null
   if (pending) {
     const payment = await Payment.findOne({
-      accessRequestId: pending._id,
       method: 'fedapay',
+      $or: [{ accessRequestId: pending._id }, { accessRequestIds: pending._id }],
     }).sort({ createdAt: -1 })
     if (payment) {
       pendingPayment = {
@@ -225,14 +233,30 @@ export async function getUserModuleAccess(userId) {
 const DEFAULT_MODULE_PRICING = [
   { key: 'code', label: 'Code de la route', unit: 'month', price: 2000 },
   { key: 'conduite_heures', label: 'Heures de conduite', unit: 'hour', price: 5000 },
-  { key: 'conduite_videos', label: 'Vidéos pédagogiques conduite', unit: 'week', price: 500 },
+  { key: 'conduite_videos', label: 'Vidéos pédagogiques conduite', unit: 'month', price: 1500 },
   { key: 'ecodepermis', label: 'E-Codepermis', unit: 'month', price: 1000 },
   { key: 'aiChat', label: 'Chat IA tuteur', unit: 'month', price: 1000 },
 ]
 
+/** Montant figé pour un module (réduction −1000 FCFA si N≥2 heures de conduite). */
+export function computeModuleAmount(pricingOrKey, quantity = 1, unitPrice = null) {
+  const key = typeof pricingOrKey === 'string' ? pricingOrKey : pricingOrKey?.key
+  const price =
+    unitPrice != null
+      ? Number(unitPrice)
+      : Number(typeof pricingOrKey === 'object' ? pricingOrKey?.price : 0) || 0
+  const qty = Math.max(1, Number(quantity) || 1)
+  let amount = Math.round(price * qty)
+  if (key === 'conduite_heures' && qty >= 2) {
+    amount = Math.max(0, amount - 1000)
+  }
+  return amount
+}
+
 /** Amorçage idempotent des 5 tarifs — n'écrase jamais un prix déjà modifié par l'admin. */
 export async function ensureAccessModulePricing() {
   let created = 0
+  let migrated = 0
   for (const def of DEFAULT_MODULE_PRICING) {
     const exists = await AccessModulePricing.exists({ key: def.key })
     if (!exists) {
@@ -240,7 +264,18 @@ export async function ensureAccessModulePricing() {
       created += 1
     }
   }
-  return { created }
+
+  // Soft migration : ancien seed vidéos 500/week → 1500/month (une seule fois).
+  const videos = await AccessModulePricing.findOne({ key: 'conduite_videos' })
+  if (videos && videos.unit === 'week' && Number(videos.price) === 500) {
+    videos.unit = 'month'
+    videos.price = 1500
+    videos.label = 'Vidéos pédagogiques conduite'
+    await videos.save()
+    migrated += 1
+  }
+
+  return { created, migrated }
 }
 
 export async function getModulePricing(key) {
@@ -262,7 +297,7 @@ export async function createAccessRequest({ user, module, quantity = 1 }) {
     module,
     status: 'en_attente',
     quantity: qty,
-    amount: pricing.price * qty,
+    amount: computeModuleAmount(pricing, qty),
     currency: pricing.currency || 'XOF',
     unit: pricing.unit,
   })
@@ -297,6 +332,7 @@ export async function startFedaPayForRequest(user, request) {
 
   const payment = await Payment.create({
     accessRequestId: request._id,
+    accessRequestIds: [request._id],
     userId: user._id,
     method: 'fedapay',
     amount: request.amount,
@@ -355,7 +391,9 @@ async function cancelPendingRequestAndPayment(request, user, note) {
     return request
   }
   await transitionAccessRequest(request, 'rejete', { actor: 'user', note })
-  const payment = await Payment.findOne({ accessRequestId: request._id }).sort({ createdAt: -1 })
+  const payment = await Payment.findOne({
+    $or: [{ accessRequestId: request._id }, { accessRequestIds: request._id }],
+  }).sort({ createdAt: -1 })
   if (payment && payment.status === 'pending') {
     payment.status = 'canceled'
     payment.errorMessage = note
@@ -475,8 +513,198 @@ export async function cancelPendingOnlinePayment(user, requestId) {
     error.status = 400
     throw error
   }
-  await cancelPendingRequestAndPayment(request, user, 'Paiement annulé par l’utilisateur')
+
+  const payment = await Payment.findOne({
+    method: 'fedapay',
+    $or: [{ accessRequestId: request._id }, { accessRequestIds: request._id }],
+  }).sort({ createdAt: -1 })
+
+  const linkedIds = payment?.linkedRequestIds?.() || [request._id]
+  for (const id of linkedIds) {
+    const linked = await AccessRequest.findOne({ _id: id, userId: user._id })
+    if (linked && ['en_attente', 'paiement_declare', 'en_verification'].includes(linked.status)) {
+      await cancelPendingRequestAndPayment(linked, user, 'Paiement annulé par l’utilisateur')
+    }
+  }
+
   return AccessRequest.findById(request._id)
+}
+
+/**
+ * Checkout panier multi-offres : un paiement FedaPay + push Mobile Money (sendNow).
+ * items: [{ module, quantity }]
+ */
+export async function checkoutCartOnlineAccess({
+  user,
+  items,
+  operator,
+  phone,
+  country = 'BJ',
+  replace = true,
+}) {
+  if (!Array.isArray(items) || items.length === 0) {
+    const error = new Error('Sélectionnez au moins une offre à payer')
+    error.status = 400
+    throw error
+  }
+
+  const mode = String(operator || '').trim().toLowerCase()
+  if (!FEDAPAY_MOBILE_OPERATORS.includes(mode)) {
+    const error = new Error('Réseau Mobile Money invalide. Choisissez MTN, Moov ou Celtiis.')
+    error.status = 400
+    throw error
+  }
+
+  const normalizedPhone = normalizeBeninPhone(phone) || normalizeBeninPhone(user.phone)
+  if (!normalizedPhone) {
+    const error = new Error(
+      'Numéro de téléphone Mobile Money invalide. Indiquez un numéro béninois valide.',
+    )
+    error.status = 400
+    throw error
+  }
+
+  const access = await getUserModuleAccess(user._id)
+  const normalizedItems = []
+  const seen = new Set()
+
+  for (const raw of items) {
+    const module = raw?.module
+    const quantity = Math.max(1, Number(raw?.quantity) || 1)
+    if (!module || seen.has(module)) continue
+    seen.add(module)
+
+    if (access.access[module] && module !== 'conduite_heures') {
+      continue // déjà actif (heures restent achetable pour créditer le solde)
+    }
+
+    const pricing = await getModulePricing(module)
+    normalizedItems.push({
+      module,
+      quantity,
+      pricing,
+      amount: computeModuleAmount(pricing, quantity),
+    })
+  }
+
+  if (!normalizedItems.length) {
+    const error = new Error('Aucune offre à payer (accès déjà actifs)')
+    error.status = 400
+    throw error
+  }
+
+  // Annule les demandes pending des modules concernés.
+  for (const item of normalizedItems) {
+    const existing = await AccessRequest.findOne({
+      userId: user._id,
+      module: item.module,
+      status: { $in: ['en_attente', 'paiement_declare', 'en_verification'] },
+    })
+    if (existing && replace) {
+      await cancelPendingRequestAndPayment(existing, user, 'Remplacé par un nouveau paiement Mobile Money')
+    } else if (existing && !replace) {
+      const error = new Error('Un paiement est déjà en cours pour cette offre')
+      error.status = 409
+      throw error
+    }
+  }
+
+  const requests = []
+  for (const item of normalizedItems) {
+    const request = await createAccessRequest({
+      user,
+      module: item.module,
+      quantity: item.quantity,
+    })
+    requests.push(request)
+  }
+
+  const totalAmount = requests.reduce((sum, r) => sum + Number(r.amount || 0), 0)
+  const primary = requests[0]
+  const payment = await Payment.create({
+    accessRequestId: primary._id,
+    accessRequestIds: requests.map((r) => r._id),
+    userId: user._id,
+    method: 'fedapay',
+    amount: totalAmount,
+    currency: primary.currency || 'XOF',
+    status: 'pending',
+    paymentMethod: mode,
+  })
+
+  const callbackUrl = `${callbackBase()}?accessRequest=${primary._id}`
+  const description =
+    requests.length === 1
+      ? `${primary.module} — Monpermis.bj`
+      : `Panier Monpermis (${requests.map((r) => r.module).join(', ')})`
+
+  try {
+    const checkout = await sendFedaPayMobileMoney({
+      amount: totalAmount,
+      description,
+      customer: {
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        phone: normalizedPhone,
+      },
+      callbackUrl,
+      customMetadata: {
+        paymentId: String(payment._id),
+        accessRequestId: String(primary._id),
+        accessRequestIds: requests.map((r) => String(r._id)).join(','),
+        userId: String(user._id),
+        modules: requests.map((r) => r.module).join(','),
+      },
+      operator: mode,
+      phone: normalizedPhone,
+      country,
+    })
+
+    payment.fedapayTransactionId = checkout.transactionId
+    payment.fedapayReference = checkout.reference
+    payment.paymentUrl = checkout.paymentUrl || ''
+    payment.paymentMethod = mode
+    payment.status = 'pending'
+    await payment.save()
+    void broadcastPaymentUpdate(payment, { user })
+
+    for (const request of requests) {
+      await transitionAccessRequest(request, 'en_verification', {
+        actor: 'user',
+        note: `Paiement Mobile Money (${mode.toUpperCase()}) initié`,
+      })
+    }
+
+    const refreshedRequests = await AccessRequest.find({ _id: { $in: requests.map((r) => r._id) } })
+    return {
+      payment: await Payment.findById(payment._id),
+      accessRequests: refreshedRequests,
+      accessRequest: refreshedRequests[0],
+      operator: mode,
+      phone: normalizedPhone,
+      country: String(country || 'BJ').toUpperCase(),
+    }
+  } catch (error) {
+    payment.status = 'failed'
+    payment.errorMessage = error.message || 'Échec initiation Mobile Money'
+    await payment.save()
+    void broadcastPaymentUpdate(payment, { user })
+    for (const request of requests) {
+      try {
+        const current = await AccessRequest.findById(request._id)
+        if (current && ['en_attente', 'en_verification'].includes(current.status)) {
+          await transitionAccessRequest(current, 'rejete', {
+            actor: 'system',
+            note: error.message || 'Échec initiation Mobile Money',
+          })
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+    throw error
+  }
 }
 
 /** Déclaration d'un paiement hors plateforme — désactivée (paiement en ligne uniquement). */
@@ -555,18 +783,34 @@ export async function applyApprovedAccessPayment(payment, { eventName = '', even
   await payment.save()
   void broadcastPaymentUpdate(payment)
 
-  const request = await AccessRequest.findById(payment.accessRequestId)
-  if (!request) {
+  const requestIds = payment.linkedRequestIds()
+  if (!requestIds.length) {
     const error = new Error('Demande d’accès liée introuvable')
     error.status = 404
     throw error
   }
 
-  if (['en_attente', 'paiement_declare', 'en_verification'].includes(request.status)) {
-    await transitionAccessRequest(request, 'valide', { actor: 'system', actorLabel: 'FedaPay', note: eventName })
+  const requests = []
+  for (const id of requestIds) {
+    const request = await AccessRequest.findById(id)
+    if (!request) continue
+    if (['en_attente', 'paiement_declare', 'en_verification'].includes(request.status)) {
+      await transitionAccessRequest(request, 'valide', {
+        actor: 'system',
+        actorLabel: 'FedaPay',
+        note: eventName,
+      })
+    }
+    requests.push(await AccessRequest.findById(id))
   }
 
-  return { payment, request, alreadyProcessed: false }
+  if (!requests.length) {
+    const error = new Error('Demande d’accès liée introuvable')
+    error.status = 404
+    throw error
+  }
+
+  return { payment, request: requests[0], requests, alreadyProcessed: false }
 }
 
 export async function applyFailedAccessPayment(
@@ -586,12 +830,21 @@ export async function applyFailedAccessPayment(
   await payment.save()
   void broadcastPaymentUpdate(payment)
 
-  const request = await AccessRequest.findById(payment.accessRequestId)
-  if (request && ['en_attente', 'paiement_declare', 'en_verification'].includes(request.status)) {
-    await transitionAccessRequest(request, 'rejete', { actor: 'system', actorLabel: 'FedaPay', note: message })
+  const requestIds = payment.linkedRequestIds()
+  const requests = []
+  for (const id of requestIds) {
+    const request = await AccessRequest.findById(id)
+    if (request && ['en_attente', 'paiement_declare', 'en_verification'].includes(request.status)) {
+      await transitionAccessRequest(request, 'rejete', {
+        actor: 'system',
+        actorLabel: 'FedaPay',
+        note: message,
+      })
+      requests.push(await AccessRequest.findById(id))
+    }
   }
 
-  return { payment, request, alreadyProcessed: false }
+  return { payment, request: requests[0] || null, requests, alreadyProcessed: false }
 }
 
 export async function syncAccessPaymentFromProvider(payment) {

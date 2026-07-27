@@ -98,6 +98,13 @@ router.patch('/modules/:key', async (req, res) => {
     }
     if (req.body.active !== undefined) pricing.active = Boolean(req.body.active)
     if (req.body.label !== undefined) pricing.label = String(req.body.label).trim() || pricing.label
+    if (req.body.unit !== undefined) {
+      const unit = String(req.body.unit)
+      if (!['flat', 'month', 'hour', 'week'].includes(unit)) {
+        return res.status(400).json({ success: false, error: 'Unité invalide' })
+      }
+      pricing.unit = unit
+    }
     await pricing.save()
 
     res.json({ success: true, data: { module: pricing.toAdminJSON() } })

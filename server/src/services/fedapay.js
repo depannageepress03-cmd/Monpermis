@@ -270,3 +270,79 @@ export function mapFedaPayStatus(status) {
   if (value === 'pending') return 'pending'
   return 'failed'
 }
+
+/** Modes Mobile Money Benin supportés pour le tunnel sans redirection. */
+export const FEDAPAY_MOBILE_OPERATORS = ['mtn', 'moov', 'celtiis']
+
+export function normalizeFedaPayCountry(country) {
+  const value = String(country || 'BJ').trim().toUpperCase()
+  if (['BJ', 'TG', 'CI', 'NE', 'SN'].includes(value)) return value
+  return 'BJ'
+}
+
+/**
+ * Crée une transaction FedaPay puis déclenche immédiatement le retrait Mobile Money (sendNow).
+ */
+export async function sendFedaPayMobileMoney({
+  amount,
+  description,
+  customer,
+  callbackUrl,
+  customMetadata = {},
+  operator,
+  phone,
+  country = 'BJ',
+}) {
+  ensureConfigured()
+  const mode = String(operator || '').trim().toLowerCase()
+  if (!FEDAPAY_MOBILE_OPERATORS.includes(mode)) {
+    const error = new Error('Réseau Mobile Money invalide. Choisissez MTN, Moov ou Celtiis.')
+    error.status = 400
+    throw error
+  }
+
+  const normalizedPhone = normalizeBeninPhone(phone) || normalizeBeninPhone(customer?.phone)
+  if (!normalizedPhone) {
+    const error = new Error('Numéro de téléphone Mobile Money invalide.')
+    error.status = 400
+    throw error
+  }
+
+  const isoCountry = normalizeFedaPayCountry(country)
+  const checkout = await createFedaPayCheckout({
+    amount,
+    description,
+    customer: {
+      ...customer,
+      phone: normalizedPhone,
+    },
+    callbackUrl,
+    customMetadata: {
+      ...customMetadata,
+      operator: mode,
+      country: isoCountry,
+    },
+  })
+
+  try {
+    const transaction = await Transaction.retrieve(checkout.transactionId)
+    await transaction.sendNowWithToken(mode, checkout.token, {
+      phone_number: {
+        number: normalizedPhone,
+        country: isoCountry,
+      },
+    })
+  } catch (error) {
+    const wrapped = new Error(formatFedaPayError(error))
+    wrapped.status = error.httpStatus || 502
+    wrapped.cause = error
+    throw wrapped
+  }
+
+  return {
+    ...checkout,
+    operator: mode,
+    phone: normalizedPhone,
+    country: isoCountry,
+  }
+}

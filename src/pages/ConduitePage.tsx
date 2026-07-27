@@ -8,8 +8,9 @@ import {
   type DrivingProgress,
   type ReservationItem,
 } from '../api/reservations'
-import { fetchAccessMe, type AccessMe } from '../api/accessRequests'
+import { fetchAccessMe, fetchAccessModules, computeModuleAmount, type AccessMe, type AccessModule, type CheckoutCartItem } from '../api/accessRequests'
 import { DriveModuleIcon } from '../components/ModuleIcons'
+import { MobileMoneyCheckout } from '../components/MobileMoneyCheckout'
 import { PageNavbar } from '../components/PageNavbar'
 import { useAuth } from '../hooks/useAuth'
 import '../styles/auth.css'
@@ -23,6 +24,14 @@ function statusLabel(item: ReservationItem) {
   return item.status
 }
 
+function formatPrice(amount: number) {
+  return new Intl.NumberFormat('fr-FR', {
+    style: 'currency',
+    currency: 'XOF',
+    maximumFractionDigits: 0,
+  }).format(amount)
+}
+
 export function ConduitePage() {
   const navigate = useNavigate()
   const { user, loading } = useAuth()
@@ -33,7 +42,12 @@ export function ConduitePage() {
   const [cancelReason, setCancelReason] = useState('')
   const [cancelling, setCancelling] = useState(false)
   const [accessMe, setAccessMe] = useState<AccessMe | null>(null)
+  const [modules, setModules] = useState<AccessModule[]>([])
   const [accessLoading, setAccessLoading] = useState(true)
+  const [pickVideos, setPickVideos] = useState(true)
+  const [pickHours, setPickHours] = useState(false)
+  const [hoursQty, setHoursQty] = useState(1)
+  const [checkoutOpen, setCheckoutOpen] = useState(false)
 
   const load = useCallback(async () => {
     try {
@@ -47,9 +61,15 @@ export function ConduitePage() {
 
   useEffect(() => {
     if (!user) return
-    void fetchAccessMe()
-      .then(setAccessMe)
-      .catch(() => setAccessMe(null))
+    void Promise.all([fetchAccessMe(), fetchAccessModules()])
+      .then(([me, catalog]) => {
+        setAccessMe(me)
+        setModules(catalog)
+      })
+      .catch(() => {
+        setAccessMe(null)
+        setModules([])
+      })
       .finally(() => setAccessLoading(false))
   }, [user])
 
@@ -63,6 +83,25 @@ export function ConduitePage() {
   useEffect(() => {
     if (conduiteUnlocked) void load()
   }, [conduiteUnlocked, load])
+
+  const videosModule = modules.find((m) => m.key === 'conduite_videos')
+  const hoursModule = modules.find((m) => m.key === 'conduite_heures')
+  const videosPrice = videosModule ? computeModuleAmount('conduite_videos', videosModule.price, 1) : 1500
+  const hoursPrice = hoursModule
+    ? computeModuleAmount('conduite_heures', hoursModule.price, hoursQty)
+    : hoursQty >= 2
+      ? hoursQty * 5000 - 1000
+      : hoursQty * 5000
+
+  const cartItems: CheckoutCartItem[] = []
+  if (pickVideos && !accessMe?.access.conduite_videos) {
+    cartItems.push({ module: 'conduite_videos', quantity: 1 })
+  }
+  if (pickHours) {
+    cartItems.push({ module: 'conduite_heures', quantity: hoursQty })
+  }
+  const cartTotal =
+    (pickVideos && !accessMe?.access.conduite_videos ? videosPrice : 0) + (pickHours ? hoursPrice : 0)
 
   const openCancel = (item: ReservationItem) => {
     setError(null)
@@ -110,11 +149,61 @@ export function ConduitePage() {
         ) : !conduiteUnlocked ? (
           <div className="auth-card learner-card learner-empty subscription-locked-state">
             <BookOpen size={32} aria-hidden="true" />
-            <h2>Le module Conduite est verrouillé</h2>
-            <p>Achetez des heures de conduite ou l’accès aux vidéos pour continuer.</p>
-            <button type="button" className="btn-primary" onClick={() => navigate('/abonnement')}>
-              Voir les offres
+            <h2>Choisir vos accès conduite</h2>
+            <p>Sélectionnez une ou deux offres. Chaque abonnement est indépendant.</p>
+            <div className="offer-pick-list">
+              {!accessMe?.access.conduite_videos ? (
+                <button
+                  type="button"
+                  className={`offer-pick${pickVideos ? ' is-selected' : ''}`}
+                  onClick={() => setPickVideos((v) => !v)}
+                >
+                  <h3>Cours vidéo de conduite</h3>
+                  <p>{formatPrice(videosPrice)} / mois</p>
+                </button>
+              ) : null}
+              <button
+                type="button"
+                className={`offer-pick${pickHours ? ' is-selected' : ''}`}
+                onClick={() => setPickHours((v) => !v)}
+              >
+                <h3>Heure avec moniteur</h3>
+                <p>
+                  {formatPrice(hoursModule?.price || 5000)} / heure
+                  {hoursQty >= 2 ? ` · total ${formatPrice(hoursPrice)} (−1 000)` : ''}
+                </p>
+              </button>
+            </div>
+            {pickHours ? (
+              <label className="access-quantity-field">
+                Nombre d’heures
+                <input
+                  type="number"
+                  min={1}
+                  value={hoursQty}
+                  onChange={(event) => setHoursQty(Math.max(1, Number(event.target.value) || 1))}
+                />
+              </label>
+            ) : null}
+            <button
+              type="button"
+              className="btn-primary"
+              disabled={cartItems.length === 0}
+              onClick={() => setCheckoutOpen(true)}
+            >
+              Payer {formatPrice(cartTotal)}
             </button>
+            <MobileMoneyCheckout
+              open={checkoutOpen}
+              items={cartItems}
+              modules={modules}
+              defaultPhone={user.phone}
+              onClose={() => setCheckoutOpen(false)}
+              onSuccess={(access) => {
+                setAccessMe(access)
+                setCheckoutOpen(false)
+              }}
+            />
           </div>
         ) : (
           <>

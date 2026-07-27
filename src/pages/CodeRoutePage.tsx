@@ -1,8 +1,15 @@
 import { Lock } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { fetchAccessMe, type AccessMe } from '../api/accessRequests'
+import {
+  computeModuleAmount,
+  fetchAccessMe,
+  fetchAccessModules,
+  type AccessMe,
+  type AccessModule,
+} from '../api/accessRequests'
 import { CodeRouteBanner } from '../components/CodeRouteBanner'
+import { MobileMoneyCheckout } from '../components/MobileMoneyCheckout'
 import { CodeModuleIcon } from '../components/ModuleIcons'
 import { PageNavbar } from '../components/PageNavbar'
 import { useAuth } from '../hooks/useAuth'
@@ -40,21 +47,40 @@ const categories = [
   },
 ] as const
 
+function formatPrice(amount: number) {
+  return new Intl.NumberFormat('fr-FR', {
+    style: 'currency',
+    currency: 'XOF',
+    maximumFractionDigits: 0,
+  }).format(amount)
+}
+
 export function CodeRoutePage() {
   const navigate = useNavigate()
   const { user, loading } = useAuth()
   const [accessMe, setAccessMe] = useState<AccessMe | null>(null)
+  const [modules, setModules] = useState<AccessModule[]>([])
   const [accessLoading, setAccessLoading] = useState(true)
+  const [checkoutOpen, setCheckoutOpen] = useState(false)
 
   useEffect(() => {
     if (!user) return
-    void fetchAccessMe()
-      .then(setAccessMe)
-      .catch(() => setAccessMe(null))
+    void Promise.all([fetchAccessMe(), fetchAccessModules()])
+      .then(([me, catalog]) => {
+        setAccessMe(me)
+        setModules(catalog)
+      })
+      .catch(() => {
+        setAccessMe(null)
+        setModules([])
+      })
       .finally(() => setAccessLoading(false))
   }, [user])
 
   if (loading || !user) return null
+
+  const codeModule = modules.find((m) => m.key === 'code')
+  const codePrice = codeModule ? computeModuleAmount('code', codeModule.price, 1) : 2000
 
   return (
     <div className="auth-page">
@@ -72,11 +98,28 @@ export function CodeRoutePage() {
         ) : !accessMe?.access.code ? (
           <div className="auth-card learner-card learner-empty subscription-locked-state">
             <Lock size={32} aria-hidden="true" />
-            <h2>Le module Code est verrouillé</h2>
-            <p>Achetez l’accès au Code de la route pour continuer.</p>
-            <button type="button" className="btn-primary" onClick={() => navigate('/abonnement')}>
-              Voir les offres
+            <h2>Souscrire au Code de la route</h2>
+            <p>Forfait mensuel pour débloquer la révision, les examens test et vos notes.</p>
+            <div className="offer-pick-list">
+              <div className="offer-pick is-selected">
+                <h3>Code de la route</h3>
+                <p>{formatPrice(codePrice)} / mois</p>
+              </div>
+            </div>
+            <button type="button" className="btn-primary" onClick={() => setCheckoutOpen(true)}>
+              Payer {formatPrice(codePrice)}
             </button>
+            <MobileMoneyCheckout
+              open={checkoutOpen}
+              items={[{ module: 'code', quantity: 1 }]}
+              modules={modules}
+              defaultPhone={user.phone}
+              onClose={() => setCheckoutOpen(false)}
+              onSuccess={(access) => {
+                setAccessMe(access)
+                setCheckoutOpen(false)
+              }}
+            />
           </div>
         ) : (
           <>
@@ -90,7 +133,7 @@ export function CodeRoutePage() {
 
         <div className="category-grid">
           {categories.map((category, index) => {
-            const eCodeLocked = category.id === 'e-codepermis' && !subscription?.accessECodepermis
+            const eCodeLocked = category.id === 'e-codepermis' && !accessMe?.access.ecodepermis
             return (
             <button
               key={category.id}
@@ -120,7 +163,7 @@ export function CodeRoutePage() {
                 ) : null}
                 {eCodeLocked ? (
                   <span className="category-subtitle category-lock-row">
-                    <Lock size={12} /> Abonnement adapté requis
+                    <Lock size={12} /> Accès E-Codepermis requis
                   </span>
                 ) : null}
               </span>

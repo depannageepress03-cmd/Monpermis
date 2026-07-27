@@ -24,11 +24,12 @@ import {
   type ReservationItem,
   ReservationError,
 } from '../api/reservations'
-import { fetchAccessMe, type AccessMe } from '../api/accessRequests'
+import { fetchAccessMe, fetchAccessModules, computeModuleAmount, type AccessMe, type AccessModule, type CheckoutCartItem } from '../api/accessRequests'
 import { Bouncy } from '../components/Bouncy'
 import { DarkHeader, DarkScreen } from '../components/DarkScreen'
 import { ProgressBar } from '../components/ProgressBar'
 import { DriveModuleIcon } from '../components/ModuleIcons'
+import { MobileMoneyCheckout } from '../components/MobileMoneyCheckout'
 import { ScreenLoader } from '../components/ScreenLoader'
 import { FadeUp } from '../components/FadeUp'
 import { useRequireAuth } from '../hooks/useRequireAuth'
@@ -55,7 +56,12 @@ export function ConduiteScreen() {
   const [cancelReason, setCancelReason] = useState('')
   const [cancelling, setCancelling] = useState(false)
   const [accessMe, setAccessMe] = useState<AccessMe | null>(null)
+  const [modules, setModules] = useState<AccessModule[]>([])
   const [accessLoading, setAccessLoading] = useState(true)
+  const [pickVideos, setPickVideos] = useState(true)
+  const [pickHours, setPickHours] = useState(false)
+  const [hoursQty, setHoursQty] = useState('1')
+  const [checkoutOpen, setCheckoutOpen] = useState(false)
 
   const load = useCallback(async () => {
     setLoadingDash(true)
@@ -94,9 +100,15 @@ export function ConduiteScreen() {
 
   useEffect(() => {
     if (!user) return
-    void fetchAccessMe()
-      .then(setAccessMe)
-      .catch(() => setAccessMe(null))
+    void Promise.all([fetchAccessMe(), fetchAccessModules()])
+      .then(([me, catalog]) => {
+        setAccessMe(me)
+        setModules(catalog)
+      })
+      .catch(() => {
+        setAccessMe(null)
+        setModules([])
+      })
       .finally(() => setAccessLoading(false))
   }, [user])
 
@@ -129,21 +141,94 @@ export function ConduiteScreen() {
   }
 
   if (!conduiteUnlocked) {
+    const videosModule = modules.find((m) => m.key === 'conduite_videos')
+    const hoursModule = modules.find((m) => m.key === 'conduite_heures')
+    const qty = Math.max(1, Number(hoursQty) || 1)
+    const videosPrice = videosModule ? computeModuleAmount('conduite_videos', videosModule.price, 1) : 1500
+    const hoursPrice = hoursModule
+      ? computeModuleAmount('conduite_heures', hoursModule.price, qty)
+      : qty >= 2
+        ? qty * 5000 - 1000
+        : qty * 5000
+    const cartItems: CheckoutCartItem[] = []
+    if (pickVideos && !accessMe?.access.conduite_videos) {
+      cartItems.push({ module: 'conduite_videos', quantity: 1 })
+    }
+    if (pickHours) cartItems.push({ module: 'conduite_heures', quantity: qty })
+    const cartTotal =
+      (pickVideos && !accessMe?.access.conduite_videos ? videosPrice : 0) + (pickHours ? hoursPrice : 0)
+    const formatPrice = (amount: number) =>
+      new Intl.NumberFormat('fr-FR', {
+        style: 'currency',
+        currency: 'XOF',
+        maximumFractionDigits: 0,
+      }).format(amount)
+
     return (
       <DarkScreen>
         {header}
-        <View style={styles.accessState}>
-          <View style={styles.accessLock}><Lock size={30} color={dark.textMuted} /></View>
-          <Text style={styles.accessStateTitle}>Module Conduite verrouillé</Text>
+        <ScrollView contentContainerStyle={styles.accessState}>
+          <View style={styles.accessLock}>
+            <Lock size={30} color={dark.textMuted} />
+          </View>
+          <Text style={styles.accessStateTitle}>Choisir tes accès conduite</Text>
           <Text style={styles.accessStateCopy}>
-            Achète des heures de conduite ou l’accès aux vidéos pour continuer.
+            Sélectionne une ou deux offres. Chaque abonnement est indépendant.
           </Text>
-          <Bouncy scaleTo={0.97} onPress={() => navigation.navigate('Abonnement')}>
-            <View style={styles.accessButton}>
-              <Text style={styles.accessButtonText}>Voir les offres</Text>
+
+          {!accessMe?.access.conduite_videos ? (
+            <Pressable
+              style={[styles.offerCard, pickVideos && styles.offerCardSelected]}
+              onPress={() => setPickVideos((v) => !v)}
+            >
+              <Text style={styles.offerTitle}>Cours vidéo de conduite</Text>
+              <Text style={styles.offerPrice}>{formatPrice(videosPrice)} / mois</Text>
+            </Pressable>
+          ) : null}
+
+          <Pressable
+            style={[styles.offerCard, pickHours && styles.offerCardSelected]}
+            onPress={() => setPickHours((v) => !v)}
+          >
+            <Text style={styles.offerTitle}>Heure avec moniteur</Text>
+            <Text style={styles.offerPrice}>
+              {formatPrice(hoursModule?.price || 5000)} / heure
+              {qty >= 2 ? ` · total ${formatPrice(hoursPrice)} (−1 000)` : ''}
+            </Text>
+          </Pressable>
+
+          {pickHours ? (
+            <TextInput
+              style={styles.hoursInput}
+              keyboardType="number-pad"
+              value={hoursQty}
+              onChangeText={setHoursQty}
+              placeholder="Nombre d’heures"
+              placeholderTextColor={dark.textMuted}
+            />
+          ) : null}
+
+          <Bouncy
+            scaleTo={0.97}
+            disabled={cartItems.length === 0}
+            onPress={() => setCheckoutOpen(true)}
+          >
+            <View style={[styles.accessButton, cartItems.length === 0 && { opacity: 0.5 }]}>
+              <Text style={styles.accessButtonText}>Payer {formatPrice(cartTotal)}</Text>
             </View>
           </Bouncy>
-        </View>
+        </ScrollView>
+        <MobileMoneyCheckout
+          visible={checkoutOpen}
+          items={cartItems}
+          modules={modules}
+          defaultPhone={user.phone}
+          onClose={() => setCheckoutOpen(false)}
+          onSuccess={(access) => {
+            setAccessMe(access)
+            setCheckoutOpen(false)
+          }}
+        />
       </DarkScreen>
     )
   }
@@ -470,6 +555,30 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
   },
   accessButtonText: { fontFamily: fonts.bodyBold, fontSize: 14, color: '#0B0F1A' },
+  offerCard: {
+    width: '100%',
+    borderWidth: 1,
+    borderColor: dark.border,
+    borderRadius: 14,
+    padding: 14,
+    marginTop: 10,
+    backgroundColor: dark.surfaceRaised,
+  },
+  offerCardSelected: { borderColor: dark.green },
+  offerTitle: { color: dark.textPrimary, fontFamily: fonts.displayBold, fontSize: 16 },
+  offerPrice: { color: dark.textMuted, fontFamily: fonts.body, fontSize: 14, marginTop: 4 },
+  hoursInput: {
+    width: '100%',
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: dark.border,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    color: dark.textPrimary,
+    fontFamily: fonts.body,
+    backgroundColor: dark.surfaceRaised,
+  },
 
   /* Modal */
   modalBackdrop: {

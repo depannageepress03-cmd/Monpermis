@@ -99,7 +99,13 @@ router.get('/summary', async (_req, res) => {
 
     const userIds = [...new Set(recentPayments.map((p) => String(p.userId)))]
     const requestIds = [
-      ...new Set(recentPayments.map((p) => String(p.accessRequestId)).filter(Boolean)),
+      ...new Set(
+        recentPayments.flatMap((p) => {
+          const linked = typeof p.linkedRequestIds === 'function' ? p.linkedRequestIds() : []
+          const ids = linked.length ? linked : p.accessRequestId ? [p.accessRequestId] : []
+          return ids.map((id) => String(id)).filter(Boolean)
+        }),
+      ),
     ]
     const [learners, requests] = await Promise.all([
       User.find({ _id: { $in: userIds } }).select('firstName lastName email phone'),
@@ -151,11 +157,20 @@ router.get('/summary', async (_req, res) => {
           payments: {
             pending: paymentsPending,
             recent: recentPayments.map((payment) => {
-              const request = requestMap.get(String(payment.accessRequestId))
+              const linkedIds =
+                typeof payment.linkedRequestIds === 'function'
+                  ? payment.linkedRequestIds()
+                  : payment.accessRequestId
+                    ? [payment.accessRequestId]
+                    : []
+              const linked = linkedIds.map((id) => requestMap.get(String(id))).filter(Boolean)
+              const modules = linked.map((r) => r.module).filter(Boolean)
+              const primary = requestMap.get(String(payment.accessRequestId)) || linked[0]
               return {
                 ...payment.toAdminJSON(learnerMap.get(String(payment.userId))),
-                module: request?.module || null,
-                accessRequestStatus: request?.status || null,
+                module: primary?.module || modules[0] || null,
+                modules,
+                accessRequestStatus: primary?.status || null,
               }
             }),
           },

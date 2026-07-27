@@ -4,6 +4,8 @@ import type { AccessModuleKey, AccessPayment, PaymentStatus } from './accessRequ
 
 export interface DashboardPayment extends AccessPayment {
   module: AccessModuleKey | null
+  /** Modules couverts par un panier multi-offres. */
+  modules?: AccessModuleKey[]
   accessRequestStatus?: string | null
 }
 

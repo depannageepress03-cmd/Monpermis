@@ -13,6 +13,7 @@ export type AccessRequestStatus =
   | 'rejete'
 export type PaymentMethod = 'fedapay' | 'manual'
 export type PaymentStatus = 'pending' | 'approved' | 'declined' | 'canceled' | 'failed'
+export type MobileMoneyOperator = 'mtn' | 'moov' | 'celtiis'
 
 export interface AccessModulePricing {
   key: AccessModuleKey
@@ -21,6 +22,9 @@ export interface AccessModulePricing {
   price: number
   currency: string
   active: boolean
+  hoursDiscount?: number
+  amountForOne?: number
+  amountForTwoHours?: number | null
   createdAt?: string
   updatedAt?: string
 }
@@ -64,12 +68,14 @@ export interface AccessAuditEntry {
 export interface AccessPayment {
   id: string
   accessRequestId: string
+  accessRequestIds?: string[]
   userId: string
   method: PaymentMethod
   amount: number
   currency: string
   status: PaymentStatus
   paymentUrl: string
+  /** Opérateur Mobile Money (mtn / moov / celtiis) pour les paiements sendNow. */
   paymentMethod: string
   fedapayReference: string
   declaredReference: string
@@ -89,6 +95,22 @@ export interface AccessStats {
   countByStatus: { status: AccessRequestStatus; count: number }[]
   revenueByMethod: { method: PaymentMethod; total: number; count: number }[]
   pendingOver24h: number
+}
+
+export function paymentChannelLabel(payment: Pick<AccessPayment, 'method' | 'paymentMethod'>) {
+  if (payment.method === 'manual') return 'Hors ligne'
+  const operator = String(payment.paymentMethod || '').toLowerCase()
+  if (operator === 'mtn') return 'MTN Mobile Money'
+  if (operator === 'moov') return 'Moov Money'
+  if (operator === 'celtiis') return 'Celtiis Money'
+  return 'Mobile Money (FedaPay)'
+}
+
+export function unitLabel(unit: AccessModuleUnit) {
+  if (unit === 'hour') return 'par heure'
+  if (unit === 'week') return 'par semaine (legacy)'
+  if (unit === 'month') return 'par mois'
+  return 'unique'
 }
 
 export function fetchAccessRequests(
@@ -133,7 +155,7 @@ export function fetchAccessModulePricing(token: string) {
 export function updateAccessModulePricing(
   token: string,
   key: AccessModuleKey,
-  payload: Partial<Pick<AccessModulePricing, 'price' | 'active' | 'label'>>,
+  payload: Partial<Pick<AccessModulePricing, 'price' | 'active' | 'label' | 'unit'>>,
 ) {
   return apiFetch<{ module: AccessModulePricing }>(
     `/api/admin/access-requests/modules/${key}`,

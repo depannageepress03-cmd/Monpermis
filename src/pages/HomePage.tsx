@@ -180,7 +180,7 @@ export function HomePage() {
             <button
               type="button"
               className={`home-app-path home-app-path--photo home-app-path--panel home-app-path--code${codeLocked ? ' is-locked' : ''}`}
-              onClick={() => navigate(codeLocked ? '/abonnement' : '/code-de-la-route')}
+              onClick={() => navigate('/code-de-la-route')}
             >
               <img
                 src="/home/paths/code.jpg"
@@ -207,7 +207,7 @@ export function HomePage() {
             <button
               type="button"
               className={`home-app-path home-app-path--photo home-app-path--panel home-app-path--drive${conduiteLocked ? ' is-locked' : ''}`}
-              onClick={() => navigate(conduiteLocked ? '/abonnement' : '/conduite')}
+              onClick={() => navigate('/conduite')}
             >
               <img
                 src="/home/paths/conduite.jpg"

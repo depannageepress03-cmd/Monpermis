@@ -192,7 +192,7 @@ export function HomeScreen() {
 
           <Bouncy
             scaleTo={0.97}
-            onPress={() => navigation.navigate(codeLocked ? 'Abonnement' : 'CodeRoute')}
+            onPress={() => navigation.navigate('CodeRoute')}
           >
             <View style={[styles.pathCard, codeLocked ? styles.pathCardLocked : styles.pathCardGreen]}>
               <Image
@@ -218,7 +218,7 @@ export function HomeScreen() {
           <Bouncy
             scaleTo={0.97}
             style={styles.secondPath}
-            onPress={() => navigation.navigate(conduiteLocked ? 'Abonnement' : 'Conduite')}
+            onPress={() => navigation.navigate('Conduite')}
           >
             <View style={[styles.pathCard, conduiteLocked ? styles.pathCardLocked : styles.pathCardCoral]}>
               <Image

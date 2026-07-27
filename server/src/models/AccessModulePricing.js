@@ -25,13 +25,19 @@ const accessModulePricingSchema = new mongoose.Schema(
 )
 
 accessModulePricingSchema.methods.toPublicJSON = function toPublicJSON() {
+  const price = this.price
   return {
     key: this.key,
     label: this.label,
     unit: this.unit,
-    price: this.price,
+    price,
     currency: this.currency || 'XOF',
     active: this.active !== false,
+    /** Montant pour 1 unité (après règles métier éventuelles). */
+    amountForOne: this.key === 'conduite_heures' ? price : price,
+    /** Exemple 2 heures avec remise −1000. */
+    amountForTwoHours: this.key === 'conduite_heures' ? Math.max(0, price * 2 - 1000) : null,
+    hoursDiscount: this.key === 'conduite_heures' ? 1000 : 0,
   }
 }
 

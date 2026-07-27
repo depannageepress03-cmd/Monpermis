@@ -13,10 +13,11 @@ import {
 } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { fetchAccessMe, type AccessMe } from '../api/accessRequests'
+import { fetchAccessMe, fetchAccessModules, computeModuleAmount, type AccessMe, type AccessModule } from '../api/accessRequests'
 import { Bouncy } from '../components/Bouncy'
 import { CodeRouteBanner } from '../components/CodeRouteBanner'
 import { FadeUp } from '../components/FadeUp'
+import { MobileMoneyCheckout } from '../components/MobileMoneyCheckout'
 import { CodeModuleIcon } from '../components/ModuleIcons'
 import { ScreenLoader } from '../components/ScreenLoader'
 import { useRequireAuth } from '../hooks/useRequireAuth'
@@ -71,7 +72,9 @@ export function CodeRouteScreen() {
   const navigation = useNavigation<Nav>()
   const { user, loading } = useRequireAuth(navigation)
   const [accessMe, setAccessMe] = useState<AccessMe | null>(null)
+  const [modules, setModules] = useState<AccessModule[]>([])
   const [accessLoading, setAccessLoading] = useState(true)
+  const [checkoutOpen, setCheckoutOpen] = useState(false)
 
   useFocusEffect(
     useCallback(() => {
@@ -82,13 +85,26 @@ export function CodeRouteScreen() {
 
   useEffect(() => {
     if (!user) return
-    void fetchAccessMe()
-      .then(setAccessMe)
-      .catch(() => setAccessMe(null))
+    void Promise.all([fetchAccessMe(), fetchAccessModules()])
+      .then(([me, catalog]) => {
+        setAccessMe(me)
+        setModules(catalog)
+      })
+      .catch(() => {
+        setAccessMe(null)
+        setModules([])
+      })
       .finally(() => setAccessLoading(false))
   }, [user])
 
   if (loading || !user) return <ScreenLoader />
+
+  const codeModule = modules.find((m) => m.key === 'code')
+  const codePrice = codeModule ? computeModuleAmount('code', codeModule.price, 1) : 2000
+  const formatPrice = (amount: number) =>
+    new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'XOF', maximumFractionDigits: 0 }).format(
+      amount,
+    )
 
   const header = (
     <View style={styles.topBar}>
@@ -130,16 +146,27 @@ export function CodeRouteScreen() {
             <View style={styles.accessLock}>
               <Lock size={30} color={dark.textMuted} />
             </View>
-            <Text style={styles.accessStateTitle}>Module Code verrouillé</Text>
+            <Text style={styles.accessStateTitle}>Souscrire au Code</Text>
             <Text style={styles.accessStateCopy}>
-              Achète l’accès au Code de la route pour continuer.
+              Forfait {formatPrice(codePrice)} / mois pour débloquer la révision et les examens.
             </Text>
-            <Bouncy scaleTo={0.97} onPress={() => navigation.navigate('Abonnement')}>
+            <Bouncy scaleTo={0.97} onPress={() => setCheckoutOpen(true)}>
               <View style={styles.accessButton}>
-                <Text style={styles.accessButtonText}>Voir les offres</Text>
+                <Text style={styles.accessButtonText}>Payer {formatPrice(codePrice)}</Text>
               </View>
             </Bouncy>
           </View>
+          <MobileMoneyCheckout
+            visible={checkoutOpen}
+            items={[{ module: 'code', quantity: 1 }]}
+            modules={modules}
+            defaultPhone={user.phone}
+            onClose={() => setCheckoutOpen(false)}
+            onSuccess={(access) => {
+              setAccessMe(access)
+              setCheckoutOpen(false)
+            }}
+          />
         </SafeAreaView>
       </View>
     )
