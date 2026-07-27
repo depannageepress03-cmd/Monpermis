@@ -5,13 +5,50 @@ const { FedaPay, Transaction, Webhook } = fedapay
 let configuredKey = ''
 let configuredEnvironment = ''
 
+/**
+ * Identifiants UI (app / web) → modes API FedaPay (Benin, sans redirection).
+ * Docs : mtn_open (MTN BJ), moov (Moov BJ), sbin (Celtiis BJ).
+ */
+export const FEDAPAY_MOBILE_OPERATORS = ['mtn', 'moov', 'celtiis']
+
+const UI_TO_FEDAPAY_MODE = {
+  mtn: 'mtn_open',
+  moov: 'moov',
+  celtiis: 'sbin',
+  // Alias déjà au format API (tolérance)
+  mtn_open: 'mtn_open',
+  sbin: 'sbin',
+}
+
+export function toFedaPayMode(operator) {
+  const key = String(operator || '')
+    .trim()
+    .toLowerCase()
+  return UI_TO_FEDAPAY_MODE[key] || null
+}
+
+export function normalizeOperatorId(operator) {
+  const mode = toFedaPayMode(operator)
+  if (mode === 'mtn_open') return 'mtn'
+  if (mode === 'sbin') return 'celtiis'
+  if (mode === 'moov') return 'moov'
+  return null
+}
+
 /** Extrait un message lisible depuis une erreur SDK / HTTP FedaPay. */
 export function formatFedaPayError(error) {
   if (!error) return 'Erreur FedaPay inconnue'
+  const data = error.httpResponse?.data
   const fromBody =
     error.errorMessage ||
-    error.httpResponse?.data?.message ||
+    data?.message ||
     (Array.isArray(error.errors) ? error.errors.map((e) => e.message || e).join(', ') : '') ||
+    (data?.errors && typeof data.errors === 'object'
+      ? Object.values(data.errors)
+          .flat()
+          .map((e) => (typeof e === 'string' ? e : e?.message || String(e)))
+          .join(', ')
+      : '') ||
     (error.errors && typeof error.errors === 'object'
       ? Object.values(error.errors)
           .flat()
@@ -22,14 +59,24 @@ export function formatFedaPayError(error) {
   if (/socket hang up|ECONNRESET|ETIMEDOUT|ENOTFOUND|network/i.test(message)) {
     return 'Impossible de joindre FedaPay. Réessayez dans un instant.'
   }
-  if (/api key|unauthorized|401/i.test(message)) {
+  if (/api key|unauthorized|401|clé/i.test(message)) {
     return 'Clés API FedaPay invalides ou environnement incorrect (live/sandbox).'
+  }
+  if (/op[eé]ration non autoris[eé]e|not allowed|404/i.test(message)) {
+    return 'Ce réseau Mobile Money n’est pas disponible pour votre compte FedaPay. Vérifiez MTN / Moov / Celtiis dans le dashboard MyFeda.'
+  }
+  if (/Request failed with status code/i.test(message) && data?.message) {
+    return String(data.message)
+  }
+  if (/Request failed with status code/i.test(message)) {
+    return 'FedaPay a refusé la demande de paiement. Vérifiez le numéro et réessayez.'
   }
   return message
 }
 
 export function configureFedaPay() {
   const secret = String(process.env.FEDAPAY_SECRET_KEY || '').trim()
+  const publicKey = String(process.env.FEDAPAY_PUBLIC_KEY || '').trim()
   const environment = process.env.FEDAPAY_ENVIRONMENT === 'sandbox' ? 'sandbox' : 'live'
   if (!secret) {
     const error = new Error('FEDAPAY_SECRET_KEY manquante dans la configuration serveur')
@@ -45,6 +92,13 @@ export function configureFedaPay() {
     error.status = 500
     throw error
   }
+  if (publicKey && !publicKey.startsWith(environment === 'live' ? 'pk_live_' : 'pk_sandbox_')) {
+    const error = new Error(
+      `FEDAPAY_PUBLIC_KEY incompatible avec l’environnement « ${environment} ».`,
+    )
+    error.status = 500
+    throw error
+  }
 
   if (configuredKey !== secret || configuredEnvironment !== environment) {
     FedaPay.setApiKey(secret)
@@ -53,7 +107,7 @@ export function configureFedaPay() {
     configuredEnvironment = environment
   }
 
-  return { environment, publicKeyConfigured: Boolean(getFedaPayPublicKey()) }
+  return { environment, publicKeyConfigured: Boolean(publicKey) }
 }
 
 function ensureConfigured() {
@@ -80,24 +134,19 @@ export function normalizeBeninPhone(phone) {
   if (!digits) return null
 
   let local = digits
-  if (local.startsWith('229')) local = local.slice(3)
-  // Certains stockent 00229…
   if (local.startsWith('00229')) local = local.slice(5)
+  else if (local.startsWith('229')) local = local.slice(3)
 
   // Nouveau plan BJ : 10 chiffres (ex. 01XXXXXXXX)
   if (local.length >= 10) {
     local = local.slice(-10)
-    if (!/^0[1-9]\d{8}$/.test(local) && !/^\d{10}$/.test(local)) return null
+    if (!/^0\d{9}$/.test(local)) return null
     return local
   }
 
   // Ancien plan : 8 chiffres (ex. 97XXXXXX)
-  if (local.length === 8 && /^[012459]\d{7}$/.test(local)) {
+  if (local.length === 8 && /^\d{8}$/.test(local)) {
     return local
-  }
-
-  if (local.length >= 8 && local.length < 10) {
-    return local.slice(-8)
   }
 
   return null
@@ -160,7 +209,7 @@ export async function createFedaPayCheckout({
   if (phone) {
     payload.customer.phone_number = {
       number: phone,
-      country: 'BJ',
+      country: 'bj',
     }
   }
 
@@ -184,9 +233,10 @@ export async function createFedaPayCheckout({
     throw wrapped
   }
 
+  const paymentToken = token?.token || ''
   const paymentUrl = extractPaymentUrl(token, transaction)
-  if (!paymentUrl) {
-    const error = new Error('FedaPay n’a pas renvoyé de lien de paiement')
+  if (!paymentToken || !paymentUrl) {
+    const error = new Error('FedaPay n’a pas renvoyé de lien / token de paiement')
     error.status = 502
     throw error
   }
@@ -196,7 +246,7 @@ export async function createFedaPayCheckout({
     reference: transaction.reference || '',
     status: transaction.status || 'pending',
     paymentUrl,
-    token: token?.token || '',
+    token: paymentToken,
     raw: transaction,
   }
 }
@@ -214,7 +264,7 @@ export async function refreshFedaPayPaymentUrl(transactionId) {
     const transaction = await Transaction.retrieve(transactionId)
     const token = await transaction.generateToken()
     const paymentUrl = extractPaymentUrl(token, transaction)
-    if (!paymentUrl) {
+    if (!paymentUrl || !token?.token) {
       const error = new Error('Impossible de régénérer le lien de paiement FedaPay')
       error.status = 502
       throw error
@@ -224,7 +274,7 @@ export async function refreshFedaPayPaymentUrl(transactionId) {
       reference: transaction.reference || '',
       status: transaction.status || 'pending',
       paymentUrl,
-      token: token?.token || '',
+      token: token.token,
       raw: transaction,
     }
   } catch (error) {
@@ -271,13 +321,10 @@ export function mapFedaPayStatus(status) {
   return 'failed'
 }
 
-/** Modes Mobile Money Benin supportés pour le tunnel sans redirection. */
-export const FEDAPAY_MOBILE_OPERATORS = ['mtn', 'moov', 'celtiis']
-
 export function normalizeFedaPayCountry(country) {
-  const value = String(country || 'BJ').trim().toUpperCase()
-  if (['BJ', 'TG', 'CI', 'NE', 'SN'].includes(value)) return value
-  return 'BJ'
+  const value = String(country || 'bj').trim().toLowerCase()
+  if (['bj', 'tg', 'ci', 'ne', 'sn'].includes(value)) return value
+  return 'bj'
 }
 
 /**
@@ -294,8 +341,9 @@ export async function sendFedaPayMobileMoney({
   country = 'BJ',
 }) {
   ensureConfigured()
-  const mode = String(operator || '').trim().toLowerCase()
-  if (!FEDAPAY_MOBILE_OPERATORS.includes(mode)) {
+  const uiOperator = normalizeOperatorId(operator)
+  const mode = toFedaPayMode(operator)
+  if (!uiOperator || !mode) {
     const error = new Error('Réseau Mobile Money invalide. Choisissez MTN, Moov ou Celtiis.')
     error.status = 400
     throw error
@@ -319,13 +367,15 @@ export async function sendFedaPayMobileMoney({
     callbackUrl,
     customMetadata: {
       ...customMetadata,
-      operator: mode,
+      operator: uiOperator,
+      fedapayMode: mode,
       country: isoCountry,
     },
   })
 
   try {
     const transaction = await Transaction.retrieve(checkout.transactionId)
+    // Body attendu par l’API : { token, phone_number: { number, country } }
     await transaction.sendNowWithToken(mode, checkout.token, {
       phone_number: {
         number: normalizedPhone,
@@ -341,7 +391,8 @@ export async function sendFedaPayMobileMoney({
 
   return {
     ...checkout,
-    operator: mode,
+    operator: uiOperator,
+    fedapayMode: mode,
     phone: normalizedPhone,
     country: isoCountry,
   }

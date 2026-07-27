@@ -137,6 +137,8 @@ app.get('/api/health', (_req, res) => {
       : 'Service temporairement indisponible',
     db: dbReady ? 'connected' : 'disconnected',
     fedapay: isFedaPayConfigured() ? 'configured' : 'missing',
+    fedapayEnvironment: process.env.FEDAPAY_ENVIRONMENT === 'sandbox' ? 'sandbox' : 'live',
+    mobileMoneyModes: { mtn: 'mtn_open', moov: 'moov', celtiis: 'sbin' },
   })
 })
 

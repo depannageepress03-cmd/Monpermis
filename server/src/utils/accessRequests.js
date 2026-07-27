@@ -12,6 +12,7 @@ import {
   createFedaPayCheckout,
   mapFedaPayStatus,
   normalizeBeninPhone,
+  normalizeOperatorId,
   refreshFedaPayPaymentUrl,
   retrieveFedaPayTransaction,
   sendFedaPayMobileMoney,
@@ -548,8 +549,8 @@ export async function checkoutCartOnlineAccess({
     throw error
   }
 
-  const mode = String(operator || '').trim().toLowerCase()
-  if (!FEDAPAY_MOBILE_OPERATORS.includes(mode)) {
+  const mode = normalizeOperatorId(operator)
+  if (!mode || !FEDAPAY_MOBILE_OPERATORS.includes(mode)) {
     const error = new Error('Réseau Mobile Money invalide. Choisissez MTN, Moov ou Celtiis.')
     error.status = 400
     throw error
