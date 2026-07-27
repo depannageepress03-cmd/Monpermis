@@ -149,7 +149,11 @@ export function ChapterTestSubjectScreen() {
     setError(null)
     try {
       const data = await fetchChapterTestSubjects(chapterId)
-      setSubjects(data.subjects || [])
+      const list = Array.isArray(data?.subjects) ? data.subjects : []
+      setSubjects(list)
+      if (list.length === 0) {
+        setError(null)
+      }
     } catch (err) {
       setError(err instanceof ContentError ? err.message : 'Chargement impossible')
       setSubjects([])
@@ -184,7 +188,9 @@ export function ChapterTestSubjectScreen() {
               <View style={[styles.accent, styles.accentNavy]} />
             </View>
             <Text style={styles.subtitle}>
-              Choisissez un sujet. Chaque sujet a un jeu de questions différent.
+              {subjects.length > 0
+                ? `${subjects.length} sujet${subjects.length > 1 ? 's' : ''} disponible${subjects.length > 1 ? 's' : ''} — choisissez-en un.`
+                : 'Choisissez un sujet. Chaque sujet a un jeu de questions différent.'}
             </Text>
           </View>
 
@@ -203,8 +209,8 @@ export function ChapterTestSubjectScreen() {
           {!loadingList && !error
             ? subjects.map((subject) => (
                 <Pressable
-                  key={subject.id || subject.number}
-                  style={({ pressed }) => [styles.summaryCard, pressed && styles.pressed, { marginBottom: 12 }]}
+                  key={subject.id || `sujet-${subject.number}`}
+                  style={({ pressed }) => [styles.startBtn, pressed && styles.pressed, { marginBottom: 12 }]}
                   onPress={() =>
                     navigation.navigate('ChapterQuestions', {
                       chapterId,
@@ -214,15 +220,15 @@ export function ChapterTestSubjectScreen() {
                     })
                   }
                 >
-                  <ClipboardList size={22} color={dark.textPrimary} />
+                  <ClipboardList size={20} color={'#0B0F1A'} />
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.cardTitle}>{subject.label}</Text>
-                    <Text style={styles.cardIndex}>
+                    <Text style={styles.startBtnText}>{subject.label}</Text>
+                    <Text style={[styles.cardIndex, { color: '#0B0F1A', opacity: 0.75 }]}>
                       {subject.questionCount} question
                       {subject.questionCount !== 1 ? 's' : ''}
                     </Text>
                   </View>
-                  <ChevronRight size={20} color={dark.textPrimary} />
+                  <ChevronRight size={20} color={'#0B0F1A'} />
                 </Pressable>
               ))
             : null}

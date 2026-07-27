@@ -276,10 +276,9 @@ export function CourseDetailScreen() {
                     style={[styles.secondaryBtn, !allCompleted && styles.btnDisabled]}
                     disabled={!allCompleted}
                     onPress={() =>
-                      navigation.navigate('ChapterQuestions', {
+                      navigation.navigate('ChapterTestSubject', {
                         chapterId,
                         chapterName,
-                        mode: 'test',
                       })
                     }
                   >
@@ -295,7 +294,7 @@ export function CourseDetailScreen() {
                       ]}
                     >
                       {allCompleted
-                        ? 'Accéder au sujet test'
+                        ? 'Accéder aux sujets test'
                         : 'Terminez tous les cours pour le test'}
                     </Text>
                   </Pressable>
