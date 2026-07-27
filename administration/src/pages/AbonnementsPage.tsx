@@ -1,6 +1,20 @@
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Gift, RefreshCw, Search } from 'lucide-react'
+import {
+  Bot,
+  BookOpen,
+  Car,
+  CheckCircle2,
+  Gift,
+  RefreshCw,
+  Search,
+  ShieldCheck,
+  Users,
+  Video,
+  Wallet,
+  Wifi,
+  X,
+} from 'lucide-react'
 import {
   fetchAccessModulePricing,
   fetchAccessStats,
@@ -42,6 +56,31 @@ const grantModules: AccessModuleKey[] = [
 
 function moduleLabel(module: AccessModuleKey) {
   return moduleOptions.find((option) => option.value === module)?.label ?? module
+}
+
+const moduleIcons: Record<AccessModuleKey, typeof BookOpen> = {
+  code: BookOpen,
+  conduite_heures: Car,
+  conduite_videos: Video,
+  ecodepermis: ShieldCheck,
+  aiChat: Bot,
+}
+
+function ModuleChip({ module }: { module: AccessModuleKey }) {
+  const Icon = moduleIcons[module] || BookOpen
+  return (
+    <span className="ar-module-chip">
+      <Icon size={14} />
+      {moduleLabel(module)}
+    </span>
+  )
+}
+
+function initials(learner: { firstName?: string; lastName?: string } | null | undefined) {
+  if (!learner) return '?'
+  const a = (learner.firstName || '').trim().charAt(0)
+  const b = (learner.lastName || '').trim().charAt(0)
+  return (a + b).toUpperCase() || '?'
 }
 
 function formatMoney(value: number, currency = 'XOF') {
@@ -285,17 +324,33 @@ export function AbonnementsPage() {
 
       <div className="ar-stats-row">
         <div className="ar-stat-card">
-          <p className="ar-stat-label">Abonnements actifs</p>
+          <div className="ar-stat-head">
+            <p className="ar-stat-label">Abonnements actifs</p>
+            <div className="ar-stat-icon">
+              <Users size={17} />
+            </div>
+          </div>
           <p className="ar-stat-value">{loading ? '…' : activeCount}</p>
         </div>
         <div className="ar-stat-card">
-          <p className="ar-stat-label">Paiements réussis</p>
+          <div className="ar-stat-head">
+            <p className="ar-stat-label">Paiements réussis</p>
+            <div className="ar-stat-icon is-gold">
+              <CheckCircle2 size={17} />
+            </div>
+          </div>
           <p className="ar-stat-value">{loading ? '…' : payments.length}</p>
           <p className="ar-stat-meta">{formatMoney(approvedRevenue)}</p>
         </div>
         <div className="ar-stat-card ar-stat-card-muted">
-          <p className="ar-stat-label">Suivi live</p>
-          <p className="ar-stat-value" style={{ fontSize: 16 }}>
+          <div className="ar-stat-head">
+            <p className="ar-stat-label">Suivi live</p>
+            <div className="ar-stat-icon is-navy">
+              <Wifi size={17} />
+            </div>
+          </div>
+          <p className="ar-live-status">
+            <span className={`subscriptions-live-dot${liveConnected ? ' is-live' : ''}`} />
             {liveConnected ? 'Connecté' : 'Reconnexion…'}
           </p>
         </div>
@@ -334,11 +389,12 @@ export function AbonnementsPage() {
 
       {tab === 'subscribers' ? (
         <>
-          <div className="ar-filters" style={{ alignItems: 'end' }}>
-            <form onSubmit={handleSearch} style={{ display: 'flex', gap: 8, flex: 1, flexWrap: 'wrap' }}>
-              <label className="admin-field" style={{ flex: '1 1 220px' }}>
+          <div className="ar-toolbar">
+            <form onSubmit={handleSearch} className="ar-filters">
+              <label className="admin-field" style={{ minWidth: 240 }}>
                 <span>Rechercher un apprenant</span>
-                <span style={{ display: 'flex', gap: 8 }}>
+                <span className="ar-search-field">
+                  <Search size={15} />
                   <input
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
@@ -364,18 +420,31 @@ export function AbonnementsPage() {
               </label>
             </form>
             <button type="button" className="admin-btn admin-btn-primary" onClick={() => setGrantOpen(true)}>
-              <Gift size={14} />
+              <Gift size={15} />
               Attribuer un abonnement
             </button>
           </div>
 
           {grantOpen ? (
-            <form className="ar-detail admin-panel" onSubmit={(e) => void handleGrant(e)}>
-              <h3 style={{ marginTop: 0 }}>Attribution exceptionnelle</h3>
-              <p className="muted" style={{ marginTop: 0 }}>
+            <form className="ar-grant-panel" onSubmit={(e) => void handleGrant(e)}>
+              <div className="ar-grant-panel-head">
+                <h3 className="ar-grant-panel-title">
+                  <Gift size={18} />
+                  Attribution exceptionnelle
+                </h3>
+                <button
+                  type="button"
+                  className="admin-btn admin-btn-secondary"
+                  onClick={() => setGrantOpen(false)}
+                  aria-label="Fermer"
+                >
+                  <X size={15} />
+                </button>
+              </div>
+              <p className="ar-grant-panel-hint">
                 Active immédiatement un abonnement sans paiement. À utiliser uniquement au cas par cas.
               </p>
-              <div className="ar-detail-grid">
+              <div className="ar-grant-grid">
                 <label className="admin-field">
                   <span>Apprenant</span>
                   <input
@@ -383,12 +452,7 @@ export function AbonnementsPage() {
                     onChange={(e) => setUserQuery(e.target.value)}
                     placeholder="Filtrer la liste…"
                   />
-                  <select
-                    value={grantUserId}
-                    onChange={(e) => setGrantUserId(e.target.value)}
-                    required
-                    style={{ marginTop: 8 }}
-                  >
+                  <select value={grantUserId} onChange={(e) => setGrantUserId(e.target.value)} required>
                     <option value="">Choisir…</option>
                     {filteredUsers.map((user) => (
                       <option key={user.id} value={user.id}>
@@ -436,7 +500,7 @@ export function AbonnementsPage() {
                   placeholder="Motif de l’attribution…"
                 />
               </label>
-              <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+              <div className="ar-grant-actions">
                 <button type="submit" className="admin-btn admin-btn-primary" disabled={granting}>
                   {granting ? 'Attribution…' : 'Confirmer'}
                 </button>
@@ -466,26 +530,36 @@ export function AbonnementsPage() {
               <tbody>
                 {loading && subscribers.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="muted">
-                      Chargement…
+                    <td colSpan={6}>
+                      <div className="ar-empty-row">Chargement…</div>
                     </td>
                   </tr>
                 ) : subscribers.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="muted">
-                      Aucun abonnement actif.
+                    <td colSpan={6}>
+                      <div className="ar-empty-row">
+                        <Users size={26} />
+                        Aucun abonnement actif pour ce filtre.
+                      </div>
                     </td>
                   </tr>
                 ) : (
                   subscribers.map((row) => (
                     <tr key={row.id}>
                       <td>
-                        <strong>{learnerName(row.learner)}</strong>
-                        <div className="muted" style={{ fontSize: 12 }}>
-                          {row.learner?.phone || row.learner?.email || '—'}
+                        <div className="ar-learner">
+                          <span className="ar-avatar">{initials(row.learner)}</span>
+                          <div className="ar-learner-body">
+                            <div className="ar-learner-name">{learnerName(row.learner)}</div>
+                            <div className="ar-learner-meta">
+                              {row.learner?.phone || row.learner?.email || '—'}
+                            </div>
+                          </div>
                         </div>
                       </td>
-                      <td>{moduleLabel(row.module)}</td>
+                      <td>
+                        <ModuleChip module={row.module} />
+                      </td>
                       <td>{row.durationLabel}</td>
                       <td>
                         <StatusBadge tone="success">{row.remainingLabel}</StatusBadge>
@@ -521,14 +595,17 @@ export function AbonnementsPage() {
             <tbody>
               {loading && payments.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="muted">
-                    Chargement…
+                  <td colSpan={6}>
+                    <div className="ar-empty-row">Chargement…</div>
                   </td>
                 </tr>
               ) : payments.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="muted">
-                    Aucun paiement réussi pour le moment.
+                  <td colSpan={6}>
+                    <div className="ar-empty-row">
+                      <CheckCircle2 size={26} />
+                      Aucun paiement réussi pour le moment.
+                    </div>
                   </td>
                 </tr>
               ) : (
@@ -542,16 +619,29 @@ export function AbonnementsPage() {
                   return (
                     <tr key={payment.id}>
                       <td>
-                        <strong>{learnerName(payment.learner)}</strong>
-                        <div className="muted" style={{ fontSize: 12 }}>
-                          {payment.learner?.phone || payment.learner?.email || '—'}
+                        <div className="ar-learner">
+                          <span className="ar-avatar">{initials(payment.learner)}</span>
+                          <div className="ar-learner-body">
+                            <div className="ar-learner-name">{learnerName(payment.learner)}</div>
+                            <div className="ar-learner-meta">
+                              {payment.learner?.phone || payment.learner?.email || '—'}
+                            </div>
+                          </div>
                         </div>
                       </td>
-                      <td>{formatMoney(payment.amount, payment.currency)}</td>
                       <td>
-                        {modules.length
-                          ? modules.map((key) => moduleLabel(key)).join(' + ')
-                          : '—'}
+                        <strong>{formatMoney(payment.amount, payment.currency)}</strong>
+                      </td>
+                      <td>
+                        {modules.length ? (
+                          <div className="ar-row-actions">
+                            {modules.map((key) => (
+                              <ModuleChip key={key} module={key} />
+                            ))}
+                          </div>
+                        ) : (
+                          '—'
+                        )}
                       </td>
                       <td>{paymentChannelLabel(payment)}</td>
                       <td className="muted">{payment.fedapayReference || '—'}</td>
@@ -580,52 +670,72 @@ export function AbonnementsPage() {
               </tr>
             </thead>
             <tbody>
-              {pricing.map((module) => (
-                <tr key={module.key}>
-                  <td>
-                    <strong>{module.label}</strong>
-                    <div className="muted" style={{ fontSize: 12 }}>
-                      {moduleLabel(module.key)}
-                    </div>
-                  </td>
-                  <td>{unitLabel(module.unit)}</td>
-                  <td>
-                    <input
-                      value={pricingDrafts[module.key] ?? ''}
-                      onChange={(e) =>
-                        setPricingDrafts((current) => ({ ...current, [module.key]: e.target.value }))
-                      }
-                      style={{ width: 120 }}
-                    />{' '}
-                    FCFA
-                  </td>
-                  <td>
-                    <StatusBadge tone={module.active ? 'success' : 'danger'}>
-                      {module.active ? 'Actif' : 'Inactif'}
-                    </StatusBadge>
-                  </td>
-                  <td>
-                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                      <button
-                        type="button"
-                        className="admin-btn admin-btn-secondary"
-                        disabled={pricingBusy === module.key}
-                        onClick={() => void handlePricingSave(module.key)}
-                      >
-                        Enregistrer
-                      </button>
-                      <button
-                        type="button"
-                        className="admin-btn admin-btn-secondary"
-                        disabled={pricingBusy === module.key}
-                        onClick={() => void handlePricingToggleActive(module)}
-                      >
-                        {module.active ? 'Désactiver' : 'Activer'}
-                      </button>
+              {pricing.length === 0 ? (
+                <tr>
+                  <td colSpan={5}>
+                    <div className="ar-empty-row">
+                      <Wallet size={26} />
+                      Aucun tarif configuré.
                     </div>
                   </td>
                 </tr>
-              ))}
+              ) : (
+                pricing.map((module) => {
+                  const Icon = moduleIcons[module.key] || BookOpen
+                  return (
+                    <tr key={module.key}>
+                      <td>
+                        <div className="ar-pricing-module">
+                          <span className="ar-pricing-icon">
+                            <Icon size={17} />
+                          </span>
+                          <div>
+                            <div className="ar-learner-name">{module.label}</div>
+                            <div className="ar-learner-meta">{moduleLabel(module.key)}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td>{unitLabel(module.unit)}</td>
+                      <td>
+                        <span className="ar-price-field">
+                          <input
+                            value={pricingDrafts[module.key] ?? ''}
+                            onChange={(e) =>
+                              setPricingDrafts((current) => ({ ...current, [module.key]: e.target.value }))
+                            }
+                          />
+                          <span>FCFA</span>
+                        </span>
+                      </td>
+                      <td>
+                        <StatusBadge tone={module.active ? 'success' : 'danger'}>
+                          {module.active ? 'Actif' : 'Inactif'}
+                        </StatusBadge>
+                      </td>
+                      <td>
+                        <div className="ar-row-actions">
+                          <button
+                            type="button"
+                            className="admin-btn admin-btn-secondary"
+                            disabled={pricingBusy === module.key}
+                            onClick={() => void handlePricingSave(module.key)}
+                          >
+                            Enregistrer
+                          </button>
+                          <button
+                            type="button"
+                            className="admin-btn admin-btn-secondary"
+                            disabled={pricingBusy === module.key}
+                            onClick={() => void handlePricingToggleActive(module)}
+                          >
+                            {module.active ? 'Désactiver' : 'Activer'}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })
+              )}
             </tbody>
           </table>
         </div>
