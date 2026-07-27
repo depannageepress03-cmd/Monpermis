@@ -1,7 +1,6 @@
 import { Router } from 'express'
 import { Chapter } from '../models/Chapter.js'
 import { Question } from '../models/Question.js'
-import { TestSubject } from '../models/TestSubject.js'
 import { MIN_COURSE_SECONDS } from '../models/User.js'
 import { requireUserAuth } from '../middleware/userAuth.js'
 import { requireSubscriptionAccess } from '../middleware/subscriptionAccess.js'
@@ -10,6 +9,11 @@ import {
   serializeProgress,
 } from '../utils/progress.js'
 import { buildLearnerJourney } from '../utils/learnerJourney.js'
+import {
+  buildSubjectSummaries,
+  pickQuestionsForSubject,
+  TEST_SUBJECT_SIZE,
+} from '../utils/chapterTestSubjects.js'
 
 const router = Router()
 const withCodeAccess = [requireUserAuth, requireSubscriptionAccess('code')]
@@ -54,6 +58,81 @@ router.get('/chapters/:chapterId/questions', ...withCodeAccess, async (req, res)
   }
 })
 
+router.get('/chapters/:chapterId/test-subjects', ...withCodeAccess, async (req, res) => {
+  try {
+    const chapter = await Chapter.findById(req.params.chapterId)
+    if (!chapter || !chapter.published) {
+      return res.status(404).json({ success: false, error: 'Chapitre introuvable' })
+    }
+
+    const publishedCount = await Question.countDocuments({
+      chapterId: chapter._id,
+      published: true,
+    })
+    const subjects = buildSubjectSummaries(publishedCount, String(chapter._id))
+
+    res.json({
+      success: true,
+      data: {
+        chapter: { id: chapter._id, name: chapter.name },
+        publishedCount,
+        questionsPerSubject: Math.min(TEST_SUBJECT_SIZE, publishedCount),
+        requiredCount: TEST_SUBJECT_SIZE,
+        subjects,
+      },
+    })
+  } catch (error) {
+    console.error('Erreur liste sujets test:', error)
+    res.status(500).json({ success: false, error: 'Sujets test indisponibles' })
+  }
+})
+
+router.get('/chapters/:chapterId/test-subjects/:subjectNumber', ...withCodeAccess, async (req, res) => {
+  try {
+    const chapter = await Chapter.findById(req.params.chapterId)
+    if (!chapter || !chapter.published) {
+      return res.status(404).json({ success: false, error: 'Chapitre introuvable' })
+    }
+
+    const subjectNumber = Math.max(1, parseInt(String(req.params.subjectNumber), 10) || 0)
+    const bank = await Question.find({
+      chapterId: chapter._id,
+      published: true,
+    })
+
+    if (bank.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Aucune question publiée pour ce chapitre',
+      })
+    }
+
+    const subjects = buildSubjectSummaries(bank.length, String(chapter._id))
+    const summary = subjects.find((item) => item.number === subjectNumber)
+    if (!summary) {
+      return res.status(404).json({ success: false, error: 'Sujet test introuvable' })
+    }
+
+    const selected = pickQuestionsForSubject(bank, subjectNumber, String(chapter._id))
+
+    res.json({
+      success: true,
+      data: {
+        chapter: { id: chapter._id, name: chapter.name },
+        subject: {
+          ...summary,
+          questionCount: selected.length,
+          questions: selected.map((question) => question.toPublicJSON()),
+        },
+      },
+    })
+  } catch (error) {
+    console.error('Erreur sujet test public:', error)
+    res.status(500).json({ success: false, error: 'Sujet test indisponible' })
+  }
+})
+
+/** Compat : redirige vers le Sujet 1 (anciens clients). */
 router.get('/chapters/:chapterId/test-subject', ...withCodeAccess, async (req, res) => {
   try {
     const chapter = await Chapter.findById(req.params.chapterId)
@@ -61,25 +140,32 @@ router.get('/chapters/:chapterId/test-subject', ...withCodeAccess, async (req, r
       return res.status(404).json({ success: false, error: 'Chapitre introuvable' })
     }
 
-    const subject = await TestSubject.findOne({
+    const bank = await Question.find({
       chapterId: chapter._id,
       published: true,
-    }).sort({ createdAt: -1 })
+    })
 
-    if (!subject) {
-      return res.status(404).json({ success: false, error: 'Aucun sujet test publié' })
+    if (bank.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Aucune question publiée pour ce chapitre',
+      })
     }
 
-    const questions = await Question.find({
-      _id: { $in: subject.questionIds },
-      chapterId: chapter._id,
-    })
+    const selected = pickQuestionsForSubject(bank, 1, String(chapter._id))
 
     res.json({
       success: true,
       data: {
         chapter: { id: chapter._id, name: chapter.name },
-        subject: subject.toPublicJSON(questions),
+        subject: {
+          id: `${chapter._id}-sujet-1`,
+          number: 1,
+          label: 'Sujet 1',
+          chapterId: chapter._id,
+          questionCount: selected.length,
+          questions: selected.map((question) => question.toPublicJSON()),
+        },
       },
     })
   } catch (error) {

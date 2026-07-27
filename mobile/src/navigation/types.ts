@@ -85,6 +85,7 @@ export type RootStackParamList = {
     chapterId: string
     chapterName: string
     mode?: 'practice' | 'test'
+    subjectNumber?: number
   }
   ChapterQuestionsList: {
     chapterId: string

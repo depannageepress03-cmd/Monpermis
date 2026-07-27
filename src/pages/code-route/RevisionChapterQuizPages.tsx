@@ -1,4 +1,5 @@
 import { LearnerChapterQuizPage } from '../learner/LearnerChapterQuizPage'
+import { RevisionChapterTestSubjectsPage } from './RevisionChapterTestSubjectsPage'
 
 export function RevisionChapterQuestionsPage() {
   return (
@@ -9,11 +10,15 @@ export function RevisionChapterQuestionsPage() {
   )
 }
 
+export function RevisionChapterTestSubjectListPage() {
+  return <RevisionChapterTestSubjectsPage />
+}
+
 export function RevisionChapterTestSubjectPage() {
   return (
     <LearnerChapterQuizPage
       mode="test"
-      backTo={() => '/code-de-la-route/revision-chapitres'}
+      backTo={(chapterId) => `/code-de-la-route/revision-chapitres/${chapterId}/sujet-test`}
     />
   )
 }

@@ -13,6 +13,7 @@ import { RevisionChapterCoursesPage } from './pages/code-route/RevisionChapterCo
 import { RevisionChapitresPage } from './pages/code-route/RevisionChapitresPage'
 import {
   RevisionChapterQuestionsPage,
+  RevisionChapterTestSubjectListPage,
   RevisionChapterTestSubjectPage,
 } from './pages/code-route/RevisionChapterQuizPages'
 import { RevisionCourseDetailPage } from './pages/code-route/RevisionCourseDetailPage'
@@ -57,6 +58,10 @@ export default function App() {
       />
       <Route
         path="/code-de-la-route/revision-chapitres/:chapterId/sujet-test"
+        element={<RevisionChapterTestSubjectListPage />}
+      />
+      <Route
+        path="/code-de-la-route/revision-chapitres/:chapterId/sujet-test/:subjectNumber"
         element={<RevisionChapterTestSubjectPage />}
       />
       <Route

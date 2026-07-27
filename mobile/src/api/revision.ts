@@ -353,11 +353,32 @@ export async function fetchChapterQuestions(chapterId: string): Promise<Revision
   return data.questions
 }
 
-export async function fetchChapterTestSubject(chapterId: string): Promise<RevisionQuestion[]> {
+export type RevisionTestSubjectSummary = {
+  number: number
+  id: string
+  label: string
+  questionCount: number
+}
+
+export async function fetchChapterTestSubjects(chapterId: string) {
+  return request<{
+    publishedCount: number
+    questionsPerSubject: number
+    subjects: RevisionTestSubjectSummary[]
+  }>(`/content/revision/chapters/${encodeURIComponent(chapterId)}/test-subjects`, { auth: true })
+}
+
+export async function fetchChapterTestSubject(
+  chapterId: string,
+  subjectNumber = 1,
+): Promise<{ number: number; label: string; questions: RevisionQuestion[] }> {
   const data = await request<{
-    subject: { questions: RevisionQuestion[] }
-  }>(`/content/revision/chapters/${encodeURIComponent(chapterId)}/test-subject`, { auth: true })
-  return data.subject.questions
+    subject: { number: number; label: string; questions: RevisionQuestion[] }
+  }>(
+    `/content/revision/chapters/${encodeURIComponent(chapterId)}/test-subjects/${encodeURIComponent(String(subjectNumber))}`,
+    { auth: true },
+  )
+  return data.subject
 }
 
 export async function checkQuestionAnswers(

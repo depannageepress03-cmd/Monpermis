@@ -148,11 +148,28 @@ export function fetchRevisionChapterQuestions(chapterId: string) {
   ).then((data) => data.questions)
 }
 
-export function fetchRevisionChapterTestSubject(chapterId: string) {
-  return request<{ subject: { questions: LearnerQuestion[] } }>(
-    `/content/revision/chapters/${encodeURIComponent(chapterId)}/test-subject`,
+export type LearnerTestSubjectSummary = {
+  number: number
+  id: string
+  label: string
+  questionCount: number
+}
+
+export function fetchRevisionChapterTestSubjects(chapterId: string) {
+  return request<{
+    publishedCount: number
+    questionsPerSubject: number
+    subjects: LearnerTestSubjectSummary[]
+  }>(`/content/revision/chapters/${encodeURIComponent(chapterId)}/test-subjects`, { auth: true })
+}
+
+export function fetchRevisionChapterTestSubject(chapterId: string, subjectNumber = 1) {
+  return request<{
+    subject: { number: number; label: string; questions: LearnerQuestion[] }
+  }>(
+    `/content/revision/chapters/${encodeURIComponent(chapterId)}/test-subjects/${encodeURIComponent(String(subjectNumber))}`,
     { auth: true },
-  ).then((data) => data.subject.questions)
+  ).then((data) => data.subject)
 }
 
 export function checkRevisionQuestionAnswers(

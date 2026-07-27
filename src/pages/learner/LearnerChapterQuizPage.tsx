@@ -34,12 +34,16 @@ export function LearnerChapterQuizPage({
   backTo: (chapterId: string) => string
 }) {
   const navigate = useNavigate()
-  const { chapterId = '' } = useParams()
+  const { chapterId = '', subjectNumber: subjectNumberParam } = useParams()
+  const subjectNumber = Math.max(1, parseInt(String(subjectNumberParam || '1'), 10) || 1)
   const location = useLocation()
   const { user, loading: authLoading } = useAuth()
   const stateChapterName =
     (location.state as { chapterName?: string } | null)?.chapterName || ''
   const [chapterName, setChapterName] = useState(stateChapterName || 'Chapitre')
+  const [subjectLabel, setSubjectLabel] = useState(
+    mode === 'test' ? `Sujet ${subjectNumber}` : '',
+  )
 
   const [questions, setQuestions] = useState<LearnerQuestion[]>([])
   const [loading, setLoading] = useState(true)
@@ -88,11 +92,14 @@ export function LearnerChapterQuizPage({
       } else {
         setChapterName(stateChapterName)
       }
-      const list =
-        mode === 'test'
-          ? await fetchRevisionChapterTestSubject(chapterId)
-          : await fetchRevisionChapterQuestions(chapterId)
-      setQuestions(list)
+      if (mode === 'test') {
+        const subject = await fetchRevisionChapterTestSubject(chapterId, subjectNumber)
+        setSubjectLabel(subject.label || `Sujet ${subjectNumber}`)
+        setQuestions(subject.questions || [])
+      } else {
+        setSubjectLabel('')
+        setQuestions(await fetchRevisionChapterQuestions(chapterId))
+      }
       setIndex(0)
       setSelectedIds([])
       setResult(null)
@@ -106,7 +113,7 @@ export function LearnerChapterQuizPage({
     } finally {
       setLoading(false)
     }
-  }, [chapterId, mode, stateChapterName])
+  }, [chapterId, mode, stateChapterName, subjectNumber])
 
   useEffect(() => {
     if (user) void load()
@@ -251,14 +258,18 @@ export function LearnerChapterQuizPage({
     <div className="auth-page">
       <div className="auth-container learner-container">
         <PageNavbar
-          title={mode === 'test' ? 'Sujet test' : 'Questions'}
+          title={mode === 'test' ? subjectLabel || 'Sujet test' : 'Questions'}
           icon={mode === 'test' ? <ClipboardList size={22} /> : <HelpCircle size={22} />}
           onBack={() => navigate(backTo(chapterId))}
         />
 
         <header className="auth-header learner-header">
           <h1>{chapterName}</h1>
-          <p>{mode === 'test' ? 'Évaluez-vous sur ce chapitre.' : 'Entraînez-vous aux questions.'}</p>
+          <p>
+            {mode === 'test'
+              ? `${subjectLabel} · jusqu’à 20 questions.`
+              : 'Entraînez-vous aux questions.'}
+          </p>
         </header>
 
         <div className="auth-card learner-card">
@@ -270,7 +281,7 @@ export function LearnerChapterQuizPage({
               <h2>{mode === 'test' ? 'Aucun sujet test' : 'Aucune question'}</h2>
               <p className="subtitle">
                 {mode === 'test'
-                  ? 'Aucun sujet test publié pour ce chapitre.'
+                  ? 'Aucune question publiée pour ce chapitre. Publiez des questions dans l’admin pour activer le sujet test automatique.'
                   : 'Aucune question publiée pour ce chapitre.'}
               </p>
             </div>

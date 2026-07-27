@@ -13,7 +13,7 @@ import {
 import {
   ContentError,
   fetchChapterQuestions,
-  fetchChapterTestSubject,
+  fetchChapterTestSubjects,
   type RevisionQuestion,
 } from '../../api/revision'
 import { DarkScreen } from '../../components/DarkScreen'
@@ -138,7 +138,9 @@ export function ChapterTestSubjectScreen() {
   const { user, loading } = useRequireAuth(navigation)
   const { chapterId, chapterName } = route.params
 
-  const [questions, setQuestions] = useState<RevisionQuestion[]>([])
+  const [subjects, setSubjects] = useState<
+    { number: number; id: string; label: string; questionCount: number }[]
+  >([])
   const [loadingList, setLoadingList] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -146,11 +148,11 @@ export function ChapterTestSubjectScreen() {
     setLoadingList(true)
     setError(null)
     try {
-      const list = await fetchChapterTestSubject(chapterId)
-      setQuestions(list)
+      const data = await fetchChapterTestSubjects(chapterId)
+      setSubjects(data.subjects || [])
     } catch (err) {
       setError(err instanceof ContentError ? err.message : 'Chargement impossible')
-      setQuestions([])
+      setSubjects([])
     } finally {
       setLoadingList(false)
     }
@@ -175,53 +177,55 @@ export function ChapterTestSubjectScreen() {
 
         <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
           <View style={styles.header}>
-            <Text style={styles.kicker}>Sujet test</Text>
+            <Text style={styles.kicker}>Sujets test</Text>
             <View style={styles.accentRow}>
               <View style={[styles.accent, styles.accentGreen]} />
               <View style={[styles.accent, styles.accentGold]} />
               <View style={[styles.accent, styles.accentNavy]} />
             </View>
-            <Text style={styles.subtitle}>Évaluez-vous sur ce chapitre.</Text>
+            <Text style={styles.subtitle}>
+              Choisissez un sujet. Chaque sujet a un jeu de questions différent.
+            </Text>
           </View>
 
           {loadingList ? <ActivityIndicator color={dark.green} style={{ marginBottom: 16 }} /> : null}
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-          {!loadingList && !error && questions.length === 0 ? (
+          {!loadingList && !error && subjects.length === 0 ? (
             <View style={styles.centerBox}>
               <Text style={styles.emptyTitle}>Aucun sujet test</Text>
-              <Text style={styles.emptyText}>Aucun sujet test publié pour ce chapitre.</Text>
+              <Text style={styles.emptyText}>
+                Aucune question publiée pour ce chapitre.
+              </Text>
             </View>
           ) : null}
 
-          {!loadingList && !error && questions.length > 0 ? (
-            <>
-              <View style={styles.summaryCard}>
-                <ClipboardList size={22} color={dark.textPrimary} />
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.cardTitle}>Sujet du chapitre</Text>
-                  <Text style={styles.cardIndex}>
-                    {questions.length} question{questions.length !== 1 ? 's' : ''}
-                  </Text>
-                </View>
-              </View>
-
-              <Pressable
-                style={({ pressed }) => [styles.startBtn, pressed && styles.pressed]}
-                onPress={() =>
-                  navigation.navigate('ChapterQuestions', {
-                    chapterId,
-                    chapterName,
-                    mode: 'test',
-                  })
-                }
-              >
-                <ClipboardList size={20} color={'#0B0F1A'} />
-                <Text style={styles.startBtnText}>Commencer le sujet test</Text>
-                <ChevronRight size={20} color={'#0B0F1A'} />
-              </Pressable>
-            </>
-          ) : null}
+          {!loadingList && !error
+            ? subjects.map((subject) => (
+                <Pressable
+                  key={subject.id || subject.number}
+                  style={({ pressed }) => [styles.summaryCard, pressed && styles.pressed, { marginBottom: 12 }]}
+                  onPress={() =>
+                    navigation.navigate('ChapterQuestions', {
+                      chapterId,
+                      chapterName,
+                      mode: 'test',
+                      subjectNumber: subject.number,
+                    })
+                  }
+                >
+                  <ClipboardList size={22} color={dark.textPrimary} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.cardTitle}>{subject.label}</Text>
+                    <Text style={styles.cardIndex}>
+                      {subject.questionCount} question
+                      {subject.questionCount !== 1 ? 's' : ''}
+                    </Text>
+                  </View>
+                  <ChevronRight size={20} color={dark.textPrimary} />
+                </Pressable>
+              ))
+            : null}
         </ScrollView>
       </DarkScreen>
   )

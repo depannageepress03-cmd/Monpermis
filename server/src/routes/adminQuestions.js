@@ -2,6 +2,10 @@ import { Router } from 'express'
 import { Chapter } from '../models/Chapter.js'
 import { Question } from '../models/Question.js'
 import { TEST_SUBJECT_SIZE, TestSubject } from '../models/TestSubject.js'
+import {
+  buildSubjectSummaries,
+  computeChapterTestSubjectCount,
+} from '../utils/chapterTestSubjects.js'
 import { requireAdminAuth } from '../middleware/adminAuth.js'
 import { audioUpload } from '../middleware/upload.js'
 import { destroyAudioByPublicId, uploadAudioBuffer } from '../services/cloudinary.js'
@@ -217,16 +221,23 @@ router.get('/chapters/:chapterId/test-subjects/current', async (req, res) => {
       return res.status(404).json({ success: false, error: 'Chapitre introuvable' })
     }
 
-    const bankCount = await Question.countDocuments({ chapterId: chapter._id })
-    const subject = await TestSubject.findOne({ chapterId: chapter._id }).sort({ createdAt: -1 })
+    const [bankCount, publishedCount] = await Promise.all([
+      Question.countDocuments({ chapterId: chapter._id }),
+      Question.countDocuments({ chapterId: chapter._id, published: true }),
+    ])
+    const subjects = buildSubjectSummaries(publishedCount, String(chapter._id))
 
     res.json({
       success: true,
       data: {
         chapter: { id: chapter._id, name: chapter.name },
         bankCount,
+        publishedCount,
         requiredCount: TEST_SUBJECT_SIZE,
-        subject: subject ? await loadSubjectWithQuestions(subject) : null,
+        subjectCount: computeChapterTestSubjectCount(publishedCount),
+        autoSubjects: true,
+        subjects,
+        subject: null,
       },
     })
   } catch (error) {

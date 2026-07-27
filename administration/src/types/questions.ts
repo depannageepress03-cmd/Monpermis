@@ -42,9 +42,20 @@ export interface TestSubject {
   updatedAt?: string
 }
 
+export interface TestSubjectSummary {
+  number: number
+  id: string
+  label: string
+  questionCount: number
+}
+
 export interface TestSubjectCurrent {
   chapter: { id: string; name: string }
   bankCount: number
+  publishedCount?: number
   requiredCount: number
+  subjectCount?: number
+  autoSubjects?: boolean
+  subjects?: TestSubjectSummary[]
   subject: TestSubject | null
 }

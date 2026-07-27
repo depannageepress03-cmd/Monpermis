@@ -41,9 +41,11 @@ export function ChapterQuestionsScreen() {
   const navigation = useNavigation<Nav>()
   const route = useRoute<Route>()
   const { user, loading } = useRequireAuth(navigation)
-  const { chapterId, chapterName, mode = 'practice' } = route.params
+  const { chapterId, chapterName, mode = 'practice', subjectNumber: subjectNumberParam } = route.params
   const isTest = mode === 'test'
+  const subjectNumber = Math.max(1, Number(subjectNumberParam) || 1)
 
+  const [subjectLabel, setSubjectLabel] = useState(isTest ? `Sujet ${subjectNumber}` : '')
   const [questions, setQuestions] = useState<RevisionQuestion[]>([])
   const [loadingQuestions, setLoadingQuestions] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -86,10 +88,14 @@ export function ChapterQuestionsScreen() {
     setLoadingQuestions(true)
     setError(null)
     try {
-      const list = isTest
-        ? await fetchChapterTestSubject(chapterId)
-        : await fetchChapterQuestions(chapterId)
-      setQuestions(list)
+      if (isTest) {
+        const subject = await fetchChapterTestSubject(chapterId, subjectNumber)
+        setSubjectLabel(subject.label || `Sujet ${subjectNumber}`)
+        setQuestions(subject.questions || [])
+      } else {
+        setSubjectLabel('')
+        setQuestions(await fetchChapterQuestions(chapterId))
+      }
       setIndex(0)
       setSelectedIds(new Set())
       setResult(null)
@@ -103,7 +109,7 @@ export function ChapterQuestionsScreen() {
     } finally {
       setLoadingQuestions(false)
     }
-  }, [chapterId, isTest])
+  }, [chapterId, isTest, subjectNumber])
 
   useFocusEffect(
     useCallback(() => {
@@ -254,7 +260,7 @@ export function ChapterQuestionsScreen() {
 
         <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
           <View style={styles.header}>
-            <Text style={styles.kicker}>{isTest ? 'Sujet test' : 'Questions'}</Text>
+            <Text style={styles.kicker}>{isTest ? subjectLabel || 'Sujet test' : 'Questions'}</Text>
             <View style={styles.accentRow}>
               <View style={[styles.accent, styles.accentGreen]} />
               <View style={[styles.accent, styles.accentGold]} />
@@ -286,7 +292,7 @@ export function ChapterQuestionsScreen() {
               </Text>
               <Text style={styles.emptyText}>
                 {isTest
-                  ? 'Aucun sujet test publié pour ce chapitre. Demandez à votre auto-école de le générer et de le publier.'
+                  ? 'Aucune question publiée pour ce chapitre. Publiez des questions dans l’admin pour activer le sujet test automatique.'
                   : 'Les questions publiées de ce chapitre apparaîtront ici.'}
               </Text>
             </View>
