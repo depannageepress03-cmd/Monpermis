@@ -20,6 +20,46 @@
   display: flex;
   gap: 8px;
   align-items: center;
+  flex-wrap: wrap;
+}
+
+.dash-live-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 34px;
+  padding: 0 12px;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--hairline);
+  background: #fff;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--navy-muted);
+}
+
+.dash-live-pill-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #94a3b8;
+}
+
+.dash-live-pill.is-live {
+  color: #0a6b3a;
+  border-color: rgba(0, 176, 80, 0.35);
+  background: var(--green-light);
+}
+
+.dash-live-pill.is-live .dash-live-pill-dot {
+  background: #00B050;
+  box-shadow: 0 0 0 0 rgba(0, 176, 80, 0.55);
+  animation: dash-live-pulse 1.8s infinite;
+}
+
+@keyframes dash-live-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(0, 176, 80, 0.45); }
+  70% { box-shadow: 0 0 0 8px rgba(0, 176, 80, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(0, 176, 80, 0); }
 }
 
 .dash-month-pill {
@@ -253,9 +293,40 @@
 /* ---- Bottom panels ---- */
 .dash-bottom {
   display: grid;
-  grid-template-columns: 1fr 280px;
+  grid-template-columns: 1fr 320px;
   gap: 10px;
   align-items: start;
+}
+
+.dash-bottom-live {
+  grid-template-columns: minmax(0, 1.15fr) minmax(300px, 0.85fr);
+}
+
+.dash-payments-panel .dash-panel-head {
+  align-items: center;
+}
+
+.dash-payments-head-title {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.dash-payment-item {
+  text-decoration: none;
+  color: inherit;
+  transition: background 0.12s;
+}
+
+.dash-payment-item:hover {
+  background: #f7faf8;
+}
+
+.dash-payment-item small {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
 .dash-panel {

@@ -41,22 +41,31 @@ router.get('/summary', async (_req, res) => {
     startOfMonth.setDate(1)
     startOfMonth.setHours(0, 0, 0, 0)
 
-    const [revenueTotalAgg, revenueMonthAgg, accessActive, accessPending, accessExpired] =
-      await Promise.all([
-        Payment.aggregate([
-          { $match: { status: 'approved' } },
-          { $group: { _id: null, total: { $sum: '$amount' }, count: { $sum: 1 } } },
-        ]),
-        Payment.aggregate([
-          { $match: { status: 'approved', createdAt: { $gte: startOfMonth } } },
-          { $group: { _id: null, total: { $sum: '$amount' } } },
-        ]),
-        AccessRequest.countDocuments({ status: 'actif' }),
-        AccessRequest.countDocuments({
-          status: { $in: ['en_attente', 'paiement_declare', 'en_verification'] },
-        }),
-        AccessRequest.countDocuments({ status: 'expire' }),
-      ])
+    const [
+      revenueTotalAgg,
+      revenueMonthAgg,
+      accessActive,
+      accessPending,
+      accessExpired,
+      paymentsPending,
+      recentPayments,
+    ] = await Promise.all([
+      Payment.aggregate([
+        { $match: { status: 'approved' } },
+        { $group: { _id: null, total: { $sum: '$amount' }, count: { $sum: 1 } } },
+      ]),
+      Payment.aggregate([
+        { $match: { status: 'approved', createdAt: { $gte: startOfMonth } } },
+        { $group: { _id: null, total: { $sum: '$amount' } } },
+      ]),
+      AccessRequest.countDocuments({ status: 'actif' }),
+      AccessRequest.countDocuments({
+        status: { $in: ['en_attente', 'paiement_declare', 'en_verification'] },
+      }),
+      AccessRequest.countDocuments({ status: 'expire' }),
+      Payment.countDocuments({ status: 'pending' }),
+      Payment.find().sort({ updatedAt: -1 }).limit(20),
+    ])
 
     const revenueTotal = revenueTotalAgg[0]?.total || 0
     const revenueTransactions = revenueTotalAgg[0]?.count || 0
@@ -87,6 +96,17 @@ router.get('/summary', async (_req, res) => {
     const reservationsConfirmed = reservations.filter(
       (item) => item.status === 'confirmed' || item.paymentStatus === 'paid',
     ).length
+
+    const userIds = [...new Set(recentPayments.map((p) => String(p.userId)))]
+    const requestIds = [
+      ...new Set(recentPayments.map((p) => String(p.accessRequestId)).filter(Boolean)),
+    ]
+    const [learners, requests] = await Promise.all([
+      User.find({ _id: { $in: userIds } }).select('firstName lastName email phone'),
+      AccessRequest.find({ _id: { $in: requestIds } }).select('module status'),
+    ])
+    const learnerMap = new Map(learners.map((u) => [String(u._id), u]))
+    const requestMap = new Map(requests.map((r) => [String(r._id), r]))
 
     res.json({
       success: true,
@@ -127,6 +147,17 @@ router.get('/summary', async (_req, res) => {
             active: accessActive,
             pending: accessPending,
             expired: accessExpired,
+          },
+          payments: {
+            pending: paymentsPending,
+            recent: recentPayments.map((payment) => {
+              const request = requestMap.get(String(payment.accessRequestId))
+              return {
+                ...payment.toAdminJSON(learnerMap.get(String(payment.userId))),
+                module: request?.module || null,
+                accessRequestStatus: request?.status || null,
+              }
+            }),
           },
         },
       },

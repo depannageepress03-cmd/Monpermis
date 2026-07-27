@@ -121,7 +121,9 @@ export function AdminLayout() {
       .then(({ summary }) => {
         if (cancelled) return
         setNotifCount(
-          (summary.accessRequests?.pending ?? 0) + (summary.conduite?.reservationsPending ?? 0),
+          (summary.accessRequests?.pending ?? 0) +
+            (summary.payments?.pending ?? 0) +
+            (summary.conduite?.reservationsPending ?? 0),
         )
       })
       .catch(() => {

@@ -65,6 +65,27 @@ async function broadcastAccessRequestUpdate(request, user = null) {
   }
 }
 
+/** Diffuse un paiement pour le suivi temps réel du tableau de bord admin. */
+async function broadcastPaymentUpdate(payment, { user = null, module = null } = {}) {
+  try {
+    const learner = user || (await User.findById(payment.userId).select('firstName lastName email phone'))
+    let moduleKey = module
+    if (!moduleKey && payment.accessRequestId) {
+      const request = await AccessRequest.findById(payment.accessRequestId).select('module')
+      moduleKey = request?.module || null
+    }
+    broadcastPaymentEvent({
+      type: 'payment.updated',
+      payment: {
+        ...payment.toAdminJSON(learner),
+        module: moduleKey,
+      },
+    })
+  } catch {
+    // Confort d'affichage uniquement, jamais bloquant.
+  }
+}
+
 /**
  * Cœur de la machine à états. Applique la transition, ses effets de bord,
  * journalise dans AccessAuditLog (append-only), notifie l'utilisateur et
@@ -271,6 +292,7 @@ export async function startFedaPayForRequest(user, request) {
   payment.paymentUrl = checkout.paymentUrl
   payment.status = mapFedaPayStatus(checkout.status)
   await payment.save()
+  void broadcastPaymentUpdate(payment, { user, module: request.module })
 
   await transitionAccessRequest(request, 'en_verification', { actor: 'user', note: 'Paiement FedaPay initié' })
 
@@ -298,6 +320,7 @@ export async function declareManualPayment(user, request, { declaredReference, n
   })
 
   await transitionAccessRequest(request, 'paiement_declare', { actor: 'user', note })
+  void broadcastPaymentUpdate(payment, { user, module: request.module })
 
   return { request, payment }
 }
@@ -328,6 +351,7 @@ export async function adminValidateAccessRequest(request, payment, { decision, n
     payment.adminNote = trimmedNote
     if (decision === 'valide') payment.activatedAt = new Date()
     await payment.save()
+    void broadcastPaymentUpdate(payment, { module: request.module })
   }
 
   const updated = await transitionAccessRequest(request, decision, {
@@ -368,6 +392,7 @@ export async function applyApprovedAccessPayment(payment, { eventName = '', even
   payment.activatedAt = new Date()
   if (eventId) payment.processedEventIds.push(String(eventId))
   await payment.save()
+  void broadcastPaymentUpdate(payment)
 
   const request = await AccessRequest.findById(payment.accessRequestId)
   if (!request) {
@@ -398,6 +423,7 @@ export async function applyFailedAccessPayment(
   payment.rawLastEvent = raw
   if (eventId) payment.processedEventIds.push(String(eventId))
   await payment.save()
+  void broadcastPaymentUpdate(payment)
 
   const request = await AccessRequest.findById(payment.accessRequestId)
   if (request && ['en_attente', 'paiement_declare', 'en_verification'].includes(request.status)) {

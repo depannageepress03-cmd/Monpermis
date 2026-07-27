@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   Activity,
@@ -8,11 +8,19 @@ import {
   Download,
   Filter,
   TrendingUp,
+  Wallet,
   Zap,
 } from 'lucide-react'
 import { MiniDonut } from '../components/AdminCharts'
-import { StatusBadge } from '../components/StatusBadge'
-import { fetchDashboardSummary, type DashboardSummary } from '../api/dashboard'
+import { StatusBadge, type StatusTone } from '../components/StatusBadge'
+import {
+  fetchDashboardSummary,
+  paymentStatusLabel,
+  subscribeToDashboardPaymentEvents,
+  type DashboardPayment,
+  type DashboardSummary,
+} from '../api/dashboard'
+import type { AccessModuleKey, PaymentStatus } from '../api/accessRequests'
 import { getAdminToken, isAuthError, useAdminAuth } from '../context/AdminAuthContext'
 
 const emptySummary: DashboardSummary = {
@@ -32,36 +40,112 @@ const emptySummary: DashboardSummary = {
   admins: { total: 0 },
   revenue: { currency: 'XOF', total: 0, month: 0, transactions: 0 },
   accessRequests: { active: 0, pending: 0, expired: 0 },
+  payments: { pending: 0, recent: [] },
+}
+
+const moduleLabels: Record<AccessModuleKey, string> = {
+  code: 'Code de la route',
+  conduite_heures: 'Heures de conduite',
+  conduite_videos: 'Vidéos conduite',
+  ecodepermis: 'E-Codepermis',
+  aiChat: 'Chat IA',
 }
 
 function formatXof(value: number) {
   return `${new Intl.NumberFormat('fr-FR').format(value)} FCFA`
 }
 
+function formatRelativeTime(value: string) {
+  const diffMs = Date.now() - new Date(value).getTime()
+  const minutes = Math.round(diffMs / 60000)
+  if (Number.isNaN(minutes)) return '—'
+  if (minutes < 1) return 'à l’instant'
+  if (minutes < 60) return `il y a ${minutes} min`
+  const hours = Math.round(minutes / 60)
+  if (hours < 24) return `il y a ${hours} h`
+  const days = Math.round(hours / 24)
+  return `il y a ${days} j`
+}
+
+function paymentTone(status: PaymentStatus): StatusTone {
+  if (status === 'approved') return 'success'
+  if (status === 'pending') return 'warning'
+  return 'danger'
+}
+
+function learnerName(payment: DashboardPayment) {
+  if (!payment.learner) return 'Apprenant'
+  return `${payment.learner.firstName} ${payment.learner.lastName}`.trim() || 'Apprenant'
+}
+
 export function DashboardPage() {
   const { admin } = useAdminAuth()
   const [summary, setSummary] = useState<DashboardSummary>(emptySummary)
+  const [payments, setPayments] = useState<DashboardPayment[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [liveConnected, setLiveConnected] = useState(false)
+  const refreshTimer = useRef<number | null>(null)
 
-  const load = useCallback(async () => {
-    const token = getAdminToken()
-    if (!token) return
-    setLoading(true)
-    setError(null)
-    try {
-      const data = await fetchDashboardSummary(token)
-      setSummary(data.summary)
-    } catch (err) {
-      setError(isAuthError(err) ? err.message : 'Impossible de charger le résumé')
-    } finally {
-      setLoading(false)
-    }
+  const applySummary = useCallback((next: DashboardSummary) => {
+    setSummary(next)
+    setPayments(next.payments?.recent ?? [])
   }, [])
+
+  const load = useCallback(
+    async ({ silent = false } = {}) => {
+      const token = getAdminToken()
+      if (!token) return
+      if (!silent) {
+        setLoading(true)
+        setError(null)
+      }
+      try {
+        const data = await fetchDashboardSummary(token)
+        applySummary(data.summary)
+      } catch (err) {
+        if (!silent) {
+          setError(isAuthError(err) ? err.message : 'Impossible de charger le résumé')
+        }
+      } finally {
+        if (!silent) setLoading(false)
+      }
+    },
+    [applySummary],
+  )
+
+  const scheduleSilentRefresh = useCallback(() => {
+    if (refreshTimer.current != null) window.clearTimeout(refreshTimer.current)
+    refreshTimer.current = window.setTimeout(() => {
+      void load({ silent: true })
+    }, 800)
+  }, [load])
 
   useEffect(() => {
     void load()
   }, [load])
+
+  useEffect(() => {
+    const token = getAdminToken()
+    if (!token) return
+
+    const unsubscribe = subscribeToDashboardPaymentEvents(
+      token,
+      (payment) => {
+        setPayments((current) => {
+          const without = current.filter((item) => item.id !== payment.id)
+          return [payment, ...without].slice(0, 20)
+        })
+        scheduleSilentRefresh()
+      },
+      setLiveConnected,
+    )
+
+    return () => {
+      unsubscribe()
+      if (refreshTimer.current != null) window.clearTimeout(refreshTimer.current)
+    }
+  }, [scheduleSilentRefresh])
 
   const codePct =
     summary.code.chapters > 0
@@ -74,76 +158,53 @@ export function DashboardPage() {
       : '0'
 
   const monthLabel = new Date().toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })
+  const pendingPaymentsTotal = summary.payments.pending + summary.accessRequests.pending
 
-  const rows = useMemo(() => [
-    {
-      space: 'Code de la route',
-      indicator: `${summary.code.chapters} chapitres · ${summary.code.questions} questions`,
-      tone: 'success' as const,
-      badge: `${summary.code.published} publiés`,
-      access: 'Publique',
-      to: '/code',
-    },
-    {
-      space: 'Conduite',
-      indicator: `${summary.conduite.courses} cours · ${summary.conduite.moniteursActive} moniteurs`,
-      tone: summary.conduite.moniteursActive > 0 ? 'success' as const : 'warning' as const,
-      badge: summary.conduite.moniteursActive > 0 ? 'À jour' : 'Aucun moniteur actif',
-      access: 'Abonnés',
-      to: '/conduite',
-    },
-    {
-      space: 'Réservations',
-      indicator: `${summary.conduite.reservationsPending} paiements en attente`,
-      tone: summary.conduite.reservationsPending > 0 ? 'warning' as const : 'success' as const,
-      badge: summary.conduite.reservationsPending > 0 ? 'En attente' : 'À jour',
-      access: 'Admin',
-      to: '/conduite/reservations',
-    },
-    {
-      space: 'Utilisateurs',
-      indicator: `${summary.users.active} apprenants actifs`,
-      tone: summary.users.suspended > 0 ? 'danger' as const : 'success' as const,
-      badge: summary.users.suspended > 0 ? `${summary.users.suspended} suspendus` : 'Actif',
-      access: 'Admin',
-      to: '/utilisateurs',
-    },
-  ], [summary])
-
-  const activity = useMemo(() => [
-    {
-      user: admin?.fullName || 'Administrateur',
-      action: `${summary.users.total} comptes inscrits`,
-      time: 'données live',
-      dot: '#00B050',
-    },
-    {
-      user: 'Réservations',
-      action: `${summary.conduite.reservationsPending} paiements en attente`,
-      time: 'données live',
-      dot: '#FFC000',
-    },
-    {
-      user: 'Code',
-      action: `${summary.code.published}/${summary.code.chapters} chapitres publiés`,
-      time: 'données live',
-      dot: '#00B050',
-    },
-    {
-      user: 'Conduite',
-      action: `${summary.conduite.creneauxLibre} créneaux libres`,
-      time: 'données live',
-      dot: '#FFC000',
-    },
-    ...(summary.users.suspended > 0
-      ? [{
-          user: 'Comptes',
-          action: `${summary.users.suspended} comptes suspendus`,
-          time: 'données live',
-          dot: '#dc2626',
-        }]
-      : []),
-  ], [admin, summary])
+  const rows = useMemo(
+    () => [
+      {
+        space: 'Demandes d’accès',
+        indicator: `${summary.accessRequests.pending} en attente · ${summary.payments.pending} paiements`,
+        tone: pendingPaymentsTotal > 0 ? ('warning' as const) : ('success' as const),
+        badge: pendingPaymentsTotal > 0 ? 'À traiter' : 'À jour',
+        access: 'Admin',
+        to: '/demandes-acces',
+      },
+      {
+        space: 'Code de la route',
+        indicator: `${summary.code.chapters} chapitres · ${summary.code.questions} questions`,
+        tone: 'success' as const,
+        badge: `${summary.code.published} publiés`,
+        access: 'Publique',
+        to: '/code',
+      },
+      {
+        space: 'Conduite',
+        indicator: `${summary.conduite.courses} cours · ${summary.conduite.moniteursActive} moniteurs`,
+        tone: summary.conduite.moniteursActive > 0 ? ('success' as const) : ('warning' as const),
+        badge: summary.conduite.moniteursActive > 0 ? 'À jour' : 'Aucun moniteur actif',
+        access: 'Modules',
+        to: '/conduite',
+      },
+      {
+        space: 'Réservations',
+        indicator: `${summary.conduite.reservationsPending} paiements en attente`,
+        tone: summary.conduite.reservationsPending > 0 ? ('warning' as const) : ('success' as const),
+        badge: summary.conduite.reservationsPending > 0 ? 'En attente' : 'À jour',
+        access: 'Admin',
+        to: '/conduite/reservations',
+      },
+      {
+        space: 'Utilisateurs',
+        indicator: `${summary.users.active} apprenants actifs`,
+        tone: summary.users.suspended > 0 ? ('danger' as const) : ('success' as const),
+        badge: summary.users.suspended > 0 ? `${summary.users.suspended} suspendus` : 'Actif',
+        access: 'Admin',
+        to: '/utilisateurs',
+      },
+    ],
+    [summary, pendingPaymentsTotal],
+  )
 
   return (
     <div className="dash-overview">
@@ -158,6 +219,10 @@ export function DashboardPage() {
           </div>
         </header>
         <div className="dash-page-actions">
+          <span className={`dash-live-pill${liveConnected ? ' is-live' : ''}`}>
+            <span className="dash-live-pill-dot" aria-hidden="true" />
+            {liveConnected ? 'Paiements en direct' : 'Reconnexion…'}
+          </span>
           <span className="dash-month-pill" style={{ textTransform: 'capitalize' }}>
             {monthLabel}
           </span>
@@ -196,33 +261,29 @@ export function DashboardPage() {
 
         <div className="dash-stat-card">
           <div className="dash-stat-head">
-            <p className="dash-stat-label">Leçons conduite</p>
-            <div className="dash-stat-icon is-gold">
-              <Car size={14} strokeWidth={2} />
-            </div>
-          </div>
-          <p className="dash-stat-num">
-            {loading ? '…' : summary.conduite.courses}
-          </p>
-          <div className="dash-stat-foot is-green">
-            <TrendingUp size={12} strokeWidth={2} />
-            {summary.conduite.moniteursActive} moniteurs actifs
-          </div>
-        </div>
-
-        <div className="dash-stat-card">
-          <div className="dash-stat-head">
             <p className="dash-stat-label">Chiffre d&apos;affaires</p>
             <div className="dash-stat-icon is-green">
               <CreditCard size={14} strokeWidth={2} />
             </div>
           </div>
-          <p className="dash-stat-num">
-            {loading ? '…' : formatXof(summary.revenue.total)}
-          </p>
+          <p className="dash-stat-num">{loading ? '…' : formatXof(summary.revenue.total)}</p>
           <div className="dash-stat-foot is-green">
             <TrendingUp size={12} strokeWidth={2} />
-            {formatXof(summary.revenue.month)} ce mois
+            {formatXof(summary.revenue.month)} ce mois · {summary.revenue.transactions} paiements
+          </div>
+        </div>
+
+        <div className="dash-stat-card">
+          <div className="dash-stat-head">
+            <p className="dash-stat-label">Paiements en attente</p>
+            <div className="dash-stat-icon is-violet">
+              <Wallet size={14} strokeWidth={2} />
+            </div>
+          </div>
+          <p className="dash-stat-num">{loading ? '…' : summary.payments.pending}</p>
+          <div className="dash-stat-foot is-red">
+            <TrendingUp size={12} strokeWidth={2} />
+            {summary.accessRequests.pending} demandes · {summary.conduite.reservationsPending} réservations
           </div>
         </div>
 
@@ -233,28 +294,24 @@ export function DashboardPage() {
               <CreditCard size={14} strokeWidth={2} />
             </div>
           </div>
-          <p className="dash-stat-num">
-            {loading ? '…' : summary.accessRequests.active}
-          </p>
+          <p className="dash-stat-num">{loading ? '…' : summary.accessRequests.active}</p>
           <div className="dash-stat-foot is-red">
             <TrendingUp size={12} strokeWidth={2} />
-            {summary.accessRequests.pending} en attente · {summary.accessRequests.expired} expirés
+            {summary.accessRequests.expired} expirés
           </div>
         </div>
 
         <div className="dash-stat-card">
           <div className="dash-stat-head">
-            <p className="dash-stat-label">Paiements en attente</p>
-            <div className="dash-stat-icon is-violet">
-              <CreditCard size={14} strokeWidth={2} />
+            <p className="dash-stat-label">Leçons conduite</p>
+            <div className="dash-stat-icon is-gold">
+              <Car size={14} strokeWidth={2} />
             </div>
           </div>
-          <p className="dash-stat-num">
-            {loading ? '…' : summary.conduite.reservationsPending}
-          </p>
-          <div className="dash-stat-foot is-red">
+          <p className="dash-stat-num">{loading ? '…' : summary.conduite.courses}</p>
+          <div className="dash-stat-foot is-green">
             <TrendingUp size={12} strokeWidth={2} />
-            {summary.conduite.reservations} réservations
+            {summary.conduite.moniteursActive} moniteurs actifs
           </div>
         </div>
       </section>
@@ -282,15 +339,13 @@ export function DashboardPage() {
           </div>
           <div>
             <p className="dash-stat-label">Créneaux libres</p>
-            <p className="dash-secondary-num">
-              {loading ? '…' : summary.conduite.creneauxLibre}
-            </p>
+            <p className="dash-secondary-num">{loading ? '…' : summary.conduite.creneauxLibre}</p>
             <p className="dash-secondary-hint">disponibles</p>
           </div>
         </div>
       </section>
 
-      <section className="dash-bottom">
+      <section className="dash-bottom dash-bottom-live">
         <div className="dash-panel">
           <div className="dash-panel-head">
             <div>
@@ -333,34 +388,88 @@ export function DashboardPage() {
           </div>
         </div>
 
-        <div className="dash-panel">
-          <div className="dash-panel-head" style={{ justifyContent: 'flex-start' }}>
-            <Activity size={14} color="#00B050" strokeWidth={2} />
-            <h3>Activité récente</h3>
+        <div className="dash-panel dash-payments-panel">
+          <div className="dash-panel-head">
+            <div className="dash-payments-head-title">
+              <Activity size={14} color="#00B050" strokeWidth={2} />
+              <div>
+                <h3>Paiements en temps réel</h3>
+                <p>
+                  {liveConnected ? 'Flux SSE connecté' : 'Connexion au flux…'}
+                  {admin?.fullName ? ` · ${admin.fullName}` : ''}
+                </p>
+              </div>
+            </div>
+            <Link to="/demandes-acces" className="dash-filter-btn" style={{ textDecoration: 'none' }}>
+              Voir tout
+            </Link>
           </div>
+
           <div className="dash-activity-list">
-            {activity.map((a) => (
-              <div key={`${a.user}-${a.action}`} className="dash-activity-item">
-                <span className="dash-activity-dot" style={{ background: a.dot }} />
+            {loading && payments.length === 0 ? (
+              <div className="dash-activity-item">
+                <span className="dash-activity-dot" style={{ background: '#94a3b8' }} />
                 <div>
-                  <strong>{a.user}</strong>
-                  <span>{a.action}</span>
-                  <small>{a.time}</small>
+                  <strong>Chargement…</strong>
+                  <span>Récupération des derniers paiements</span>
                 </div>
               </div>
-            ))}
+            ) : payments.length === 0 ? (
+              <div className="dash-activity-item">
+                <span className="dash-activity-dot" style={{ background: '#00B050' }} />
+                <div>
+                  <strong>Aucun paiement récent</strong>
+                  <span>Les nouveaux paiements apparaîtront ici automatiquement</span>
+                </div>
+              </div>
+            ) : (
+              payments.map((payment) => (
+                <Link
+                  key={payment.id}
+                  to="/demandes-acces"
+                  className="dash-activity-item dash-payment-item"
+                >
+                  <span
+                    className="dash-activity-dot"
+                    style={{
+                      background:
+                        payment.status === 'approved'
+                          ? '#00B050'
+                          : payment.status === 'pending'
+                            ? '#FFC000'
+                            : '#dc2626',
+                    }}
+                  />
+                  <div>
+                    <strong>{learnerName(payment)}</strong>
+                    <span>
+                      {formatXof(payment.amount)}
+                      {payment.module ? ` · ${moduleLabels[payment.module] || payment.module}` : ''}
+                      {` · ${payment.method === 'fedapay' ? 'Mobile Money' : 'Manuel'}`}
+                    </span>
+                    <small>
+                      <StatusBadge tone={paymentTone(payment.status)}>
+                        {paymentStatusLabel(payment.status)}
+                      </StatusBadge>
+                      {' · '}
+                      {formatRelativeTime(payment.updatedAt || payment.createdAt)}
+                    </small>
+                  </div>
+                </Link>
+              ))
+            )}
           </div>
         </div>
       </section>
 
       <div className="dash-quick-links">
         {[
+          { to: '/demandes-acces', label: 'Demandes d’accès' },
           { to: '/code/revision-chapitres', label: 'Révision chapitres' },
           { to: '/conduite/lecons', label: 'Leçons conduite' },
           { to: '/conduite/reservations', label: 'Réservations' },
           { to: '/utilisateurs', label: 'Utilisateurs' },
           { to: '/annonces', label: 'Annonces' },
-          { to: '/creer-admin', label: 'Créer un admin' },
         ].map((item) => (
           <Link key={item.to} to={item.to} className="dash-quick-link">
             <ArrowUpRight size={12} strokeWidth={2} />
