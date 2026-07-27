@@ -153,7 +153,12 @@ export function MobileMoneyCheckout({
       startPoll(result.accessRequest.id)
     } catch (err) {
       setBusy(false)
-      setError(err instanceof AccessRequestError ? err.message : 'Paiement impossible')
+      setStep('phone')
+      setError(
+        err instanceof AccessRequestError
+          ? err.message
+          : 'Paiement impossible. Vérifie le numéro et réessaie.',
+      )
     }
   }
 
@@ -255,8 +260,9 @@ export function MobileMoneyCheckout({
                 </Pressable>
                 {step === 'waiting' ? (
                   <Text style={styles.hint}>
-                    Valide maintenant la demande de retrait sur ton téléphone (
-                    {operator?.toUpperCase()}).
+                    Une demande de retrait a été envoyée sur {phone || 'ton téléphone'} (
+                    {operator?.toUpperCase()}).{'\n'}
+                    Ouvre la notification MTN/Moov/Celtiis et valide avec ton code secret.
                   </Text>
                 ) : null}
               </View>

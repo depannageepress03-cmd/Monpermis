@@ -114,7 +114,11 @@ router.post('/checkout', async (req, res) => {
       },
     })
   } catch (error) {
-    logger.error('Erreur checkout Mobile Money:', { error: error.message })
+    logger.error('Erreur checkout Mobile Money:', {
+      error: error.message,
+      status: error.status,
+      cause: error.cause?.httpResponse?.data || error.cause?.message || null,
+    })
     res.status(error.status || 500).json({
       success: false,
       error: error.message || 'Paiement impossible à initier',

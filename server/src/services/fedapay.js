@@ -15,7 +15,6 @@ const UI_TO_FEDAPAY_MODE = {
   mtn: 'mtn_open',
   moov: 'moov',
   celtiis: 'sbin',
-  // Alias déjà au format API (tolérance)
   mtn_open: 'mtn_open',
   sbin: 'sbin',
 }
@@ -35,20 +34,32 @@ export function normalizeOperatorId(operator) {
   return null
 }
 
+function flattenFedaPayFieldErrors(errors) {
+  if (!errors || typeof errors !== 'object') return ''
+  const parts = []
+  for (const [field, value] of Object.entries(errors)) {
+    const list = Array.isArray(value) ? value : [value]
+    for (const item of list) {
+      const text = typeof item === 'string' ? item : item?.message || String(item || '')
+      if (!text) continue
+      if (field.includes('email')) parts.push(`e-mail ${text}`)
+      else if (field.includes('phone')) parts.push(`téléphone ${text}`)
+      else parts.push(`${field}: ${text}`)
+    }
+  }
+  return parts.join(' · ')
+}
+
 /** Extrait un message lisible depuis une erreur SDK / HTTP FedaPay. */
 export function formatFedaPayError(error) {
   if (!error) return 'Erreur FedaPay inconnue'
   const data = error.httpResponse?.data
+  const fieldErrors = flattenFedaPayFieldErrors(data?.errors || error.errors)
   const fromBody =
+    fieldErrors ||
     error.errorMessage ||
     data?.message ||
     (Array.isArray(error.errors) ? error.errors.map((e) => e.message || e).join(', ') : '') ||
-    (data?.errors && typeof data.errors === 'object'
-      ? Object.values(data.errors)
-          .flat()
-          .map((e) => (typeof e === 'string' ? e : e?.message || String(e)))
-          .join(', ')
-      : '') ||
     (error.errors && typeof error.errors === 'object'
       ? Object.values(error.errors)
           .flat()
@@ -59,14 +70,20 @@ export function formatFedaPayError(error) {
   if (/socket hang up|ECONNRESET|ETIMEDOUT|ENOTFOUND|network/i.test(message)) {
     return 'Impossible de joindre FedaPay. Réessayez dans un instant.'
   }
-  if (/api key|unauthorized|401|clé/i.test(message)) {
+  if (/api key|unauthorized|401|authentification/i.test(message)) {
     return 'Clés API FedaPay invalides ou environnement incorrect (live/sandbox).'
   }
-  if (/op[eé]ration non autoris[eé]e|not allowed|404/i.test(message)) {
-    return 'Ce réseau Mobile Money n’est pas disponible pour votre compte FedaPay. Vérifiez MTN / Moov / Celtiis dans le dashboard MyFeda.'
+  if (/op[eé]ration non autoris[eé]e|not allowed/i.test(message)) {
+    return 'Ce réseau Mobile Money n’est pas disponible sur le compte FedaPay (MTN/Moov/Celtiis).'
   }
-  if (/Request failed with status code/i.test(message) && data?.message) {
-    return String(data.message)
+  if (/création de la transaction a échoué/i.test(message) && fieldErrors) {
+    return `Paiement refusé : ${fieldErrors}. Vérifiez le numéro Mobile Money.`
+  }
+  if (/création de la transaction a échoué/i.test(message)) {
+    return 'Paiement refusé par FedaPay (coordonnées client invalides). Vérifiez le numéro Mobile Money et réessayez.'
+  }
+  if (/Request failed with status code/i.test(message) && (fieldErrors || data?.message)) {
+    return fieldErrors || String(data.message)
   }
   if (/Request failed with status code/i.test(message)) {
     return 'FedaPay a refusé la demande de paiement. Vérifiez le numéro et réessayez.'
@@ -125,6 +142,15 @@ export function isFedaPayConfigured() {
   return secret.startsWith(environment === 'live' ? 'sk_live_' : 'sk_sandbox_')
 }
 
+export function fedapayKeyFingerprint() {
+  const secret = String(process.env.FEDAPAY_SECRET_KEY || '').trim()
+  const publicKey = String(process.env.FEDAPAY_PUBLIC_KEY || '').trim()
+  return {
+    secretSuffix: secret ? secret.slice(-4) : null,
+    publicSuffix: publicKey ? publicKey.slice(-4) : null,
+  }
+}
+
 /**
  * Normalise un numéro béninois pour FedaPay.
  * Accepte l’ancien format (8 chiffres) et le nouveau (10 chiffres, préfixe 01).
@@ -152,6 +178,23 @@ export function normalizeBeninPhone(phone) {
   return null
 }
 
+/** E.164 approximatif pour FedaPay (+229…). */
+export function toFedaPayPhoneNumber(localPhone) {
+  const local = normalizeBeninPhone(localPhone)
+  if (!local) return null
+  // Ancien 8 chiffres : +229XXXXXXXX / Nouveau 10 chiffres : +2290XXXXXXXXX
+  return `+229${local}`
+}
+
+export function sanitizeEmail(email) {
+  const value = String(email || '')
+    .trim()
+    .toLowerCase()
+  if (!value) return null
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return null
+  return value
+}
+
 function extractPaymentUrl(tokenObject, transaction) {
   const candidates = [
     tokenObject?.url,
@@ -162,12 +205,33 @@ function extractPaymentUrl(tokenObject, transaction) {
   for (const value of candidates) {
     if (value && String(value).startsWith('http')) return String(value)
   }
-  // Fallback officiel FedaPay process page
   const rawToken = tokenObject?.token
   if (rawToken && typeof rawToken === 'string' && rawToken.length > 20) {
     return `https://process.fedapay.com/${rawToken}`
   }
   return ''
+}
+
+function buildCustomerPayload(customer, { includeEmail = true } = {}) {
+  const payload = {
+    firstname: String(customer.firstName || customer.firstname || 'Apprenant').trim() || 'Apprenant',
+    lastname: String(customer.lastName || customer.lastname || 'Monpermis').trim() || 'Monpermis',
+  }
+
+  if (includeEmail) {
+    const email = sanitizeEmail(customer.email)
+    if (email) payload.email = email
+  }
+
+  const phone = normalizeBeninPhone(customer.phone)
+  if (phone) {
+    payload.phone_number = {
+      number: phone,
+      country: 'bj',
+    }
+  }
+
+  return payload
 }
 
 export async function createFedaPayCheckout({
@@ -191,36 +255,47 @@ export async function createFedaPayCheckout({
     throw error
   }
 
-  const payload = {
-    description: description || 'Abonnement Monpermis.bj',
+  const basePayload = {
+    description: String(description || 'Abonnement Monpermis.bj')
+      .replace(/[—–]/g, '-')
+      .slice(0, 180),
     amount: safeAmount,
     currency: { iso: 'XOF' },
     callback_url: callbackUrl,
     custom_metadata: customMetadata,
-    customer: {
-      firstname: customer.firstName || 'Apprenant',
-      lastname: customer.lastName || 'Monpermis',
-    },
   }
 
-  if (customer.email) payload.customer.email = customer.email
-
-  const phone = normalizeBeninPhone(customer.phone)
-  if (phone) {
-    payload.customer.phone_number = {
-      number: phone,
-      country: 'bj',
+  const attemptCreate = async (includeEmail) => {
+    const payload = {
+      ...basePayload,
+      customer: buildCustomerPayload(customer, { includeEmail }),
     }
+    return Transaction.create(payload)
   }
 
   let transaction
   try {
-    transaction = await Transaction.create(payload)
+    transaction = await attemptCreate(true)
   } catch (error) {
-    const wrapped = new Error(formatFedaPayError(error))
-    wrapped.status = error.httpStatus || 502
-    wrapped.cause = error
-    throw wrapped
+    const emailIssue = Boolean(
+      error.httpResponse?.data?.errors?.email ||
+        /email/i.test(JSON.stringify(error.httpResponse?.data?.errors || {})),
+    )
+    if (emailIssue) {
+      try {
+        transaction = await attemptCreate(false)
+      } catch (retryError) {
+        const wrapped = new Error(formatFedaPayError(retryError))
+        wrapped.status = retryError.httpStatus || 502
+        wrapped.cause = retryError
+        throw wrapped
+      }
+    } else {
+      const wrapped = new Error(formatFedaPayError(error))
+      wrapped.status = error.httpStatus || 502
+      wrapped.cause = error
+      throw wrapped
+    }
   }
 
   let token
@@ -351,7 +426,9 @@ export async function sendFedaPayMobileMoney({
 
   const normalizedPhone = normalizeBeninPhone(phone) || normalizeBeninPhone(customer?.phone)
   if (!normalizedPhone) {
-    const error = new Error('Numéro de téléphone Mobile Money invalide.')
+    const error = new Error(
+      'Numéro Mobile Money invalide. Utilisez un numéro béninois (ex. 01 XX XX XX XX).',
+    )
     error.status = 400
     throw error
   }
@@ -363,6 +440,7 @@ export async function sendFedaPayMobileMoney({
     customer: {
       ...customer,
       phone: normalizedPhone,
+      email: sanitizeEmail(customer?.email),
     },
     callbackUrl,
     customMetadata: {
@@ -373,15 +451,22 @@ export async function sendFedaPayMobileMoney({
     },
   })
 
+  const phonePayload = {
+    number: normalizedPhone,
+    country: isoCountry,
+  }
+
   try {
     const transaction = await Transaction.retrieve(checkout.transactionId)
-    // Body attendu par l’API : { token, phone_number: { number, country } }
-    await transaction.sendNowWithToken(mode, checkout.token, {
-      phone_number: {
-        number: normalizedPhone,
-        country: isoCountry,
-      },
-    })
+    // OpenAPI : { token, phone_number: { number, country } }
+    // Docs SDK : { token, number, country } — on tente les deux si besoin.
+    try {
+      await transaction.sendNowWithToken(mode, checkout.token, {
+        phone_number: phonePayload,
+      })
+    } catch {
+      await transaction.sendNowWithToken(mode, checkout.token, phonePayload)
+    }
   } catch (error) {
     const wrapped = new Error(formatFedaPayError(error))
     wrapped.status = error.httpStatus || 502

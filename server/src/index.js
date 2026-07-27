@@ -29,7 +29,7 @@ import adminAnnouncementsRoutes from './routes/adminAnnouncements.js'
 import fedapayWebhooksRoutes from './routes/fedapayWebhooks.js'
 import accessRequestsRoutes from './routes/accessRequests.js'
 import adminAccessRequestsRoutes from './routes/adminAccessRequests.js'
-import { isFedaPayConfigured } from './services/fedapay.js'
+import { fedapayKeyFingerprint, isFedaPayConfigured } from './services/fedapay.js'
 import { sendMediaAsset } from './middleware/upload.js'
 import { ensureReservationIndexes } from './models/Reservation.js'
 import { ensureAccessModulePricing, expireDueAccessRequests } from './utils/accessRequests.js'
@@ -130,6 +130,7 @@ app.get('/uploads/:kind/:filename', sendMediaAsset)
 
 app.get('/api/health', (_req, res) => {
   const dbReady = mongoose.connection.readyState === 1
+  const fingerprint = fedapayKeyFingerprint()
   res.status(dbReady ? 200 : 503).json({
     success: dbReady,
     message: dbReady
@@ -138,6 +139,7 @@ app.get('/api/health', (_req, res) => {
     db: dbReady ? 'connected' : 'disconnected',
     fedapay: isFedaPayConfigured() ? 'configured' : 'missing',
     fedapayEnvironment: process.env.FEDAPAY_ENVIRONMENT === 'sandbox' ? 'sandbox' : 'live',
+    fedapayKeyHint: fingerprint.secretSuffix ? `…${fingerprint.secretSuffix}` : null,
     mobileMoneyModes: { mtn: 'mtn_open', moov: 'moov', celtiis: 'sbin' },
   })
 })
