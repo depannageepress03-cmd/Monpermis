@@ -249,7 +249,24 @@ export async function createFedaPayCheckout({
     throw error
   }
 
-  if (!callbackUrl || !String(callbackUrl).startsWith('http')) {
+  const cleanCallback = String(callbackUrl || '')
+    .replace(/^\uFEFF/, '')
+    .trim()
+    .replace(/^["']|["']$/g, '')
+    .replace(/[\r\n\t]/g, '')
+    .trim()
+
+  let safeCallbackUrl = ''
+  try {
+    const parsed = new URL(cleanCallback)
+    if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+      safeCallbackUrl = parsed.toString()
+    }
+  } catch {
+    safeCallbackUrl = ''
+  }
+
+  if (!safeCallbackUrl) {
     const error = new Error('URL de retour FedaPay invalide (FEDAPAY_CALLBACK_URL / CLIENT_URL)')
     error.status = 500
     throw error
@@ -261,7 +278,7 @@ export async function createFedaPayCheckout({
       .slice(0, 180),
     amount: safeAmount,
     currency: { iso: 'XOF' },
-    callback_url: callbackUrl,
+    callback_url: safeCallbackUrl,
     custom_metadata: customMetadata,
   }
 

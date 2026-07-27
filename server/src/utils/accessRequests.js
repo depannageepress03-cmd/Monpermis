@@ -218,7 +218,7 @@ export async function getUserModuleAccess(userId) {
     if (payment) {
       pendingPayment = {
         ...payment.toPublicJSON(),
-        callbackUrl: `${callbackBase()}?accessRequest=${pending._id}`,
+        callbackUrl: buildFedaPayCallbackUrl(pending._id),
       }
     }
   }
@@ -306,19 +306,47 @@ export async function createAccessRequest({ user, module, quantity = 1 }) {
   return request
 }
 
-function callbackBase() {
-  const configured = String(process.env.FEDAPAY_CALLBACK_URL || process.env.CLIENT_URL || '')
+function sanitizeHttpUrl(value) {
+  const raw = String(value || '')
+    .replace(/^\uFEFF/, '')
     .trim()
-    .replace(/\/$/, '')
-  if (!configured) {
-    // En prod, l’API sert aussi la SPA apprenant.
-    const apiPublic = String(process.env.API_PUBLIC_URL || '').trim().replace(/\/$/, '')
-    if (apiPublic.startsWith('http')) {
-      return `${apiPublic}/abonnement`
-    }
-    return 'http://localhost:5173/abonnement'
+    .replace(/^["']|["']$/g, '')
+    .replace(/[\r\n\t]/g, '')
+    .trim()
+  if (!raw) return null
+  try {
+    const url = new URL(raw)
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') return null
+    // Recompose proprement (supprime espaces invisibles / fragments invalides)
+    return url.toString().replace(/\/$/, '')
+  } catch {
+    return null
   }
-  return configured.endsWith('/abonnement') ? configured : `${configured}/abonnement`
+}
+
+function callbackBase() {
+  const candidates = [
+    process.env.FEDAPAY_CALLBACK_URL,
+    process.env.CLIENT_URL,
+    process.env.API_PUBLIC_URL,
+    'https://monpermis-api.onrender.com',
+  ]
+
+  for (const candidate of candidates) {
+    const cleaned = sanitizeHttpUrl(candidate)
+    if (!cleaned) continue
+    if (cleaned.endsWith('/abonnement')) return cleaned
+    return `${cleaned}/abonnement`
+  }
+
+  return 'https://monpermis-api.onrender.com/abonnement'
+}
+
+function buildFedaPayCallbackUrl(accessRequestId) {
+  const base = callbackBase()
+  const url = new URL(base.endsWith('/abonnement') ? base : `${base}/abonnement`)
+  if (accessRequestId) url.searchParams.set('accessRequest', String(accessRequestId))
+  return url.toString()
 }
 
 /** Démarre un paiement FedaPay pour une demande en_attente : crée le Payment, ouvre le checkout, passe en en_verification. */
@@ -341,7 +369,7 @@ export async function startFedaPayForRequest(user, request) {
     status: 'pending',
   })
 
-  const callbackUrl = `${callbackBase()}?accessRequest=${request._id}`
+  const callbackUrl = buildFedaPayCallbackUrl(request._id)
 
   try {
     const checkout = await createFedaPayCheckout({
@@ -471,7 +499,7 @@ export async function purchaseOnlineAccess({ user, module, quantity = 1, replace
             accessRequest: existing,
             payment: latestPayment,
             paymentUrl: latestPayment.paymentUrl,
-            callbackUrl: `${callbackBase()}?accessRequest=${existing._id}`,
+            callbackUrl: buildFedaPayCallbackUrl(existing._id),
           }
         }
       }
@@ -633,7 +661,7 @@ export async function checkoutCartOnlineAccess({
     paymentMethod: mode,
   })
 
-  const callbackUrl = `${callbackBase()}?accessRequest=${primary._id}`
+  const callbackUrl = buildFedaPayCallbackUrl(primary._id)
   const description =
     requests.length === 1
       ? `${primary.module} — Monpermis.bj`
