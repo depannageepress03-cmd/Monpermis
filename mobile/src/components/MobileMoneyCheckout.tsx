@@ -28,6 +28,30 @@ const OPERATORS: { id: MobileMoneyOperator; label: string }[] = [
   { id: 'celtiis', label: 'Celtiis' },
 ]
 
+/** Préfixes ARCEP Bénin (01XXXX…) → opérateur probable. */
+function guessOperator(phone: string): MobileMoneyOperator | null {
+  const digits = phone.replace(/\D/g, '')
+  let local = digits
+  if (local.startsWith('229')) local = local.slice(3)
+  if (local.length >= 10) local = local.slice(-10)
+  const ezab = local.slice(0, 4)
+  const mtn = new Set([
+    '0142', '0146', '0150', '0151', '0152', '0153', '0154', '0156', '0157', '0159',
+    '0161', '0162', '0166', '0167', '0169', '0190', '0191', '0196', '0197',
+  ])
+  const moov = new Set([
+    '0145', '0155', '0158', '0160', '0163', '0164', '0165', '0168', '0194', '0195', '0198', '0199',
+  ])
+  const celtiis = new Set([
+    '0120', '0121', '0122', '0123', '0124', '0128', '0129', '0140', '0141', '0143', '0144',
+    '0147', '0148', '0149', '0192', '0193',
+  ])
+  if (mtn.has(ezab)) return 'mtn'
+  if (moov.has(ezab)) return 'moov'
+  if (celtiis.has(ezab)) return 'celtiis'
+  return null
+}
+
 function formatPrice(amount: number, currency = 'XOF') {
   return new Intl.NumberFormat('fr-FR', {
     style: 'currency',
@@ -97,44 +121,55 @@ export function MobileMoneyCheckout({
   const startPoll = (accessRequestId: string) => {
     stopPoll()
     let ticks = 0
-    pollRef.current = setInterval(() => {
-      void (async () => {
-        ticks += 1
-        try {
-          const result = await syncAccessRequest(accessRequestId)
-          if (result.payment?.status === 'approved' || ['actif', 'valide'].includes(result.accessRequest.status)) {
-            stopPoll()
-            setSuccess('Paiement confirmé. Accès activé.')
-            setBusy(false)
-            onSuccess(result.access)
-            return
-          }
-          if (
-            result.payment?.status === 'declined' ||
-            result.payment?.status === 'failed' ||
-            result.payment?.status === 'canceled' ||
-            result.accessRequest.status === 'rejete'
-          ) {
-            stopPoll()
-            setBusy(false)
-            setError(result.payment?.errorMessage || 'Le paiement n’a pas abouti. Réessaie.')
-            setStep('phone')
-          }
-        } catch {
-          /* ignore */
+    const tick = async () => {
+      ticks += 1
+      try {
+        const result = await syncAccessRequest(accessRequestId)
+        if (result.payment?.status === 'approved' || ['actif', 'valide'].includes(result.accessRequest.status)) {
+          stopPoll()
+          setSuccess('Paiement confirmé. Accès activé.')
+          setBusy(false)
+          onSuccess(result.access)
+          return
         }
-        if (ticks >= 60) {
+        if (
+          result.payment?.status === 'declined' ||
+          result.payment?.status === 'failed' ||
+          result.payment?.status === 'canceled' ||
+          result.accessRequest.status === 'rejete'
+        ) {
           stopPoll()
           setBusy(false)
-          setError('Confirmation trop longue. Actualise tes accès dans un instant.')
+          setSuccess(null)
+          setError(result.payment?.errorMessage || 'Le paiement n’a pas abouti. Réessaie.')
+          setStep('phone')
         }
-      })()
-    }, 2500)
+      } catch {
+        /* ignore */
+      }
+      if (ticks >= 60) {
+        stopPoll()
+        setBusy(false)
+        setError('Confirmation trop longue. Actualise tes accès dans un instant.')
+      }
+    }
+    void tick()
+    pollRef.current = setInterval(() => {
+      void tick()
+    }, 2000)
   }
 
   const submit = async () => {
     if (!operator) {
       setError('Choisis un réseau Mobile Money')
+      return
+    }
+    const detected = guessOperator(phone)
+    if (detected && detected !== operator) {
+      setError(
+        `Ce numéro est un numéro ${detected.toUpperCase()}. Choisis ${detected.toUpperCase()} (pas ${operator.toUpperCase()}).`,
+      )
+      setOperator(detected)
       return
     }
     setBusy(true)
@@ -143,22 +178,27 @@ export function MobileMoneyCheckout({
     try {
       const result = await checkoutMobileMoney({
         items,
-        operator,
+        operator: detected || operator,
         country,
         phone,
         replace: true,
       })
+      setOperator(result.operator || detected || operator)
       setStep('waiting')
       setSuccess(result.message)
       startPoll(result.accessRequest.id)
     } catch (err) {
       setBusy(false)
       setStep('phone')
-      setError(
-        err instanceof AccessRequestError
-          ? err.message
-          : 'Paiement impossible. Vérifie le numéro et réessaie.',
-      )
+      if (err instanceof AccessRequestError) {
+        setError(err.message)
+        if (err.code === 'OPERATOR_MISMATCH') {
+          const expected = guessOperator(phone)
+          if (expected) setOperator(expected)
+        }
+      } else {
+        setError('Paiement impossible. Vérifie le numéro et réessaie.')
+      }
     }
   }
 
@@ -236,10 +276,19 @@ export function MobileMoneyCheckout({
                   keyboardType="phone-pad"
                   value={phone}
                   editable={step !== 'waiting'}
-                  onChangeText={setPhone}
+                  onChangeText={(value) => {
+                    setPhone(value)
+                    const detected = guessOperator(value)
+                    if (detected) setOperator(detected)
+                  }}
                   placeholder="01 XX XX XX XX"
                   placeholderTextColor={dark.textMuted}
                 />
+                {guessOperator(phone) ? (
+                  <Text style={styles.hint}>
+                    Réseau détecté : {guessOperator(phone)?.toUpperCase()} — choisis le même opérateur.
+                  </Text>
+                ) : null}
                 {step !== 'waiting' ? (
                   <Pressable style={styles.backBtn} onPress={() => setStep('country')}>
                     <Text style={styles.backText}>Retour</Text>

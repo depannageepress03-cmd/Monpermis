@@ -122,6 +122,8 @@ router.post('/checkout', async (req, res) => {
     res.status(error.status || 500).json({
       success: false,
       error: error.message || 'Paiement impossible à initier',
+      code: error.code || undefined,
+      expectedOperator: error.expectedOperator || undefined,
     })
   }
 })

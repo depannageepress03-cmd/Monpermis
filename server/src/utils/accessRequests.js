@@ -10,9 +10,11 @@ import { Payment } from '../models/Payment.js'
 import { User } from '../models/User.js'
 import {
   createFedaPayCheckout,
+  guessBeninMobileOperator,
   mapFedaPayStatus,
   normalizeBeninPhone,
   normalizeOperatorId,
+  operatorLabel,
   refreshFedaPayPaymentUrl,
   retrieveFedaPayTransaction,
   sendFedaPayMobileMoney,
@@ -327,14 +329,16 @@ function sanitizeHttpUrl(value) {
 function callbackBase() {
   const candidates = [
     process.env.FEDAPAY_CALLBACK_URL,
-    process.env.CLIENT_URL,
     process.env.API_PUBLIC_URL,
+    process.env.CLIENT_URL,
     'https://monpermis-api.onrender.com',
   ]
 
   for (const candidate of candidates) {
     const cleaned = sanitizeHttpUrl(candidate)
     if (!cleaned) continue
+    // Ne jamais renvoyer vers l’admin pour le retour apprenant.
+    if (/monpermis-admin/i.test(cleaned)) continue
     if (cleaned.endsWith('/abonnement')) return cleaned
     return `${cleaned}/abonnement`
   }
@@ -577,8 +581,8 @@ export async function checkoutCartOnlineAccess({
     throw error
   }
 
-  const mode = normalizeOperatorId(operator)
-  if (!mode || !FEDAPAY_MOBILE_OPERATORS.includes(mode)) {
+  const requestedMode = normalizeOperatorId(operator)
+  if (!requestedMode || !FEDAPAY_MOBILE_OPERATORS.includes(requestedMode)) {
     const error = new Error('Réseau Mobile Money invalide. Choisissez MTN, Moov ou Celtiis.')
     error.status = 400
     throw error
@@ -592,6 +596,21 @@ export async function checkoutCartOnlineAccess({
     error.status = 400
     throw error
   }
+
+  const guessed = guessBeninMobileOperator(normalizedPhone)
+  let mode = requestedMode
+  if (guessed && guessed !== requestedMode) {
+    // Le mauvais réseau est la cause n°1 d’absence de push USSD (ACCOUNT_NOT_FOUND / API_ERROR).
+    const error = new Error(
+      `Le numéro ${normalizedPhone} appartient au réseau ${operatorLabel(guessed)}, pas ${operatorLabel(requestedMode)}. Choisis « ${operatorLabel(guessed)} » puis réessaie.`,
+    )
+    error.status = 400
+    error.code = 'OPERATOR_MISMATCH'
+    error.expectedOperator = guessed
+    throw error
+  }
+  if (guessed) mode = guessed
+
 
   const access = await getUserModuleAccess(user._id)
   const normalizedItems = []
@@ -993,15 +1012,28 @@ export async function syncAccessPaymentFromProvider(payment) {
   const remote = await retrieveFedaPayTransaction(payment.fedapayTransactionId)
   const mapped = mapFedaPayStatus(remote.status)
   payment.fedapayReference = remote.reference || payment.fedapayReference
-  payment.paymentMethod = remote.mode || payment.paymentMethod
+  const remoteMode = String(remote.mode || '').toLowerCase()
+  if (remoteMode === 'mtn_open') payment.paymentMethod = 'mtn'
+  else if (remoteMode === 'sbin') payment.paymentMethod = 'celtiis'
+  else if (remoteMode === 'moov') payment.paymentMethod = 'moov'
+  else if (remoteMode) payment.paymentMethod = remoteMode
 
   if (mapped === 'approved') {
     await applyApprovedAccessPayment(payment, { eventName: 'transaction.synced', raw: remote })
   } else if (mapped === 'declined' || mapped === 'canceled' || mapped === 'failed') {
+    const code = String(remote.last_error_code || '').toUpperCase()
+    let message =
+      mapped === 'declined' ? 'Paiement refusé' : mapped === 'canceled' ? 'Paiement annulé' : 'Paiement échoué'
+    if (code === 'ACCOUNT_NOT_FOUND') {
+      message =
+        'Ce numéro n’a pas de compte Mobile Money sur le réseau choisi. Vérifie MTN / Moov / Celtiis.'
+    } else if (code === 'API_ERROR') {
+      message =
+        'Le réseau Mobile Money a refusé le retrait. Vérifie que tu as choisi le bon opérateur pour ce numéro.'
+    }
     await applyFailedAccessPayment(payment, mapped, {
       eventName: 'transaction.synced',
-      message:
-        mapped === 'declined' ? 'Paiement refusé' : mapped === 'canceled' ? 'Paiement annulé' : 'Paiement échoué',
+      message,
       raw: remote,
     })
   } else {

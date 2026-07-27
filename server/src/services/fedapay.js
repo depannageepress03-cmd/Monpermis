@@ -420,6 +420,55 @@ export function normalizeFedaPayCountry(country) {
 }
 
 /**
+ * Détecte MTN / Moov / Celtiis à partir des préfixes ARCEP Bénin (plan 01XXXXXXXX).
+ * Retourne null si inconnu / portable ambigu.
+ */
+export function guessBeninMobileOperator(phone) {
+  const local = normalizeBeninPhone(phone)
+  if (!local) return null
+
+  // Forme 10 chiffres : 01AB...
+  const ezab = local.length >= 4 ? local.slice(0, 4) : ''
+  const MTN = new Set([
+    '0142', '0146', '0150', '0151', '0152', '0153', '0154', '0156', '0157', '0159',
+    '0161', '0162', '0166', '0167', '0169', '0190', '0191', '0196', '0197',
+  ])
+  const MOOV = new Set([
+    '0145', '0155', '0158', '0160', '0163', '0164', '0165', '0168', '0194', '0195', '0198', '0199',
+  ])
+  const CELTIIS = new Set([
+    '0120', '0121', '0122', '0123', '0124', '0128', '0129', '0140', '0141', '0143', '0144',
+    '0147', '0148', '0149', '0192', '0193',
+  ])
+
+  if (MTN.has(ezab)) return 'mtn'
+  if (MOOV.has(ezab)) return 'moov'
+  if (CELTIIS.has(ezab)) return 'celtiis'
+
+  // Ancien plan 8 chiffres
+  if (local.length === 8) {
+    const p2 = local.slice(0, 2)
+    if (['90', '91', '96', '97', '61', '62', '66', '67', '50', '51', '52', '53', '54', '56', '57', '59', '42', '46', '69'].includes(p2)) {
+      return 'mtn'
+    }
+    if (['94', '95', '98', '99', '64', '65', '68', '55', '58', '60', '63', '45'].includes(p2)) {
+      return 'moov'
+    }
+    if (['20', '21', '22', '23', '24', '28', '29', '40', '41', '43', '44', '47', '48', '49', '92', '93'].includes(p2)) {
+      return 'celtiis'
+    }
+  }
+  return null
+}
+
+export function operatorLabel(operator) {
+  if (operator === 'mtn') return 'MTN'
+  if (operator === 'moov') return 'Moov'
+  if (operator === 'celtiis') return 'Celtiis'
+  return String(operator || '')
+}
+
+/**
  * Crée une transaction FedaPay puis déclenche immédiatement le retrait Mobile Money (sendNow).
  */
 export async function sendFedaPayMobileMoney({

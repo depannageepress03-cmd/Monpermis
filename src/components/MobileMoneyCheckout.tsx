@@ -17,6 +17,29 @@ const OPERATORS: { id: MobileMoneyOperator; label: string }[] = [
   { id: 'celtiis', label: 'Celtiis' },
 ]
 
+function guessOperator(phone: string): MobileMoneyOperator | null {
+  const digits = phone.replace(/\D/g, '')
+  let local = digits
+  if (local.startsWith('229')) local = local.slice(3)
+  if (local.length >= 10) local = local.slice(-10)
+  const ezab = local.slice(0, 4)
+  const mtn = new Set([
+    '0142', '0146', '0150', '0151', '0152', '0153', '0154', '0156', '0157', '0159',
+    '0161', '0162', '0166', '0167', '0169', '0190', '0191', '0196', '0197',
+  ])
+  const moov = new Set([
+    '0145', '0155', '0158', '0160', '0163', '0164', '0165', '0168', '0194', '0195', '0198', '0199',
+  ])
+  const celtiis = new Set([
+    '0120', '0121', '0122', '0123', '0124', '0128', '0129', '0140', '0141', '0143', '0144',
+    '0147', '0148', '0149', '0192', '0193',
+  ])
+  if (mtn.has(ezab)) return 'mtn'
+  if (moov.has(ezab)) return 'moov'
+  if (celtiis.has(ezab)) return 'celtiis'
+  return null
+}
+
 const COUNTRIES = [{ id: 'BJ', label: 'Bénin (+229)' }]
 
 function formatPrice(amount: number, currency = 'XOF') {
@@ -88,44 +111,55 @@ export function MobileMoneyCheckout({
   const startPoll = (accessRequestId: string) => {
     stopPoll()
     let ticks = 0
-    pollRef.current = window.setInterval(() => {
-      void (async () => {
-        ticks += 1
-        try {
-          const result = await syncAccessRequest(accessRequestId)
-          if (result.payment?.status === 'approved' || ['actif', 'valide'].includes(result.accessRequest.status)) {
-            stopPoll()
-            setSuccess('Paiement confirmé. Accès activé.')
-            setBusy(false)
-            onSuccess(result.access)
-            return
-          }
-          if (
-            result.payment?.status === 'declined' ||
-            result.payment?.status === 'failed' ||
-            result.payment?.status === 'canceled' ||
-            result.accessRequest.status === 'rejete'
-          ) {
-            stopPoll()
-            setBusy(false)
-            setError(result.payment?.errorMessage || 'Le paiement n’a pas abouti. Réessayez.')
-            setStep('phone')
-          }
-        } catch {
-          /* ignore transient */
+    const tick = async () => {
+      ticks += 1
+      try {
+        const result = await syncAccessRequest(accessRequestId)
+        if (result.payment?.status === 'approved' || ['actif', 'valide'].includes(result.accessRequest.status)) {
+          stopPoll()
+          setSuccess('Paiement confirmé. Accès activé.')
+          setBusy(false)
+          onSuccess(result.access)
+          return
         }
-        if (ticks >= 60) {
+        if (
+          result.payment?.status === 'declined' ||
+          result.payment?.status === 'failed' ||
+          result.payment?.status === 'canceled' ||
+          result.accessRequest.status === 'rejete'
+        ) {
           stopPoll()
           setBusy(false)
-          setError('Confirmation trop longue. Actualisez vos accès dans un instant.')
+          setSuccess(null)
+          setError(result.payment?.errorMessage || 'Le paiement n’a pas abouti. Réessayez.')
+          setStep('phone')
         }
-      })()
-    }, 2500)
+      } catch {
+        /* ignore transient */
+      }
+      if (ticks >= 60) {
+        stopPoll()
+        setBusy(false)
+        setError('Confirmation trop longue. Actualisez vos accès dans un instant.')
+      }
+    }
+    void tick()
+    pollRef.current = window.setInterval(() => {
+      void tick()
+    }, 2000)
   }
 
   const submit = async () => {
     if (!operator) {
       setError('Choisissez un réseau Mobile Money')
+      return
+    }
+    const detected = guessOperator(phone)
+    if (detected && detected !== operator) {
+      setError(
+        `Ce numéro est un numéro ${detected.toUpperCase()}. Choisissez ${detected.toUpperCase()} (pas ${operator.toUpperCase()}).`,
+      )
+      setOperator(detected)
       return
     }
     setBusy(true)
@@ -134,17 +168,20 @@ export function MobileMoneyCheckout({
     try {
       const result = await checkoutMobileMoney({
         items,
-        operator,
+        operator: detected || operator,
         country,
         phone,
         replace: true,
       })
+      setOperator(result.operator || detected || operator)
       setStep('waiting')
       setSuccess(result.message)
       startPoll(result.accessRequest.id)
     } catch (err) {
       setBusy(false)
       setError(err instanceof AccessRequestError ? err.message : 'Paiement impossible')
+      const detected = guessOperator(phone)
+      if (detected) setOperator(detected)
     }
   }
 
