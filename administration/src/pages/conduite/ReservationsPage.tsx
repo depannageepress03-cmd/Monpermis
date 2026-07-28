@@ -1,5 +1,5 @@
-import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Check, ImagePlus, Pencil, Plus, Trash2, X } from 'lucide-react'
+import { FormEvent, useCallback, useEffect, useState } from 'react'
+import { ImagePlus, Pencil, Plus, Trash2, X } from 'lucide-react'
 import {
   createMoniteur,
   deleteAdminReservation,
@@ -96,29 +96,12 @@ function intervalInvalid(interval: TimeInterval) {
   return !interval.start || !interval.end || interval.end <= interval.start
 }
 
-function summarizeAvailability(slots: WeeklyAvailabilitySlot[] | undefined): string[] {
-  return WEEK_DAYS.map(({ dayOfWeek, label }) => {
-    const same = (slots || [])
-      .filter((slot) => Number(slot.dayOfWeek) === dayOfWeek)
-      .sort((a, b) => String(a.start).localeCompare(String(b.start)))
-    if (!same.length) return null
-    return `${label} : ${same.map((slot) => `${slot.start}–${slot.end}`).join(' · ')}`
-  }).filter((line): line is string => Boolean(line))
-}
 
 export function ReservationsPage() {
   const [moniteurs, setMoniteurs] = useState<Moniteur[]>([])
   const [reservations, setReservations] = useState<ReservationAdmin[]>([])
   const [moniteurId, setMoniteurId] = useState('')
-  const [scheduleDayHours, setScheduleDayHours] = useState<EditDayHours[]>(() => toEditDayHours([]))
-  const [savingSchedule, setSavingSchedule] = useState(false)
-  const [scheduleEditorOpen, setScheduleEditorOpen] = useState(false)
-  const [scheduleFeedback, setScheduleFeedback] = useState<{
-    type: 'success' | 'error'
-    message: string
-  } | null>(null)
-  const [scheduleJustSaved, setScheduleJustSaved] = useState(false)
-  const scheduleFeedbackRef = useRef<HTMLDivElement | null>(null)
+  const [editDayHours, setEditDayHours] = useState<EditDayHours[]>(() => toEditDayHours([]))
   const [loading, setLoading] = useState(true)
   const [savingMoniteur, setSavingMoniteur] = useState(false)
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
@@ -150,11 +133,6 @@ export function ReservationsPage() {
   const [savingEdit, setSavingEdit] = useState(false)
   const [uploadingEditPhoto, setUploadingEditPhoto] = useState(false)
   const [uploadingEditVehiclePhoto, setUploadingEditVehiclePhoto] = useState(false)
-
-  const selectedMoniteur = useMemo(
-    () => moniteurs.find((item) => item.id === moniteurId) ?? null,
-    [moniteurs, moniteurId],
-  )
 
   const load = useCallback(async (opts?: { silent?: boolean }) => {
     const token = getAdminToken()
@@ -191,26 +169,6 @@ export function ReservationsPage() {
     }, 8000)
     return () => window.clearInterval(timer)
   }, [load])
-
-  useEffect(() => {
-    if (!selectedMoniteur) {
-      setScheduleDayHours(toEditDayHours([]))
-      setScheduleFeedback(null)
-      setScheduleJustSaved(false)
-      setScheduleEditorOpen(false)
-      return
-    }
-    setScheduleDayHours(toEditDayHours(selectedMoniteur.weeklyAvailability))
-    setScheduleFeedback(null)
-    setScheduleJustSaved(false)
-    const hasSlots = (selectedMoniteur.weeklyAvailability || []).length > 0
-    setScheduleEditorOpen(!hasSlots)
-  }, [selectedMoniteur?.id])
-
-  const scheduleSummary = useMemo(
-    () => summarizeAvailability(selectedMoniteur?.weeklyAvailability),
-    [selectedMoniteur?.weeklyAvailability],
-  )
 
   const handlePhotoUpload = async (file: File | null) => {
     if (!file) return
@@ -312,6 +270,7 @@ export function ReservationsPage() {
 
   const openEdit = (item: Moniteur) => {
     setEditingMoniteur(item)
+    setMoniteurId(item.id)
     setEditBio(item.bio || '')
     setEditPhone(item.phone || '')
     setEditSpecialties((item.specialties || []).join(', '))
@@ -322,7 +281,9 @@ export function ReservationsPage() {
     setEditPhotos(item.photos || [])
     setEditVideos(item.videos || [])
     setEditNewVideoUrl('')
+    setEditDayHours(toEditDayHours(item.weeklyAvailability))
     setError(null)
+    setSuccess(null)
   }
 
   const closeEdit = () => setEditingMoniteur(null)
@@ -393,9 +354,21 @@ export function ReservationsPage() {
   const handleSaveEdit = async () => {
     const token = getAdminToken()
     if (!token || !editingMoniteur) return
+    const invalid = editDayHours.find((day) => {
+      if (!day.enabled) return false
+      if (intervalInvalid(day.morning)) return true
+      if (day.afternoonEnabled && intervalInvalid(day.afternoon)) return true
+      return false
+    })
+    if (invalid) {
+      setError('Pour chaque plage, l’heure de fin doit être après l’heure de début')
+      return
+    }
     setSavingEdit(true)
     setError(null)
+    setSuccess(null)
     try {
+      const slots = fromEditDayHours(editDayHours)
       const { moniteur } = await updateMoniteur(token, editingMoniteur.id, {
         bio: editBio.trim(),
         phone: editPhone.trim(),
@@ -409,8 +382,9 @@ export function ReservationsPage() {
         city: editCity.trim(),
         photos: editPhotos,
         videos: editVideos,
+        weeklyAvailability: slots,
       })
-      setSuccess(`Profil de « ${moniteur.fullName} » mis à jour.`)
+      setSuccess(`« ${moniteur.fullName} » enregistré (profil + disponibilité).`)
       setEditingMoniteur(null)
       await load()
     } catch (err) {
@@ -420,76 +394,18 @@ export function ReservationsPage() {
     }
   }
 
-  const handleSaveSchedule = async () => {
-    const token = getAdminToken()
-    if (!token || !moniteurId || !selectedMoniteur) return
-    const invalid = scheduleDayHours.find((day) => {
-      if (!day.enabled) return false
-      if (intervalInvalid(day.morning)) return true
-      if (day.afternoonEnabled && intervalInvalid(day.afternoon)) return true
-      return false
-    })
-    if (invalid) {
-      const message = 'Pour chaque plage, l’heure de fin doit être après l’heure de début'
-      setError(message)
-      setScheduleFeedback({ type: 'error', message })
-      setScheduleJustSaved(false)
-      return
-    }
-    setSavingSchedule(true)
-    setError(null)
-    setSuccess(null)
-    setScheduleFeedback(null)
-    setScheduleJustSaved(false)
-    try {
-      const enabledDays = scheduleDayHours.filter((day) => day.enabled).length
-      const slots = fromEditDayHours(scheduleDayHours)
-      const { moniteur } = await updateMoniteur(token, moniteurId, {
-        weeklyAvailability: slots,
-      })
-      const message = `Disponibilité enregistrée pour « ${moniteur.fullName} » — ${enabledDays} jour(s), ${slots.length} plage(s).`
-      setSuccess(message)
-      setScheduleFeedback({ type: 'success', message })
-      setScheduleJustSaved(true)
-      setMoniteurs((prev) =>
-        prev.map((item) =>
-          item.id === moniteur.id
-            ? { ...item, weeklyAvailability: moniteur.weeklyAvailability || slots }
-            : item,
-        ),
-      )
-      setScheduleEditorOpen(false)
-      await load({ silent: true })
-      window.setTimeout(() => {
-        scheduleFeedbackRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-      }, 50)
-      window.setTimeout(() => setScheduleJustSaved(false), 4000)
-    } catch (err) {
-      const message = isAuthError(err) ? err.message : 'Enregistrement des horaires impossible'
-      setError(message)
-      setScheduleFeedback({ type: 'error', message })
-      setScheduleJustSaved(false)
-    } finally {
-      setSavingSchedule(false)
-    }
-  }
-
-  const updateScheduleDay = (dayOfWeek: number, patch: Partial<EditDayHours>) => {
-    setScheduleFeedback(null)
-    setScheduleJustSaved(false)
-    setScheduleDayHours((prev) =>
+  const updateEditDay = (dayOfWeek: number, patch: Partial<EditDayHours>) => {
+    setEditDayHours((prev) =>
       prev.map((day) => (day.dayOfWeek === dayOfWeek ? { ...day, ...patch } : day)),
     )
   }
 
-  const updateScheduleInterval = (
+  const updateEditInterval = (
     dayOfWeek: number,
     which: 'morning' | 'afternoon',
     patch: Partial<TimeInterval>,
   ) => {
-    setScheduleFeedback(null)
-    setScheduleJustSaved(false)
-    setScheduleDayHours((prev) =>
+    setEditDayHours((prev) =>
       prev.map((day) =>
         day.dayOfWeek === dayOfWeek
           ? { ...day, [which]: { ...day[which], ...patch } }
@@ -534,7 +450,7 @@ export function ReservationsPage() {
         backLabel="Conduite"
         kicker="Gestion"
         title="Réservations & moniteurs"
-        subtitle="Définissez les jours libres de chaque moniteur. Les élèves choisissent ensuite leurs horaires."
+        subtitle="Ajoutez les moniteurs, puis modifiez profil et horaires via le crayon."
       />
 
       {error ? <p className="form-error">{error}</p> : null}
@@ -636,10 +552,10 @@ export function ReservationsPage() {
 
       <section className="admin-section">
         <div className="admin-section-head">
-          <h3 className="admin-section-label">2. Disponibilité du moniteur</h3>
+          <h3 className="admin-section-label">2. Moniteurs & disponibilité</h3>
           <p className="admin-section-hint">
-            Cochez les jours libres. Pour chaque jour, définissez 1 ou 2 plages (ex. matin et
-            après-midi). L’élève choisit ensuite de telle heure à telle heure.
+            Touchez le crayon pour modifier le profil et les horaires (jusqu’à 2 plages par jour).
+            Après enregistrement, le formulaire se masque.
           </p>
         </div>
         <div className="admin-section-body">
@@ -649,12 +565,11 @@ export function ReservationsPage() {
             <div className="moniteur-pick-grid">
               {moniteurs.map((item) => {
                 const active = item.id === moniteurId
+                const hasSchedule = (item.weeklyAvailability || []).length > 0
                 return (
                   <div
                     key={item.id}
-                    className={`moniteur-pick-card${active ? ' is-active' : ''}${
-                      active ? ' is-expanded' : ''
-                    }`}
+                    className={`moniteur-pick-card${active ? ' is-active' : ''}`}
                   >
                     <div className="moniteur-pick-top">
                       <button
@@ -673,13 +588,14 @@ export function ReservationsPage() {
                           <span className="moniteur-pick-type">
                             {item.vehicleTypes?.[0] || 'Véhicule'}
                             {item.city ? ` · ${item.city}` : ''}
+                            {hasSchedule ? ' · Dispo OK' : ' · Dispo à définir'}
                           </span>
                         </div>
                       </button>
                       <button
                         type="button"
                         className="btn-icon moniteur-pick-edit"
-                        title="Modifier le profil"
+                        title="Modifier profil et disponibilité"
                         onClick={() => openEdit(item)}
                       >
                         <Pencil size={15} />
@@ -694,211 +610,6 @@ export function ReservationsPage() {
                         <Trash2 size={15} />
                       </button>
                     </div>
-
-                    {active ? (
-                      <div className="moniteur-pick-schedule">
-                        <div className="moniteur-schedule-status">
-                          <p className="moniteur-generate-name">
-                            {item.fullName} —{' '}
-                            <span className="moniteur-schedule-status-label">
-                              {scheduleEditorOpen
-                                ? 'Modification des horaires'
-                                : scheduleSummary.length > 0
-                                  ? 'Disponibilité enregistrée'
-                                  : 'Aucune disponibilité'}
-                            </span>
-                          </p>
-                        </div>
-
-                        <div ref={scheduleFeedbackRef}>
-                          {scheduleFeedback ? (
-                            <p
-                              className={
-                                scheduleFeedback.type === 'success'
-                                  ? 'form-success moniteur-schedule-feedback'
-                                  : 'form-error moniteur-schedule-feedback'
-                              }
-                              role="status"
-                              aria-live="polite"
-                            >
-                              {scheduleFeedback.type === 'success' ? <Check size={16} /> : null}
-                              {scheduleFeedback.message}
-                            </p>
-                          ) : null}
-                        </div>
-
-                        {!scheduleEditorOpen ? (
-                          <div className="moniteur-schedule-summary">
-                            {scheduleSummary.length > 0 ? (
-                              <ul className="moniteur-schedule-summary-list">
-                                {scheduleSummary.map((line) => (
-                                  <li key={line}>{line}</li>
-                                ))}
-                              </ul>
-                            ) : (
-                              <p className="admin-muted">
-                                Définissez les jours et horaires pour que les élèves puissent
-                                réserver.
-                              </p>
-                            )}
-                            <button
-                              type="button"
-                              className="btn-outline"
-                              onClick={() => {
-                                setScheduleDayHours(
-                                  toEditDayHours(item.weeklyAvailability),
-                                )
-                                setScheduleEditorOpen(true)
-                                setScheduleFeedback(null)
-                                setScheduleJustSaved(false)
-                              }}
-                            >
-                              <Pencil size={15} />
-                              {scheduleSummary.length > 0
-                                ? 'Modifier la disponibilité'
-                                : 'Définir la disponibilité'}
-                            </button>
-                          </div>
-                        ) : (
-                          <>
-                            <p className="admin-muted moniteur-schedule-edit-hint">
-                              Jusqu’à deux plages par jour (ex. matin et après-midi)
-                            </p>
-                            <div className="moniteur-hours-grid">
-                              {scheduleDayHours.map((day) => {
-                                const label =
-                                  WEEK_DAYS.find((d) => d.dayOfWeek === day.dayOfWeek)?.label ||
-                                  'Jour'
-                                return (
-                                  <div key={day.dayOfWeek} className="moniteur-hours-day-block">
-                                    <label className="moniteur-hours-day">
-                                      <input
-                                        type="checkbox"
-                                        checked={day.enabled}
-                                        onChange={(e) =>
-                                          updateScheduleDay(day.dayOfWeek, {
-                                            enabled: e.target.checked,
-                                            ...(e.target.checked
-                                              ? {}
-                                              : { afternoonEnabled: false }),
-                                          })
-                                        }
-                                      />
-                                      <span>{label}</span>
-                                    </label>
-
-                                    <div className="moniteur-hours-intervals">
-                                      <div className="moniteur-hours-row">
-                                        <span className="moniteur-hours-slot-label">1</span>
-                                        <input
-                                          type="time"
-                                          value={day.morning.start}
-                                          disabled={!day.enabled}
-                                          onChange={(e) =>
-                                            updateScheduleInterval(day.dayOfWeek, 'morning', {
-                                              start: e.target.value,
-                                            })
-                                          }
-                                          aria-label={`${label} plage 1 début`}
-                                        />
-                                        <span className="admin-muted">à</span>
-                                        <input
-                                          type="time"
-                                          value={day.morning.end}
-                                          disabled={!day.enabled}
-                                          onChange={(e) =>
-                                            updateScheduleInterval(day.dayOfWeek, 'morning', {
-                                              end: e.target.value,
-                                            })
-                                          }
-                                          aria-label={`${label} plage 1 fin`}
-                                        />
-                                      </div>
-
-                                      <div className="moniteur-hours-row">
-                                        <label className="moniteur-hours-slot-toggle">
-                                          <input
-                                            type="checkbox"
-                                            checked={day.afternoonEnabled}
-                                            disabled={!day.enabled}
-                                            onChange={(e) =>
-                                              updateScheduleDay(day.dayOfWeek, {
-                                                afternoonEnabled: e.target.checked,
-                                              })
-                                            }
-                                          />
-                                          <span>2</span>
-                                        </label>
-                                        <input
-                                          type="time"
-                                          value={day.afternoon.start}
-                                          disabled={!day.enabled || !day.afternoonEnabled}
-                                          onChange={(e) =>
-                                            updateScheduleInterval(day.dayOfWeek, 'afternoon', {
-                                              start: e.target.value,
-                                            })
-                                          }
-                                          aria-label={`${label} plage 2 début`}
-                                        />
-                                        <span className="admin-muted">à</span>
-                                        <input
-                                          type="time"
-                                          value={day.afternoon.end}
-                                          disabled={!day.enabled || !day.afternoonEnabled}
-                                          onChange={(e) =>
-                                            updateScheduleInterval(day.dayOfWeek, 'afternoon', {
-                                              end: e.target.value,
-                                            })
-                                          }
-                                          aria-label={`${label} plage 2 fin`}
-                                        />
-                                      </div>
-                                    </div>
-                                  </div>
-                                )
-                              })}
-                            </div>
-
-                            <div className="moniteur-edit-actions moniteur-schedule-actions">
-                              {(item.weeklyAvailability || []).length > 0 ? (
-                                <button
-                                  type="button"
-                                  className="btn-outline"
-                                  disabled={savingSchedule}
-                                  onClick={() => {
-                                    setScheduleDayHours(
-                                      toEditDayHours(item.weeklyAvailability),
-                                    )
-                                    setScheduleEditorOpen(false)
-                                    setScheduleFeedback(null)
-                                    setScheduleJustSaved(false)
-                                  }}
-                                >
-                                  Annuler
-                                </button>
-                              ) : null}
-                              <button
-                                type="button"
-                                className={`btn-primary${scheduleJustSaved ? ' is-saved' : ''}`}
-                                disabled={savingSchedule}
-                                onClick={() => void handleSaveSchedule()}
-                              >
-                                {savingSchedule ? (
-                                  'Enregistrement…'
-                                ) : scheduleJustSaved ? (
-                                  <>
-                                    <Check size={16} />
-                                    Enregistré
-                                  </>
-                                ) : (
-                                  'Enregistrer la disponibilité'
-                                )}
-                              </button>
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    ) : null}
                   </div>
                 )
               })}
@@ -908,7 +619,7 @@ export function ReservationsPage() {
           {editingMoniteur ? (
             <div className="moniteur-edit-panel">
               <div className="moniteur-edit-head">
-                <h4>Profil de {editingMoniteur.fullName}</h4>
+                <h4>Modifier {editingMoniteur.fullName}</h4>
                 <button type="button" className="btn-icon" title="Fermer" onClick={closeEdit}>
                   <X size={16} />
                 </button>
@@ -1038,6 +749,102 @@ export function ReservationsPage() {
                 </div>
               </div>
 
+              <div className="moniteur-edit-label">
+                Disponibilité (jours & horaires)
+                <p className="admin-muted" style={{ margin: '0.35rem 0 0.6rem' }}>
+                  Cochez les jours libres. Jusqu’à 2 plages par jour (ex. matin et après-midi).
+                </p>
+                <div className="moniteur-hours-grid">
+                  {editDayHours.map((day) => {
+                    const label =
+                      WEEK_DAYS.find((item) => item.dayOfWeek === day.dayOfWeek)?.label || 'Jour'
+                    return (
+                      <div key={day.dayOfWeek} className="moniteur-hours-day-block">
+                        <label className="moniteur-hours-day">
+                          <input
+                            type="checkbox"
+                            checked={day.enabled}
+                            onChange={(e) =>
+                              updateEditDay(day.dayOfWeek, {
+                                enabled: e.target.checked,
+                                ...(e.target.checked ? {} : { afternoonEnabled: false }),
+                              })
+                            }
+                          />
+                          <span>{label}</span>
+                        </label>
+                        <div className="moniteur-hours-intervals">
+                          <div className="moniteur-hours-row">
+                            <span className="moniteur-hours-slot-label">1</span>
+                            <input
+                              type="time"
+                              value={day.morning.start}
+                              disabled={!day.enabled}
+                              onChange={(e) =>
+                                updateEditInterval(day.dayOfWeek, 'morning', {
+                                  start: e.target.value,
+                                })
+                              }
+                              aria-label={`${label} plage 1 début`}
+                            />
+                            <span className="admin-muted">à</span>
+                            <input
+                              type="time"
+                              value={day.morning.end}
+                              disabled={!day.enabled}
+                              onChange={(e) =>
+                                updateEditInterval(day.dayOfWeek, 'morning', {
+                                  end: e.target.value,
+                                })
+                              }
+                              aria-label={`${label} plage 1 fin`}
+                            />
+                          </div>
+                          <div className="moniteur-hours-row">
+                            <label className="moniteur-hours-slot-toggle">
+                              <input
+                                type="checkbox"
+                                checked={day.afternoonEnabled}
+                                disabled={!day.enabled}
+                                onChange={(e) =>
+                                  updateEditDay(day.dayOfWeek, {
+                                    afternoonEnabled: e.target.checked,
+                                  })
+                                }
+                              />
+                              <span>2</span>
+                            </label>
+                            <input
+                              type="time"
+                              value={day.afternoon.start}
+                              disabled={!day.enabled || !day.afternoonEnabled}
+                              onChange={(e) =>
+                                updateEditInterval(day.dayOfWeek, 'afternoon', {
+                                  start: e.target.value,
+                                })
+                              }
+                              aria-label={`${label} plage 2 début`}
+                            />
+                            <span className="admin-muted">à</span>
+                            <input
+                              type="time"
+                              value={day.afternoon.end}
+                              disabled={!day.enabled || !day.afternoonEnabled}
+                              onChange={(e) =>
+                                updateEditInterval(day.dayOfWeek, 'afternoon', {
+                                  end: e.target.value,
+                                })
+                              }
+                              aria-label={`${label} plage 2 fin`}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+
               <div className="moniteur-edit-actions">
                 <button type="button" className="btn-outline" onClick={closeEdit}>
                   Annuler
@@ -1048,7 +855,7 @@ export function ReservationsPage() {
                   disabled={savingEdit}
                   onClick={() => void handleSaveEdit()}
                 >
-                  {savingEdit ? 'Enregistrement…' : 'Enregistrer le profil'}
+                  {savingEdit ? 'Enregistrement…' : 'Enregistrer'}
                 </button>
               </div>
             </div>
