@@ -1,5 +1,5 @@
-import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
-import { ImagePlus, Pencil, Plus, Trash2, X } from 'lucide-react'
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Check, ImagePlus, Pencil, Plus, Trash2, X } from 'lucide-react'
 import {
   createMoniteur,
   deleteAdminReservation,
@@ -102,6 +102,12 @@ export function ReservationsPage() {
   const [moniteurId, setMoniteurId] = useState('')
   const [scheduleDayHours, setScheduleDayHours] = useState<EditDayHours[]>(() => toEditDayHours([]))
   const [savingSchedule, setSavingSchedule] = useState(false)
+  const [scheduleFeedback, setScheduleFeedback] = useState<{
+    type: 'success' | 'error'
+    message: string
+  } | null>(null)
+  const [scheduleJustSaved, setScheduleJustSaved] = useState(false)
+  const scheduleFeedbackRef = useRef<HTMLDivElement | null>(null)
   const [loading, setLoading] = useState(true)
   const [savingMoniteur, setSavingMoniteur] = useState(false)
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
@@ -178,10 +184,14 @@ export function ReservationsPage() {
   useEffect(() => {
     if (!selectedMoniteur) {
       setScheduleDayHours(toEditDayHours([]))
+      setScheduleFeedback(null)
+      setScheduleJustSaved(false)
       return
     }
     setScheduleDayHours(toEditDayHours(selectedMoniteur.weeklyAvailability))
-  }, [selectedMoniteur])
+    setScheduleFeedback(null)
+    setScheduleJustSaved(false)
+  }, [selectedMoniteur?.id])
 
   const handlePhotoUpload = async (file: File | null) => {
     if (!file) return
@@ -401,27 +411,45 @@ export function ReservationsPage() {
       return false
     })
     if (invalid) {
-      setError('Pour chaque plage, l’heure de fin doit être après l’heure de début')
+      const message = 'Pour chaque plage, l’heure de fin doit être après l’heure de début'
+      setError(message)
+      setScheduleFeedback({ type: 'error', message })
+      setScheduleJustSaved(false)
       return
     }
     setSavingSchedule(true)
     setError(null)
+    setSuccess(null)
+    setScheduleFeedback(null)
+    setScheduleJustSaved(false)
     try {
+      const enabledDays = scheduleDayHours.filter((day) => day.enabled).length
+      const slots = fromEditDayHours(scheduleDayHours)
       const { moniteur } = await updateMoniteur(token, moniteurId, {
-        weeklyAvailability: fromEditDayHours(scheduleDayHours),
+        weeklyAvailability: slots,
       })
-      setSuccess(
-        `Disponibilité de « ${moniteur.fullName} » enregistrée. Les élèves voient ces jours et choisissent leurs horaires.`,
-      )
+      const message = `Disponibilité enregistrée pour « ${moniteur.fullName} » — ${enabledDays} jour(s), ${slots.length} plage(s). Les élèves peuvent maintenant choisir leurs horaires.`
+      setSuccess(message)
+      setScheduleFeedback({ type: 'success', message })
+      setScheduleJustSaved(true)
       await load({ silent: true })
+      window.setTimeout(() => {
+        scheduleFeedbackRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      }, 50)
+      window.setTimeout(() => setScheduleJustSaved(false), 4000)
     } catch (err) {
-      setError(isAuthError(err) ? err.message : 'Enregistrement des horaires impossible')
+      const message = isAuthError(err) ? err.message : 'Enregistrement des horaires impossible'
+      setError(message)
+      setScheduleFeedback({ type: 'error', message })
+      setScheduleJustSaved(false)
     } finally {
       setSavingSchedule(false)
     }
   }
 
   const updateScheduleDay = (dayOfWeek: number, patch: Partial<EditDayHours>) => {
+    setScheduleFeedback(null)
+    setScheduleJustSaved(false)
     setScheduleDayHours((prev) =>
       prev.map((day) => (day.dayOfWeek === dayOfWeek ? { ...day, ...patch } : day)),
     )
@@ -432,6 +460,8 @@ export function ReservationsPage() {
     which: 'morning' | 'afternoon',
     patch: Partial<TimeInterval>,
   ) => {
+    setScheduleFeedback(null)
+    setScheduleJustSaved(false)
     setScheduleDayHours((prev) =>
       prev.map((day) =>
         day.dayOfWeek === dayOfWeek
@@ -898,15 +928,41 @@ export function ReservationsPage() {
                 })}
               </div>
 
-              <div className="moniteur-edit-actions">
+              <div className="moniteur-edit-actions moniteur-schedule-actions">
                 <button
                   type="button"
-                  className="btn-primary"
+                  className={`btn-primary${scheduleJustSaved ? ' is-saved' : ''}`}
                   disabled={savingSchedule}
                   onClick={() => void handleSaveSchedule()}
                 >
-                  {savingSchedule ? 'Enregistrement…' : 'Enregistrer la disponibilité'}
+                  {savingSchedule ? (
+                    'Enregistrement…'
+                  ) : scheduleJustSaved ? (
+                    <>
+                      <Check size={16} />
+                      Enregistré
+                    </>
+                  ) : (
+                    'Enregistrer la disponibilité'
+                  )}
                 </button>
+              </div>
+
+              <div ref={scheduleFeedbackRef}>
+                {scheduleFeedback ? (
+                  <p
+                    className={
+                      scheduleFeedback.type === 'success'
+                        ? 'form-success moniteur-schedule-feedback'
+                        : 'form-error moniteur-schedule-feedback'
+                    }
+                    role="status"
+                    aria-live="polite"
+                  >
+                    {scheduleFeedback.type === 'success' ? <Check size={16} /> : null}
+                    {scheduleFeedback.message}
+                  </p>
+                ) : null}
               </div>
             </div>
           ) : null}

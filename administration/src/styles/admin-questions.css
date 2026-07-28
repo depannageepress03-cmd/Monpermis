@@ -580,6 +580,32 @@
   gap: 1rem;
 }
 
+.moniteur-schedule-actions {
+  margin-top: 0.25rem;
+}
+
+.moniteur-schedule-actions .btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 240px;
+}
+
+.moniteur-schedule-actions .btn-primary.is-saved {
+  background: var(--green-deep, #008f3f);
+}
+
+.moniteur-schedule-feedback {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  font-size: 15px !important;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
 .btn-icon {
   display: inline-flex;
   align-items: center;
