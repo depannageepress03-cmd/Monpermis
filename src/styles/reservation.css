@@ -502,6 +502,30 @@
   margin-bottom: 10px;
 }
 
+.availability-time-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.85rem;
+  margin: 0.85rem 0 1rem;
+}
+
+.availability-time-row label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #5b6b7c;
+}
+
+.availability-time-row input[type='time'] {
+  min-width: 140px;
+  padding: 0.55rem 0.7rem;
+  border-radius: 10px;
+  border: 1px solid rgba(15, 23, 42, 0.18);
+  font: inherit;
+}
+
 .slots-row {
   display: flex;
   flex-wrap: wrap;

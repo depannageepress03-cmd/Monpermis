@@ -3,10 +3,11 @@ import { CalendarPlus, Check } from 'lucide-react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   createReservation,
-  fetchAvailableCreneaux,
+  fetchMoniteurAvailability,
   fetchPublicMoniteurs,
-  lockCreneau,
+  requestReservationSlot,
   ReservationError,
+  type AvailabilityDay,
   type MoniteurPublic,
   type ReservationSlot,
 } from '../../api/reservations'
@@ -25,7 +26,6 @@ function mediaSrc(url: string) {
   return resolveMediaUrl(url)
 }
 
-/** Photo du moniteur lui-même ; à défaut, photo du véhicule. */
 function moniteurPhoto(m: { photoUrl?: string; vehiclePhotoUrl?: string }) {
   return m.photoUrl || m.vehiclePhotoUrl || ''
 }
@@ -42,6 +42,13 @@ function formatDateLabel(date: string) {
   }
 }
 
+function estimateHours(start: string, end: string) {
+  const [sh, sm] = start.split(':').map((v) => parseInt(v, 10) || 0)
+  const [eh, em] = end.split(':').map((v) => parseInt(v, 10) || 0)
+  const raw = eh - sh + (em - sm) / 60
+  return Math.max(0.5, Math.round(raw * 2) / 2)
+}
+
 export function ReservationPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
@@ -50,7 +57,11 @@ export function ReservationPage() {
   const [moniteurId, setMoniteurId] = useState<string | undefined>()
   const [moniteurs, setMoniteurs] = useState<MoniteurPublic[]>([])
   const [cityFilter, setCityFilter] = useState<string>('')
-  const [days, setDays] = useState<{ date: string; creneaux: ReservationSlot[] }[]>([])
+  const [availabilityDays, setAvailabilityDays] = useState<AvailabilityDay[]>([])
+  const [hourlyPriceFcfa, setHourlyPriceFcfa] = useState(5000)
+  const [selectedDate, setSelectedDate] = useState('')
+  const [startTime, setStartTime] = useState('')
+  const [endTime, setEndTime] = useState('')
   const [selected, setSelected] = useState<ReservationSlot | null>(null)
   const [soldeHeures, setSoldeHeures] = useState<number | null>(null)
   const [busy, setBusy] = useState(false)
@@ -76,6 +87,21 @@ export function ReservationPage() {
 
   const vehicleType = selectedMoniteur?.vehicleTypes?.[0] || selected?.vehicleType || 'voiture'
 
+  const selectedDay = useMemo(
+    () => availabilityDays.find((day) => day.date === selectedDate) ?? null,
+    [availabilityDays, selectedDate],
+  )
+
+  const previewHours = useMemo(() => {
+    if (!startTime || !endTime || endTime <= startTime) return 0
+    return estimateHours(startTime, endTime)
+  }, [startTime, endTime])
+
+  const previewPrice = useMemo(
+    () => Math.round(hourlyPriceFcfa * previewHours),
+    [hourlyPriceFcfa, previewHours],
+  )
+
   const loadMoniteurs = useCallback(async () => {
     setBusy(true)
     setError(null)
@@ -89,15 +115,26 @@ export function ReservationPage() {
     }
   }, [])
 
-  const loadCreneaux = useCallback(async () => {
+  const loadAvailability = useCallback(async () => {
     if (!moniteurId) return
     setBusy(true)
     setError(null)
     try {
-      const data = await fetchAvailableCreneaux({ moniteurId })
-      setDays(data.days)
+      const data = await fetchMoniteurAvailability({ moniteurId, days: 14 })
+      setAvailabilityDays(data.days)
+      setHourlyPriceFcfa(data.hourlyPriceFcfa || data.moniteur.defaultPriceFcfa || 5000)
+      const first = data.days[0]
+      if (first) {
+        setSelectedDate(first.date)
+        setStartTime(first.windows[0]?.start || '')
+        setEndTime(first.windows[0]?.end || '')
+      } else {
+        setSelectedDate('')
+        setStartTime('')
+        setEndTime('')
+      }
     } catch (err) {
-      setError(err instanceof ReservationError ? err.message : 'Créneaux indisponibles')
+      setError(err instanceof ReservationError ? err.message : 'Disponibilités indisponibles')
     } finally {
       setBusy(false)
     }
@@ -122,20 +159,40 @@ export function ReservationPage() {
   }, [])
 
   useEffect(() => {
-    if (step === 'calendar') void loadCreneaux()
-  }, [step, loadCreneaux])
+    if (step === 'calendar') void loadAvailability()
+  }, [step, loadAvailability])
 
-  const onSelectSlot = async (slot: ReservationSlot) => {
-    if (!slot.available) return
+  useEffect(() => {
+    if (!selectedDay?.windows?.length) return
+    const first = selectedDay.windows[0]
+    setStartTime(first.start)
+    setEndTime(first.end)
+  }, [selectedDay])
+
+  const onRequestSlot = async () => {
+    if (!moniteurId || !selectedDate || !startTime || !endTime) {
+      setError('Choisissez un jour et une plage horaire')
+      return
+    }
+    if (endTime <= startTime) {
+      setError('L’heure de fin doit être après l’heure de début')
+      return
+    }
     setBusy(true)
     setError(null)
     try {
-      await lockCreneau(String(slot.id))
-      setSelected(slot)
+      const data = await requestReservationSlot({
+        moniteurId,
+        date: selectedDate,
+        startTime,
+        endTime,
+        vehicleType,
+      })
+      setSelected(data.creneau)
       setStep('payment')
     } catch (err) {
-      setError(err instanceof ReservationError ? err.message : 'Créneau indisponible')
-      void loadCreneaux()
+      setError(err instanceof ReservationError ? err.message : 'Plage indisponible')
+      void loadAvailability()
     } finally {
       setBusy(false)
     }
@@ -154,8 +211,6 @@ export function ReservationPage() {
     setBusy(true)
     setError(null)
     try {
-      // Renouvelle le verrou juste avant confirmation (évite les échecs après attente)
-      await lockCreneau(String(selected.id))
       const chosenMoniteurId = moniteurId || selected.moniteur?.id
       const data = await createReservation({
         creneauIds: [String(selected.id)],
@@ -197,8 +252,8 @@ export function ReservationPage() {
                   carte pour consulter son profil complet (photo, véhicule) avant de décider.
                 </p>
                 <p>
-                  Une fois le moniteur sélectionné, vous pourrez consulter ses créneaux libres et
-                  choisir directement celui qui vous convient.
+                  Ensuite, consultez ses jours libres et indiquez l’horaire que vous souhaitez
+                  (de telle heure à telle heure).
                 </p>
               </div>
 
@@ -283,15 +338,14 @@ export function ReservationPage() {
           {step === 'calendar' ? (
             <div className="reservation-step">
               <div className="reservation-intro">
-                <h2>Choisissez un créneau libre</h2>
+                <h2>Choisissez vos horaires</h2>
                 <p>
-                  Les horaires verts sont disponibles. Les créneaux grisés sont déjà pris ou
-                  temporairement verrouillés par un autre élève. Sélectionnez l’horaire qui
-                  vous convient : le créneau est réservé pour vous le temps de confirmer.
+                  Voici les jours où le moniteur est libre. Sélectionnez un jour, puis indiquez
+                  de quelle heure à quelle heure vous souhaitez conduire dans sa disponibilité.
                 </p>
               </div>
 
-              <h3 className="section-title">2. Créneaux disponibles</h3>
+              <h3 className="section-title">2. Jour et plage horaire</h3>
               {selectedMoniteur ? (
                 <div className="moniteur-recap-strip">
                   {moniteurPhoto(selectedMoniteur) ? (
@@ -305,37 +359,74 @@ export function ReservationPage() {
                   </div>
                 </div>
               ) : null}
-              <p className="subtitle">
-                Affichage sur les 14 prochains jours pour{' '}
-                {selectedMoniteur?.fullName || 'ce moniteur'}.
-              </p>
-              {busy ? <p className="subtitle">Chargement des créneaux…</p> : null}
-              {!busy && days.length === 0 ? (
+
+              {busy ? <p className="subtitle">Chargement des disponibilités…</p> : null}
+              {!busy && availabilityDays.length === 0 ? (
                 <p className="subtitle">
-                  Aucun créneau libre sur cette période. Changez de moniteur ou réessayez
-                  plus tard.
+                  Aucune disponibilité sur les 14 prochains jours pour ce moniteur.
                 </p>
               ) : null}
-              {days.map((day) => (
-                <div key={day.date} className="day-card">
-                  <strong>{formatDateLabel(day.date)}</strong>
-                  <div className="slots-row">
-                    {day.creneaux.map((slot) => (
-                      <button
-                        key={slot.id}
-                        type="button"
-                        disabled={!slot.available || busy}
-                        className={`slot-btn${!slot.available ? ' is-unavailable' : ''}${
-                          selected?.id === slot.id ? ' is-selected' : ''
-                        }`}
-                        onClick={() => void onSelectSlot(slot)}
-                      >
-                        {slot.startTime}
-                      </button>
-                    ))}
+
+              <div className="slots-row" style={{ marginBottom: '1rem' }}>
+                {availabilityDays.map((day) => (
+                  <button
+                    key={day.date}
+                    type="button"
+                    className={`slot-btn${selectedDate === day.date ? ' is-selected' : ''}`}
+                    disabled={busy}
+                    onClick={() => setSelectedDate(day.date)}
+                  >
+                    {formatDateLabel(day.date)}
+                  </button>
+                ))}
+              </div>
+
+              {selectedDay ? (
+                <div className="day-card">
+                  <strong>{formatDateLabel(selectedDay.date)}</strong>
+                  <p className="subtitle" style={{ marginTop: 6 }}>
+                    Disponible :{' '}
+                    {selectedDay.windows.map((w) => `${w.start}–${w.end}`).join(' · ')}
+                  </p>
+                  <div className="availability-time-row">
+                    <label>
+                      De
+                      <input
+                        type="time"
+                        value={startTime}
+                        onChange={(e) => setStartTime(e.target.value)}
+                      />
+                    </label>
+                    <label>
+                      À
+                      <input
+                        type="time"
+                        value={endTime}
+                        onChange={(e) => setEndTime(e.target.value)}
+                      />
+                    </label>
                   </div>
+                  {previewHours > 0 ? (
+                    <p className="subtitle">
+                      Durée : {previewHours} h · environ{' '}
+                      {new Intl.NumberFormat('fr-FR', {
+                        style: 'currency',
+                        currency: 'XOF',
+                        maximumFractionDigits: 0,
+                      }).format(previewPrice)}
+                    </p>
+                  ) : null}
+                  <button
+                    type="button"
+                    className="btn-primary"
+                    disabled={busy || !startTime || !endTime}
+                    onClick={() => void onRequestSlot()}
+                  >
+                    {busy ? 'Vérification…' : 'Continuer avec cet horaire'}
+                  </button>
                 </div>
-              ))}
+              ) : null}
+
               <button type="button" className="btn-outline" onClick={() => setStep('moniteur')}>
                 Changer de moniteur
               </button>

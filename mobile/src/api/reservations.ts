@@ -96,6 +96,18 @@ export interface MoniteurPublic {
   defaultPriceFcfa: number
   vehicleBrand?: string
   vehiclePhotoUrl?: string
+  photoUrl?: string
+  city?: string
+}
+
+export interface AvailabilityWindow {
+  start: string
+  end: string
+}
+
+export interface AvailabilityDay {
+  date: string
+  windows: AvailabilityWindow[]
 }
 
 export function fetchDrivingDashboard() {
@@ -109,6 +121,42 @@ export function fetchPublicMoniteurs(vehicleType?: string) {
     ? `?vehicleType=${encodeURIComponent(vehicleType)}`
     : ''
   return request<{ moniteurs: MoniteurPublic[] }>(`/reservations/moniteurs${query}`)
+}
+
+export function fetchMoniteurAvailability(params: {
+  moniteurId: string
+  days?: number
+  from?: string
+}) {
+  const query = new URLSearchParams({
+    moniteurId: params.moniteurId,
+    days: String(params.days ?? 14),
+  })
+  if (params.from) query.set('from', params.from)
+  return request<{
+    moniteur: MoniteurPublic
+    from: string
+    to: string
+    hourlyPriceFcfa: number
+    days: AvailabilityDay[]
+  }>(`/reservations/availability?${query.toString()}`)
+}
+
+export function requestReservationSlot(payload: {
+  moniteurId: string
+  date: string
+  startTime: string
+  endTime: string
+  vehicleType?: string
+}) {
+  return request<{
+    creneau: ReservationSlot
+    hours: number
+    lockedUntil: string
+  }>('/reservations/request-slot', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
 }
 
 export function fetchAvailableCreneaux(params: {

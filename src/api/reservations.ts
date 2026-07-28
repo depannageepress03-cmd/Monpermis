@@ -87,6 +87,7 @@ export interface MoniteurPublic {
   vehiclePhotoUrl?: string
   photoUrl?: string
   city?: string
+  weeklyAvailability?: { dayOfWeek: number; start: string; end: string }[]
 }
 
 export interface MoniteurProfile extends MoniteurPublic {
@@ -95,6 +96,16 @@ export interface MoniteurProfile extends MoniteurPublic {
   bio: string
   photos: string[]
   videos: string[]
+}
+
+export interface AvailabilityWindow {
+  start: string
+  end: string
+}
+
+export interface AvailabilityDay {
+  date: string
+  windows: AvailabilityWindow[]
 }
 
 export const fetchDrivingDashboard = () =>
@@ -109,6 +120,41 @@ export const fetchPublicMoniteurs = (vehicleType?: string) => {
 
 export const fetchMoniteurProfile = (id: string) =>
   request<{ moniteur: MoniteurProfile }>(`/reservations/moniteurs/${id}`)
+
+export const fetchMoniteurAvailability = (params: {
+  moniteurId: string
+  days?: number
+  from?: string
+}) => {
+  const query = new URLSearchParams({
+    moniteurId: params.moniteurId,
+    days: String(params.days ?? 14),
+  })
+  if (params.from) query.set('from', params.from)
+  return request<{
+    moniteur: MoniteurPublic
+    from: string
+    to: string
+    hourlyPriceFcfa: number
+    days: AvailabilityDay[]
+  }>(`/reservations/availability?${query}`)
+}
+
+export const requestReservationSlot = (payload: {
+  moniteurId: string
+  date: string
+  startTime: string
+  endTime: string
+  vehicleType?: string
+}) =>
+  request<{
+    creneau: ReservationSlot
+    hours: number
+    lockedUntil: string
+  }>('/reservations/request-slot', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
 
 export const fetchAvailableCreneaux = (params: {
   vehicleType?: string

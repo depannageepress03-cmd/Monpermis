@@ -534,6 +534,17 @@
   opacity: 0.45;
 }
 
+.moniteur-schedule-panel {
+  margin-top: 1.25rem;
+  padding: 1rem 1.1rem;
+  border: 1px solid color-mix(in srgb, var(--navy) 12%, transparent);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--navy) 3%, #fff);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
 .btn-icon {
   display: inline-flex;
   align-items: center;

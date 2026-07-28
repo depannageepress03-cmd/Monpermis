@@ -19,6 +19,14 @@ import {
   normalizeVehicleType,
 } from '../utils/localDate.js'
 import { computeCreneauHeures } from '../utils/creneauDuration.js'
+import {
+  intervalsOverlap,
+  isValidHhMm,
+  isWithinWindows,
+  normalizeTime,
+  subtractBusy,
+  windowsForDate,
+} from '../utils/availability.js'
 import { configureFedaPay, sendFedaPayMobileMoney } from '../services/fedapay.js'
 import {
   buildReservationCallbackUrl,
@@ -161,6 +169,218 @@ router.get('/moniteurs/:id', ...withConduiteAccess, async (req, res) => {
   } catch (error) {
     console.error('Erreur profil moniteur:', error)
     res.status(500).json({ success: false, error: 'Chargement impossible' })
+  }
+})
+
+/**
+ * Disponibilité réelle du moniteur : plages hebdomadaires moins les séances déjà prises.
+ * L’élève choisit ensuite une date et une plage « de … à … » dans ces fenêtres.
+ */
+router.get('/availability', ...withConduiteAccess, async (req, res) => {
+  try {
+    const moniteurId = asObjectId(req.query.moniteurId)
+    if (!moniteurId) {
+      return res.status(400).json({ success: false, error: 'Moniteur requis' })
+    }
+    const moniteur = await Moniteur.findOne({ _id: moniteurId, active: true })
+    if (!moniteur) {
+      return res.status(404).json({ success: false, error: 'Moniteur introuvable' })
+    }
+
+    const from = String(req.query.from || formatLocalDate()).slice(0, 10)
+    const daysCount = Math.min(60, Math.max(1, Number(req.query.days) || 14))
+    const to = addLocalDays(from, daysCount - 1) || from
+
+    await Creneau.updateMany(
+      { status: 'libre', lockedUntil: { $lt: new Date() } },
+      { $set: { lockedUntil: null, lockedBy: null } },
+    )
+
+    const busyCreneaux = await Creneau.find({
+      moniteurId,
+      date: { $gte: from, $lte: to },
+      $or: [
+        { status: { $in: ['reserve', 'bloque'] } },
+        {
+          status: 'libre',
+          lockedUntil: { $gt: new Date() },
+          lockedBy: { $ne: req.user._id },
+        },
+      ],
+    }).select('date startTime endTime status')
+
+    const busyByDate = {}
+    for (const slot of busyCreneaux) {
+      if (!busyByDate[slot.date]) busyByDate[slot.date] = []
+      busyByDate[slot.date].push(slot)
+    }
+
+    const days = []
+    let cursor = from
+    for (let i = 0; i < daysCount; i += 1) {
+      const windows = windowsForDate(moniteur.weeklyAvailability, cursor)
+      const freeWindows = subtractBusy(windows, busyByDate[cursor] || [])
+      if (freeWindows.length > 0) {
+        days.push({ date: cursor, windows: freeWindows })
+      }
+      cursor = addLocalDays(cursor, 1) || cursor
+      if (cursor > to) break
+    }
+
+    res.json({
+      success: true,
+      data: {
+        moniteur: moniteur.toJSONSafe(),
+        from,
+        to,
+        hourlyPriceFcfa: moniteur.defaultPriceFcfa || 5000,
+        days,
+      },
+    })
+  } catch (error) {
+    console.error('Erreur disponibilité moniteur:', error)
+    res.status(500).json({ success: false, error: 'Chargement impossible' })
+  }
+})
+
+/**
+ * L’élève demande une plage horaire précise. Crée un créneau à la volée et le verrouille.
+ */
+router.post('/request-slot', ...withConduiteAccess, async (req, res) => {
+  try {
+    const moniteurId = asObjectId(req.body.moniteurId)
+    const date = String(req.body.date || '').trim().slice(0, 10)
+    const startTime = normalizeTime(req.body.startTime)
+    const endTime = normalizeTime(req.body.endTime)
+
+    if (!moniteurId || !date || !isValidHhMm(startTime) || !isValidHhMm(endTime)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Moniteur, date, heure de début et heure de fin requis',
+      })
+    }
+
+    const moniteur = await Moniteur.findOne({ _id: moniteurId, active: true })
+    if (!moniteur) {
+      return res.status(404).json({ success: false, error: 'Moniteur introuvable' })
+    }
+
+    const windows = windowsForDate(moniteur.weeklyAvailability, date)
+    if (!windows.length) {
+      return res.status(400).json({
+        success: false,
+        error: 'Ce moniteur n’est pas disponible ce jour-là',
+      })
+    }
+    if (!isWithinWindows(windows, startTime, endTime)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Horaires hors de la disponibilité du moniteur ce jour-là',
+      })
+    }
+
+    const heures = computeCreneauHeures({ startTime, endTime })
+    if (heures < 0.5) {
+      return res.status(400).json({ success: false, error: 'Durée minimale : 30 minutes' })
+    }
+    if (heures > 6) {
+      return res.status(400).json({ success: false, error: 'Durée maximale : 6 heures' })
+    }
+
+    const startAt = slotDateTime(date, startTime)
+    if (startAt.getTime() <= Date.now()) {
+      return res.status(400).json({ success: false, error: 'Choisissez un horaire dans le futur' })
+    }
+
+    await Creneau.updateMany(
+      { status: 'libre', lockedUntil: { $lt: new Date() } },
+      { $set: { lockedUntil: null, lockedBy: null } },
+    )
+
+    const conflicting = await Creneau.find({
+      moniteurId,
+      date,
+      $or: [
+        { status: { $in: ['reserve', 'bloque'] } },
+        {
+          status: 'libre',
+          lockedUntil: { $gt: new Date() },
+          lockedBy: { $ne: req.user._id },
+        },
+      ],
+    }).select('startTime endTime status lockedBy lockedUntil')
+
+    const overlap = conflicting.find((slot) =>
+      intervalsOverlap(startTime, endTime, slot.startTime, slot.endTime),
+    )
+    if (overlap) {
+      return res.status(409).json({
+        success: false,
+        error: 'Cette plage chevauche une séance déjà réservée. Choisissez d’autres horaires.',
+      })
+    }
+
+    // Libère un éventuel créneau encore verrouillé par cet élève (même moniteur/date)
+    await Creneau.deleteMany({
+      moniteurId,
+      date,
+      status: 'libre',
+      lockedBy: req.user._id,
+    })
+
+    const vehicleType = normalizeVehicleType(
+      req.body.vehicleType ||
+        (Array.isArray(moniteur.vehicleTypes) && moniteur.vehicleTypes[0]) ||
+        'voiture',
+    )
+    const hourly = moniteur.defaultPriceFcfa || 5000
+    const priceFcfa = Math.round(hourly * heures)
+    const lockedUntil = new Date(Date.now() + LOCK_MS)
+
+    let creneau
+    try {
+      creneau = await Creneau.create({
+        moniteurId: moniteur._id,
+        date,
+        startTime,
+        endTime,
+        vehicleType,
+        status: 'libre',
+        priceFcfa,
+        lockedUntil,
+        lockedBy: req.user._id,
+      })
+    } catch (error) {
+      if (error?.code === 11000) {
+        return res.status(409).json({
+          success: false,
+          error: 'Cette plage vient d’être prise. Choisissez d’autres horaires.',
+        })
+      }
+      throw error
+    }
+
+    res.status(201).json({
+      success: true,
+      data: {
+        creneau: {
+          ...creneau.toJSONSafe(),
+          available: true,
+          moniteur: {
+            id: String(moniteur._id),
+            fullName: `${moniteur.firstName} ${moniteur.lastName}`.trim(),
+            vehicleBrand: moniteur.vehicleBrand || '',
+            vehiclePhotoUrl: moniteur.vehiclePhotoUrl || '',
+            photoUrl: moniteur.photoUrl || '',
+          },
+        },
+        hours: heures,
+        lockedUntil,
+      },
+    })
+  } catch (error) {
+    console.error('Erreur demande de plage:', error)
+    res.status(500).json({ success: false, error: 'Demande impossible' })
   }
 })
 
