@@ -6,17 +6,38 @@ import { mapFedaPayStatus, retrieveFedaPayTransaction } from '../services/fedapa
 import { broadcastPaymentEvent } from '../services/paymentEvents.js'
 import { logger } from './logger.js'
 
+function sanitizeHttpUrl(value) {
+  const raw = String(value || '')
+    .replace(/^\uFEFF/, '')
+    .trim()
+    .replace(/^["']|["']$/g, '')
+    .replace(/[\r\n\t]/g, '')
+    .trim()
+  if (!raw) return null
+  try {
+    const url = new URL(raw)
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') return null
+    return url.toString().replace(/\/$/, '')
+  } catch {
+    return null
+  }
+}
+
 function callbackBase() {
   const candidates = [
     process.env.FEDAPAY_CALLBACK_URL,
-    process.env.API_PUBLIC_URL,
     process.env.CLIENT_URL,
+    process.env.API_PUBLIC_URL,
+    'https://monpermis.bj',
     'https://monpermis-api.onrender.com',
   ]
   for (const candidate of candidates) {
-    if (candidate) return candidate.replace(/\/abonnement\/?$/, '')
+    const cleaned = sanitizeHttpUrl(candidate)
+    if (!cleaned) continue
+    if (/monpermis-admin/i.test(cleaned)) continue
+    return cleaned.replace(/\/abonnement\/?$/, '')
   }
-  return 'https://monpermis-api.onrender.com'
+  return 'https://monpermis.bj'
 }
 
 export function buildReservationCallbackUrl(bookingGroupId) {

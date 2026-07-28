@@ -8,9 +8,12 @@ interface ApiResponse<T> {
 }
 
 export class ReservationError extends Error {
-  constructor(message: string) {
+  code?: string
+
+  constructor(message: string, code?: string) {
     super(message)
     this.name = 'ReservationError'
+    this.code = code
   }
 }
 
@@ -32,9 +35,11 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     throw new ReservationError('Impossible de joindre le serveur')
   }
 
-  const body = (await response.json().catch(() => ({}))) as ApiResponse<T>
+  const body = (await response.json().catch(() => ({}))) as ApiResponse<T> & {
+    code?: string
+  }
   if (!response.ok || !body.success || body.data === undefined) {
-    throw new ReservationError(body.error ?? 'Action impossible')
+    throw new ReservationError(body.error ?? 'Action impossible', body.code)
   }
   return body.data
 }

@@ -245,12 +245,17 @@ export function ReservationMobileMoneyCheckout({
       setError('Choisis un réseau Mobile Money')
       return
     }
+    const phoneDigits = phone.replace(/\D/g, '')
     const detected = guessOperator(phone)
     if (detected && detected !== operator) {
       setError(
         `Ce numéro est un numéro ${detected.toUpperCase()}. Choisis ${detected.toUpperCase()} (pas ${operator.toUpperCase()}).`,
       )
       setOperator(detected)
+      return
+    }
+    if (!phoneDigits || phoneDigits.length < 8) {
+      setError('Indique un numéro Mobile Money valide')
       return
     }
     setBusy(true)
@@ -269,29 +274,32 @@ export function ReservationMobileMoneyCheckout({
         creneauId = String(lockedSlot.creneau.id)
       }
 
+      const chosenOperator = detected || operator
       const result = await createReservation({
         creneauIds: [creneauId],
         vehicleType: slot.vehicleType,
         moniteurId: slot.moniteurId,
         paymentMethod: 'mobile_money',
-        operator: detected || operator,
-        phone,
-        country,
+        operator: chosenOperator,
+        phone: phoneDigits,
+        country: country || 'BJ',
       })
-      setOperator(detected || operator)
+      setOperator(chosenOperator)
       setStep('waiting')
       setSuccess(result.message || 'Demande envoyée. Valide sur ton téléphone.')
       startPoll(result.bookingGroupId)
     } catch (err) {
       setBusy(false)
       setStep('phone')
-      setError(
-        err instanceof ReservationError
-          ? err.message
-          : 'Paiement impossible. Vérifie le numéro et réessaie.',
-      )
-      const expected = guessOperator(phone)
-      if (expected) setOperator(expected)
+      if (err instanceof ReservationError) {
+        setError(err.message)
+        if (err.code === 'OPERATOR_MISMATCH') {
+          const expected = guessOperator(phone)
+          if (expected) setOperator(expected)
+        }
+      } else {
+        setError('Paiement impossible. Vérifie le numéro et réessaie.')
+      }
     }
   }
 

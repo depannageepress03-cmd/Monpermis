@@ -27,7 +27,15 @@ import {
   subtractBusy,
   windowsForDate,
 } from '../utils/availability.js'
-import { configureFedaPay, sendFedaPayMobileMoney } from '../services/fedapay.js'
+import {
+  configureFedaPay,
+  sendFedaPayMobileMoney,
+  FEDAPAY_MOBILE_OPERATORS,
+  guessBeninMobileOperator,
+  normalizeBeninPhone,
+  normalizeOperatorId,
+  operatorLabel,
+} from '../services/fedapay.js'
 import {
   buildReservationCallbackUrl,
   syncReservationPaymentFromProvider,
@@ -791,7 +799,46 @@ router.post('/reservations', ...withConduiteAccess, async (req, res) => {
     }
 
     // --- paymentMethod === 'mobile_money' : paiement à la réservation ---
+    const requestedMode = normalizeOperatorId(req.body.operator)
+    if (!requestedMode || !FEDAPAY_MOBILE_OPERATORS.includes(requestedMode)) {
+      await releaseAll()
+      return res.status(400).json({
+        success: false,
+        error: 'Réseau Mobile Money invalide. Choisissez MTN, Moov ou Celtiis.',
+      })
+    }
+
+    const normalizedPhone =
+      normalizeBeninPhone(req.body.phone) || normalizeBeninPhone(req.user.phone)
+    if (!normalizedPhone) {
+      await releaseAll()
+      return res.status(400).json({
+        success: false,
+        error: 'Numéro Mobile Money invalide. Utilisez un numéro béninois (ex. 01 XX XX XX XX).',
+      })
+    }
+
+    const guessed = guessBeninMobileOperator(normalizedPhone)
+    let mode = requestedMode
+    if (guessed && guessed !== requestedMode) {
+      await releaseAll()
+      return res.status(400).json({
+        success: false,
+        error: `Le numéro ${normalizedPhone} appartient au réseau ${operatorLabel(guessed)}, pas ${operatorLabel(requestedMode)}. Choisis « ${operatorLabel(guessed)} » puis réessaie.`,
+        code: 'OPERATOR_MISMATCH',
+        expectedOperator: guessed,
+      })
+    }
+    if (guessed) mode = guessed
+
     const totalAmount = claimed.reduce((sum, c) => sum + (c.priceFcfa || 5000), 0)
+    if (totalAmount < 100) {
+      await releaseAll()
+      return res.status(400).json({
+        success: false,
+        error: 'Montant de séance invalide pour le paiement Mobile Money.',
+      })
+    }
 
     let reservations
     try {
@@ -825,6 +872,7 @@ router.post('/reservations', ...withConduiteAccess, async (req, res) => {
       currency: 'XOF',
       status: 'pending',
       reservationGroupId: bookingGroupId,
+      paymentMethod: mode,
     })
 
     try {
@@ -836,7 +884,7 @@ router.post('/reservations', ...withConduiteAccess, async (req, res) => {
         customer: {
           firstName: req.user.firstName,
           lastName: req.user.lastName,
-          phone: req.user.phone,
+          phone: normalizedPhone,
           email: req.user.email,
         },
         callbackUrl: buildReservationCallbackUrl(bookingGroupId),
@@ -845,16 +893,32 @@ router.post('/reservations', ...withConduiteAccess, async (req, res) => {
           reservationGroupId: String(bookingGroupId),
           userId: String(req.user._id),
         },
-        operator: req.body.operator,
-        phone: req.body.phone,
+        operator: mode,
+        phone: normalizedPhone,
         country: req.body.country || 'BJ',
       })
       payment.fedapayTransactionId = checkout.transactionId
       payment.fedapayReference = checkout.reference
-      payment.paymentUrl = checkout.paymentUrl
-      payment.paymentMethod = checkout.fedapayMode || ''
+      payment.paymentUrl = checkout.paymentUrl || ''
+      payment.paymentMethod = checkout.operator || mode
+      payment.status = 'pending'
       await payment.save()
+      logger.info('Retrait Mobile Money réservation initié', {
+        bookingGroupId: String(bookingGroupId),
+        operator: mode,
+        phone: normalizedPhone,
+        amount: totalAmount,
+        transactionId: checkout.transactionId,
+      })
     } catch (error) {
+      logger.error('Échec retrait Mobile Money réservation', {
+        error: error.message,
+        status: error.status,
+        cause: error.cause?.httpResponse?.data || error.cause?.message || null,
+        bookingGroupId: String(bookingGroupId),
+        operator: mode,
+        phone: normalizedPhone,
+      })
       payment.status = 'failed'
       payment.errorMessage = error.message
       await payment.save()
@@ -863,6 +927,7 @@ router.post('/reservations', ...withConduiteAccess, async (req, res) => {
       return res.status(error.status || 502).json({
         success: false,
         error: error.message || 'Paiement Mobile Money impossible',
+        code: error.code || undefined,
       })
     }
 
@@ -872,6 +937,8 @@ router.post('/reservations', ...withConduiteAccess, async (req, res) => {
         paymentMethod: 'mobile_money',
         bookingGroupId: String(bookingGroupId),
         payment: payment.toPublicJSON(),
+        operator: mode,
+        phone: normalizedPhone,
         message: 'Validez la demande de retrait sur votre téléphone.',
       },
     })
