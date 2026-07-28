@@ -502,7 +502,29 @@
 .moniteur-hours-grid {
   display: flex;
   flex-direction: column;
+  gap: 12px;
+}
+
+.moniteur-hours-day-block {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 12px 16px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid color-mix(in srgb, var(--navy) 8%, transparent);
+}
+
+.moniteur-hours-day-block:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.moniteur-hours-intervals {
+  display: flex;
+  flex-direction: column;
   gap: 8px;
+  flex: 1;
+  min-width: 260px;
 }
 
 .moniteur-hours-row {
@@ -520,6 +542,19 @@
   font-size: 15px;
   font-weight: 600;
   color: var(--navy);
+  padding-top: 6px;
+}
+
+.moniteur-hours-slot-label,
+.moniteur-hours-slot-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 28px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--navy-muted);
 }
 
 .moniteur-hours-row input[type='time'] {

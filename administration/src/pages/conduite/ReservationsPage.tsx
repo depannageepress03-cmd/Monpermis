@@ -32,31 +32,68 @@ function mediaSrc(url: string) {
   return resolveMediaUrl(url)
 }
 
-type EditDayHours = {
-  dayOfWeek: number
-  enabled: boolean
+type TimeInterval = {
   start: string
   end: string
 }
 
+type EditDayHours = {
+  dayOfWeek: number
+  enabled: boolean
+  morning: TimeInterval
+  afternoonEnabled: boolean
+  afternoon: TimeInterval
+}
+
+function sortSlots(slots: WeeklyAvailabilitySlot[]) {
+  return [...slots].sort((a, b) => String(a.start).localeCompare(String(b.start)))
+}
+
 function toEditDayHours(slots: WeeklyAvailabilitySlot[] | undefined): EditDayHours[] {
   return WEEK_DAYS.map(({ dayOfWeek }) => {
-    const same = (slots || []).filter((slot) => Number(slot.dayOfWeek) === dayOfWeek)
-    const starts = same.map((slot) => slot.start || '08:00').sort()
-    const ends = same.map((slot) => slot.end || '18:00').sort()
+    const same = sortSlots(
+      (slots || []).filter((slot) => Number(slot.dayOfWeek) === dayOfWeek),
+    )
+    const first = same[0]
+    const second = same[1]
     return {
       dayOfWeek,
       enabled: same.length > 0,
-      start: starts[0] || '08:00',
-      end: ends[ends.length - 1] || '18:00',
+      morning: {
+        start: first?.start || '08:00',
+        end: first?.end || '12:00',
+      },
+      afternoonEnabled: Boolean(second),
+      afternoon: {
+        start: second?.start || '14:00',
+        end: second?.end || '18:00',
+      },
     }
   })
 }
 
 function fromEditDayHours(days: EditDayHours[]): WeeklyAvailabilitySlot[] {
-  return days
-    .filter((day) => day.enabled)
-    .map(({ dayOfWeek, start, end }) => ({ dayOfWeek, start, end }))
+  const result: WeeklyAvailabilitySlot[] = []
+  for (const day of days) {
+    if (!day.enabled) continue
+    result.push({
+      dayOfWeek: day.dayOfWeek,
+      start: day.morning.start,
+      end: day.morning.end,
+    })
+    if (day.afternoonEnabled) {
+      result.push({
+        dayOfWeek: day.dayOfWeek,
+        start: day.afternoon.start,
+        end: day.afternoon.end,
+      })
+    }
+  }
+  return result
+}
+
+function intervalInvalid(interval: TimeInterval) {
+  return !interval.start || !interval.end || interval.end <= interval.start
 }
 
 export function ReservationsPage() {
@@ -357,11 +394,14 @@ export function ReservationsPage() {
   const handleSaveSchedule = async () => {
     const token = getAdminToken()
     if (!token || !moniteurId || !selectedMoniteur) return
-    const invalid = scheduleDayHours.find(
-      (day) => day.enabled && day.end <= day.start,
-    )
+    const invalid = scheduleDayHours.find((day) => {
+      if (!day.enabled) return false
+      if (intervalInvalid(day.morning)) return true
+      if (day.afternoonEnabled && intervalInvalid(day.afternoon)) return true
+      return false
+    })
     if (invalid) {
-      setError('Pour chaque jour coché, l’heure de fin doit être après l’heure de début')
+      setError('Pour chaque plage, l’heure de fin doit être après l’heure de début')
       return
     }
     setSavingSchedule(true)
@@ -384,6 +424,20 @@ export function ReservationsPage() {
   const updateScheduleDay = (dayOfWeek: number, patch: Partial<EditDayHours>) => {
     setScheduleDayHours((prev) =>
       prev.map((day) => (day.dayOfWeek === dayOfWeek ? { ...day, ...patch } : day)),
+    )
+  }
+
+  const updateScheduleInterval = (
+    dayOfWeek: number,
+    which: 'morning' | 'afternoon',
+    patch: Partial<TimeInterval>,
+  ) => {
+    setScheduleDayHours((prev) =>
+      prev.map((day) =>
+        day.dayOfWeek === dayOfWeek
+          ? { ...day, [which]: { ...day[which], ...patch } }
+          : day,
+      ),
     )
   }
 
@@ -527,8 +581,8 @@ export function ReservationsPage() {
         <div className="admin-section-head">
           <h3 className="admin-section-label">2. Disponibilité du moniteur</h3>
           <p className="admin-section-hint">
-            Cochez les jours où le moniteur est libre et indiquez ses horaires. L’élève voit
-            cette disponibilité et choisit lui-même de telle heure à telle heure.
+            Cochez les jours libres. Pour chaque jour, définissez 1 ou 2 plages (ex. matin et
+            après-midi). L’élève choisit ensuite de telle heure à telle heure.
           </p>
         </div>
         <div className="admin-section-body">
@@ -745,7 +799,7 @@ export function ReservationsPage() {
                 <div>
                   <p className="moniteur-generate-name">{selectedMoniteur.fullName}</p>
                   <p className="moniteur-generate-vehicle">
-                    Jours et plages horaires de disponibilité
+                    Jusqu’à deux plages par jour (ex. matin et après-midi)
                   </p>
                 </div>
               </div>
@@ -755,34 +809,90 @@ export function ReservationsPage() {
                   const label =
                     WEEK_DAYS.find((item) => item.dayOfWeek === day.dayOfWeek)?.label || 'Jour'
                   return (
-                    <div key={day.dayOfWeek} className="moniteur-hours-row">
+                    <div key={day.dayOfWeek} className="moniteur-hours-day-block">
                       <label className="moniteur-hours-day">
                         <input
                           type="checkbox"
                           checked={day.enabled}
                           onChange={(e) =>
-                            updateScheduleDay(day.dayOfWeek, { enabled: e.target.checked })
+                            updateScheduleDay(day.dayOfWeek, {
+                              enabled: e.target.checked,
+                              ...(e.target.checked
+                                ? {}
+                                : { afternoonEnabled: false }),
+                            })
                           }
                         />
                         <span>{label}</span>
                       </label>
-                      <input
-                        type="time"
-                        value={day.start}
-                        disabled={!day.enabled}
-                        onChange={(e) =>
-                          updateScheduleDay(day.dayOfWeek, { start: e.target.value })
-                        }
-                        aria-label={`${label} début`}
-                      />
-                      <span className="admin-muted">à</span>
-                      <input
-                        type="time"
-                        value={day.end}
-                        disabled={!day.enabled}
-                        onChange={(e) => updateScheduleDay(day.dayOfWeek, { end: e.target.value })}
-                        aria-label={`${label} fin`}
-                      />
+
+                      <div className="moniteur-hours-intervals">
+                        <div className="moniteur-hours-row">
+                          <span className="moniteur-hours-slot-label">1</span>
+                          <input
+                            type="time"
+                            value={day.morning.start}
+                            disabled={!day.enabled}
+                            onChange={(e) =>
+                              updateScheduleInterval(day.dayOfWeek, 'morning', {
+                                start: e.target.value,
+                              })
+                            }
+                            aria-label={`${label} plage 1 début`}
+                          />
+                          <span className="admin-muted">à</span>
+                          <input
+                            type="time"
+                            value={day.morning.end}
+                            disabled={!day.enabled}
+                            onChange={(e) =>
+                              updateScheduleInterval(day.dayOfWeek, 'morning', {
+                                end: e.target.value,
+                              })
+                            }
+                            aria-label={`${label} plage 1 fin`}
+                          />
+                        </div>
+
+                        <div className="moniteur-hours-row">
+                          <label className="moniteur-hours-slot-toggle">
+                            <input
+                              type="checkbox"
+                              checked={day.afternoonEnabled}
+                              disabled={!day.enabled}
+                              onChange={(e) =>
+                                updateScheduleDay(day.dayOfWeek, {
+                                  afternoonEnabled: e.target.checked,
+                                })
+                              }
+                            />
+                            <span>2</span>
+                          </label>
+                          <input
+                            type="time"
+                            value={day.afternoon.start}
+                            disabled={!day.enabled || !day.afternoonEnabled}
+                            onChange={(e) =>
+                              updateScheduleInterval(day.dayOfWeek, 'afternoon', {
+                                start: e.target.value,
+                              })
+                            }
+                            aria-label={`${label} plage 2 début`}
+                          />
+                          <span className="admin-muted">à</span>
+                          <input
+                            type="time"
+                            value={day.afternoon.end}
+                            disabled={!day.enabled || !day.afternoonEnabled}
+                            onChange={(e) =>
+                              updateScheduleInterval(day.dayOfWeek, 'afternoon', {
+                                end: e.target.value,
+                              })
+                            }
+                            aria-label={`${label} plage 2 fin`}
+                          />
+                        </div>
+                      </div>
                     </div>
                   )
                 })}
