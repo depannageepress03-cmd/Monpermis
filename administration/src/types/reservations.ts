@@ -1,3 +1,9 @@
+export interface WeeklyAvailabilitySlot {
+  dayOfWeek: number
+  start: string
+  end: string
+}
+
 export interface Moniteur {
   id: string
   firstName: string
@@ -6,6 +12,7 @@ export interface Moniteur {
   phone: string
   specialties: string[]
   vehicleTypes: string[]
+  weeklyAvailability: WeeklyAvailabilitySlot[]
   active: boolean
   defaultPriceFcfa: number
   vehicleBrand: string

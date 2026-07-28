@@ -278,6 +278,75 @@ router.post('/creneaux/generate', async (req, res) => {
   }
 })
 
+/** Crée un créneau unique avec horaires saisis par l’admin. */
+router.post('/creneaux', async (req, res) => {
+  try {
+    const moniteurId = req.body.moniteurId
+    const date = String(req.body.date || '').trim().slice(0, 10)
+    const startTime = String(req.body.startTime || '').trim().slice(0, 5)
+    const endTime = String(req.body.endTime || '').trim().slice(0, 5)
+
+    if (!moniteurId || !date || !startTime || !endTime) {
+      return res.status(400).json({
+        success: false,
+        error: 'Moniteur, date, heure de début et heure de fin requis',
+      })
+    }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      return res.status(400).json({ success: false, error: 'Date invalide (AAAA-MM-JJ)' })
+    }
+    if (!/^\d{2}:\d{2}$/.test(startTime) || !/^\d{2}:\d{2}$/.test(endTime)) {
+      return res.status(400).json({ success: false, error: 'Horaires invalides (HH:mm)' })
+    }
+    const [sh, sm] = startTime.split(':').map(Number)
+    const [eh, em] = endTime.split(':').map(Number)
+    const startMinutes = sh * 60 + sm
+    const endMinutes = eh * 60 + em
+    if (!(endMinutes > startMinutes)) {
+      return res.status(400).json({ success: false, error: 'L’heure de fin doit être après l’heure de début' })
+    }
+
+    const moniteur = await Moniteur.findById(moniteurId)
+    if (!moniteur || !moniteur.active) {
+      return res.status(404).json({ success: false, error: 'Moniteur introuvable' })
+    }
+
+    const vehicleType = normalizeVehicleType(
+      req.body.vehicleType ||
+        (Array.isArray(moniteur.vehicleTypes) && moniteur.vehicleTypes[0]) ||
+        'voiture',
+    )
+    const priceFcfa =
+      req.body.priceFcfa !== undefined
+        ? Number(req.body.priceFcfa) || 0
+        : moniteur.defaultPriceFcfa || 5000
+
+    try {
+      const creneau = await Creneau.create({
+        moniteurId: moniteur._id,
+        date,
+        startTime,
+        endTime,
+        vehicleType,
+        status: 'libre',
+        priceFcfa,
+      })
+      return res.status(201).json({ success: true, data: { creneau: creneau.toJSONSafe() } })
+    } catch (error) {
+      if (error?.code === 11000) {
+        return res.status(409).json({
+          success: false,
+          error: 'Un créneau existe déjà à cette date et cette heure pour ce moniteur',
+        })
+      }
+      throw error
+    }
+  } catch (error) {
+    logger.error('Erreur création créneau:', error)
+    res.status(500).json({ success: false, error: 'Création impossible' })
+  }
+})
+
 router.get('/creneaux', async (req, res) => {
   try {
     const filter = {}
@@ -308,6 +377,12 @@ router.patch('/creneaux/:id', async (req, res) => {
     if (!creneau) {
       return res.status(404).json({ success: false, error: 'Créneau introuvable' })
     }
+    if (creneau.status === 'reserve' && (req.body.startTime || req.body.endTime || req.body.date)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Impossible de modifier un créneau déjà réservé',
+      })
+    }
     if (req.body.status !== undefined) {
       const status = String(req.body.status)
       if (!['libre', 'reserve', 'bloque'].includes(status)) {
@@ -318,11 +393,60 @@ router.patch('/creneaux/:id', async (req, res) => {
     if (req.body.priceFcfa !== undefined) {
       creneau.priceFcfa = Number(req.body.priceFcfa) || 0
     }
+    if (req.body.date !== undefined) {
+      const date = String(req.body.date).trim().slice(0, 10)
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+        return res.status(400).json({ success: false, error: 'Date invalide' })
+      }
+      creneau.date = date
+    }
+    if (req.body.startTime !== undefined) {
+      const startTime = String(req.body.startTime).trim().slice(0, 5)
+      if (!/^\d{2}:\d{2}$/.test(startTime)) {
+        return res.status(400).json({ success: false, error: 'Heure de début invalide' })
+      }
+      creneau.startTime = startTime
+    }
+    if (req.body.endTime !== undefined) {
+      const endTime = String(req.body.endTime).trim().slice(0, 5)
+      if (!/^\d{2}:\d{2}$/.test(endTime)) {
+        return res.status(400).json({ success: false, error: 'Heure de fin invalide' })
+      }
+      creneau.endTime = endTime
+    }
+    const [sh, sm] = String(creneau.startTime).split(':').map(Number)
+    const [eh, em] = String(creneau.endTime).split(':').map(Number)
+    if (eh * 60 + em <= sh * 60 + sm) {
+      return res.status(400).json({ success: false, error: 'L’heure de fin doit être après l’heure de début' })
+    }
     await creneau.save()
     res.json({ success: true, data: { creneau: creneau.toJSONSafe() } })
   } catch (error) {
+    if (error?.code === 11000) {
+      return res.status(409).json({ success: false, error: 'Créneau en conflit avec un autre horaire' })
+    }
     logger.error('Erreur maj créneau:', error)
     res.status(500).json({ success: false, error: 'Mise à jour impossible' })
+  }
+})
+
+router.delete('/creneaux/:id', async (req, res) => {
+  try {
+    const creneau = await Creneau.findById(req.params.id)
+    if (!creneau) {
+      return res.status(404).json({ success: false, error: 'Créneau introuvable' })
+    }
+    if (creneau.status === 'reserve') {
+      return res.status(400).json({
+        success: false,
+        error: 'Ce créneau est réservé. Supprimez d’abord la réservation.',
+      })
+    }
+    await creneau.deleteOne()
+    res.json({ success: true, data: { deleted: true, id: String(req.params.id) } })
+  } catch (error) {
+    logger.error('Erreur suppression créneau:', error)
+    res.status(500).json({ success: false, error: 'Suppression impossible' })
   }
 })
 

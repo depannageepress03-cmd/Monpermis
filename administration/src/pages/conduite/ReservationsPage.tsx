@@ -1,10 +1,13 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
 import { CalendarPlus, ImagePlus, Pencil, Plus, Trash2, X } from 'lucide-react'
 import {
+  createCreneau,
   createMoniteur,
   deleteAdminReservation,
+  deleteCreneau,
   deleteMoniteur,
   fetchAdminReservations,
+  fetchCreneaux,
   fetchMoniteurs,
   generateCreneaux,
   updateMoniteur,
@@ -12,8 +15,23 @@ import {
 } from '../../api/reservations'
 import { AdminSectionHeader } from '../../components/AdminSectionHeader'
 import { getAdminToken, isAuthError } from '../../context/AdminAuthContext'
-import type { Moniteur, ReservationAdmin } from '../../types/reservations'
+import type {
+  Creneau,
+  Moniteur,
+  ReservationAdmin,
+  WeeklyAvailabilitySlot,
+} from '../../types/reservations'
 import { resolveMediaUrl } from '../../utils/mediaUrl'
+
+const WEEK_DAYS = [
+  { dayOfWeek: 1, label: 'Lundi' },
+  { dayOfWeek: 2, label: 'Mardi' },
+  { dayOfWeek: 3, label: 'Mercredi' },
+  { dayOfWeek: 4, label: 'Jeudi' },
+  { dayOfWeek: 5, label: 'Vendredi' },
+  { dayOfWeek: 6, label: 'Samedi' },
+  { dayOfWeek: 0, label: 'Dimanche' },
+] as const
 
 function todayISO() {
   const d = new Date()
@@ -32,9 +50,33 @@ function plusDaysISO(days: number) {
   return `${y}-${m}-${day}`
 }
 
-
 function mediaSrc(url: string) {
   return resolveMediaUrl(url)
+}
+
+type EditDayHours = {
+  dayOfWeek: number
+  enabled: boolean
+  start: string
+  end: string
+}
+
+function toEditDayHours(slots: WeeklyAvailabilitySlot[] | undefined): EditDayHours[] {
+  return WEEK_DAYS.map(({ dayOfWeek }) => {
+    const existing = (slots || []).find((slot) => Number(slot.dayOfWeek) === dayOfWeek)
+    return {
+      dayOfWeek,
+      enabled: Boolean(existing),
+      start: existing?.start || '08:00',
+      end: existing?.end || '18:00',
+    }
+  })
+}
+
+function fromEditDayHours(days: EditDayHours[]): WeeklyAvailabilitySlot[] {
+  return days
+    .filter((day) => day.enabled)
+    .map(({ dayOfWeek, start, end }) => ({ dayOfWeek, start, end }))
 }
 
 export function ReservationsPage() {
@@ -44,6 +86,13 @@ export function ReservationsPage() {
   const [fromDate, setFromDate] = useState(todayISO())
   const [toDate, setToDate] = useState(plusDaysISO(7))
   const [vehicleType, setVehicleType] = useState('voiture')
+  const [slotDate, setSlotDate] = useState(todayISO())
+  const [slotStart, setSlotStart] = useState('08:00')
+  const [slotEnd, setSlotEnd] = useState('09:00')
+  const [creatingSlot, setCreatingSlot] = useState(false)
+  const [creneaux, setCreneaux] = useState<Creneau[]>([])
+  const [loadingCreneaux, setLoadingCreneaux] = useState(false)
+  const [deletingCreneauId, setDeletingCreneauId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [generating, setGenerating] = useState(false)
   const [savingMoniteur, setSavingMoniteur] = useState(false)
@@ -73,6 +122,7 @@ export function ReservationsPage() {
   const [editPhotos, setEditPhotos] = useState<string[]>([])
   const [editVideos, setEditVideos] = useState<string[]>([])
   const [editNewVideoUrl, setEditNewVideoUrl] = useState('')
+  const [editDayHours, setEditDayHours] = useState<EditDayHours[]>(() => toEditDayHours([]))
   const [savingEdit, setSavingEdit] = useState(false)
   const [uploadingEditPhoto, setUploadingEditPhoto] = useState(false)
   const [uploadingEditVehiclePhoto, setUploadingEditVehiclePhoto] = useState(false)
@@ -111,12 +161,38 @@ export function ReservationsPage() {
     void load()
   }, [load])
 
+  const loadCreneaux = useCallback(async () => {
+    const token = getAdminToken()
+    if (!token || !moniteurId) {
+      setCreneaux([])
+      return
+    }
+    setLoadingCreneaux(true)
+    try {
+      const data = await fetchCreneaux(token, {
+        moniteurId,
+        from: todayISO(),
+        to: plusDaysISO(60),
+      })
+      setCreneaux(data.creneaux || [])
+    } catch (err) {
+      setError(isAuthError(err) ? err.message : 'Chargement des créneaux impossible')
+    } finally {
+      setLoadingCreneaux(false)
+    }
+  }, [moniteurId])
+
+  useEffect(() => {
+    void loadCreneaux()
+  }, [loadCreneaux])
+
   useEffect(() => {
     const timer = window.setInterval(() => {
       void load({ silent: true })
+      void loadCreneaux()
     }, 8000)
     return () => window.clearInterval(timer)
-  }, [load])
+  }, [load, loadCreneaux])
 
   useEffect(() => {
     if (!selectedMoniteur) return
@@ -234,6 +310,7 @@ export function ReservationsPage() {
     setEditPhotos(item.photos || [])
     setEditVideos(item.videos || [])
     setEditNewVideoUrl('')
+    setEditDayHours(toEditDayHours(item.weeklyAvailability))
     setError(null)
   }
 
@@ -321,6 +398,7 @@ export function ReservationsPage() {
         city: editCity.trim(),
         photos: editPhotos,
         videos: editVideos,
+        weeklyAvailability: fromEditDayHours(editDayHours),
       })
       setSuccess(`Profil de « ${moniteur.fullName} » mis à jour.`)
       setEditingMoniteur(null)
@@ -347,11 +425,68 @@ export function ReservationsPage() {
         slotMinutes: 60,
       })
       setSuccess(`${data.createdCount} créneau(x) généré(s).`)
+      await loadCreneaux()
     } catch (err) {
       setError(isAuthError(err) ? err.message : 'Génération impossible')
     } finally {
       setGenerating(false)
     }
+  }
+
+  const handleCreateSlot = async (e: FormEvent) => {
+    e.preventDefault()
+    const token = getAdminToken()
+    if (!token || !moniteurId) return
+    if (!slotDate || !slotStart || !slotEnd) {
+      setError('Indiquez la date et les horaires du créneau')
+      return
+    }
+    setCreatingSlot(true)
+    setError(null)
+    try {
+      await createCreneau(token, {
+        moniteurId,
+        date: slotDate,
+        startTime: slotStart,
+        endTime: slotEnd,
+        vehicleType: vehicleType.trim().toLowerCase() || 'voiture',
+      })
+      setSuccess(`Créneau ajouté le ${slotDate} de ${slotStart} à ${slotEnd}.`)
+      await loadCreneaux()
+    } catch (err) {
+      setError(isAuthError(err) ? err.message : 'Création du créneau impossible')
+    } finally {
+      setCreatingSlot(false)
+    }
+  }
+
+  const handleDeleteCreneau = async (creneau: Creneau) => {
+    const token = getAdminToken()
+    if (!token) return
+    if (
+      !window.confirm(
+        `Supprimer le créneau du ${creneau.date} (${creneau.startTime}–${creneau.endTime}) ?`,
+      )
+    ) {
+      return
+    }
+    setDeletingCreneauId(creneau.id)
+    setError(null)
+    try {
+      await deleteCreneau(token, creneau.id)
+      setSuccess('Créneau supprimé.')
+      await loadCreneaux()
+    } catch (err) {
+      setError(isAuthError(err) ? err.message : 'Suppression du créneau impossible')
+    } finally {
+      setDeletingCreneauId(null)
+    }
+  }
+
+  const updateEditDay = (dayOfWeek: number, patch: Partial<EditDayHours>) => {
+    setEditDayHours((prev) =>
+      prev.map((day) => (day.dayOfWeek === dayOfWeek ? { ...day, ...patch } : day)),
+    )
   }
 
   const handleDeleteReservation = async (reservation: ReservationAdmin) => {
@@ -390,7 +525,7 @@ export function ReservationsPage() {
         backLabel="Conduite"
         kicker="Gestion"
         title="Réservations & moniteurs"
-        subtitle="Moniteurs, créneaux et suivi des réservations. Les heures sont prépayées via les abonnements."
+        subtitle="Moniteurs, saisie des horaires de créneaux et suivi des réservations."
       />
 
       {error ? <p className="form-error">{error}</p> : null}
@@ -492,10 +627,13 @@ export function ReservationsPage() {
 
       <section className="admin-section">
         <div className="admin-section-head">
-          <h3 className="admin-section-label">2. Générer des créneaux</h3>
-          <p className="admin-section-hint">Sélectionnez un moniteur, puis la période.</p>
+          <h3 className="admin-section-label">2. Créneaux du moniteur</h3>
+          <p className="admin-section-hint">
+            Saisissez les horaires à la main, ou définissez la disponibilité hebdomadaire du
+            moniteur (crayon) puis générez une période.
+          </p>
         </div>
-        <form onSubmit={handleGenerate} className="admin-section-body">
+        <div className="admin-section-body">
           {moniteurs.length === 0 ? (
             <p className="admin-empty">Créez d’abord un moniteur ci-dessus.</p>
           ) : (
@@ -590,6 +728,49 @@ export function ReservationsPage() {
                   rows={3}
                 />
               </label>
+
+              <div className="moniteur-edit-label">
+                Horaires hebdomadaires
+                <p className="admin-muted" style={{ margin: '0.35rem 0 0.6rem' }}>
+                  Cochez les jours travaillés et indiquez les plages. Utilisées pour la génération
+                  automatique.
+                </p>
+                <div className="moniteur-hours-grid">
+                  {editDayHours.map((day) => {
+                    const label =
+                      WEEK_DAYS.find((item) => item.dayOfWeek === day.dayOfWeek)?.label || 'Jour'
+                    return (
+                      <div key={day.dayOfWeek} className="moniteur-hours-row">
+                        <label className="moniteur-hours-day">
+                          <input
+                            type="checkbox"
+                            checked={day.enabled}
+                            onChange={(e) =>
+                              updateEditDay(day.dayOfWeek, { enabled: e.target.checked })
+                            }
+                          />
+                          <span>{label}</span>
+                        </label>
+                        <input
+                          type="time"
+                          value={day.start}
+                          disabled={!day.enabled}
+                          onChange={(e) => updateEditDay(day.dayOfWeek, { start: e.target.value })}
+                          aria-label={`${label} début`}
+                        />
+                        <span className="admin-muted">à</span>
+                        <input
+                          type="time"
+                          value={day.end}
+                          disabled={!day.enabled}
+                          onChange={(e) => updateEditDay(day.dayOfWeek, { end: e.target.value })}
+                          aria-label={`${label} fin`}
+                        />
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
 
               <div className="moniteur-edit-label">
                 Photo du moniteur
@@ -699,53 +880,161 @@ export function ReservationsPage() {
           ) : null}
 
           {selectedMoniteur ? (
-            <div className="moniteur-generate-bar">
-              <div className="moniteur-generate-identity">
-                {selectedMoniteur.vehiclePhotoUrl ? (
-                  <img src={mediaSrc(selectedMoniteur.vehiclePhotoUrl)} alt="" />
-                ) : (
-                  <div className="moniteur-vehicle-placeholder">Véhicule</div>
-                )}
-                <div>
-                  <p className="moniteur-generate-name">{selectedMoniteur.fullName}</p>
-                  <p className="moniteur-generate-vehicle">
-                    {selectedMoniteur.vehicleBrand || 'Véhicule'} ·{' '}
-                    {selectedMoniteur.vehicleTypes?.[0] || vehicleType}
-                  </p>
+            <>
+              <form onSubmit={handleCreateSlot} className="moniteur-generate-bar">
+                <div className="moniteur-generate-identity">
+                  {selectedMoniteur.vehiclePhotoUrl ? (
+                    <img src={mediaSrc(selectedMoniteur.vehiclePhotoUrl)} alt="" />
+                  ) : (
+                    <div className="moniteur-vehicle-placeholder">Véhicule</div>
+                  )}
+                  <div>
+                    <p className="moniteur-generate-name">{selectedMoniteur.fullName}</p>
+                    <p className="moniteur-generate-vehicle">
+                      Ajouter un créneau (date + horaires)
+                    </p>
+                  </div>
                 </div>
-              </div>
 
-              <div className="admin-toolbar moniteur-generate-dates">
-                <label className="moniteur-date-field">
-                  <span>Du</span>
-                  <input
-                    type="date"
-                    value={fromDate}
-                    onChange={(e) => setFromDate(e.target.value)}
-                    required
-                  />
-                </label>
-                <label className="moniteur-date-field">
-                  <span>Au</span>
-                  <input
-                    type="date"
-                    value={toDate}
-                    onChange={(e) => setToDate(e.target.value)}
-                    required
-                  />
-                </label>
+                <div className="admin-toolbar moniteur-generate-dates">
+                  <label className="moniteur-date-field">
+                    <span>Date</span>
+                    <input
+                      type="date"
+                      value={slotDate}
+                      onChange={(e) => setSlotDate(e.target.value)}
+                      required
+                    />
+                  </label>
+                  <label className="moniteur-date-field">
+                    <span>Début</span>
+                    <input
+                      type="time"
+                      value={slotStart}
+                      onChange={(e) => setSlotStart(e.target.value)}
+                      required
+                    />
+                  </label>
+                  <label className="moniteur-date-field">
+                    <span>Fin</span>
+                    <input
+                      type="time"
+                      value={slotEnd}
+                      onChange={(e) => setSlotEnd(e.target.value)}
+                      required
+                    />
+                  </label>
+                  <button
+                    type="submit"
+                    className="btn-primary btn-primary-inline"
+                    disabled={creatingSlot || !moniteurId}
+                  >
+                    <Plus size={16} />
+                    {creatingSlot ? 'Ajout…' : 'Ajouter le créneau'}
+                  </button>
+                </div>
+              </form>
+
+              <form onSubmit={handleGenerate} className="moniteur-generate-bar">
+                <div className="moniteur-generate-identity">
+                  <div>
+                    <p className="moniteur-generate-name">Génération automatique</p>
+                    <p className="moniteur-generate-vehicle">
+                      {(selectedMoniteur.weeklyAvailability || []).length > 0
+                        ? `${selectedMoniteur.weeklyAvailability.length} jour(s) configuré(s)`
+                        : 'Aucune dispo hebdo — définissez-la via le crayon moniteur'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="admin-toolbar moniteur-generate-dates">
+                  <label className="moniteur-date-field">
+                    <span>Du</span>
+                    <input
+                      type="date"
+                      value={fromDate}
+                      onChange={(e) => setFromDate(e.target.value)}
+                      required
+                    />
+                  </label>
+                  <label className="moniteur-date-field">
+                    <span>Au</span>
+                    <input
+                      type="date"
+                      value={toDate}
+                      onChange={(e) => setToDate(e.target.value)}
+                      required
+                    />
+                  </label>
+                  <button
+                    type="submit"
+                    className="btn-primary btn-primary-inline"
+                    disabled={
+                      generating ||
+                      !moniteurId ||
+                      !(selectedMoniteur.weeklyAvailability || []).length
+                    }
+                  >
+                    <CalendarPlus size={16} />
+                    {generating ? 'Génération…' : 'Générer la période'}
+                  </button>
+                </div>
+              </form>
+
+              <div className="admin-section-head" style={{ marginTop: '1rem', paddingInline: 0 }}>
+                <h3 className="admin-section-label">Créneaux à venir</h3>
                 <button
-                  type="submit"
-                  className="btn-primary btn-primary-inline"
-                  disabled={generating || !moniteurId}
+                  type="button"
+                  className="btn-outline-sm"
+                  onClick={() => void loadCreneaux()}
+                  disabled={loadingCreneaux}
                 >
-                  <CalendarPlus size={16} />
-                  {generating ? 'Génération…' : 'Générer'}
+                  {loadingCreneaux ? 'Actualisation…' : 'Actualiser'}
                 </button>
               </div>
-            </div>
+              {loadingCreneaux && creneaux.length === 0 ? (
+                <p className="admin-empty">Chargement des créneaux…</p>
+              ) : null}
+              {!loadingCreneaux && creneaux.length === 0 ? (
+                <p className="admin-empty">
+                  Aucun créneau pour ce moniteur. Ajoutez-en un ci-dessus.
+                </p>
+              ) : null}
+              <div className="admin-list">
+                {creneaux.map((creneau) => (
+                  <div key={creneau.id} className="admin-list-item">
+                    <div className="admin-list-main">
+                      <div className="admin-list-text">
+                        <strong>
+                          {creneau.date} · {creneau.startTime}–{creneau.endTime}
+                        </strong>
+                        <span>
+                          {creneau.vehicleType} · {(creneau.priceFcfa || 0).toLocaleString('fr-FR')}{' '}
+                          FCFA
+                        </span>
+                      </div>
+                    </div>
+                    <div className="admin-list-actions">
+                      <span className="admin-chip">{creneau.status}</span>
+                      {creneau.status !== 'reserve' ? (
+                        <button
+                          type="button"
+                          className="btn-outline-sm btn-danger-sm"
+                          disabled={deletingCreneauId === creneau.id}
+                          onClick={() => void handleDeleteCreneau(creneau)}
+                          title="Supprimer le créneau"
+                        >
+                          <Trash2 size={15} />
+                          {deletingCreneauId === creneau.id ? '…' : 'Supprimer'}
+                        </button>
+                      ) : null}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
           ) : null}
-        </form>
+        </div>
       </section>
 
       <section className="admin-section">

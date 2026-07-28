@@ -499,6 +499,41 @@
   min-width: 150px;
 }
 
+.moniteur-hours-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.moniteur-hours-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.moniteur-hours-day {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 130px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--navy);
+}
+
+.moniteur-hours-row input[type='time'] {
+  min-width: 110px;
+  padding: 6px 8px;
+  border: 1px solid color-mix(in srgb, var(--navy) 18%, transparent);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.moniteur-hours-row input[type='time']:disabled {
+  opacity: 0.45;
+}
+
 .btn-icon {
   display: inline-flex;
   align-items: center;

@@ -3,6 +3,7 @@ import type {
   Creneau,
   Moniteur,
   ReservationAdmin,
+  WeeklyAvailabilitySlot,
 } from '../types/reservations'
 
 export function fetchMoniteurs(token: string) {
@@ -27,6 +28,7 @@ export function createMoniteur(
     bio?: string
     photos?: string[]
     videos?: string[]
+    weeklyAvailability?: WeeklyAvailabilitySlot[]
   },
 ) {
   return apiFetch<{ moniteur: Moniteur }>(
@@ -56,6 +58,7 @@ export function updateMoniteur(
     bio: string
     photos: string[]
     videos: string[]
+    weeklyAvailability: WeeklyAvailabilitySlot[]
   }>,
 ) {
   return apiFetch<{ moniteur: Moniteur }>(
@@ -96,6 +99,56 @@ export function generateCreneaux(
   return apiFetch<{ createdCount: number; creneaux: Creneau[] }>(
     '/api/admin/conduite/creneaux/generate',
     { method: 'POST', body: JSON.stringify(payload) },
+    token,
+  )
+}
+
+export function createCreneau(
+  token: string,
+  payload: {
+    moniteurId: string
+    date: string
+    startTime: string
+    endTime: string
+    vehicleType?: string
+    priceFcfa?: number
+  },
+) {
+  return apiFetch<{ creneau: Creneau }>(
+    '/api/admin/conduite/creneaux',
+    { method: 'POST', body: JSON.stringify(payload) },
+    token,
+  )
+}
+
+export function fetchCreneaux(
+  token: string,
+  params?: {
+    moniteurId?: string
+    from?: string
+    to?: string
+    date?: string
+    status?: string
+  },
+) {
+  const query = new URLSearchParams()
+  if (params?.moniteurId) query.set('moniteurId', params.moniteurId)
+  if (params?.from) query.set('from', params.from)
+  if (params?.to) query.set('to', params.to)
+  if (params?.date) query.set('date', params.date)
+  if (params?.status) query.set('status', params.status)
+  const qs = query.toString()
+  return apiFetch<{ creneaux: Creneau[] }>(
+    `/api/admin/conduite/creneaux${qs ? `?${qs}` : ''}`,
+    {},
+    token,
+  )
+}
+
+export function deleteCreneau(token: string, id: string) {
+  return apiFetch<{ deleted: boolean; id: string }>(
+    `/api/admin/conduite/creneaux/${id}`,
+    { method: 'DELETE' },
     token,
   )
 }
