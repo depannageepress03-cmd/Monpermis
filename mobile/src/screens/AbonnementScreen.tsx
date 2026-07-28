@@ -16,6 +16,7 @@ import {
   computeModuleAmount,
   fetchAccessMe,
   fetchAccessModules,
+  redeemPromoCode,
   type AccessMe,
   type AccessModule,
   type AccessModuleKey,
@@ -59,6 +60,10 @@ export function AbonnementScreen() {
   const [selected, setSelected] = useState<Partial<Record<AccessModuleKey, boolean>>>({})
   const [quantityByModule, setQuantityByModule] = useState<Record<string, string>>({})
   const [checkoutOpen, setCheckoutOpen] = useState(false)
+  const [promoCode, setPromoCode] = useState('')
+  const [promoBusy, setPromoBusy] = useState(false)
+  const [promoError, setPromoError] = useState<string | null>(null)
+  const [promoSuccess, setPromoSuccess] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -96,6 +101,27 @@ export function AbonnementScreen() {
     if (!module) return sum
     return sum + computeModuleAmount(item.module, module.price, item.quantity)
   }, 0)
+
+  const handleRedeemPromo = async () => {
+    const trimmed = promoCode.trim()
+    if (!trimmed) return
+    setPromoBusy(true)
+    setPromoError(null)
+    setPromoSuccess(null)
+    try {
+      const result = await redeemPromoCode(trimmed)
+      setMe(result.access)
+      const labels = result.modules
+        .map((key) => modules.find((m) => m.key === key)?.label || key)
+        .join(', ')
+      setPromoSuccess(`Code activé : ${labels} débloqué${result.modules.length > 1 ? 's' : ''}.`)
+      setPromoCode('')
+    } catch (err) {
+      setPromoError(err instanceof AccessRequestError ? err.message : 'Code invalide')
+    } finally {
+      setPromoBusy(false)
+    }
+  }
 
   const sortedModules = [...modules].sort((a, b) => {
     const ai = PRIMARY_KEYS.indexOf(a.key)
@@ -212,6 +238,34 @@ export function AbonnementScreen() {
               <Text style={styles.payText}>Payer {formatPrice(cartTotal)}</Text>
             </Pressable>
 
+            <View style={styles.statusCardOutline}>
+              <Text style={styles.kicker}>Vous avez un code promo ?</Text>
+              <View style={styles.promoRow}>
+                <TextInput
+                  style={[styles.input, styles.promoInput]}
+                  autoCapitalize="characters"
+                  placeholder="CODE PROMO"
+                  placeholderTextColor={dark.textMuted}
+                  value={promoCode}
+                  editable={!promoBusy}
+                  onChangeText={(text) => setPromoCode(text.toUpperCase())}
+                />
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.promoBtn,
+                    (promoBusy || !promoCode.trim()) && styles.disabled,
+                    pressed && styles.pressed,
+                  ]}
+                  disabled={promoBusy || !promoCode.trim()}
+                  onPress={() => void handleRedeemPromo()}
+                >
+                  <Text style={styles.promoBtnText}>{promoBusy ? 'Vérification…' : 'Valider'}</Text>
+                </Pressable>
+              </View>
+              {promoError ? <Text style={styles.error}>{promoError}</Text> : null}
+              {promoSuccess ? <Text style={styles.discount}>{promoSuccess}</Text> : null}
+            </View>
+
             {!modules.some((m) => me?.access[m.key]) && !(me && me.user.soldeHeures > 0) ? (
               <View style={styles.statusCardOutline}>
                 <Lock size={26} color={dark.textMuted} />
@@ -322,6 +376,15 @@ const styles = StyleSheet.create({
     fontFamily: fonts.body,
     backgroundColor: dark.surfaceRaised,
   },
+  promoRow: { flexDirection: 'row', gap: 10, marginTop: 8, alignItems: 'center' },
+  promoInput: { flex: 1 },
+  promoBtn: {
+    borderRadius: 12,
+    backgroundColor: dark.green,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  promoBtnText: { color: '#fff', fontFamily: fonts.displayBold, fontSize: 14 },
   payBtn: {
     marginTop: 18,
     borderRadius: 14,

@@ -1,18 +1,16 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { CalendarPlus, Check, Minus, Plus } from 'lucide-react'
+import { CalendarPlus, Check } from 'lucide-react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   createReservation,
   fetchAvailableCreneaux,
   fetchPublicMoniteurs,
-  lockCreneauxRange,
-  quoteReservation,
+  lockCreneau,
   ReservationError,
   type MoniteurPublic,
-  type ReservationItem,
-  type ReservationQuote,
   type ReservationSlot,
 } from '../../api/reservations'
+import { fetchAccessMe } from '../../api/accessRequests'
 import { PageNavbar } from '../../components/PageNavbar'
 import { ReservationMobileMoneyCheckout } from '../../components/ReservationMobileMoneyCheckout'
 import { useAuth } from '../../hooks/useAuth'
@@ -27,6 +25,11 @@ function mediaSrc(url: string) {
   return resolveMediaUrl(url)
 }
 
+/** Photo du moniteur lui-même ; à défaut, photo du véhicule. */
+function moniteurPhoto(m: { photoUrl?: string; vehiclePhotoUrl?: string }) {
+  return m.photoUrl || m.vehiclePhotoUrl || ''
+}
+
 function formatDateLabel(date: string) {
   try {
     return new Date(`${date}T12:00:00`).toLocaleDateString('fr-FR', {
@@ -39,12 +42,6 @@ function formatDateLabel(date: string) {
   }
 }
 
-function formatPrice(amount: number, currency = 'XOF') {
-  return new Intl.NumberFormat('fr-FR', { style: 'currency', currency, maximumFractionDigits: 0 }).format(
-    amount,
-  )
-}
-
 export function ReservationPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
@@ -52,10 +49,10 @@ export function ReservationPage() {
   const [step, setStep] = useState<Step>('moniteur')
   const [moniteurId, setMoniteurId] = useState<string | undefined>()
   const [moniteurs, setMoniteurs] = useState<MoniteurPublic[]>([])
+  const [cityFilter, setCityFilter] = useState<string>('')
   const [days, setDays] = useState<{ date: string; creneaux: ReservationSlot[] }[]>([])
-  const [hours, setHours] = useState(1)
-  const [lockedRange, setLockedRange] = useState<ReservationSlot[]>([])
-  const [quote, setQuote] = useState<ReservationQuote | null>(null)
+  const [selected, setSelected] = useState<ReservationSlot | null>(null)
+  const [soldeHeures, setSoldeHeures] = useState<number | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [whatsappLink, setWhatsappLink] = useState('')
@@ -67,7 +64,17 @@ export function ReservationPage() {
     [moniteurs, moniteurId],
   )
 
-  const vehicleType = selectedMoniteur?.vehicleTypes?.[0] || lockedRange[0]?.vehicleType || 'voiture'
+  const cities = useMemo(
+    () => Array.from(new Set(moniteurs.map((m) => m.city).filter((c): c is string => Boolean(c)))).sort(),
+    [moniteurs],
+  )
+
+  const visibleMoniteurs = useMemo(
+    () => (cityFilter ? moniteurs.filter((m) => m.city === cityFilter) : moniteurs),
+    [moniteurs, cityFilter],
+  )
+
+  const vehicleType = selectedMoniteur?.vehicleTypes?.[0] || selected?.vehicleType || 'voiture'
 
   const loadMoniteurs = useCallback(async () => {
     setBusy(true)
@@ -109,22 +116,22 @@ export function ReservationPage() {
   }, [searchParams])
 
   useEffect(() => {
+    fetchAccessMe()
+      .then((data) => setSoldeHeures(data.user.soldeHeures))
+      .catch(() => setSoldeHeures(null))
+  }, [])
+
+  useEffect(() => {
     if (step === 'calendar') void loadCreneaux()
   }, [step, loadCreneaux])
 
   const onSelectSlot = async (slot: ReservationSlot) => {
-    if (!slot.available || !moniteurId) return
+    if (!slot.available) return
     setBusy(true)
     setError(null)
     try {
-      const locked = await lockCreneauxRange({
-        moniteurId,
-        startCreneauId: String(slot.id),
-        hours,
-      })
-      setLockedRange(locked.creneaux)
-      const quoteData = await quoteReservation(locked.creneaux.map((c) => String(c.id)))
-      setQuote(quoteData)
+      await lockCreneau(String(slot.id))
+      setSelected(slot)
       setStep('payment')
     } catch (err) {
       setError(err instanceof ReservationError ? err.message : 'Créneau indisponible')
@@ -134,33 +141,31 @@ export function ReservationPage() {
     }
   }
 
-  const onSuccessReservations = (reservations: ReservationItem[], link?: string, calendar?: { title: string; date: string; startTime: string; endTime: string }) => {
-    setWhatsappLink(link || '')
-    if (calendar) {
-      const start = `${calendar.date.replace(/-/g, '')}T${calendar.startTime.replace(':', '')}00`
-      const end = `${calendar.date.replace(/-/g, '')}T${calendar.endTime.replace(':', '')}00`
-      setCalendarUrl(
-        `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(
-          calendar.title,
-        )}&dates=${start}/${end}`,
-      )
-    }
-    void reservations
-    setStep('success')
+  const buildCalendarUrl = (slot: ReservationSlot) => {
+    const start = `${slot.date.replace(/-/g, '')}T${slot.startTime.replace(':', '')}00`
+    const end = `${slot.date.replace(/-/g, '')}T${slot.endTime.replace(':', '')}00`
+    return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(
+      'Séance de conduite — Monpermis.bj',
+    )}&dates=${start}/${end}`
   }
 
-  const onPaySolde = async () => {
-    if (!lockedRange.length || !moniteurId) return
+  const onConfirm = async () => {
+    if (!selected) return
     setBusy(true)
     setError(null)
     try {
+      // Renouvelle le verrou juste avant confirmation (évite les échecs après attente)
+      await lockCreneau(String(selected.id))
+      const chosenMoniteurId = moniteurId || selected.moniteur?.id
       const data = await createReservation({
-        creneauIds: lockedRange.map((c) => String(c.id)),
-        vehicleType,
-        moniteurId,
+        creneauIds: [String(selected.id)],
+        vehicleType: selected.vehicleType || vehicleType,
+        moniteurId: chosenMoniteurId ? String(chosenMoniteurId) : undefined,
         paymentMethod: 'solde',
       })
-      onSuccessReservations(data.reservations || [], data.whatsappLink, data.calendarHint)
+      setWhatsappLink(data.whatsappLink || '')
+      setCalendarUrl(selected ? buildCalendarUrl(selected) : '')
+      setStep('success')
     } catch (err) {
       setError(err instanceof ReservationError ? err.message : 'Réservation impossible')
     } finally {
@@ -189,8 +194,11 @@ export function ReservationPage() {
                 <h2>Réserver votre prochaine séance</h2>
                 <p>
                   Choisissez d’abord le moniteur avec lequel vous souhaitez conduire. Touchez une
-                  carte pour consulter son profil complet (photos, vidéos, véhicule) avant de
-                  décider.
+                  carte pour consulter son profil complet (photo, véhicule) avant de décider.
+                </p>
+                <p>
+                  Une fois le moniteur sélectionné, vous pourrez consulter ses créneaux libres et
+                  choisir directement celui qui vous convient.
                 </p>
               </div>
 
@@ -202,9 +210,37 @@ export function ReservationPage() {
                   contactez l’auto-école.
                 </p>
               ) : null}
+
+              {cities.length > 1 ? (
+                <div className="city-filter-row">
+                  <button
+                    type="button"
+                    className={!cityFilter ? 'city-filter-chip is-active' : 'city-filter-chip'}
+                    onClick={() => setCityFilter('')}
+                  >
+                    Toutes les villes
+                  </button>
+                  {cities.map((city) => (
+                    <button
+                      key={city}
+                      type="button"
+                      className={cityFilter === city ? 'city-filter-chip is-active' : 'city-filter-chip'}
+                      onClick={() => setCityFilter(city)}
+                    >
+                      {city}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+
+              {!busy && moniteurs.length > 0 && visibleMoniteurs.length === 0 ? (
+                <p className="subtitle">Aucun moniteur dans cette ville pour le moment.</p>
+              ) : null}
+
               <div className="moniteur-choice-list">
-                {moniteurs.map((moniteur) => {
+                {visibleMoniteurs.map((moniteur) => {
                   const typeLabel = moniteur.vehicleTypes?.[0] || 'Véhicule'
+                  const photo = moniteurPhoto(moniteur)
                   return (
                     <button
                       key={moniteur.id}
@@ -212,14 +248,17 @@ export function ReservationPage() {
                       className="moniteur-choice"
                       onClick={() => navigate(`/conduite/moniteurs/${moniteur.id}`)}
                     >
-                      {moniteur.vehiclePhotoUrl ? (
-                        <img src={mediaSrc(moniteur.vehiclePhotoUrl)} alt="" />
+                      {photo ? (
+                        <img src={mediaSrc(photo)} alt="" />
                       ) : (
-                        <div className="moniteur-choice-placeholder">Véhicule</div>
+                        <div className="moniteur-choice-placeholder">Moniteur</div>
                       )}
                       <span className="moniteur-choice-meta">
                         <strong>{moniteur.fullName}</strong>
-                        <small>{moniteur.vehicleBrand || 'Marque non renseignée'}</small>
+                        <small>
+                          {moniteur.city ? `${moniteur.city} · ` : ''}
+                          {moniteur.vehicleBrand || 'Marque non renseignée'}
+                        </small>
                         <em>{typeLabel}</em>
                       </span>
                     </button>
@@ -233,8 +272,8 @@ export function ReservationPage() {
                   <li>Présentez-vous à l’heure avec vos documents d’identité.</li>
                   <li>Vous pouvez annuler jusqu’à 24 h avant la séance, avec une justification.</li>
                   <li>
-                    Payez avec votre solde d’heures prépayées, ou directement par Mobile Money
-                    pour cette réservation.
+                    Après confirmation, la réservation apparaît dans votre tableau de bord
+                    Conduite et chez l’administration.
                   </li>
                 </ul>
               </div>
@@ -246,17 +285,17 @@ export function ReservationPage() {
               <div className="reservation-intro">
                 <h2>Choisissez un créneau libre</h2>
                 <p>
-                  Les horaires verts sont disponibles. Sélectionnez le nombre d’heures souhaité,
-                  puis l’heure de départ : les créneaux consécutifs nécessaires seront réservés
-                  pour vous le temps de confirmer.
+                  Les horaires verts sont disponibles. Les créneaux grisés sont déjà pris ou
+                  temporairement verrouillés par un autre élève. Sélectionnez l’horaire qui
+                  vous convient : le créneau est réservé pour vous le temps de confirmer.
                 </p>
               </div>
 
               <h3 className="section-title">2. Créneaux disponibles</h3>
               {selectedMoniteur ? (
                 <div className="moniteur-recap-strip">
-                  {selectedMoniteur.vehiclePhotoUrl ? (
-                    <img src={mediaSrc(selectedMoniteur.vehiclePhotoUrl)} alt="" />
+                  {moniteurPhoto(selectedMoniteur) ? (
+                    <img src={mediaSrc(moniteurPhoto(selectedMoniteur))} alt="" />
                   ) : null}
                   <div>
                     <strong>{selectedMoniteur.fullName}</strong>
@@ -266,28 +305,10 @@ export function ReservationPage() {
                   </div>
                 </div>
               ) : null}
-
-              <div className="hours-stepper">
-                <span>Nombre d’heures</span>
-                <div className="hours-stepper-control">
-                  <button
-                    type="button"
-                    onClick={() => setHours((h) => Math.max(1, h - 1))}
-                    disabled={hours <= 1}
-                  >
-                    <Minus size={16} />
-                  </button>
-                  <strong>{hours}</strong>
-                  <button
-                    type="button"
-                    onClick={() => setHours((h) => Math.min(6, h + 1))}
-                    disabled={hours >= 6}
-                  >
-                    <Plus size={16} />
-                  </button>
-                </div>
-              </div>
-
+              <p className="subtitle">
+                Affichage sur les 14 prochains jours pour{' '}
+                {selectedMoniteur?.fullName || 'ce moniteur'}.
+              </p>
               {busy ? <p className="subtitle">Chargement des créneaux…</p> : null}
               {!busy && days.length === 0 ? (
                 <p className="subtitle">
@@ -304,7 +325,9 @@ export function ReservationPage() {
                         key={slot.id}
                         type="button"
                         disabled={!slot.available || busy}
-                        className={`slot-btn${!slot.available ? ' is-unavailable' : ''}`}
+                        className={`slot-btn${!slot.available ? ' is-unavailable' : ''}${
+                          selected?.id === slot.id ? ' is-selected' : ''
+                        }`}
                         onClick={() => void onSelectSlot(slot)}
                       >
                         {slot.startTime}
@@ -319,49 +342,53 @@ export function ReservationPage() {
             </div>
           ) : null}
 
-          {step === 'payment' && quote ? (
+          {step === 'payment' && selected ? (
             <div className="reservation-step">
               <div className="reservation-intro">
                 <h2>Confirmez votre réservation</h2>
-                <p>Une facture est générée automatiquement à partir de votre sélection.</p>
+                <p>Vérifiez le récapitulatif ci-dessous, puis réglez cette séance pour la confirmer.</p>
               </div>
 
-              <h3 className="section-title">3. Facture</h3>
+              <h3 className="section-title">3. Récapitulatif</h3>
               <div className="recap-card">
-                {quote.moniteur?.vehiclePhotoUrl ? (
-                  <img className="recap-photo" src={mediaSrc(quote.moniteur.vehiclePhotoUrl)} alt="" />
+                {selectedMoniteur && moniteurPhoto(selectedMoniteur) ? (
+                  <img className="recap-photo" src={mediaSrc(moniteurPhoto(selectedMoniteur))} alt="" />
+                ) : selected.moniteur?.vehiclePhotoUrl ? (
+                  <img className="recap-photo" src={mediaSrc(selected.moniteur.vehiclePhotoUrl)} alt="" />
                 ) : null}
                 <p>
-                  {quote.date} · {quote.startTime} – {quote.endTime}
+                  {selected.date} · {selected.startTime} – {selected.endTime}
                 </p>
                 <p>
-                  {quote.moniteur?.fullName || 'Moniteur'} ·{' '}
-                  {quote.moniteur?.vehicleBrand || 'Véhicule'} · {quote.hours} h
+                  {selectedMoniteur?.fullName || selected.moniteur?.fullName || 'Moniteur'} ·{' '}
+                  {selectedMoniteur?.vehicleBrand || selected.moniteur?.vehicleBrand || 'Véhicule'} ·{' '}
+                  {selected.vehicleType || vehicleType}
                 </p>
-                <p className="price">{formatPrice(quote.amount, quote.currency)}</p>
+                <p className="price">
+                  {new Intl.NumberFormat('fr-FR', {
+                    style: 'currency',
+                    currency: 'XOF',
+                    maximumFractionDigits: 0,
+                  }).format(selected.priceFcfa)}
+                </p>
               </div>
 
               <div className="payment-choice">
-                <button
-                  type="button"
-                  className="btn-primary reservation-calendar-btn"
-                  disabled={busy || !quote.soldeSuffisant}
-                  onClick={() => void onPaySolde()}
-                >
-                  {busy
-                    ? 'Confirmation…'
-                    : `Payer avec mon solde (${quote.soldeHeures} h disponible${quote.soldeHeures > 1 ? 's' : ''})`}
-                </button>
-                {!quote.soldeSuffisant ? (
-                  <p className="subtitle payment-choice-hint">
-                    Solde insuffisant pour ces {quote.hours} h.{' '}
-                    <a href="/abonnement">Acheter un pack d’heures</a> ou payez directement
-                    ci-dessous.
-                  </p>
+                {soldeHeures !== null && soldeHeures > 0 ? (
+                  <button
+                    type="button"
+                    className="btn-primary reservation-calendar-btn"
+                    disabled={busy}
+                    onClick={() => void onConfirm()}
+                  >
+                    {busy
+                      ? 'Confirmation…'
+                      : `Payer avec mon solde (${soldeHeures} h disponible${soldeHeures > 1 ? 's' : ''})`}
+                  </button>
                 ) : null}
                 <button
                   type="button"
-                  className="btn-outline reservation-calendar-btn"
+                  className={soldeHeures ? 'btn-outline reservation-calendar-btn' : 'btn-primary reservation-calendar-btn'}
                   disabled={busy}
                   onClick={() => setShowMobileMoney(true)}
                 >
@@ -384,6 +411,10 @@ export function ReservationPage() {
               <p className="subtitle">
                 Votre séance est confirmée et apparaît dans votre espace Conduite.
               </p>
+              <p className="subtitle">
+                Pensez à ajouter la séance à votre agenda et, si besoin, à notifier votre
+                moniteur via WhatsApp.
+              </p>
               {calendarUrl ? (
                 <a className="btn-outline" href={calendarUrl} target="_blank" rel="noreferrer">
                   Ajouter à mon agenda
@@ -402,18 +433,21 @@ export function ReservationPage() {
         </div>
       </div>
 
-      {quote && moniteurId ? (
+      {selected && moniteurId ? (
         <ReservationMobileMoneyCheckout
           open={showMobileMoney}
-          quote={quote}
-          creneauIds={lockedRange.map((c) => String(c.id))}
-          vehicleType={vehicleType}
+          label={`${selected.date} · ${selected.startTime} avec ${selectedMoniteur?.fullName || selected.moniteur?.fullName || 'le moniteur'}`}
+          amount={selected.priceFcfa}
+          creneauId={String(selected.id)}
+          vehicleType={selected.vehicleType || vehicleType}
           moniteurId={moniteurId}
           defaultPhone={user?.phone || ''}
           onClose={() => setShowMobileMoney(false)}
-          onSuccess={(reservations) => {
+          onSuccess={() => {
             setShowMobileMoney(false)
-            onSuccessReservations(reservations)
+            setWhatsappLink('')
+            setCalendarUrl(selected ? buildCalendarUrl(selected) : '')
+            setStep('success')
           }}
         />
       ) : null}

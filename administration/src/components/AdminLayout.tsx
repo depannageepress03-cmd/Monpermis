@@ -4,6 +4,7 @@ import {
   CalendarDays,
   Car,
   ChevronRight,
+  Gift,
   LayoutDashboard,
   LogOut,
   Megaphone,
@@ -59,6 +60,7 @@ const navItems: NavItem[] = [
   },
   { to: '/utilisateurs', label: 'Utilisateurs', icon: Users },
   { to: '/abonnements', label: 'Abonnés', icon: Wallet },
+  { to: '/codes-promo', label: 'Codes promo', icon: Gift },
   { to: '/annonces', label: 'Annonces', icon: Megaphone },
   { to: '/creer-admin', label: 'Créer un admin', icon: UserPlus },
 ]
@@ -69,6 +71,7 @@ function pageLabel(pathname: string) {
   if (pathname.startsWith('/abonnements') || pathname.startsWith('/demandes-acces')) {
     return 'Abonnés'
   }
+  if (pathname.startsWith('/codes-promo')) return 'Codes promo'
   if (pathname.startsWith('/creer-admin')) return 'Créer un admin'
   if (pathname.includes('/questions')) return 'Questions'
   if (pathname.startsWith('/code/revision-chapitres')) return 'Révision par chapitres'

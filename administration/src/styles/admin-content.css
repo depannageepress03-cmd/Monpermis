@@ -1000,6 +1000,33 @@
 }
 .admin-chip.is-success { background: var(--green-light); color: var(--green-deep); }
 
+.promo-module-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.promo-duration-row {
+  display: flex;
+  gap: 8px;
+}
+
+.promo-duration-row input {
+  width: 80px;
+}
+
+.promo-code-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: var(--r-sm);
+  background: var(--gold-light);
+  color: #8a6400;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
 .dashboard-page {
   display: flex;
   flex-direction: column;

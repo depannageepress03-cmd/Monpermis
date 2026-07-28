@@ -55,6 +55,9 @@ export function ReservationsPage() {
   const [vehicleBrand, setVehicleBrand] = useState('')
   const [formVehicleType, setFormVehicleType] = useState('')
   const [vehiclePhotoUrl, setVehiclePhotoUrl] = useState('')
+  const [photoUrl, setPhotoUrl] = useState('')
+  const [city, setCity] = useState('')
+  const [uploadingMoniteurPhoto, setUploadingMoniteurPhoto] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [deletingReservationId, setDeletingReservationId] = useState<string | null>(null)
 
@@ -64,6 +67,9 @@ export function ReservationsPage() {
   const [editSpecialties, setEditSpecialties] = useState('')
   const [editVehicleBrand, setEditVehicleBrand] = useState('')
   const [editVehiclePhotoUrl, setEditVehiclePhotoUrl] = useState('')
+  const [editPhotoUrl, setEditPhotoUrl] = useState('')
+  const [editCity, setEditCity] = useState('')
+  const [uploadingEditMoniteurPhoto, setUploadingEditMoniteurPhoto] = useState(false)
   const [editPhotos, setEditPhotos] = useState<string[]>([])
   const [editVideos, setEditVideos] = useState<string[]>([])
   const [editNewVideoUrl, setEditNewVideoUrl] = useState('')
@@ -135,6 +141,23 @@ export function ReservationsPage() {
     }
   }
 
+  const handleMoniteurPhotoUpload = async (file: File | null) => {
+    if (!file) return
+    const token = getAdminToken()
+    if (!token) return
+    setUploadingMoniteurPhoto(true)
+    setError(null)
+    try {
+      const { imageUrl } = await uploadVehiclePhoto(token, file)
+      setPhotoUrl(imageUrl)
+      setSuccess('Photo du moniteur importée.')
+    } catch (err) {
+      setError(isAuthError(err) ? err.message : 'Import photo impossible')
+    } finally {
+      setUploadingMoniteurPhoto(false)
+    }
+  }
+
   const handleCreateMoniteur = async (e: FormEvent) => {
     e.preventDefault()
     const token = getAdminToken()
@@ -157,12 +180,16 @@ export function ReservationsPage() {
         fullName: name,
         vehicleBrand: vehicleBrand.trim(),
         vehiclePhotoUrl,
+        photoUrl,
+        city: city.trim(),
         vehicleTypes: [type.trim().toLowerCase()],
       })
       setMoniteurName('')
       setVehicleBrand('')
       setFormVehicleType('')
       setVehiclePhotoUrl('')
+      setPhotoUrl('')
+      setCity('')
       setSuccess(`Moniteur « ${moniteur.fullName} » ajouté.`)
       await load()
       setMoniteurId(moniteur.id)
@@ -202,6 +229,8 @@ export function ReservationsPage() {
     setEditSpecialties((item.specialties || []).join(', '))
     setEditVehicleBrand(item.vehicleBrand || '')
     setEditVehiclePhotoUrl(item.vehiclePhotoUrl || '')
+    setEditPhotoUrl(item.photoUrl || '')
+    setEditCity(item.city || '')
     setEditPhotos(item.photos || [])
     setEditVideos(item.videos || [])
     setEditNewVideoUrl('')
@@ -223,6 +252,22 @@ export function ReservationsPage() {
       setError(isAuthError(err) ? err.message : 'Import photo impossible')
     } finally {
       setUploadingEditPhoto(false)
+    }
+  }
+
+  const handleEditMoniteurPhotoUpload = async (file: File | null) => {
+    if (!file) return
+    const token = getAdminToken()
+    if (!token) return
+    setUploadingEditMoniteurPhoto(true)
+    setError(null)
+    try {
+      const { imageUrl } = await uploadVehiclePhoto(token, file)
+      setEditPhotoUrl(imageUrl)
+    } catch (err) {
+      setError(isAuthError(err) ? err.message : 'Import photo impossible')
+    } finally {
+      setUploadingEditMoniteurPhoto(false)
     }
   }
 
@@ -272,6 +317,8 @@ export function ReservationsPage() {
           .filter(Boolean),
         vehicleBrand: editVehicleBrand.trim(),
         vehiclePhotoUrl: editVehiclePhotoUrl,
+        photoUrl: editPhotoUrl,
+        city: editCity.trim(),
         photos: editPhotos,
         videos: editVideos,
       })
@@ -375,9 +422,25 @@ export function ReservationsPage() {
               minLength={2}
               aria-label="Type de véhicule"
             />
+            <input
+              value={city}
+              onChange={(e) => setCity(e.target.value)}
+              placeholder="Ville / zone (ex. Cotonou, Calavi…)"
+              aria-label="Ville du moniteur"
+            />
             <label className="btn-outline btn-file">
               <ImagePlus size={15} />
-              {uploadingPhoto ? 'Import…' : 'Photo'}
+              {uploadingMoniteurPhoto ? 'Import…' : 'Photo moniteur'}
+              <input
+                type="file"
+                accept="image/*"
+                hidden
+                onChange={(e) => void handleMoniteurPhotoUpload(e.target.files?.[0] ?? null)}
+              />
+            </label>
+            <label className="btn-outline btn-file">
+              <ImagePlus size={15} />
+              {uploadingPhoto ? 'Import…' : 'Photo véhicule'}
               <input
                 type="file"
                 accept="image/*"
@@ -388,18 +451,31 @@ export function ReservationsPage() {
             <button
               type="submit"
               className="btn-primary btn-primary-inline"
-              disabled={savingMoniteur || uploadingPhoto}
+              disabled={savingMoniteur || uploadingPhoto || uploadingMoniteurPhoto}
             >
               <Plus size={16} />
               {savingMoniteur ? 'Ajout…' : 'Enregistrer'}
             </button>
           </div>
 
+          {photoUrl ? (
+            <div className="moniteur-vehicle-preview">
+              <img src={mediaSrc(photoUrl)} alt="Moniteur" />
+              <div>
+                <p className="admin-muted">Aperçu photo moniteur</p>
+                <button type="button" className="btn-text-danger" onClick={() => setPhotoUrl('')}>
+                  <Trash2 size={14} />
+                  Retirer
+                </button>
+              </div>
+            </div>
+          ) : null}
+
           {vehiclePhotoUrl ? (
             <div className="moniteur-vehicle-preview">
               <img src={mediaSrc(vehiclePhotoUrl)} alt="Véhicule" />
               <div>
-                <p className="admin-muted">Aperçu photo</p>
+                <p className="admin-muted">Aperçu photo véhicule</p>
                 <button
                   type="button"
                   className="btn-text-danger"
@@ -446,6 +522,7 @@ export function ReservationsPage() {
                         <span>{item.vehicleBrand || 'Marque non renseignée'}</span>
                         <span className="moniteur-pick-type">
                           {item.vehicleTypes?.[0] || 'Véhicule'}
+                          {item.city ? ` · ${item.city}` : ''}
                         </span>
                       </div>
                     </button>
@@ -497,6 +574,11 @@ export function ReservationsPage() {
                   onChange={(e) => setEditVehicleBrand(e.target.value)}
                   placeholder="Marque du véhicule"
                 />
+                <input
+                  value={editCity}
+                  onChange={(e) => setEditCity(e.target.value)}
+                  placeholder="Ville / zone"
+                />
               </div>
 
               <label className="moniteur-edit-label">
@@ -508,6 +590,27 @@ export function ReservationsPage() {
                   rows={3}
                 />
               </label>
+
+              <div className="moniteur-edit-label">
+                Photo du moniteur
+                <div className="moniteur-vehicle-preview">
+                  {editPhotoUrl ? (
+                    <img src={mediaSrc(editPhotoUrl)} alt="Moniteur" />
+                  ) : (
+                    <div className="moniteur-vehicle-placeholder">Moniteur</div>
+                  )}
+                  <label className="btn-outline btn-file">
+                    <ImagePlus size={15} />
+                    {uploadingEditMoniteurPhoto ? 'Import…' : 'Changer'}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      hidden
+                      onChange={(e) => void handleEditMoniteurPhotoUpload(e.target.files?.[0] ?? null)}
+                    />
+                  </label>
+                </div>
+              </div>
 
               <div className="moniteur-edit-label">
                 Photo du véhicule

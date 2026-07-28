@@ -5,7 +5,6 @@ import {
   syncReservationPayment,
   type MobileMoneyOperator,
   type ReservationItem,
-  type ReservationQuote,
 } from '../api/reservations'
 
 const OPERATORS: { id: MobileMoneyOperator; label: string }[] = [
@@ -45,8 +44,9 @@ function formatPrice(amount: number, currency = 'XOF') {
 
 export interface ReservationMobileMoneyCheckoutProps {
   open: boolean
-  quote: ReservationQuote
-  creneauIds: string[]
+  label: string
+  amount: number
+  creneauId: string
   vehicleType: string
   moniteurId: string
   defaultPhone?: string
@@ -56,17 +56,17 @@ export interface ReservationMobileMoneyCheckoutProps {
 
 export function ReservationMobileMoneyCheckout({
   open,
-  quote,
-  creneauIds,
+  label,
+  amount,
+  creneauId,
   vehicleType,
   moniteurId,
   defaultPhone = '',
   onClose,
   onSuccess,
 }: ReservationMobileMoneyCheckoutProps) {
-  const [step, setStep] = useState<'operator' | 'country' | 'phone' | 'waiting'>('operator')
+  const [step, setStep] = useState<'operator' | 'phone' | 'waiting'>('operator')
   const [operator, setOperator] = useState<MobileMoneyOperator | null>(null)
-  const [country, setCountry] = useState('BJ')
   const [phone, setPhone] = useState(defaultPhone)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -77,7 +77,6 @@ export function ReservationMobileMoneyCheckout({
     if (!open) return
     setStep('operator')
     setOperator(null)
-    setCountry('BJ')
     setPhone(defaultPhone)
     setError(null)
     setSuccess(null)
@@ -154,13 +153,13 @@ export function ReservationMobileMoneyCheckout({
     setSuccess(null)
     try {
       const result = await createReservation({
-        creneauIds,
+        creneauIds: [creneauId],
         vehicleType,
         moniteurId,
         paymentMethod: 'mobile_money',
         operator: detected || operator,
         phone,
-        country,
+        country: 'BJ',
       })
       setOperator(detected || operator)
       setStep('waiting')
@@ -186,14 +185,12 @@ export function ReservationMobileMoneyCheckout({
 
         <ul className="mm-checkout-lines">
           <li>
-            <span>
-              {quote.hours} h avec {quote.moniteur?.fullName || 'le moniteur'}
-            </span>
-            <strong>{formatPrice(quote.amount, quote.currency)}</strong>
+            <span>{label}</span>
+            <strong>{formatPrice(amount)}</strong>
           </li>
           <li className="mm-checkout-total">
             <span>Total</span>
-            <strong>{formatPrice(quote.amount, quote.currency)}</strong>
+            <strong>{formatPrice(amount)}</strong>
           </li>
         </ul>
 
@@ -211,7 +208,7 @@ export function ReservationMobileMoneyCheckout({
                   className={operator === item.id ? 'btn-primary' : 'btn-outline'}
                   onClick={() => {
                     setOperator(item.id)
-                    setStep('country')
+                    setStep('phone')
                   }}
                 >
                   {item.label}
@@ -221,30 +218,9 @@ export function ReservationMobileMoneyCheckout({
           </section>
         ) : null}
 
-        {step === 'country' ? (
-          <section className="mm-checkout-step">
-            <p className="learner-kicker">2. Pays</p>
-            <div className="mm-checkout-choices">
-              <button
-                type="button"
-                className={country === 'BJ' ? 'btn-primary' : 'btn-outline'}
-                onClick={() => {
-                  setCountry('BJ')
-                  setStep('phone')
-                }}
-              >
-                Bénin (+229)
-              </button>
-            </div>
-            <button type="button" className="btn-outline" onClick={() => setStep('operator')}>
-              Retour
-            </button>
-          </section>
-        ) : null}
-
         {step === 'phone' || step === 'waiting' ? (
           <section className="mm-checkout-step">
-            <p className="learner-kicker">3. Numéro Mobile Money</p>
+            <p className="learner-kicker">2. Numéro Mobile Money</p>
             <label className="access-quantity-field">
               Téléphone
               <input
@@ -257,7 +233,7 @@ export function ReservationMobileMoneyCheckout({
             </label>
             <div className="mm-checkout-actions">
               {step !== 'waiting' ? (
-                <button type="button" className="btn-outline" onClick={() => setStep('country')}>
+                <button type="button" className="btn-outline" onClick={() => setStep('operator')}>
                   Retour
                 </button>
               ) : null}
@@ -267,9 +243,7 @@ export function ReservationMobileMoneyCheckout({
                 disabled={busy || !phone.trim()}
                 onClick={() => void submit()}
               >
-                {busy
-                  ? 'Envoi de la demande…'
-                  : `Payer ${formatPrice(quote.amount, quote.currency)} (${operator?.toUpperCase() || ''})`}
+                {busy ? 'Envoi de la demande…' : `Payer ${formatPrice(amount)} (${operator?.toUpperCase() || ''})`}
               </button>
             </div>
             {step === 'waiting' ? (

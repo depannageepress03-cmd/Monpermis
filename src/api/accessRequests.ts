@@ -145,6 +145,12 @@ export const fetchAccessModules = () =>
 
 export const fetchAccessMe = () => request<AccessMe>('/access-requests/me')
 
+export const redeemPromoCode = (code: string) =>
+  request<{ modules: string[]; access: AccessMe }>('/promo-codes/redeem', {
+    method: 'POST',
+    body: JSON.stringify({ code }),
+  })
+
 export const quoteAccessCart = (items: CheckoutCartItem[]) =>
   request<{
     lines: Array<{

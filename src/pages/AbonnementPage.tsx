@@ -5,6 +5,7 @@ import {
   computeModuleAmount,
   fetchAccessMe,
   fetchAccessModules,
+  redeemPromoCode,
   AccessRequestError,
   type AccessMe,
   type AccessModule,
@@ -32,7 +33,7 @@ const unitSuffix: Record<AccessModule['unit'], string> = {
   week: ' / semaine',
 }
 
-const PRIMARY_KEYS: AccessModuleKey[] = ['code', 'conduite_videos', 'conduite_heures']
+const PRIMARY_KEYS: AccessModuleKey[] = ['code']
 
 export function AbonnementPage() {
   const navigate = useNavigate()
@@ -45,6 +46,10 @@ export function AbonnementPage() {
   const [selected, setSelected] = useState<Partial<Record<AccessModuleKey, boolean>>>({})
   const [quantityByModule, setQuantityByModule] = useState<Record<string, number>>({})
   const [checkoutOpen, setCheckoutOpen] = useState(false)
+  const [promoCode, setPromoCode] = useState('')
+  const [promoBusy, setPromoBusy] = useState(false)
+  const [promoError, setPromoError] = useState<string | null>(null)
+  const [promoSuccess, setPromoSuccess] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -69,7 +74,7 @@ export function AbonnementPage() {
   const cartItems: CheckoutCartItem[] = modules
     .filter((module) => {
       if (!selected[module.key]) return false
-      if (module.key !== 'conduite_heures' && me?.access[module.key]) return false
+      if (me?.access[module.key]) return false
       return true
     })
     .map((module) => ({
@@ -85,6 +90,27 @@ export function AbonnementPage() {
 
   const toggle = (key: AccessModuleKey) => {
     setSelected((current) => ({ ...current, [key]: !current[key] }))
+  }
+
+  const handleRedeemPromo = async () => {
+    const trimmed = promoCode.trim()
+    if (!trimmed) return
+    setPromoBusy(true)
+    setPromoError(null)
+    setPromoSuccess(null)
+    try {
+      const result = await redeemPromoCode(trimmed)
+      setMe(result.access)
+      const labels = result.modules
+        .map((key) => modules.find((m) => m.key === key)?.label || key)
+        .join(', ')
+      setPromoSuccess(`Code activé : ${labels} débloqué${result.modules.length > 1 ? 's' : ''}.`)
+      setPromoCode('')
+    } catch (err) {
+      setPromoError(err instanceof AccessRequestError ? err.message : 'Code invalide')
+    } finally {
+      setPromoBusy(false)
+    }
   }
 
   const sortedModules = [...modules].sort((a, b) => {
@@ -133,7 +159,7 @@ export function AbonnementPage() {
               ) : (
                 <div className="offer-pick-list">
                   {sortedModules.map((module) => {
-                    const isActive = Boolean(me?.access[module.key]) && module.key !== 'conduite_heures'
+                    const isActive = Boolean(me?.access[module.key])
                     const showsQuantity = module.unit === 'hour'
                     const quantity = quantityByModule[module.key] ?? 1
                     const amount = computeModuleAmount(module.key, module.price, showsQuantity ? quantity : 1)
@@ -155,7 +181,6 @@ export function AbonnementPage() {
                           {formatPrice(module.price)}
                           {unitSuffix[module.unit]}
                           {!isActive ? ` · total ${formatPrice(amount)}` : ''}
-                          {module.key === 'conduite_heures' && quantity >= 2 ? ' (−1 000 FCFA)' : ''}
                         </p>
                         {showsQuantity && !isActive ? (
                           <label
@@ -197,6 +222,29 @@ export function AbonnementPage() {
               >
                 Payer {formatPrice(cartTotal)}
               </button>
+            </section>
+
+            <section className="auth-card learner-card subscription-status-card">
+              <p className="learner-kicker">Vous avez un code promo ?</p>
+              <div className="promo-code-field">
+                <input
+                  type="text"
+                  value={promoCode}
+                  onChange={(event) => setPromoCode(event.target.value.toUpperCase())}
+                  placeholder="CODE PROMO"
+                  disabled={promoBusy}
+                />
+                <button
+                  type="button"
+                  className="btn-outline"
+                  disabled={promoBusy || !promoCode.trim()}
+                  onClick={() => void handleRedeemPromo()}
+                >
+                  {promoBusy ? 'Vérification…' : 'Valider'}
+                </button>
+              </div>
+              {promoError ? <p className="form-error">{promoError}</p> : null}
+              {promoSuccess ? <p className="form-success">{promoSuccess}</p> : null}
             </section>
 
             {!modules.some((m) => me?.access[m.key]) && !(me && me.user.soldeHeures > 0) ? (

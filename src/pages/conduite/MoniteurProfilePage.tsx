@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Car, CheckCircle2, User } from 'lucide-react'
+import { Car, CheckCircle2, MapPin, User } from 'lucide-react'
 import { useNavigate, useParams } from 'react-router-dom'
 import {
   fetchMoniteurProfile,
@@ -60,16 +60,21 @@ export function MoniteurProfilePage() {
           {moniteur ? (
             <div className="reservation-step">
               <div className="moniteur-profile-head">
-                {moniteur.vehiclePhotoUrl ? (
+                {moniteur.photoUrl || moniteur.vehiclePhotoUrl ? (
                   <img
                     className="moniteur-profile-cover"
-                    src={mediaSrc(moniteur.vehiclePhotoUrl)}
+                    src={mediaSrc(moniteur.photoUrl || moniteur.vehiclePhotoUrl || '')}
                     alt=""
                   />
                 ) : (
-                  <div className="moniteur-profile-cover moniteur-choice-placeholder">Véhicule</div>
+                  <div className="moniteur-profile-cover moniteur-choice-placeholder">Moniteur</div>
                 )}
                 <h2>{moniteur.fullName}</h2>
+                {moniteur.city ? (
+                  <p className="subtitle">
+                    <MapPin size={15} /> {moniteur.city}
+                  </p>
+                ) : null}
                 <p className="subtitle">
                   <Car size={15} /> {moniteur.vehicleBrand || 'Véhicule'} ·{' '}
                   {moniteur.vehicleTypes?.[0] || 'Véhicule'}

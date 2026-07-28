@@ -686,6 +686,24 @@
   color: #0f172a;
 }
 
+.promo-code-field {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.promo-code-field input {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid rgba(30, 58, 138, 0.18);
+  border-radius: 10px;
+  padding: 0.5rem 0.65rem;
+  font: inherit;
+  font-size: 1rem;
+  color: #0f172a;
+  text-transform: uppercase;
+}
+
 .access-manual-form {
   display: flex;
   flex-direction: column;

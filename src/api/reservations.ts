@@ -56,6 +56,7 @@ export interface ReservationSlot {
     fullName: string
     vehicleBrand?: string
     vehiclePhotoUrl?: string
+    photoUrl?: string
   } | null
 }
 
@@ -72,6 +73,7 @@ export interface ReservationItem {
     fullName: string
     vehicleBrand?: string
     vehiclePhotoUrl?: string
+    photoUrl?: string
   } | null
   creneau: { date: string; startTime: string; endTime: string } | null
 }
@@ -83,6 +85,8 @@ export interface MoniteurPublic {
   defaultPriceFcfa: number
   vehicleBrand?: string
   vehiclePhotoUrl?: string
+  photoUrl?: string
+  city?: string
 }
 
 export interface MoniteurProfile extends MoniteurPublic {
@@ -91,21 +95,6 @@ export interface MoniteurProfile extends MoniteurPublic {
   bio: string
   photos: string[]
   videos: string[]
-}
-
-export type MobileMoneyOperator = 'mtn' | 'moov' | 'celtiis'
-
-export interface ReservationQuote {
-  moniteur: { id: string; fullName: string; vehicleBrand?: string; vehiclePhotoUrl?: string } | null
-  date: string
-  startTime: string
-  endTime: string
-  hours: number
-  amount: number
-  currency: string
-  soldeHeures: number
-  soldeSuffisant: boolean
-  creneauIds: string[]
 }
 
 export const fetchDrivingDashboard = () =>
@@ -136,21 +125,7 @@ export const fetchAvailableCreneaux = (params: {
 export const lockCreneau = (id: string) =>
   request(`/reservations/creneaux/${id}/lock`, { method: 'POST', body: '{}' })
 
-export const lockCreneauxRange = (payload: {
-  moniteurId: string
-  startCreneauId: string
-  hours: number
-}) =>
-  request<{ creneaux: ReservationSlot[]; lockedUntil: string }>(
-    '/reservations/creneaux/lock-range',
-    { method: 'POST', body: JSON.stringify(payload) },
-  )
-
-export const quoteReservation = (creneauIds: string[]) =>
-  request<ReservationQuote>('/reservations/quote', {
-    method: 'POST',
-    body: JSON.stringify({ creneauIds }),
-  })
+export type MobileMoneyOperator = 'mtn' | 'moov' | 'celtiis'
 
 export const createReservation = (payload: {
   creneauIds: string[]

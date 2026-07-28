@@ -10,6 +10,8 @@ export interface Moniteur {
   defaultPriceFcfa: number
   vehicleBrand: string
   vehiclePhotoUrl: string
+  photoUrl: string
+  city: string
   bio: string
   photos: string[]
   videos: string[]

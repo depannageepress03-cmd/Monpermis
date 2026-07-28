@@ -209,6 +209,8 @@ export async function getUserModuleAccess(userId) {
         return r.status === 'actif'
       })
   }
+  // E-Codepermis est désormais inclus dans l'abonnement Code de la route (plus d'achat séparé).
+  access.ecodepermis = access.ecodepermis || access.code
 
   const pending = requests.find((r) =>
     ['en_attente', 'paiement_declare', 'en_verification'].includes(r.status),

@@ -7,7 +7,9 @@ import { Payment } from '../models/Payment.js'
 import { User } from '../models/User.js'
 import { requireUserAuth } from '../middleware/userAuth.js'
 import {
+  ADMIN_WHATSAPP_NUMBER,
   buildWhatsAppLink,
+  formatReservationNotifyAdmin,
   formatReservationReminder,
   sendWhatsAppMessage,
 } from '../services/whatsapp.js'
@@ -55,7 +57,7 @@ function asId(value) {
 
 async function hydrateReservation(reservation) {
   await reservation.populate([
-    { path: 'moniteurId', select: 'firstName lastName phone vehicleBrand vehiclePhotoUrl' },
+    { path: 'moniteurId', select: 'firstName lastName phone vehicleBrand vehiclePhotoUrl photoUrl' },
     { path: 'creneauId' },
   ])
   const moniteur = reservation.moniteurId
@@ -68,6 +70,7 @@ async function hydrateReservation(reservation) {
           phone: moniteur.phone || '',
           vehicleBrand: moniteur.vehicleBrand || '',
           vehiclePhotoUrl: moniteur.vehiclePhotoUrl || '',
+          photoUrl: moniteur.photoUrl || '',
         }
       : null,
     creneau: creneau?.toJSONSafe?.() ?? null,
@@ -89,7 +92,7 @@ router.get('/dashboard', ...withConduiteAccess, async (req, res) => {
       status: { $in: ['pending_payment', 'confirmed'] },
     })
       .populate('creneauId')
-      .populate('moniteurId', 'firstName lastName phone vehicleBrand vehiclePhotoUrl')
+      .populate('moniteurId', 'firstName lastName phone vehicleBrand vehiclePhotoUrl photoUrl')
       .sort({ createdAt: -1 })
 
     const upcomingFiltered = []
@@ -187,7 +190,7 @@ router.get('/creneaux', ...withConduiteAccess, async (req, res) => {
     )
 
     const creneaux = await Creneau.find(filter)
-      .populate('moniteurId', 'firstName lastName vehicleBrand vehiclePhotoUrl vehicleTypes')
+      .populate('moniteurId', 'firstName lastName vehicleBrand vehiclePhotoUrl photoUrl vehicleTypes')
       .sort({ date: 1, startTime: 1 })
 
     const byDate = {}
@@ -206,6 +209,7 @@ router.get('/creneaux', ...withConduiteAccess, async (req, res) => {
               fullName: `${slot.moniteurId.firstName} ${slot.moniteurId.lastName}`.trim(),
               vehicleBrand: slot.moniteurId.vehicleBrand || '',
               vehiclePhotoUrl: slot.moniteurId.vehiclePhotoUrl || '',
+              photoUrl: slot.moniteurId.photoUrl || '',
             }
           : null,
       }
@@ -356,7 +360,7 @@ router.post('/quote', ...withConduiteAccess, async (req, res) => {
     }
 
     const creneaux = await Creneau.find({ _id: { $in: creneauIds } })
-      .populate('moniteurId', 'firstName lastName defaultPriceFcfa vehicleBrand vehiclePhotoUrl')
+      .populate('moniteurId', 'firstName lastName defaultPriceFcfa vehicleBrand vehiclePhotoUrl photoUrl')
       .sort({ startTime: 1 })
     if (creneaux.length !== creneauIds.length) {
       return res.status(404).json({ success: false, error: 'Un ou plusieurs créneaux sont introuvables' })
@@ -379,6 +383,7 @@ router.post('/quote', ...withConduiteAccess, async (req, res) => {
               fullName: `${moniteur.firstName} ${moniteur.lastName}`.trim(),
               vehicleBrand: moniteur.vehicleBrand || '',
               vehiclePhotoUrl: moniteur.vehiclePhotoUrl || '',
+              photoUrl: moniteur.photoUrl || '',
             }
           : null,
         date: creneaux[0].date,
@@ -506,7 +511,7 @@ router.post('/reservations', ...withConduiteAccess, async (req, res) => {
       const hydrated = await hydrateReservationGroup(reservations)
       const moniteur = await Moniteur.findById(assignedMoniteurId)
       const first = claimed[0]
-      const waText = formatReservationReminder({
+      const waText = formatReservationNotifyAdmin({
         firstName: req.user.firstName,
         date: first.date,
         startTime: first.startTime,
@@ -519,7 +524,7 @@ router.post('/reservations', ...withConduiteAccess, async (req, res) => {
           paymentMethod: 'solde',
           reservations: hydrated,
           bookingGroupId: String(bookingGroupId),
-          whatsappLink: buildWhatsAppLink(req.user.phone, waText),
+          whatsappLink: buildWhatsAppLink(ADMIN_WHATSAPP_NUMBER, waText),
           calendarHint: {
             title: 'Séance de conduite — Monpermis.bj',
             date: first.date,

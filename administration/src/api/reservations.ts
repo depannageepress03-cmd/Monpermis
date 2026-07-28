@@ -22,6 +22,8 @@ export function createMoniteur(
     defaultPriceFcfa?: number
     vehicleBrand?: string
     vehiclePhotoUrl?: string
+    photoUrl?: string
+    city?: string
     bio?: string
     photos?: string[]
     videos?: string[]
@@ -49,6 +51,8 @@ export function updateMoniteur(
     defaultPriceFcfa: number
     vehicleBrand: string
     vehiclePhotoUrl: string
+    photoUrl: string
+    city: string
     bio: string
     photos: string[]
     videos: string[]

@@ -100,6 +100,8 @@ router.post('/moniteurs', async (req, res) => {
       defaultPriceFcfa: Number(req.body.defaultPriceFcfa) || 5000,
       vehicleBrand: String(req.body.vehicleBrand || '').trim(),
       vehiclePhotoUrl: String(req.body.vehiclePhotoUrl || '').trim(),
+      photoUrl: String(req.body.photoUrl || '').trim(),
+      city: String(req.body.city || '').trim(),
       bio: String(req.body.bio || '').trim(),
       photos: parseUrlList(req.body.photos),
       videos: parseUrlList(req.body.videos),
@@ -152,6 +154,12 @@ router.patch('/moniteurs/:id', async (req, res) => {
     }
     if (req.body.vehiclePhotoUrl !== undefined) {
       moniteur.vehiclePhotoUrl = String(req.body.vehiclePhotoUrl).trim()
+    }
+    if (req.body.photoUrl !== undefined) {
+      moniteur.photoUrl = String(req.body.photoUrl).trim()
+    }
+    if (req.body.city !== undefined) {
+      moniteur.city = String(req.body.city).trim()
     }
     if (req.body.bio !== undefined) {
       moniteur.bio = String(req.body.bio).trim()
