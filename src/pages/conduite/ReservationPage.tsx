@@ -367,12 +367,12 @@ export function ReservationPage() {
                 </p>
               ) : null}
 
-              <div className="slots-row" style={{ marginBottom: '1rem' }}>
+              <div className="availability-days-row">
                 {availabilityDays.map((day) => (
                   <button
                     key={day.date}
                     type="button"
-                    className={`slot-btn${selectedDate === day.date ? ' is-selected' : ''}`}
+                    className={`availability-day-chip${selectedDate === day.date ? ' is-selected' : ''}`}
                     disabled={busy}
                     onClick={() => setSelectedDate(day.date)}
                   >
@@ -382,12 +382,29 @@ export function ReservationPage() {
               </div>
 
               {selectedDay ? (
-                <div className="day-card">
+                <div className="day-card availability-panel">
                   <strong>{formatDateLabel(selectedDay.date)}</strong>
                   <p className="subtitle" style={{ marginTop: 6 }}>
-                    Disponible :{' '}
-                    {selectedDay.windows.map((w) => `${w.start}–${w.end}`).join(' · ')}
+                    Plages libres — touchez pour préremplir, puis ajustez si besoin.
                   </p>
+                  <div className="slots-row">
+                    {selectedDay.windows.map((window) => {
+                      const active = startTime === window.start && endTime === window.end
+                      return (
+                        <button
+                          key={`${window.start}-${window.end}`}
+                          type="button"
+                          className={`slot-btn${active ? ' is-selected' : ''}`}
+                          onClick={() => {
+                            setStartTime(window.start)
+                            setEndTime(window.end)
+                          }}
+                        >
+                          {window.start} – {window.end}
+                        </button>
+                      )
+                    })}
+                  </div>
                   <div className="availability-time-row">
                     <label>
                       De
@@ -407,7 +424,7 @@ export function ReservationPage() {
                     </label>
                   </div>
                   {previewHours > 0 ? (
-                    <p className="subtitle">
+                    <p className="availability-duration">
                       Durée : {previewHours} h · environ{' '}
                       {new Intl.NumberFormat('fr-FR', {
                         style: 'currency',

@@ -79,7 +79,7 @@ export function deleteMoniteur(token: string, id: string) {
 export function uploadVehiclePhoto(token: string, file: File) {
   const formData = new FormData()
   formData.append('image', file)
-  return apiUpload<{ imageUrl: string; mediaBytes: number }>(
+  return apiUpload<{ imageUrl: string; imagePublicId?: string; mediaBytes: number }>(
     '/api/admin/conduite/upload-vehicle-photo',
     formData,
     token,

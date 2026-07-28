@@ -526,6 +526,44 @@
   font: inherit;
 }
 
+.availability-days-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 4px 0 14px;
+}
+
+.availability-day-chip {
+  border-radius: 12px;
+  border: 1.5px solid rgba(15, 23, 42, 0.12);
+  background: #fff;
+  color: #001030;
+  font: inherit;
+  font-weight: 700;
+  padding: 10px 12px;
+  cursor: pointer;
+}
+
+.availability-day-chip.is-selected {
+  background: #ffc000;
+  border-color: #ffc000;
+}
+
+.availability-panel {
+  background: #f8fafc;
+}
+
+.availability-duration {
+  display: inline-flex;
+  margin: 0 0 12px;
+  padding: 7px 12px;
+  border-radius: 999px;
+  background: rgba(0, 176, 80, 0.1);
+  color: #001030;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
 .slots-row {
   display: flex;
   flex-wrap: wrap;

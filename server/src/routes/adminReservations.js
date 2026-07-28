@@ -6,8 +6,9 @@ import { Reservation } from '../models/Reservation.js'
 import { User } from '../models/User.js'
 import { requireAdminAuth } from '../middleware/adminAuth.js'
 import { audit } from '../middleware/audit.js'
-import { imageUpload, writeFile } from '../middleware/upload.js'
+import { imageUpload } from '../middleware/upload.js'
 import { notifyUser } from '../services/notifications.js'
+import { uploadImageBuffer } from '../services/cloudinary.js'
 import { logger } from '../utils/logger.js'
 import {
   formatLocalDate,
@@ -667,15 +668,21 @@ router.post('/upload-vehicle-photo', (req, res) => {
     }
 
     try {
-      const saved = await writeFile(req.file)
+      const uploaded = await uploadImageBuffer(req.file.buffer, {
+        mimeType: req.file.mimetype,
+        originalName: req.file.originalname,
+        folder: 'monpermis/conduite',
+      })
       res.status(201).json({
         success: true,
         data: {
-          imageUrl: `/uploads/images/${saved.filename}`,
-          mediaBytes: saved.size,
+          imageUrl: uploaded.imageUrl,
+          imagePublicId: uploaded.imagePublicId,
+          mediaBytes: uploaded.bytes,
         },
       })
     } catch (err) {
+      logger.error('Upload photo conduite Cloudinary:', err)
       return res.status(err.status || 400).json({
         success: false,
         error: err.message || 'Enregistrement photo impossible',

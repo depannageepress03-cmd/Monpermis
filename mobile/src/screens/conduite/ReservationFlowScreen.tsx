@@ -47,6 +47,19 @@ function formatDateLabel(date: string) {
   }
 }
 
+function formatDayChip(date: string) {
+  try {
+    const d = new Date(`${date}T12:00:00`)
+    return {
+      weekday: d.toLocaleDateString('fr-FR', { weekday: 'short' }).replace(/\.$/, ''),
+      day: String(d.getDate()),
+      month: d.toLocaleDateString('fr-FR', { month: 'short' }).replace(/\.$/, ''),
+    }
+  } catch {
+    return { weekday: date, day: '', month: '' }
+  }
+}
+
 function estimateHours(start: string, end: string) {
   const [sh, sm] = start.split(':').map((v) => parseInt(v, 10) || 0)
   const [eh, em] = end.split(':').map((v) => parseInt(v, 10) || 0)
@@ -223,24 +236,37 @@ export function ReservationFlowScreen() {
         <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
           {error ? <Text style={styles.error}>{error}</Text> : null}
 
+          <View style={styles.stepsRow}>
+            {[
+              { id: 'moniteur', label: 'Moniteur' },
+              { id: 'calendar', label: 'Horaires' },
+              { id: 'payment', label: 'Confirmer' },
+            ].map((item, index) => {
+              const active =
+                step === item.id ||
+                (step === 'success' && item.id === 'payment') ||
+                (step === 'calendar' && item.id === 'moniteur') ||
+                (step === 'payment' && item.id !== 'payment')
+              const current = step === item.id || (step === 'success' && item.id === 'payment')
+              return (
+                <View key={item.id} style={[styles.stepPill, current && styles.stepPillCurrent, active && !current && styles.stepPillDone]}>
+                  <Text style={[styles.stepPillText, (current || active) && styles.stepPillTextActive]}>
+                    {index + 1}. {item.label}
+                  </Text>
+                </View>
+              )
+            })}
+          </View>
+
           {step === 'moniteur' ? (
             <View>
-              <Text style={styles.introTitle}>Réserver votre prochaine séance</Text>
+              <Text style={styles.introTitle}>Réserver une séance</Text>
               <Text style={styles.introText}>
-                Choisissez d’abord le moniteur avec lequel vous souhaitez conduire. Chaque
-                profil affiche la photo du véhicule, la marque et le type pour vous aider à
-                décider.
-              </Text>
-              <Text style={styles.introText}>
-                Ensuite, consultez ses jours libres et indiquez l’horaire souhaité (de telle
-                heure à telle heure). Les heures seront débitées de votre solde prépayé.
+                Choisissez votre moniteur, puis indiquez le jour et la plage horaire qui vous
+                conviennent.
               </Text>
 
-              <Text style={styles.section}>1. Choisissez un moniteur</Text>
-              <Text style={styles.hint}>
-                Touchez une carte pour la sélectionner. Elle apparaîtra en surbrillance avant
-                d’ouvrir le calendrier.
-              </Text>
+              <Text style={styles.section}>Choisissez un moniteur</Text>
               {busy ? <ActivityIndicator color={dark.green} /> : null}
               {!busy && moniteurs.length === 0 ? (
                 <Text style={styles.empty}>
@@ -283,16 +309,6 @@ export function ReservationFlowScreen() {
                 )
               })}
 
-              <Text style={styles.selectedHint}>
-                {selectedMoniteur
-                  ? `Moniteur sélectionné : ${selectedMoniteur.fullName}${
-                      selectedMoniteur.vehicleBrand
-                        ? ` · ${selectedMoniteur.vehicleBrand}`
-                        : ''
-                    }. Vous pouvez ouvrir le calendrier.`
-                  : 'Sélectionnez un moniteur pour activer le bouton ci-dessous.'}
-              </Text>
-
               <Pressable
                 style={[styles.primaryBtn, styles.calendarBtn, !moniteurId && styles.disabled]}
                 disabled={!moniteurId}
@@ -302,28 +318,22 @@ export function ReservationFlowScreen() {
               </Pressable>
 
               <View style={styles.tipsBox}>
-                <Text style={styles.tipsTitle}>À savoir avant de réserver</Text>
-                <Text style={styles.tipsItem}>
-                  • Présentez-vous à l’heure avec vos documents d’identité.
-                </Text>
-                <Text style={styles.tipsItem}>
-                  • Annulation possible jusqu’à 24 h avant, avec une justification.
-                </Text>
-                <Text style={styles.tipsItem}>
-                  • La réservation apparaît ensuite dans Conduite et chez l’administration.
-                </Text>
+                <Text style={styles.tipsTitle}>À savoir</Text>
+                <Text style={styles.tipsItem}>• Présentez-vous à l’heure avec une pièce d’identité.</Text>
+                <Text style={styles.tipsItem}>• Annulation possible jusqu’à 24 h avant.</Text>
+                <Text style={styles.tipsItem}>• Les heures sont débitées de votre solde à la confirmation.</Text>
               </View>
             </View>
           ) : null}
 
           {step === 'calendar' ? (
             <View>
-              <Text style={styles.introTitle}>Choisissez vos horaires</Text>
+              <Text style={styles.introTitle}>Vos horaires</Text>
               <Text style={styles.introText}>
-                Sélectionnez un jour libre, puis indiquez de quelle heure à quelle heure vous
-                souhaitez conduire dans la disponibilité du moniteur.
+                Sélectionnez un jour libre, touchez une plage proposée, puis ajustez si besoin
+                de telle heure à telle heure.
               </Text>
-              <Text style={styles.section}>2. Jour et plage horaire</Text>
+
               {selectedMoniteur ? (
                 <View style={styles.recapStrip}>
                   {selectedMoniteur.vehiclePhotoUrl ? (
@@ -340,44 +350,73 @@ export function ReservationFlowScreen() {
                   </View>
                 </View>
               ) : null}
-              {busy ? <ActivityIndicator color={dark.green} /> : null}
+
+              {busy ? <ActivityIndicator color={dark.green} style={{ marginVertical: 12 }} /> : null}
               {availabilityDays.length === 0 && !busy ? (
                 <Text style={styles.empty}>
                   Aucune disponibilité sur les 14 prochains jours. Changez de moniteur ou
                   réessayez plus tard.
                 </Text>
               ) : null}
-              <View style={styles.slotsRow}>
+
+              <Text style={styles.section}>Jour</Text>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.dayChipsRow}
+              >
                 {availabilityDays.map((day) => {
                   const active = selectedDate === day.date
+                  const chip = formatDayChip(day.date)
                   return (
                     <Pressable
                       key={day.date}
                       disabled={busy}
                       onPress={() => setSelectedDate(day.date)}
-                      style={[
-                        styles.slot,
-                        active ? styles.slotSelected : styles.slotAvailable,
-                      ]}
+                      style={[styles.dayChip, active && styles.dayChipActive]}
                     >
-                      <Text style={[styles.slotText, active && styles.slotTextSelected]}>
-                        {formatDateLabel(day.date)}
+                      <Text style={[styles.dayChipWeekday, active && styles.dayChipTextActive]}>
+                        {chip.weekday}
+                      </Text>
+                      <Text style={[styles.dayChipDay, active && styles.dayChipTextActive]}>
+                        {chip.day}
+                      </Text>
+                      <Text style={[styles.dayChipMonth, active && styles.dayChipTextActive]}>
+                        {chip.month}
                       </Text>
                     </Pressable>
                   )
                 })}
-              </View>
+              </ScrollView>
 
               {selectedDay ? (
                 <View style={styles.dayCard}>
                   <Text style={styles.dayTitle}>{formatDateLabel(selectedDay.date)}</Text>
-                  <Text style={styles.hint}>
-                    Disponible :{' '}
-                    {selectedDay.windows.map((w) => `${w.start}–${w.end}`).join(' · ')}
-                  </Text>
+                  <Text style={styles.fieldLabel}>Plages libres</Text>
+                  <View style={styles.slotsRow}>
+                    {selectedDay.windows.map((window) => {
+                      const active = startTime === window.start && endTime === window.end
+                      return (
+                        <Pressable
+                          key={`${window.start}-${window.end}`}
+                          onPress={() => {
+                            setStartTime(window.start)
+                            setEndTime(window.end)
+                          }}
+                          style={[styles.windowChip, active && styles.windowChipActive]}
+                        >
+                          <Text style={[styles.windowChipText, active && styles.windowChipTextActive]}>
+                            {window.start} – {window.end}
+                          </Text>
+                        </Pressable>
+                      )
+                    })}
+                  </View>
+
+                  <Text style={styles.fieldLabel}>Votre horaire</Text>
                   <View style={styles.timeRow}>
                     <View style={styles.timeField}>
-                      <Text style={styles.hint}>De (HH:mm)</Text>
+                      <Text style={styles.timeLabel}>De</Text>
                       <TextInput
                         value={startTime}
                         onChangeText={setStartTime}
@@ -388,7 +427,7 @@ export function ReservationFlowScreen() {
                       />
                     </View>
                     <View style={styles.timeField}>
-                      <Text style={styles.hint}>À (HH:mm)</Text>
+                      <Text style={styles.timeLabel}>À</Text>
                       <TextInput
                         value={endTime}
                         onChangeText={setEndTime}
@@ -399,12 +438,16 @@ export function ReservationFlowScreen() {
                       />
                     </View>
                   </View>
+
                   {previewHours > 0 ? (
-                    <Text style={styles.hint}>
-                      Durée : {previewHours} h · ~{' '}
-                      {Math.round(hourlyPriceFcfa * previewHours).toLocaleString('fr-FR')} FCFA
-                    </Text>
+                    <View style={styles.durationBadge}>
+                      <Text style={styles.durationBadgeText}>
+                        {previewHours} h · ~{' '}
+                        {Math.round(hourlyPriceFcfa * previewHours).toLocaleString('fr-FR')} FCFA
+                      </Text>
+                    </View>
                   ) : null}
+
                   <Pressable
                     style={[styles.primaryBtn, busy && styles.disabled]}
                     disabled={busy}
@@ -502,9 +545,39 @@ export function ReservationFlowScreen() {
 
 const styles = StyleSheet.create({
   scroll: { paddingHorizontal: 22, paddingTop: 14, paddingBottom: 32 },
+  stepsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 16,
+  },
+  stepPill: {
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: dark.border,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    backgroundColor: dark.surface,
+  },
+  stepPillCurrent: {
+    borderColor: dark.green,
+    backgroundColor: dark.greenSoft,
+  },
+  stepPillDone: {
+    borderColor: dark.border,
+    opacity: 0.85,
+  },
+  stepPillText: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 12,
+    color: dark.textMuted,
+  },
+  stepPillTextActive: {
+    color: dark.textPrimary,
+  },
   introTitle: {
     fontFamily: fonts.displayExtraBold,
-    fontSize: 20,
+    fontSize: 22,
     color: dark.textPrimary,
     letterSpacing: -0.3,
     marginBottom: 8,
@@ -514,15 +587,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 21,
     color: dark.textMuted,
-    marginBottom: 10,
-  },
-  selectedHint: {
-    marginTop: 8,
-    marginBottom: 4,
-    fontFamily: fonts.body,
-    fontSize: 13,
-    lineHeight: 19,
-    color: dark.textMuted,
+    marginBottom: 14,
   },
   tipsBox: {
     marginTop: 18,
@@ -549,13 +614,13 @@ const styles = StyleSheet.create({
     fontFamily: fonts.displayBold,
     fontSize: 15,
     color: dark.textPrimary,
-    marginTop: 8,
+    marginTop: 4,
     marginBottom: 12,
   },
   choice: {
     borderWidth: 1.5,
     borderColor: dark.border,
-    borderRadius: 14,
+    borderRadius: 16,
     padding: 14,
     marginBottom: 10,
     backgroundColor: dark.surface,
@@ -572,15 +637,15 @@ const styles = StyleSheet.create({
   choiceTextSelected: { color: dark.textPrimary },
   moniteurRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   carThumb: {
-    width: 64,
-    height: 48,
-    borderRadius: 8,
+    width: 68,
+    height: 52,
+    borderRadius: 10,
     backgroundColor: dark.surfaceRaised,
   },
   carPlaceholder: {
-    width: 64,
-    height: 48,
-    borderRadius: 8,
+    width: 68,
+    height: 52,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: dark.border,
     alignItems: 'center',
@@ -609,8 +674,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
     marginBottom: 14,
-    padding: 10,
-    borderRadius: 12,
+    padding: 12,
+    borderRadius: 14,
     backgroundColor: dark.greenSoft,
     borderWidth: 1,
     borderColor: dark.border,
@@ -643,71 +708,131 @@ const styles = StyleSheet.create({
     color: dark.textPrimary,
     fontFamily: fonts.bodyBold,
   },
-  dayCard: {
+  dayChipsRow: {
+    gap: 10,
+    paddingBottom: 4,
+    paddingRight: 8,
+  },
+  dayChip: {
+    width: 68,
     borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: dark.border,
+    backgroundColor: dark.surface,
+    paddingVertical: 10,
+    alignItems: 'center',
+    gap: 2,
+  },
+  dayChipActive: {
+    borderColor: dark.green,
+    backgroundColor: dark.greenSoft,
+  },
+  dayChipWeekday: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 11,
+    color: dark.textMuted,
+    textTransform: 'capitalize',
+  },
+  dayChipDay: {
+    fontFamily: fonts.displayExtraBold,
+    fontSize: 20,
+    color: dark.textPrimary,
+    lineHeight: 24,
+  },
+  dayChipMonth: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 11,
+    color: dark.textMuted,
+    textTransform: 'capitalize',
+  },
+  dayChipTextActive: {
+    color: dark.textPrimary,
+  },
+  dayCard: {
+    borderRadius: 18,
     borderWidth: 1,
     borderColor: dark.border,
-    padding: 12,
-    marginTop: 12,
+    padding: 14,
+    marginTop: 14,
     marginBottom: 12,
     backgroundColor: dark.surface,
     gap: 8,
   },
+  dayTitle: {
+    fontFamily: fonts.displayBold,
+    fontSize: 16,
+    color: dark.textPrimary,
+    marginBottom: 4,
+    textTransform: 'capitalize',
+  },
+  fieldLabel: {
+    fontFamily: fonts.bodyBold,
+    fontSize: 13,
+    color: dark.textMuted,
+    marginTop: 4,
+  },
+  slotsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  windowChip: {
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: dark.green,
+    backgroundColor: dark.surfaceRaised,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+  },
+  windowChipActive: {
+    backgroundColor: dark.coralSoft,
+    borderColor: dark.coral,
+  },
+  windowChipText: {
+    fontFamily: fonts.bodyBold,
+    color: dark.green,
+    fontSize: 13,
+  },
+  windowChipTextActive: {
+    color: dark.textPrimary,
+  },
   timeRow: {
     flexDirection: 'row',
     gap: 10,
-    marginBottom: 8,
+    marginBottom: 4,
   },
   timeField: {
     flex: 1,
-    gap: 4,
+    gap: 6,
+  },
+  timeLabel: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 12,
+    color: dark.textMuted,
   },
   timeInput: {
     borderWidth: 1,
     borderColor: dark.border,
-    borderRadius: 10,
+    borderRadius: 12,
     paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingVertical: 12,
     color: dark.textPrimary,
     fontFamily: fonts.bodyBold,
-    fontSize: 15,
+    fontSize: 16,
     backgroundColor: dark.bg,
   },
-  dayTitle: {
-    fontFamily: fonts.displayBold,
-    fontSize: 14,
-    color: dark.textPrimary,
-    marginBottom: 10,
-    textTransform: 'capitalize',
-  },
-  slotsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  slot: {
-    minWidth: 72,
-    paddingVertical: 10,
+  durationBadge: {
+    alignSelf: 'flex-start',
+    marginTop: 4,
+    marginBottom: 2,
+    borderRadius: 999,
     paddingHorizontal: 12,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    alignItems: 'center',
-  },
-  slotAvailable: {
-    borderColor: dark.green,
-    backgroundColor: dark.surfaceRaised,
-  },
-  slotSelected: {
-    borderColor: dark.coral,
-    backgroundColor: dark.coralSoft,
-  },
-  slotUnavailable: {
+    paddingVertical: 7,
+    backgroundColor: dark.greenSoft,
+    borderWidth: 1,
     borderColor: dark.border,
-    backgroundColor: dark.surfaceRaised,
-    opacity: 0.45,
   },
-  slotText: {
+  durationBadgeText: {
     fontFamily: fonts.bodyBold,
-    color: dark.green,
+    fontSize: 13,
+    color: dark.textPrimary,
   },
-  slotTextSelected: { color: dark.textPrimary },
-  slotTextUnavailable: { color: dark.textMuted },
   recap: {
     borderRadius: 14,
     backgroundColor: dark.greenSoft,
@@ -761,5 +886,5 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     fontFamily: fonts.bodySemiBold,
   },
-  disabled: { opacity: 0.7 },
+  disabled: { opacity: 0.55 },
 })

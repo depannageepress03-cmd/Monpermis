@@ -175,6 +175,116 @@ export async function destroyAudioByPublicId(publicId) {
   }
 }
 
+function guessImageExtension(mimeType, originalName = '') {
+  const fromName = String(originalName || '')
+    .toLowerCase()
+    .match(/\.[a-z0-9]+$/)?.[0]
+  if (fromName) return fromName
+  const mime = String(mimeType || '').toLowerCase()
+  if (mime.includes('png')) return '.png'
+  if (mime.includes('webp')) return '.webp'
+  if (mime.includes('gif')) return '.gif'
+  return '.jpg'
+}
+
+/**
+ * Upload an image buffer to Cloudinary (signed REST upload).
+ * @returns {{ imageUrl: string, imagePublicId: string, bytes: number, format?: string }}
+ */
+export async function uploadImageBuffer(buffer, { mimeType, originalName, folder = 'monpermis/conduite' } = {}) {
+  if (!Buffer.isBuffer(buffer) || buffer.length === 0) {
+    throw Object.assign(new Error('Fichier image vide'), { status: 400 })
+  }
+
+  const { cloud_name, api_key, api_secret } = resolveCredentials()
+  const ext = guessImageExtension(mimeType, originalName)
+  const filename = `image${ext}`
+  const timestamp = Math.floor(Date.now() / 1000)
+  const params = { folder, timestamp }
+  const signature = signParams(params, api_secret)
+
+  const form = new FormData()
+  form.append(
+    'file',
+    new Blob([buffer], { type: mimeType || 'application/octet-stream' }),
+    filename,
+  )
+  form.append('api_key', api_key)
+  form.append('timestamp', String(timestamp))
+  form.append('signature', signature)
+  form.append('folder', folder)
+
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), 120000)
+  let response
+  try {
+    response = await fetch(`https://api.cloudinary.com/v1_1/${cloud_name}/image/upload`, {
+      method: 'POST',
+      body: form,
+      signal: controller.signal,
+    })
+  } catch (error) {
+    clearTimeout(timer)
+    throw Object.assign(new Error(`Upload Cloudinary réseau: ${error.message}`), { status: 502 })
+  }
+  clearTimeout(timer)
+
+  const payload = await response.json().catch(() => ({}))
+  if (!response.ok) {
+    const message = payload?.error?.message || `Upload Cloudinary HTTP ${response.status}`
+    throw Object.assign(new Error(message), { status: response.status >= 500 ? 502 : 400 })
+  }
+
+  const imageUrl = String(payload.secure_url || '').trim()
+  const imagePublicId = String(payload.public_id || '').trim()
+  if (!imageUrl || !imagePublicId) {
+    throw Object.assign(new Error('Réponse Cloudinary invalide'), { status: 502 })
+  }
+
+  return {
+    imageUrl,
+    imagePublicId,
+    bytes: Number(payload.bytes) || buffer.length,
+    format: payload.format,
+  }
+}
+
+/** Delete a Cloudinary image asset by public_id. Ignores already-deleted assets. */
+export async function destroyImageByPublicId(publicId) {
+  const id = String(publicId || '').trim()
+  if (!id) return { deleted: false, reason: 'empty' }
+
+  try {
+    const { cloud_name, api_key, api_secret } = resolveCredentials()
+    const timestamp = Math.floor(Date.now() / 1000)
+    const params = { public_id: id, timestamp }
+    const signature = signParams(params, api_secret)
+
+    const body = new URLSearchParams({
+      public_id: id,
+      api_key,
+      timestamp: String(timestamp),
+      signature,
+    })
+
+    const response = await fetch(`https://api.cloudinary.com/v1_1/${cloud_name}/image/destroy`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body,
+    })
+    const payload = await response.json().catch(() => ({}))
+    const result = payload?.result
+    const ok = result === 'ok' || result === 'not found'
+    if (!ok) {
+      logger.warn('Cloudinary image destroy inattendu:', id, payload)
+    }
+    return { deleted: result === 'ok', result }
+  } catch (error) {
+    logger.error('Cloudinary image destroy échoué:', id, error)
+    return { deleted: false, error: error.message }
+  }
+}
+
 export function isCloudinaryUrl(url) {
   return /res\.cloudinary\.com\//i.test(String(url || ''))
 }
