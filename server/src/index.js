@@ -33,6 +33,7 @@ import { fedapayKeyFingerprint, isFedaPayConfigured } from './services/fedapay.j
 import { sendMediaAsset } from './middleware/upload.js'
 import { ensureReservationIndexes } from './models/Reservation.js'
 import { ensureAccessModulePricing, expireDueAccessRequests } from './utils/accessRequests.js'
+import { expireStalePendingReservations } from './utils/reservationPayments.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const app = express()
@@ -293,12 +294,18 @@ async function connectMongo() {
       logger.info(`Tarifs modules d'accès initialisés (${pricingSeed.created})`)
     }
     await expireDueAccessRequests()
+    await expireStalePendingReservations()
 
     setInterval(async () => {
       try {
         await expireDueAccessRequests()
       } catch (e) {
         logger.error('Erreur vérification expirations', { error: e.message })
+      }
+      try {
+        await expireStalePendingReservations()
+      } catch (e) {
+        logger.error('Erreur libération réservations en attente de paiement', { error: e.message })
       }
     }, 15 * 60 * 1000)
   } catch (err) {

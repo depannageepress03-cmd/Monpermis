@@ -6,6 +6,7 @@ import { ConduiteChapterCoursesPage } from './pages/conduite/ConduiteChapterCour
 import { ConduiteCourseDetailPage } from './pages/conduite/ConduiteCourseDetailPage'
 import { ConduiteLeconsPage } from './pages/conduite/ConduiteLeconsPage'
 import { ReservationPage } from './pages/conduite/ReservationPage'
+import { MoniteurProfilePage } from './pages/conduite/MoniteurProfilePage'
 import { ECodePermisPage, ECodePermisTakePage } from './pages/code-route/ECodePermisPage'
 import { ExamensTestPage, ExamensTestTakePage } from './pages/code-route/ExamensTestPage'
 import { MesNotesPage } from './pages/code-route/MesNotesPage'
@@ -75,6 +76,7 @@ export default function App() {
       <Route path="/code-de-la-route/e-codepermis/:examNumber" element={<ECodePermisTakePage />} />
       <Route path="/conduite" element={<ConduitePage />} />
       <Route path="/conduite/reservation" element={<ReservationPage />} />
+      <Route path="/conduite/moniteurs/:id" element={<MoniteurProfilePage />} />
       <Route path="/conduite/lecons" element={<ConduiteLeconsPage />} />
       <Route path="/conduite/lecons/:chapterId" element={<ConduiteChapterCoursesPage />} />
       <Route

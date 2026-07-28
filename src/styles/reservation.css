@@ -592,3 +592,158 @@
   font-weight: 700;
   cursor: pointer;
 }
+
+/* ---- Profil moniteur ---- */
+.moniteur-profile-head {
+  text-align: center;
+  margin-bottom: 0.5rem;
+}
+
+.moniteur-profile-cover {
+  width: 100%;
+  height: 160px;
+  border-radius: 16px;
+  object-fit: cover;
+  margin-bottom: 12px;
+}
+
+.moniteur-profile-head h2 {
+  margin: 0 0 4px;
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: #001030;
+}
+
+.moniteur-profile-head .subtitle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  justify-content: center;
+}
+
+.moniteur-profile-bio p {
+  margin: 6px 0 0;
+  font-size: 0.92rem;
+  line-height: 1.55;
+  color: rgba(0, 16, 48, 0.75);
+}
+
+.moniteur-profile-specialties {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.moniteur-specialty-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: rgba(0, 176, 80, 0.1);
+  color: #00713a;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.moniteur-profile-section {
+  margin-top: 1rem;
+}
+
+.moniteur-profile-gallery {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.moniteur-profile-gallery img {
+  width: 104px;
+  height: 78px;
+  border-radius: 12px;
+  object-fit: cover;
+}
+
+.moniteur-profile-videos {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.moniteur-profile-video {
+  position: relative;
+  width: 100%;
+  padding-top: 56.25%;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #001030;
+}
+
+.moniteur-profile-video iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+/* ---- Sélecteur d'heures ---- */
+.hours-stepper {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 10px 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(0, 16, 48, 0.03);
+}
+
+.hours-stepper span {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #001030;
+}
+
+.hours-stepper-control {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.hours-stepper-control button {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  border: 1.5px solid #00b050;
+  background: #fff;
+  color: #00b050;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.hours-stepper-control button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.hours-stepper-control strong {
+  min-width: 18px;
+  text-align: center;
+  color: #001030;
+  font-size: 1rem;
+}
+
+/* ---- Choix du mode de paiement ---- */
+.payment-choice {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.payment-choice-hint {
+  margin: 0 0 6px;
+}

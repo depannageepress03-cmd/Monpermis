@@ -1,17 +1,20 @@
-import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
-import { CalendarPlus, Check } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { CalendarPlus, Check, Minus, Plus } from 'lucide-react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   createReservation,
   fetchAvailableCreneaux,
   fetchPublicMoniteurs,
-  lockCreneau,
+  lockCreneauxRange,
+  quoteReservation,
   ReservationError,
   type MoniteurPublic,
+  type ReservationItem,
+  type ReservationQuote,
   type ReservationSlot,
 } from '../../api/reservations'
-import { fetchAccessMe } from '../../api/accessRequests'
 import { PageNavbar } from '../../components/PageNavbar'
+import { ReservationMobileMoneyCheckout } from '../../components/ReservationMobileMoneyCheckout'
 import { useAuth } from '../../hooks/useAuth'
 import { resolveMediaUrl } from '../../utils/mediaUrl'
 import '../../styles/auth.css'
@@ -36,26 +39,35 @@ function formatDateLabel(date: string) {
   }
 }
 
+function formatPrice(amount: number, currency = 'XOF') {
+  return new Intl.NumberFormat('fr-FR', { style: 'currency', currency, maximumFractionDigits: 0 }).format(
+    amount,
+  )
+}
+
 export function ReservationPage() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const { user, loading } = useAuth()
   const [step, setStep] = useState<Step>('moniteur')
   const [moniteurId, setMoniteurId] = useState<string | undefined>()
   const [moniteurs, setMoniteurs] = useState<MoniteurPublic[]>([])
   const [days, setDays] = useState<{ date: string; creneaux: ReservationSlot[] }[]>([])
-  const [selected, setSelected] = useState<ReservationSlot | null>(null)
-  const [soldeHeures, setSoldeHeures] = useState<number | null>(null)
+  const [hours, setHours] = useState(1)
+  const [lockedRange, setLockedRange] = useState<ReservationSlot[]>([])
+  const [quote, setQuote] = useState<ReservationQuote | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [whatsappLink, setWhatsappLink] = useState('')
   const [calendarUrl, setCalendarUrl] = useState('')
+  const [showMobileMoney, setShowMobileMoney] = useState(false)
 
   const selectedMoniteur = useMemo(
     () => moniteurs.find((item) => item.id === moniteurId) ?? null,
     [moniteurs, moniteurId],
   )
 
-  const vehicleType = selectedMoniteur?.vehicleTypes?.[0] || selected?.vehicleType || ''
+  const vehicleType = selectedMoniteur?.vehicleTypes?.[0] || lockedRange[0]?.vehicleType || 'voiture'
 
   const loadMoniteurs = useCallback(async () => {
     setBusy(true)
@@ -75,39 +87,44 @@ export function ReservationPage() {
     setBusy(true)
     setError(null)
     try {
-      const data = await fetchAvailableCreneaux({
-        ...(vehicleType ? { vehicleType } : {}),
-        moniteurId,
-      })
+      const data = await fetchAvailableCreneaux({ moniteurId })
       setDays(data.days)
     } catch (err) {
       setError(err instanceof ReservationError ? err.message : 'Créneaux indisponibles')
     } finally {
       setBusy(false)
     }
-  }, [vehicleType, moniteurId])
+  }, [moniteurId])
 
   useEffect(() => {
-    if (step === 'moniteur') void loadMoniteurs()
-  }, [step, loadMoniteurs])
+    void loadMoniteurs()
+  }, [loadMoniteurs])
 
   useEffect(() => {
-    fetchAccessMe()
-      .then((data) => setSoldeHeures(data.user.soldeHeures))
-      .catch(() => setSoldeHeures(null))
-  }, [])
+    const fromQuery = searchParams.get('moniteurId')
+    if (fromQuery) {
+      setMoniteurId(fromQuery)
+      setStep('calendar')
+    }
+  }, [searchParams])
 
   useEffect(() => {
     if (step === 'calendar') void loadCreneaux()
   }, [step, loadCreneaux])
 
   const onSelectSlot = async (slot: ReservationSlot) => {
-    if (!slot.available) return
+    if (!slot.available || !moniteurId) return
     setBusy(true)
     setError(null)
     try {
-      await lockCreneau(String(slot.id))
-      setSelected(slot)
+      const locked = await lockCreneauxRange({
+        moniteurId,
+        startCreneauId: String(slot.id),
+        hours,
+      })
+      setLockedRange(locked.creneaux)
+      const quoteData = await quoteReservation(locked.creneaux.map((c) => String(c.id)))
+      setQuote(quoteData)
       setStep('payment')
     } catch (err) {
       setError(err instanceof ReservationError ? err.message : 'Créneau indisponible')
@@ -117,29 +134,33 @@ export function ReservationPage() {
     }
   }
 
-  const onConfirm = async (e: FormEvent) => {
-    e.preventDefault()
-    if (!selected) return
+  const onSuccessReservations = (reservations: ReservationItem[], link?: string, calendar?: { title: string; date: string; startTime: string; endTime: string }) => {
+    setWhatsappLink(link || '')
+    if (calendar) {
+      const start = `${calendar.date.replace(/-/g, '')}T${calendar.startTime.replace(':', '')}00`
+      const end = `${calendar.date.replace(/-/g, '')}T${calendar.endTime.replace(':', '')}00`
+      setCalendarUrl(
+        `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(
+          calendar.title,
+        )}&dates=${start}/${end}`,
+      )
+    }
+    void reservations
+    setStep('success')
+  }
+
+  const onPaySolde = async () => {
+    if (!lockedRange.length || !moniteurId) return
     setBusy(true)
     setError(null)
     try {
-      // Renouvelle le verrou juste avant confirmation (évite les échecs après attente)
-      await lockCreneau(String(selected.id))
-      const chosenMoniteurId = moniteurId || selected.moniteur?.id
       const data = await createReservation({
-        creneauId: String(selected.id),
-        vehicleType: selected.vehicleType || vehicleType || 'voiture',
-        moniteurId: chosenMoniteurId ? String(chosenMoniteurId) : undefined,
+        creneauIds: lockedRange.map((c) => String(c.id)),
+        vehicleType,
+        moniteurId,
+        paymentMethod: 'solde',
       })
-      setWhatsappLink(data.whatsappLink)
-      const start = `${data.calendarHint.date.replace(/-/g, '')}T${data.calendarHint.startTime.replace(':', '')}00`
-      const end = `${data.calendarHint.date.replace(/-/g, '')}T${data.calendarHint.endTime.replace(':', '')}00`
-      setCalendarUrl(
-        `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(
-          data.calendarHint.title,
-        )}&dates=${start}/${end}`,
-      )
-      setStep('success')
+      onSuccessReservations(data.reservations || [], data.whatsappLink, data.calendarHint)
     } catch (err) {
       setError(err instanceof ReservationError ? err.message : 'Réservation impossible')
     } finally {
@@ -167,22 +188,13 @@ export function ReservationPage() {
               <div className="reservation-intro">
                 <h2>Réserver votre prochaine séance</h2>
                 <p>
-                  Choisissez d’abord le moniteur avec lequel vous souhaitez conduire. Chaque
-                  profil affiche la photo du véhicule, la marque et le type (voiture, moto,
-                  etc.) pour vous aider à décider.
-                </p>
-                <p>
-                  Une fois le moniteur sélectionné, vous pourrez consulter ses créneaux libres
-                  sur les 14 prochains jours, puis confirmer la séance. Le nombre d’heures
-                  correspondant sera débité de votre solde d’heures prépayées.
+                  Choisissez d’abord le moniteur avec lequel vous souhaitez conduire. Touchez une
+                  carte pour consulter son profil complet (photos, vidéos, véhicule) avant de
+                  décider.
                 </p>
               </div>
 
               <h3 className="section-title">1. Choisissez un moniteur</h3>
-              <p className="subtitle">
-                Touchez une carte pour la sélectionner. Le moniteur choisi apparaîtra en
-                surbrillance avant d’ouvrir le calendrier.
-              </p>
               {busy ? <p className="subtitle">Chargement des moniteurs…</p> : null}
               {!busy && moniteurs.length === 0 ? (
                 <p className="subtitle">
@@ -192,14 +204,13 @@ export function ReservationPage() {
               ) : null}
               <div className="moniteur-choice-list">
                 {moniteurs.map((moniteur) => {
-                  const active = moniteurId === moniteur.id
                   const typeLabel = moniteur.vehicleTypes?.[0] || 'Véhicule'
                   return (
                     <button
                       key={moniteur.id}
                       type="button"
-                      className={`moniteur-choice${active ? ' is-selected' : ''}`}
-                      onClick={() => setMoniteurId(moniteur.id)}
+                      className="moniteur-choice"
+                      onClick={() => navigate(`/conduite/moniteurs/${moniteur.id}`)}
                     >
                       {moniteur.vehiclePhotoUrl ? (
                         <img src={mediaSrc(moniteur.vehiclePhotoUrl)} alt="" />
@@ -216,37 +227,14 @@ export function ReservationPage() {
                 })}
               </div>
 
-              {selectedMoniteur ? (
-                <p className="reservation-selected-hint">
-                  Moniteur sélectionné : <strong>{selectedMoniteur.fullName}</strong>
-                  {selectedMoniteur.vehicleBrand
-                    ? ` · ${selectedMoniteur.vehicleBrand}`
-                    : ''}{' '}
-                  · {vehicleType || 'Véhicule'}. Vous pouvez maintenant ouvrir le calendrier.
-                </p>
-              ) : (
-                <p className="reservation-selected-hint">
-                  Sélectionnez un moniteur pour activer le bouton ci-dessous.
-                </p>
-              )}
-
-              <button
-                type="button"
-                className="btn-primary reservation-calendar-btn"
-                disabled={!moniteurId}
-                onClick={() => setStep('calendar')}
-              >
-                Voir le calendrier
-              </button>
-
               <div className="reservation-tips">
                 <h4>À savoir avant de réserver</h4>
                 <ul>
                   <li>Présentez-vous à l’heure avec vos documents d’identité.</li>
                   <li>Vous pouvez annuler jusqu’à 24 h avant la séance, avec une justification.</li>
                   <li>
-                    Après confirmation, la réservation apparaît dans votre tableau de bord
-                    Conduite et chez l’administration.
+                    Payez avec votre solde d’heures prépayées, ou directement par Mobile Money
+                    pour cette réservation.
                   </li>
                 </ul>
               </div>
@@ -258,9 +246,9 @@ export function ReservationPage() {
               <div className="reservation-intro">
                 <h2>Choisissez un créneau libre</h2>
                 <p>
-                  Les horaires verts sont disponibles. Les créneaux grisés sont déjà pris ou
-                  temporairement verrouillés par un autre élève. Sélectionnez l’horaire qui
-                  vous convient : le créneau est réservé pour vous le temps de confirmer.
+                  Les horaires verts sont disponibles. Sélectionnez le nombre d’heures souhaité,
+                  puis l’heure de départ : les créneaux consécutifs nécessaires seront réservés
+                  pour vous le temps de confirmer.
                 </p>
               </div>
 
@@ -278,10 +266,28 @@ export function ReservationPage() {
                   </div>
                 </div>
               ) : null}
-              <p className="subtitle">
-                Affichage sur les 14 prochains jours pour{' '}
-                {selectedMoniteur?.fullName || 'ce moniteur'}.
-              </p>
+
+              <div className="hours-stepper">
+                <span>Nombre d’heures</span>
+                <div className="hours-stepper-control">
+                  <button
+                    type="button"
+                    onClick={() => setHours((h) => Math.max(1, h - 1))}
+                    disabled={hours <= 1}
+                  >
+                    <Minus size={16} />
+                  </button>
+                  <strong>{hours}</strong>
+                  <button
+                    type="button"
+                    onClick={() => setHours((h) => Math.min(6, h + 1))}
+                    disabled={hours >= 6}
+                  >
+                    <Plus size={16} />
+                  </button>
+                </div>
+              </div>
+
               {busy ? <p className="subtitle">Chargement des créneaux…</p> : null}
               {!busy && days.length === 0 ? (
                 <p className="subtitle">
@@ -298,9 +304,7 @@ export function ReservationPage() {
                         key={slot.id}
                         type="button"
                         disabled={!slot.available || busy}
-                        className={`slot-btn${!slot.available ? ' is-unavailable' : ''}${
-                          selected?.id === slot.id ? ' is-selected' : ''
-                        }`}
+                        className={`slot-btn${!slot.available ? ' is-unavailable' : ''}`}
                         onClick={() => void onSelectSlot(slot)}
                       >
                         {slot.startTime}
@@ -315,56 +319,60 @@ export function ReservationPage() {
             </div>
           ) : null}
 
-          {step === 'payment' && selected ? (
-            <form className="reservation-step" onSubmit={onConfirm}>
+          {step === 'payment' && quote ? (
+            <div className="reservation-step">
               <div className="reservation-intro">
                 <h2>Confirmez votre réservation</h2>
-                <p>
-                  Vérifiez le récapitulatif ci-dessous. Les heures correspondantes seront
-                  débitées de votre solde d’heures prépayées dès la confirmation.
-                </p>
+                <p>Une facture est générée automatiquement à partir de votre sélection.</p>
               </div>
 
-              <h3 className="section-title">3. Récapitulatif</h3>
+              <h3 className="section-title">3. Facture</h3>
               <div className="recap-card">
-                {selectedMoniteur?.vehiclePhotoUrl || selected.moniteur?.vehiclePhotoUrl ? (
-                  <img
-                    className="recap-photo"
-                    src={mediaSrc(
-                      selectedMoniteur?.vehiclePhotoUrl ||
-                        selected.moniteur?.vehiclePhotoUrl ||
-                        '',
-                    )}
-                    alt=""
-                  />
+                {quote.moniteur?.vehiclePhotoUrl ? (
+                  <img className="recap-photo" src={mediaSrc(quote.moniteur.vehiclePhotoUrl)} alt="" />
                 ) : null}
                 <p>
-                  {selected.date} · {selected.startTime} – {selected.endTime}
+                  {quote.date} · {quote.startTime} – {quote.endTime}
                 </p>
                 <p>
-                  {selectedMoniteur?.fullName || selected.moniteur?.fullName || 'Moniteur'} ·{' '}
-                  {selectedMoniteur?.vehicleBrand || selected.moniteur?.vehicleBrand || 'Véhicule'} ·{' '}
-                  {selected.vehicleType || vehicleType}
+                  {quote.moniteur?.fullName || 'Moniteur'} ·{' '}
+                  {quote.moniteur?.vehicleBrand || 'Véhicule'} · {quote.hours} h
                 </p>
+                <p className="price">{formatPrice(quote.amount, quote.currency)}</p>
               </div>
-              <p className="subtitle">
-                Solde actuel : <strong>{soldeHeures ?? '…'} h</strong>
-                {soldeHeures !== null && soldeHeures <= 0 ? (
-                  <>
-                    {' '}
-                    — insuffisant pour réserver.{' '}
-                    <a href="/abonnement">Acheter un pack d’heures</a>
-                  </>
+
+              <div className="payment-choice">
+                <button
+                  type="button"
+                  className="btn-primary reservation-calendar-btn"
+                  disabled={busy || !quote.soldeSuffisant}
+                  onClick={() => void onPaySolde()}
+                >
+                  {busy
+                    ? 'Confirmation…'
+                    : `Payer avec mon solde (${quote.soldeHeures} h disponible${quote.soldeHeures > 1 ? 's' : ''})`}
+                </button>
+                {!quote.soldeSuffisant ? (
+                  <p className="subtitle payment-choice-hint">
+                    Solde insuffisant pour ces {quote.hours} h.{' '}
+                    <a href="/abonnement">Acheter un pack d’heures</a> ou payez directement
+                    ci-dessous.
+                  </p>
                 ) : null}
-              </p>
-              <button
-                type="submit"
-                className="btn-primary reservation-calendar-btn"
-                disabled={busy || soldeHeures === 0}
-              >
-                {busy ? 'Confirmation…' : 'Confirmer la réservation'}
+                <button
+                  type="button"
+                  className="btn-outline reservation-calendar-btn"
+                  disabled={busy}
+                  onClick={() => setShowMobileMoney(true)}
+                >
+                  Payer maintenant (Mobile Money)
+                </button>
+              </div>
+
+              <button type="button" className="btn-outline" onClick={() => setStep('calendar')}>
+                Changer d’horaire
               </button>
-            </form>
+            </div>
           ) : null}
 
           {step === 'success' ? (
@@ -375,10 +383,6 @@ export function ReservationPage() {
               <h2>Séance réservée</h2>
               <p className="subtitle">
                 Votre séance est confirmée et apparaît dans votre espace Conduite.
-              </p>
-              <p className="subtitle">
-                Pensez à ajouter la séance à votre agenda et, si besoin, à notifier votre
-                moniteur via WhatsApp.
               </p>
               {calendarUrl ? (
                 <a className="btn-outline" href={calendarUrl} target="_blank" rel="noreferrer">
@@ -397,6 +401,22 @@ export function ReservationPage() {
           ) : null}
         </div>
       </div>
+
+      {quote && moniteurId ? (
+        <ReservationMobileMoneyCheckout
+          open={showMobileMoney}
+          quote={quote}
+          creneauIds={lockedRange.map((c) => String(c.id))}
+          vehicleType={vehicleType}
+          moniteurId={moniteurId}
+          defaultPhone={user?.phone || ''}
+          onClose={() => setShowMobileMoney(false)}
+          onSuccess={(reservations) => {
+            setShowMobileMoney(false)
+            onSuccessReservations(reservations)
+          }}
+        />
+      ) : null}
     </div>
   )
 }

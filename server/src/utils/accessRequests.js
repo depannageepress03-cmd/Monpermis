@@ -200,11 +200,14 @@ export async function getUserModuleAccess(userId) {
 
   const access = {}
   for (const key of ['code', 'conduite_heures', 'conduite_videos', 'ecodepermis', 'aiChat']) {
-    access[key] = requests.some((r) => {
-      if (r.module !== key) return false
-      if (QUANTITY_BASED_MODULES.includes(key)) return r.status === 'valide'
-      return r.status === 'actif'
-    })
+    // Les vidéos de conduite sont gratuites pour tous, y compris sans achat du code.
+    access[key] =
+      key === 'conduite_videos' ||
+      requests.some((r) => {
+        if (r.module !== key) return false
+        if (QUANTITY_BASED_MODULES.includes(key)) return r.status === 'valide'
+        return r.status === 'actif'
+      })
   }
 
   const pending = requests.find((r) =>

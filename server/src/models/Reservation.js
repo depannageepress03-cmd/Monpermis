@@ -36,6 +36,12 @@ const reservationSchema = new mongoose.Schema(
       default: 'unpaid',
     },
     paymentRef: { type: String, default: '', trim: true },
+    /** Regroupe les créneaux consécutifs d'une même réservation multi-heures (facture/paiement communs). */
+    bookingGroupId: {
+      type: mongoose.Schema.Types.ObjectId,
+      default: null,
+      index: true,
+    },
     priceFcfa: { type: Number, default: 0 },
     /** Heures prépayées débitées de soldeHeures à la réservation (pour recrédit exact si annulation). */
     heuresDebitees: { type: Number, default: 0 },
@@ -80,6 +86,7 @@ reservationSchema.methods.toJSONSafe = function toJSONSafe(extras = {}) {
     status: this.status,
     paymentStatus: this.paymentStatus,
     paymentRef: this.paymentRef || '',
+    bookingGroupId: this.bookingGroupId ? String(this.bookingGroupId) : null,
     priceFcfa: this.priceFcfa || 0,
     heuresDebitees: this.heuresDebitees || 0,
     reminderSentAt: this.reminderSentAt,

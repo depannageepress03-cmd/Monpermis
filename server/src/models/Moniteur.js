@@ -26,6 +26,12 @@ const moniteurSchema = new mongoose.Schema(
     vehicleBrand: { type: String, default: '', trim: true },
     /** Photo du véhicule. */
     vehiclePhotoUrl: { type: String, default: '' },
+    /** Présentation du moniteur affichée sur son profil public. */
+    bio: { type: String, default: '', trim: true },
+    /** Galerie de photos du moniteur (URLs). */
+    photos: { type: [String], default: [] },
+    /** Vidéos de présentation (URLs externes, même logique que les cours). */
+    videos: { type: [String], default: [] },
   },
   { timestamps: true },
 )
@@ -44,6 +50,9 @@ moniteurSchema.methods.toJSONSafe = function toJSONSafe() {
     defaultPriceFcfa: this.defaultPriceFcfa || 5000,
     vehicleBrand: this.vehicleBrand || '',
     vehiclePhotoUrl: this.vehiclePhotoUrl || '',
+    bio: this.bio || '',
+    photos: this.photos || [],
+    videos: this.videos || [],
     createdAt: this.createdAt,
     updatedAt: this.updatedAt,
   }

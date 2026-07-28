@@ -10,6 +10,9 @@ export interface Moniteur {
   defaultPriceFcfa: number
   vehicleBrand: string
   vehiclePhotoUrl: string
+  bio: string
+  photos: string[]
+  videos: string[]
 }
 
 export interface Creneau {

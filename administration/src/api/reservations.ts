@@ -22,6 +22,9 @@ export function createMoniteur(
     defaultPriceFcfa?: number
     vehicleBrand?: string
     vehiclePhotoUrl?: string
+    bio?: string
+    photos?: string[]
+    videos?: string[]
   },
 ) {
   return apiFetch<{ moniteur: Moniteur }>(
@@ -46,6 +49,9 @@ export function updateMoniteur(
     defaultPriceFcfa: number
     vehicleBrand: string
     vehiclePhotoUrl: string
+    bio: string
+    photos: string[]
+    videos: string[]
   }>,
 ) {
   return apiFetch<{ moniteur: Moniteur }>(

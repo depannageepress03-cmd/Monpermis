@@ -39,6 +39,11 @@ function parseVehicleTypes(raw) {
   return cleaned.length > 0 ? cleaned : ['voiture']
 }
 
+function parseUrlList(raw) {
+  if (!Array.isArray(raw)) return []
+  return raw.map((item) => String(item || '').trim()).filter(Boolean)
+}
+
 router.get('/moniteurs', async (_req, res) => {
   try {
     const moniteurs = await Moniteur.find().sort({ lastName: 1, firstName: 1 })
@@ -95,6 +100,9 @@ router.post('/moniteurs', async (req, res) => {
       defaultPriceFcfa: Number(req.body.defaultPriceFcfa) || 5000,
       vehicleBrand: String(req.body.vehicleBrand || '').trim(),
       vehiclePhotoUrl: String(req.body.vehiclePhotoUrl || '').trim(),
+      bio: String(req.body.bio || '').trim(),
+      photos: parseUrlList(req.body.photos),
+      videos: parseUrlList(req.body.videos),
     })
 
     res.status(201).json({ success: true, data: { moniteur: moniteur.toJSONSafe() } })
@@ -144,6 +152,15 @@ router.patch('/moniteurs/:id', async (req, res) => {
     }
     if (req.body.vehiclePhotoUrl !== undefined) {
       moniteur.vehiclePhotoUrl = String(req.body.vehiclePhotoUrl).trim()
+    }
+    if (req.body.bio !== undefined) {
+      moniteur.bio = String(req.body.bio).trim()
+    }
+    if (req.body.photos !== undefined) {
+      moniteur.photos = parseUrlList(req.body.photos)
+    }
+    if (req.body.videos !== undefined) {
+      moniteur.videos = parseUrlList(req.body.videos)
     }
 
     await moniteur.save()

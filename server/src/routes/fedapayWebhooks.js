@@ -5,6 +5,10 @@ import {
   applyFailedAccessPayment,
   findPaymentFromFedaEvent,
 } from '../utils/accessRequests.js'
+import {
+  applyApprovedReservationPayment,
+  applyFailedReservationPayment,
+} from '../utils/reservationPayments.js'
 
 const router = Router()
 
@@ -34,28 +38,32 @@ router.post('/', async (req, res) => {
       return res.status(200).json({ received: true, ignored: true })
     }
 
+    const isReservationPayment = Boolean(payment.reservationGroupId)
+    const applyApproved = isReservationPayment ? applyApprovedReservationPayment : applyApprovedAccessPayment
+    const applyFailed = isReservationPayment ? applyFailedReservationPayment : applyFailedAccessPayment
+
     if (eventName === 'transaction.approved' || mapFedaPayStatus(object.status) === 'approved') {
-      await applyApprovedAccessPayment(payment, {
+      await applyApproved(payment, {
         eventName: eventName || 'transaction.approved',
         eventId,
         raw: event,
       })
     } else if (eventName === 'transaction.declined' || mapFedaPayStatus(object.status) === 'declined') {
-      await applyFailedAccessPayment(payment, 'declined', {
+      await applyFailed(payment, 'declined', {
         eventName: eventName || 'transaction.declined',
         eventId,
         message: 'Paiement refusé par l’opérateur Mobile Money',
         raw: event,
       })
     } else if (eventName === 'transaction.canceled' || mapFedaPayStatus(object.status) === 'canceled') {
-      await applyFailedAccessPayment(payment, 'canceled', {
+      await applyFailed(payment, 'canceled', {
         eventName: eventName || 'transaction.canceled',
         eventId,
         message: 'Paiement annulé',
         raw: event,
       })
     } else if (eventName === 'transaction.failed' || mapFedaPayStatus(object.status) === 'failed') {
-      await applyFailedAccessPayment(payment, 'failed', {
+      await applyFailed(payment, 'failed', {
         eventName: eventName || 'transaction.failed',
         eventId,
         message: 'Paiement échoué',

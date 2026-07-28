@@ -85,6 +85,29 @@ export interface MoniteurPublic {
   vehiclePhotoUrl?: string
 }
 
+export interface MoniteurProfile extends MoniteurPublic {
+  phone: string
+  specialties: string[]
+  bio: string
+  photos: string[]
+  videos: string[]
+}
+
+export type MobileMoneyOperator = 'mtn' | 'moov' | 'celtiis'
+
+export interface ReservationQuote {
+  moniteur: { id: string; fullName: string; vehicleBrand?: string; vehiclePhotoUrl?: string } | null
+  date: string
+  startTime: string
+  endTime: string
+  hours: number
+  amount: number
+  currency: string
+  soldeHeures: number
+  soldeSuffisant: boolean
+  creneauIds: string[]
+}
+
 export const fetchDrivingDashboard = () =>
   request<{ progress: DrivingProgress; upcoming: ReservationItem[] }>('/reservations/dashboard')
 
@@ -94,6 +117,9 @@ export const fetchPublicMoniteurs = (vehicleType?: string) => {
     : ''
   return request<{ moniteurs: MoniteurPublic[] }>(`/reservations/moniteurs${query}`)
 }
+
+export const fetchMoniteurProfile = (id: string) =>
+  request<{ moniteur: MoniteurProfile }>(`/reservations/moniteurs/${id}`)
 
 export const fetchAvailableCreneaux = (params: {
   vehicleType?: string
@@ -110,19 +136,49 @@ export const fetchAvailableCreneaux = (params: {
 export const lockCreneau = (id: string) =>
   request(`/reservations/creneaux/${id}/lock`, { method: 'POST', body: '{}' })
 
+export const lockCreneauxRange = (payload: {
+  moniteurId: string
+  startCreneauId: string
+  hours: number
+}) =>
+  request<{ creneaux: ReservationSlot[]; lockedUntil: string }>(
+    '/reservations/creneaux/lock-range',
+    { method: 'POST', body: JSON.stringify(payload) },
+  )
+
+export const quoteReservation = (creneauIds: string[]) =>
+  request<ReservationQuote>('/reservations/quote', {
+    method: 'POST',
+    body: JSON.stringify({ creneauIds }),
+  })
+
 export const createReservation = (payload: {
-  creneauId: string
+  creneauIds: string[]
   vehicleType: string
   moniteurId?: string
+  paymentMethod: 'solde' | 'mobile_money'
+  operator?: MobileMoneyOperator
+  phone?: string
+  country?: string
 }) =>
   request<{
-    reservation: ReservationItem
-    whatsappLink: string
-    calendarHint: { title: string; date: string; startTime: string; endTime: string }
+    paymentMethod: 'solde' | 'mobile_money'
+    bookingGroupId: string
+    reservations?: ReservationItem[]
+    whatsappLink?: string
+    calendarHint?: { title: string; date: string; startTime: string; endTime: string }
+    payment?: { id: string; status: string; amount: number; currency: string }
+    message?: string
   }>('/reservations/reservations', {
     method: 'POST',
     body: JSON.stringify(payload),
   })
+
+export const syncReservationPayment = (bookingGroupId: string) =>
+  request<{
+    payment: { status: string; errorMessage?: string }
+    reservations: ReservationItem[]
+  }>(`/reservations/checkout/${bookingGroupId}/sync`)
 
 export const cancelReservation = (id: string, reason: string) =>
   request<{ reservation: ReservationItem }>(`/reservations/reservations/${id}/cancel`, {

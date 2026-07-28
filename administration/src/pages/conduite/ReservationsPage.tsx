@@ -1,5 +1,5 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
-import { CalendarPlus, ImagePlus, Plus, Trash2 } from 'lucide-react'
+import { CalendarPlus, ImagePlus, Pencil, Plus, Trash2, X } from 'lucide-react'
 import {
   createMoniteur,
   deleteAdminReservation,
@@ -7,6 +7,7 @@ import {
   fetchAdminReservations,
   fetchMoniteurs,
   generateCreneaux,
+  updateMoniteur,
   uploadVehiclePhoto,
 } from '../../api/reservations'
 import { AdminSectionHeader } from '../../components/AdminSectionHeader'
@@ -56,6 +57,19 @@ export function ReservationsPage() {
   const [vehiclePhotoUrl, setVehiclePhotoUrl] = useState('')
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [deletingReservationId, setDeletingReservationId] = useState<string | null>(null)
+
+  const [editingMoniteur, setEditingMoniteur] = useState<Moniteur | null>(null)
+  const [editBio, setEditBio] = useState('')
+  const [editPhone, setEditPhone] = useState('')
+  const [editSpecialties, setEditSpecialties] = useState('')
+  const [editVehicleBrand, setEditVehicleBrand] = useState('')
+  const [editVehiclePhotoUrl, setEditVehiclePhotoUrl] = useState('')
+  const [editPhotos, setEditPhotos] = useState<string[]>([])
+  const [editVideos, setEditVideos] = useState<string[]>([])
+  const [editNewVideoUrl, setEditNewVideoUrl] = useState('')
+  const [savingEdit, setSavingEdit] = useState(false)
+  const [uploadingEditPhoto, setUploadingEditPhoto] = useState(false)
+  const [uploadingEditVehiclePhoto, setUploadingEditVehiclePhoto] = useState(false)
 
   const selectedMoniteur = useMemo(
     () => moniteurs.find((item) => item.id === moniteurId) ?? null,
@@ -178,6 +192,96 @@ export function ReservationsPage() {
       setError(isAuthError(err) ? err.message : 'Suppression impossible')
     } finally {
       setDeletingId(null)
+    }
+  }
+
+  const openEdit = (item: Moniteur) => {
+    setEditingMoniteur(item)
+    setEditBio(item.bio || '')
+    setEditPhone(item.phone || '')
+    setEditSpecialties((item.specialties || []).join(', '))
+    setEditVehicleBrand(item.vehicleBrand || '')
+    setEditVehiclePhotoUrl(item.vehiclePhotoUrl || '')
+    setEditPhotos(item.photos || [])
+    setEditVideos(item.videos || [])
+    setEditNewVideoUrl('')
+    setError(null)
+  }
+
+  const closeEdit = () => setEditingMoniteur(null)
+
+  const handleEditGalleryUpload = async (file: File | null) => {
+    if (!file) return
+    const token = getAdminToken()
+    if (!token) return
+    setUploadingEditPhoto(true)
+    setError(null)
+    try {
+      const { imageUrl } = await uploadVehiclePhoto(token, file)
+      setEditPhotos((prev) => [...prev, imageUrl])
+    } catch (err) {
+      setError(isAuthError(err) ? err.message : 'Import photo impossible')
+    } finally {
+      setUploadingEditPhoto(false)
+    }
+  }
+
+  const handleEditVehiclePhotoUpload = async (file: File | null) => {
+    if (!file) return
+    const token = getAdminToken()
+    if (!token) return
+    setUploadingEditVehiclePhoto(true)
+    setError(null)
+    try {
+      const { imageUrl } = await uploadVehiclePhoto(token, file)
+      setEditVehiclePhotoUrl(imageUrl)
+    } catch (err) {
+      setError(isAuthError(err) ? err.message : 'Import photo impossible')
+    } finally {
+      setUploadingEditVehiclePhoto(false)
+    }
+  }
+
+  const removeEditPhoto = (url: string) => {
+    setEditPhotos((prev) => prev.filter((item) => item !== url))
+  }
+
+  const addEditVideo = () => {
+    const url = editNewVideoUrl.trim()
+    if (!url) return
+    setEditVideos((prev) => [...prev, url])
+    setEditNewVideoUrl('')
+  }
+
+  const removeEditVideo = (url: string) => {
+    setEditVideos((prev) => prev.filter((item) => item !== url))
+  }
+
+  const handleSaveEdit = async () => {
+    const token = getAdminToken()
+    if (!token || !editingMoniteur) return
+    setSavingEdit(true)
+    setError(null)
+    try {
+      const { moniteur } = await updateMoniteur(token, editingMoniteur.id, {
+        bio: editBio.trim(),
+        phone: editPhone.trim(),
+        specialties: editSpecialties
+          .split(',')
+          .map((item) => item.trim())
+          .filter(Boolean),
+        vehicleBrand: editVehicleBrand.trim(),
+        vehiclePhotoUrl: editVehiclePhotoUrl,
+        photos: editPhotos,
+        videos: editVideos,
+      })
+      setSuccess(`Profil de « ${moniteur.fullName} » mis à jour.`)
+      setEditingMoniteur(null)
+      await load()
+    } catch (err) {
+      setError(isAuthError(err) ? err.message : 'Mise à jour impossible')
+    } finally {
+      setSavingEdit(false)
     }
   }
 
@@ -347,6 +451,14 @@ export function ReservationsPage() {
                     </button>
                     <button
                       type="button"
+                      className="btn-icon moniteur-pick-edit"
+                      title="Modifier le profil"
+                      onClick={() => openEdit(item)}
+                    >
+                      <Pencil size={15} />
+                    </button>
+                    <button
+                      type="button"
                       className="btn-icon-danger moniteur-pick-delete"
                       title="Supprimer le moniteur"
                       disabled={deletingId === item.id}
@@ -359,6 +471,129 @@ export function ReservationsPage() {
               })}
             </div>
           )}
+
+          {editingMoniteur ? (
+            <div className="moniteur-edit-panel">
+              <div className="moniteur-edit-head">
+                <h4>Profil de {editingMoniteur.fullName}</h4>
+                <button type="button" className="btn-icon" title="Fermer" onClick={closeEdit}>
+                  <X size={16} />
+                </button>
+              </div>
+
+              <div className="admin-toolbar">
+                <input
+                  value={editPhone}
+                  onChange={(e) => setEditPhone(e.target.value)}
+                  placeholder="Téléphone"
+                />
+                <input
+                  value={editSpecialties}
+                  onChange={(e) => setEditSpecialties(e.target.value)}
+                  placeholder="Spécialités (séparées par des virgules)"
+                />
+                <input
+                  value={editVehicleBrand}
+                  onChange={(e) => setEditVehicleBrand(e.target.value)}
+                  placeholder="Marque du véhicule"
+                />
+              </div>
+
+              <label className="moniteur-edit-label">
+                Présentation
+                <textarea
+                  value={editBio}
+                  onChange={(e) => setEditBio(e.target.value)}
+                  placeholder="Présentez ce moniteur aux élèves (expérience, pédagogie…)"
+                  rows={3}
+                />
+              </label>
+
+              <div className="moniteur-edit-label">
+                Photo du véhicule
+                <div className="moniteur-vehicle-preview">
+                  {editVehiclePhotoUrl ? (
+                    <img src={mediaSrc(editVehiclePhotoUrl)} alt="Véhicule" />
+                  ) : (
+                    <div className="moniteur-vehicle-placeholder">Véhicule</div>
+                  )}
+                  <label className="btn-outline btn-file">
+                    <ImagePlus size={15} />
+                    {uploadingEditVehiclePhoto ? 'Import…' : 'Changer'}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      hidden
+                      onChange={(e) => void handleEditVehiclePhotoUpload(e.target.files?.[0] ?? null)}
+                    />
+                  </label>
+                </div>
+              </div>
+
+              <div className="moniteur-edit-label">
+                Galerie de photos
+                <div className="moniteur-photo-gallery">
+                  {editPhotos.map((url) => (
+                    <div key={url} className="moniteur-photo-item">
+                      <img src={mediaSrc(url)} alt="" />
+                      <button type="button" onClick={() => removeEditPhoto(url)} title="Retirer">
+                        <X size={13} />
+                      </button>
+                    </div>
+                  ))}
+                  <label className="btn-outline btn-file moniteur-photo-add">
+                    <ImagePlus size={15} />
+                    {uploadingEditPhoto ? 'Import…' : 'Ajouter'}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      hidden
+                      onChange={(e) => void handleEditGalleryUpload(e.target.files?.[0] ?? null)}
+                    />
+                  </label>
+                </div>
+              </div>
+
+              <div className="moniteur-edit-label">
+                Vidéos de présentation (liens)
+                <div className="moniteur-video-list">
+                  {editVideos.map((url) => (
+                    <div key={url} className="moniteur-video-item">
+                      <span>{url}</span>
+                      <button type="button" onClick={() => removeEditVideo(url)} title="Retirer">
+                        <X size={13} />
+                      </button>
+                    </div>
+                  ))}
+                  <div className="moniteur-video-add">
+                    <input
+                      value={editNewVideoUrl}
+                      onChange={(e) => setEditNewVideoUrl(e.target.value)}
+                      placeholder="https://…"
+                    />
+                    <button type="button" className="btn-outline-sm" onClick={addEditVideo}>
+                      <Plus size={14} />
+                      Ajouter
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="moniteur-edit-actions">
+                <button type="button" className="btn-outline" onClick={closeEdit}>
+                  Annuler
+                </button>
+                <button
+                  type="button"
+                  className="btn-primary"
+                  disabled={savingEdit}
+                  onClick={() => void handleSaveEdit()}
+                >
+                  {savingEdit ? 'Enregistrement…' : 'Enregistrer le profil'}
+                </button>
+              </div>
+            </div>
+          ) : null}
 
           {selectedMoniteur ? (
             <div className="moniteur-generate-bar">

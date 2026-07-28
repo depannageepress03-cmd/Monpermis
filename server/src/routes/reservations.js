@@ -3,6 +3,7 @@ import mongoose from 'mongoose'
 import { Moniteur } from '../models/Moniteur.js'
 import { Creneau } from '../models/Creneau.js'
 import { Reservation } from '../models/Reservation.js'
+import { Payment } from '../models/Payment.js'
 import { User } from '../models/User.js'
 import { requireUserAuth } from '../middleware/userAuth.js'
 import {
@@ -16,6 +17,12 @@ import {
   normalizeVehicleType,
 } from '../utils/localDate.js'
 import { computeCreneauHeures } from '../utils/creneauDuration.js'
+import { configureFedaPay, sendFedaPayMobileMoney } from '../services/fedapay.js'
+import {
+  buildReservationCallbackUrl,
+  syncReservationPaymentFromProvider,
+} from '../utils/reservationPayments.js'
+import { logger } from '../utils/logger.js'
 
 const router = Router()
 /** Réservations : auth seule — le solde d’heures est contrôlé à la création. */
@@ -66,6 +73,10 @@ async function hydrateReservation(reservation) {
     creneau: creneau?.toJSONSafe?.() ?? null,
     canCancel: creneau ? canCancel(creneau) : false,
   })
+}
+
+async function hydrateReservationGroup(reservations) {
+  return Promise.all(reservations.map((reservation) => hydrateReservation(reservation)))
 }
 
 router.get('/dashboard', ...withConduiteAccess, async (req, res) => {
@@ -133,6 +144,19 @@ router.get('/moniteurs', ...withConduiteAccess, async (req, res) => {
     })
   } catch (error) {
     console.error('Erreur moniteurs publics:', error)
+    res.status(500).json({ success: false, error: 'Chargement impossible' })
+  }
+})
+
+router.get('/moniteurs/:id', ...withConduiteAccess, async (req, res) => {
+  try {
+    const moniteur = await Moniteur.findOne({ _id: req.params.id, active: true })
+    if (!moniteur) {
+      return res.status(404).json({ success: false, error: 'Moniteur introuvable' })
+    }
+    res.json({ success: true, data: { moniteur: moniteur.toJSONSafe() } })
+  } catch (error) {
+    console.error('Erreur profil moniteur:', error)
     res.status(500).json({ success: false, error: 'Chargement impossible' })
   }
 })
@@ -247,131 +271,395 @@ router.post('/creneaux/:id/lock', ...withConduiteAccess, async (req, res) => {
   }
 })
 
+/** Verrouille N créneaux consécutifs (heures d'affilée) du même moniteur à partir d'un créneau de départ. */
+router.post('/creneaux/lock-range', ...withConduiteAccess, async (req, res) => {
+  try {
+    const startId = asId(req.body.startCreneauId)
+    const moniteurId = asId(req.body.moniteurId)
+    const hours = Math.max(1, Math.min(6, Number(req.body.hours) || 1))
+
+    if (!startId || !moniteurId) {
+      return res.status(400).json({ success: false, error: 'Créneau de départ et moniteur requis' })
+    }
+
+    const startCreneau = await Creneau.findOne({ _id: startId, moniteurId })
+    if (!startCreneau) {
+      return res.status(404).json({ success: false, error: 'Créneau introuvable' })
+    }
+
+    const dayCreneaux = await Creneau.find({ moniteurId, date: startCreneau.date }).sort({
+      startTime: 1,
+    })
+    const startIndex = dayCreneaux.findIndex((item) => String(item._id) === startId)
+    if (startIndex === -1) {
+      return res.status(404).json({ success: false, error: 'Créneau introuvable' })
+    }
+
+    const chain = [dayCreneaux[startIndex]]
+    for (let i = startIndex + 1; i < dayCreneaux.length && chain.length < hours; i += 1) {
+      const previous = chain[chain.length - 1]
+      const next = dayCreneaux[i]
+      if (next.startTime !== previous.endTime) break
+      chain.push(next)
+    }
+
+    if (chain.length < hours) {
+      return res.status(409).json({
+        success: false,
+        error: `Seulement ${chain.length} créneau(x) consécutif(s) disponible(s) à partir de cette heure.`,
+      })
+    }
+
+    const now = new Date()
+    const lockedUntil = new Date(now.getTime() + LOCK_MS)
+    const locked = []
+    for (const slot of chain) {
+      const updated = await Creneau.findOneAndUpdate(
+        {
+          _id: slot._id,
+          status: 'libre',
+          $or: [{ lockedUntil: null }, { lockedUntil: { $lt: now } }, { lockedBy: req.user._id }],
+        },
+        { $set: { lockedUntil, lockedBy: req.user._id } },
+        { new: true },
+      )
+      if (!updated) {
+        for (const posed of locked) {
+          await Creneau.findByIdAndUpdate(posed._id, { lockedUntil: null, lockedBy: null })
+        }
+        return res.status(409).json({
+          success: false,
+          error: 'Un des créneaux vient d’être réservé par un autre élève. Revenez au calendrier.',
+        })
+      }
+      locked.push(updated)
+    }
+
+    res.json({
+      success: true,
+      data: { creneaux: locked.map((c) => c.toJSONSafe()), lockedUntil },
+    })
+  } catch (error) {
+    console.error('Erreur verrouillage plage créneaux:', error)
+    res.status(500).json({ success: false, error: 'Verrouillage impossible' })
+  }
+})
+
+/** Facture / devis pour un ensemble de créneaux déjà verrouillés. */
+router.post('/quote', ...withConduiteAccess, async (req, res) => {
+  try {
+    const creneauIds = Array.isArray(req.body.creneauIds)
+      ? req.body.creneauIds.map(asId).filter(Boolean)
+      : []
+    if (!creneauIds.length) {
+      return res.status(400).json({ success: false, error: 'Créneaux requis' })
+    }
+
+    const creneaux = await Creneau.find({ _id: { $in: creneauIds } })
+      .populate('moniteurId', 'firstName lastName defaultPriceFcfa vehicleBrand vehiclePhotoUrl')
+      .sort({ startTime: 1 })
+    if (creneaux.length !== creneauIds.length) {
+      return res.status(404).json({ success: false, error: 'Un ou plusieurs créneaux sont introuvables' })
+    }
+
+    const moniteur = creneaux[0].moniteurId
+    const hours = creneaux.reduce((sum, c) => sum + computeCreneauHeures(c), 0)
+    const amount = creneaux.reduce(
+      (sum, c) => sum + (c.priceFcfa || moniteur?.defaultPriceFcfa || 5000),
+      0,
+    )
+    const soldeHeures = req.user.soldeHeures || 0
+
+    res.json({
+      success: true,
+      data: {
+        moniteur: moniteur
+          ? {
+              id: asId(moniteur._id || moniteur),
+              fullName: `${moniteur.firstName} ${moniteur.lastName}`.trim(),
+              vehicleBrand: moniteur.vehicleBrand || '',
+              vehiclePhotoUrl: moniteur.vehiclePhotoUrl || '',
+            }
+          : null,
+        date: creneaux[0].date,
+        startTime: creneaux[0].startTime,
+        endTime: creneaux[creneaux.length - 1].endTime,
+        hours,
+        amount,
+        currency: 'XOF',
+        soldeHeures,
+        soldeSuffisant: soldeHeures >= hours,
+        creneauIds: creneaux.map((c) => String(c._id)),
+      },
+    })
+  } catch (error) {
+    console.error('Erreur devis réservation:', error)
+    res.status(500).json({ success: false, error: 'Devis impossible' })
+  }
+})
+
 router.post('/reservations', ...withConduiteAccess, async (req, res) => {
   try {
-    const creneauId = asId(req.body.creneauId)
+    const creneauIds = Array.isArray(req.body.creneauIds)
+      ? req.body.creneauIds.map(asId).filter(Boolean)
+      : [asId(req.body.creneauId)].filter(Boolean) // rétro-compat créneau unique
     const vehicleType = normalizeVehicleType(req.body.vehicleType)
     const moniteurId = req.body.moniteurId ? asId(req.body.moniteurId) : null
+    const paymentMethod = req.body.paymentMethod === 'mobile_money' ? 'mobile_money' : 'solde'
 
-    if (!creneauId) {
+    if (!creneauIds.length) {
       return res.status(400).json({ success: false, error: 'Créneau requis' })
     }
 
     const now = new Date()
-    const creneau = await Creneau.findOneAndUpdate(
-      {
-        _id: creneauId,
-        status: 'libre',
-        $or: [
-          { lockedBy: req.user._id },
-          { lockedUntil: null },
-          { lockedUntil: { $lt: now } },
-        ],
-      },
-      {
-        $set: {
-          status: 'reserve',
+    const claimed = []
+    for (const creneauId of creneauIds) {
+      const creneau = await Creneau.findOneAndUpdate(
+        {
+          _id: creneauId,
+          status: 'libre',
+          $or: [
+            { lockedBy: req.user._id },
+            { lockedUntil: null },
+            { lockedUntil: { $lt: now } },
+          ],
+        },
+        { $set: { status: 'reserve', lockedUntil: null, lockedBy: null } },
+        { new: true },
+      )
+      if (!creneau) {
+        for (const item of claimed) {
+          await Creneau.findByIdAndUpdate(item._id, {
+            status: 'libre',
+            lockedUntil: null,
+            lockedBy: null,
+          })
+        }
+        return res.status(409).json({
+          success: false,
+          error: 'Un des créneaux est indisponible (déjà réservé ou verrou expiré). Revenez au calendrier.',
+        })
+      }
+      claimed.push(creneau)
+    }
+
+    async function releaseAll() {
+      for (const item of claimed) {
+        await Creneau.findByIdAndUpdate(item._id, {
+          status: 'libre',
           lockedUntil: null,
           lockedBy: null,
+        })
+      }
+    }
+
+    const assignedMoniteurId = moniteurId || asId(claimed[0].moniteurId)
+    const bookingGroupId = new mongoose.Types.ObjectId()
+    const heuresParCreneau = claimed.map((c) => computeCreneauHeures(c))
+    const totalHeures = heuresParCreneau.reduce((sum, h) => sum + h, 0)
+
+    if (paymentMethod === 'solde') {
+      // Les heures sont prépayées (pack d'heures) : on débite le solde à la réservation,
+      // pas à la complétion. Débit atomique conditionnel pour éviter tout découvert
+      // en cas de double réservation concurrente.
+      const debited = await User.findOneAndUpdate(
+        { _id: req.user._id, soldeHeures: { $gte: totalHeures } },
+        { $inc: { soldeHeures: -totalHeures } },
+        { new: true },
+      )
+      if (!debited) {
+        await releaseAll()
+        return res.status(403).json({
+          success: false,
+          error: `Solde d’heures insuffisant (${totalHeures} h requises). Achetez un pack d’heures ou payez cette réservation via Mobile Money.`,
+          code: 'INSUFFICIENT_HOURS',
+        })
+      }
+
+      let reservations
+      try {
+        reservations = await Promise.all(
+          claimed.map((creneau, i) =>
+            Reservation.create({
+              userId: req.user._id,
+              moniteurId: assignedMoniteurId,
+              creneauId: creneau._id,
+              vehicleType: creneau.vehicleType || vehicleType,
+              status: 'confirmed',
+              paymentStatus: 'paid',
+              paymentRef: 'solde_heures',
+              bookingGroupId,
+              priceFcfa: creneau.priceFcfa || 5000,
+              heuresDebitees: heuresParCreneau[i],
+            }),
+          ),
+        )
+      } catch (error) {
+        await releaseAll()
+        await User.findByIdAndUpdate(req.user._id, { $inc: { soldeHeures: totalHeures } })
+        if (error?.code === 11000) {
+          return res.status(409).json({ success: false, error: 'Un des créneaux est déjà réservé' })
+        }
+        throw error
+      }
+
+      const hydrated = await hydrateReservationGroup(reservations)
+      const moniteur = await Moniteur.findById(assignedMoniteurId)
+      const first = claimed[0]
+      const waText = formatReservationReminder({
+        firstName: req.user.firstName,
+        date: first.date,
+        startTime: first.startTime,
+        moniteurName: moniteur ? `${moniteur.firstName} ${moniteur.lastName}`.trim() : '',
+      })
+
+      return res.status(201).json({
+        success: true,
+        data: {
+          paymentMethod: 'solde',
+          reservations: hydrated,
+          bookingGroupId: String(bookingGroupId),
+          whatsappLink: buildWhatsAppLink(req.user.phone, waText),
+          calendarHint: {
+            title: 'Séance de conduite — Monpermis.bj',
+            date: first.date,
+            startTime: first.startTime,
+            endTime: claimed[claimed.length - 1].endTime,
+          },
         },
-      },
-      { new: true },
-    )
-
-    if (!creneau) {
-      return res.status(409).json({
-        success: false,
-        error: 'Créneau indisponible (déjà réservé ou verrou expiré). Revenez au calendrier.',
       })
     }
 
-    async function releaseCreneau() {
-      await Creneau.findByIdAndUpdate(creneau._id, {
-        status: 'libre',
-        lockedUntil: null,
-        lockedBy: null,
-      })
-    }
+    // --- paymentMethod === 'mobile_money' : paiement à la réservation ---
+    const totalAmount = claimed.reduce((sum, c) => sum + (c.priceFcfa || 5000), 0)
 
-    // Les heures sont prépayées (pack d'heures) : on débite le solde à la réservation,
-    // pas à la complétion. Débit atomique conditionnel pour éviter tout découvert
-    // en cas de double réservation concurrente.
-    const heures = computeCreneauHeures(creneau)
-    const debited = await User.findOneAndUpdate(
-      { _id: req.user._id, soldeHeures: { $gte: heures } },
-      { $inc: { soldeHeures: -heures } },
-      { new: true },
-    )
-    if (!debited) {
-      await releaseCreneau()
-      return res.status(403).json({
-        success: false,
-        error: `Solde d’heures insuffisant (${heures} h requises). Achetez un pack d’heures pour réserver.`,
-        code: 'INSUFFICIENT_HOURS',
-      })
-    }
-
-    const assignedMoniteurId = moniteurId || asId(creneau.moniteurId)
-
-    let reservation
+    let reservations
     try {
-      reservation = await Reservation.create({
-        userId: req.user._id,
-        moniteurId: assignedMoniteurId,
-        creneauId: creneau._id,
-        vehicleType: creneau.vehicleType || vehicleType,
-        status: 'confirmed',
-        priceFcfa: creneau.priceFcfa || 5000,
-        heuresDebitees: heures,
-      })
+      reservations = await Promise.all(
+        claimed.map((creneau) =>
+          Reservation.create({
+            userId: req.user._id,
+            moniteurId: assignedMoniteurId,
+            creneauId: creneau._id,
+            vehicleType: creneau.vehicleType || vehicleType,
+            status: 'pending_payment',
+            paymentStatus: 'unpaid',
+            bookingGroupId,
+            priceFcfa: creneau.priceFcfa || 5000,
+            heuresDebitees: 0,
+          }),
+        ),
+      )
     } catch (error) {
-      // rollback créneau + recrédit des heures si la réservation n’a pas été créée
-      await releaseCreneau()
-      await User.findByIdAndUpdate(req.user._id, { $inc: { soldeHeures: heures } })
+      await releaseAll()
       if (error?.code === 11000) {
-        return res.status(409).json({ success: false, error: 'Créneau déjà réservé' })
+        return res.status(409).json({ success: false, error: 'Un des créneaux est déjà réservé' })
       }
       throw error
     }
 
-    let hydrated
+    const payment = await Payment.create({
+      userId: req.user._id,
+      method: 'fedapay',
+      amount: totalAmount,
+      currency: 'XOF',
+      status: 'pending',
+      reservationGroupId: bookingGroupId,
+    })
+
     try {
-      hydrated = await hydrateReservation(reservation)
-    } catch (hydrateError) {
-      console.error('Hydratation réservation:', hydrateError)
-      hydrated = reservation.toJSONSafe({
-        moniteur: null,
-        creneau: creneau.toJSONSafe(),
-        canCancel: canCancel(creneau),
+      configureFedaPay()
+      const moniteur = await Moniteur.findById(assignedMoniteurId)
+      const checkout = await sendFedaPayMobileMoney({
+        amount: totalAmount,
+        description: `Séance de conduite — ${moniteur ? `${moniteur.firstName} ${moniteur.lastName}`.trim() : 'Moniteur'}`,
+        customer: {
+          firstName: req.user.firstName,
+          lastName: req.user.lastName,
+          phone: req.user.phone,
+          email: req.user.email,
+        },
+        callbackUrl: buildReservationCallbackUrl(bookingGroupId),
+        customMetadata: {
+          paymentId: String(payment._id),
+          reservationGroupId: String(bookingGroupId),
+          userId: String(req.user._id),
+        },
+        operator: req.body.operator,
+        phone: req.body.phone,
+        country: req.body.country || 'BJ',
+      })
+      payment.fedapayTransactionId = checkout.transactionId
+      payment.fedapayReference = checkout.reference
+      payment.paymentUrl = checkout.paymentUrl
+      payment.paymentMethod = checkout.fedapayMode || ''
+      await payment.save()
+    } catch (error) {
+      payment.status = 'failed'
+      payment.errorMessage = error.message
+      await payment.save()
+      await releaseAll()
+      await Reservation.deleteMany({ bookingGroupId })
+      return res.status(error.status || 502).json({
+        success: false,
+        error: error.message || 'Paiement Mobile Money impossible',
       })
     }
-
-    const moniteur = await Moniteur.findById(assignedMoniteurId)
-    const waText = formatReservationReminder({
-      firstName: req.user.firstName,
-      date: creneau.date,
-      startTime: creneau.startTime,
-      moniteurName: moniteur
-        ? `${moniteur.firstName} ${moniteur.lastName}`.trim()
-        : '',
-    })
 
     res.status(201).json({
       success: true,
       data: {
-        reservation: hydrated,
-        whatsappLink: buildWhatsAppLink(req.user.phone, waText),
-        calendarHint: {
-          title: 'Séance de conduite — Monpermis.bj',
-          date: creneau.date,
-          startTime: creneau.startTime,
-          endTime: creneau.endTime,
-        },
+        paymentMethod: 'mobile_money',
+        bookingGroupId: String(bookingGroupId),
+        payment: payment.toPublicJSON(),
+        message: 'Validez la demande de retrait sur votre téléphone.',
       },
     })
   } catch (error) {
     console.error('Erreur création réservation:', error)
     res.status(500).json({ success: false, error: 'Réservation impossible' })
+  }
+})
+
+/** Réconciliation manuelle du paiement Mobile Money d'un groupe de réservations (utilisée par le poll client). */
+router.get('/checkout/:groupId/sync', ...withConduiteAccess, async (req, res) => {
+  try {
+    configureFedaPay()
+    const groupId = asObjectId(req.params.groupId)
+    if (!groupId) {
+      return res.status(400).json({ success: false, error: 'Groupe de réservation invalide' })
+    }
+
+    const reservations = await Reservation.find({ bookingGroupId: groupId, userId: req.user._id })
+    if (!reservations.length) {
+      return res.status(404).json({ success: false, error: 'Réservation introuvable' })
+    }
+
+    const payment = await Payment.findOne({ reservationGroupId: groupId, method: 'fedapay' }).sort({
+      createdAt: -1,
+    })
+    if (!payment) {
+      return res.status(404).json({ success: false, error: 'Paiement introuvable' })
+    }
+
+    await syncReservationPaymentFromProvider(payment)
+    const refreshedPayment = await Payment.findById(payment._id)
+    const refreshedReservations = await Reservation.find({ bookingGroupId: groupId })
+    const hydrated = await hydrateReservationGroup(refreshedReservations)
+
+    res.json({
+      success: true,
+      data: {
+        payment: refreshedPayment.toPublicJSON(),
+        reservations: hydrated,
+      },
+    })
+  } catch (error) {
+    logger.error('Erreur synchronisation paiement réservation:', { error: error.message })
+    res.status(error.status || 500).json({
+      success: false,
+      error: error.message || 'Synchronisation impossible',
+    })
   }
 })
 

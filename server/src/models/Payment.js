@@ -5,16 +5,23 @@ export const PAYMENT_METHODS = ['fedapay', 'manual']
 
 const paymentSchema = new mongoose.Schema(
   {
+    /** Absent pour un paiement de réservation (voir reservationGroupId ci-dessous). */
     accessRequestId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'AccessRequest',
-      required: true,
+      default: null,
       index: true,
     },
     /** Toutes les demandes couvertes par ce paiement (panier multi-offres). */
     accessRequestIds: {
       type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'AccessRequest' }],
       default: [],
+      index: true,
+    },
+    /** Regroupe les Reservation payées ensemble (paiement à la réservation, chemin parallèle aux AccessRequest). */
+    reservationGroupId: {
+      type: mongoose.Schema.Types.ObjectId,
+      default: null,
       index: true,
     },
     userId: {
@@ -76,6 +83,7 @@ paymentSchema.methods.toPublicJSON = function toPublicJSON() {
     id: this._id,
     accessRequestId: this.accessRequestId,
     accessRequestIds: linked,
+    reservationGroupId: this.reservationGroupId ? String(this.reservationGroupId) : null,
     method: this.method,
     amount: this.amount,
     currency: this.currency || 'XOF',
