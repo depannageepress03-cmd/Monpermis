@@ -371,19 +371,48 @@
 
 .moniteur-pick-card {
   display: flex;
+  flex-direction: column;
   align-items: stretch;
-  gap: 4px;
+  gap: 0;
   border: 1px solid var(--border);
   background: var(--white);
-  border-radius: 7px;
-  padding: 8px
+  border-radius: 12px;
+  padding: 10px;
   transition: border-color 0.12s;
 }
 
 .moniteur-pick-card.is-active {
   border-color: rgba(0, 176, 80, 0.45);
-  background: rgba(0, 176, 80, 0.04);
+  background: var(--white);
   box-shadow: none;
+}
+
+.moniteur-pick-card.is-expanded {
+  grid-column: 1 / -1;
+}
+
+.moniteur-pick-top {
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+}
+
+.moniteur-pick-schedule {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.moniteur-schedule-status-label {
+  font-weight: 600;
+  color: var(--navy-muted);
+}
+
+.moniteur-schedule-edit-hint {
+  margin: 0;
 }
 
 .moniteur-generate-bar {
@@ -410,7 +439,7 @@
   text-align: left;
   border: 0;
   background: transparent;
-  padding: 2px
+  padding: 2px;
   cursor: pointer;
   font: inherit;
 }
@@ -619,8 +648,8 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
-  border-radius: 12px;
-  background: #fff;
+  border-radius: 10px;
+  background: #f8fafc;
   border: 1px solid color-mix(in srgb, var(--navy) 10%, transparent);
 }
 
