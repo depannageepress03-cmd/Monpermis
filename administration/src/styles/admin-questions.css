@@ -582,6 +582,10 @@
 
 .moniteur-schedule-actions {
   margin-top: 0.25rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
 }
 
 .moniteur-schedule-actions .btn-primary {
@@ -594,6 +598,43 @@
 
 .moniteur-schedule-actions .btn-primary.is-saved {
   background: var(--green-deep, #008f3f);
+}
+
+.moniteur-schedule-actions .btn-outline {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.moniteur-schedule-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.moniteur-schedule-summary-list {
+  margin: 0;
+  padding: 12px 14px;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border-radius: 12px;
+  background: #fff;
+  border: 1px solid color-mix(in srgb, var(--navy) 10%, transparent);
+}
+
+.moniteur-schedule-summary-list li {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--navy);
+}
+
+.moniteur-schedule-summary .btn-outline {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  align-self: flex-start;
 }
 
 .moniteur-schedule-feedback {

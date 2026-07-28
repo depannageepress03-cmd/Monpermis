@@ -96,12 +96,23 @@ function intervalInvalid(interval: TimeInterval) {
   return !interval.start || !interval.end || interval.end <= interval.start
 }
 
+function summarizeAvailability(slots: WeeklyAvailabilitySlot[] | undefined): string[] {
+  return WEEK_DAYS.map(({ dayOfWeek, label }) => {
+    const same = (slots || [])
+      .filter((slot) => Number(slot.dayOfWeek) === dayOfWeek)
+      .sort((a, b) => String(a.start).localeCompare(String(b.start)))
+    if (!same.length) return null
+    return `${label} : ${same.map((slot) => `${slot.start}–${slot.end}`).join(' · ')}`
+  }).filter((line): line is string => Boolean(line))
+}
+
 export function ReservationsPage() {
   const [moniteurs, setMoniteurs] = useState<Moniteur[]>([])
   const [reservations, setReservations] = useState<ReservationAdmin[]>([])
   const [moniteurId, setMoniteurId] = useState('')
   const [scheduleDayHours, setScheduleDayHours] = useState<EditDayHours[]>(() => toEditDayHours([]))
   const [savingSchedule, setSavingSchedule] = useState(false)
+  const [scheduleEditorOpen, setScheduleEditorOpen] = useState(false)
   const [scheduleFeedback, setScheduleFeedback] = useState<{
     type: 'success' | 'error'
     message: string
@@ -186,12 +197,20 @@ export function ReservationsPage() {
       setScheduleDayHours(toEditDayHours([]))
       setScheduleFeedback(null)
       setScheduleJustSaved(false)
+      setScheduleEditorOpen(false)
       return
     }
     setScheduleDayHours(toEditDayHours(selectedMoniteur.weeklyAvailability))
     setScheduleFeedback(null)
     setScheduleJustSaved(false)
+    const hasSlots = (selectedMoniteur.weeklyAvailability || []).length > 0
+    setScheduleEditorOpen(!hasSlots)
   }, [selectedMoniteur?.id])
+
+  const scheduleSummary = useMemo(
+    () => summarizeAvailability(selectedMoniteur?.weeklyAvailability),
+    [selectedMoniteur?.weeklyAvailability],
+  )
 
   const handlePhotoUpload = async (file: File | null) => {
     if (!file) return
@@ -428,10 +447,18 @@ export function ReservationsPage() {
       const { moniteur } = await updateMoniteur(token, moniteurId, {
         weeklyAvailability: slots,
       })
-      const message = `Disponibilité enregistrée pour « ${moniteur.fullName} » — ${enabledDays} jour(s), ${slots.length} plage(s). Les élèves peuvent maintenant choisir leurs horaires.`
+      const message = `Disponibilité enregistrée pour « ${moniteur.fullName} » — ${enabledDays} jour(s), ${slots.length} plage(s).`
       setSuccess(message)
       setScheduleFeedback({ type: 'success', message })
       setScheduleJustSaved(true)
+      setMoniteurs((prev) =>
+        prev.map((item) =>
+          item.id === moniteur.id
+            ? { ...item, weeklyAvailability: moniteur.weeklyAvailability || slots }
+            : item,
+        ),
+      )
+      setScheduleEditorOpen(false)
       await load({ silent: true })
       window.setTimeout(() => {
         scheduleFeedbackRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
@@ -829,123 +856,13 @@ export function ReservationsPage() {
                 <div>
                   <p className="moniteur-generate-name">{selectedMoniteur.fullName}</p>
                   <p className="moniteur-generate-vehicle">
-                    Jusqu’à deux plages par jour (ex. matin et après-midi)
+                    {scheduleEditorOpen
+                      ? 'Jusqu’à deux plages par jour (ex. matin et après-midi)'
+                      : scheduleSummary.length > 0
+                        ? 'Disponibilité enregistrée'
+                        : 'Aucune disponibilité définie'}
                   </p>
                 </div>
-              </div>
-
-              <div className="moniteur-hours-grid">
-                {scheduleDayHours.map((day) => {
-                  const label =
-                    WEEK_DAYS.find((item) => item.dayOfWeek === day.dayOfWeek)?.label || 'Jour'
-                  return (
-                    <div key={day.dayOfWeek} className="moniteur-hours-day-block">
-                      <label className="moniteur-hours-day">
-                        <input
-                          type="checkbox"
-                          checked={day.enabled}
-                          onChange={(e) =>
-                            updateScheduleDay(day.dayOfWeek, {
-                              enabled: e.target.checked,
-                              ...(e.target.checked
-                                ? {}
-                                : { afternoonEnabled: false }),
-                            })
-                          }
-                        />
-                        <span>{label}</span>
-                      </label>
-
-                      <div className="moniteur-hours-intervals">
-                        <div className="moniteur-hours-row">
-                          <span className="moniteur-hours-slot-label">1</span>
-                          <input
-                            type="time"
-                            value={day.morning.start}
-                            disabled={!day.enabled}
-                            onChange={(e) =>
-                              updateScheduleInterval(day.dayOfWeek, 'morning', {
-                                start: e.target.value,
-                              })
-                            }
-                            aria-label={`${label} plage 1 début`}
-                          />
-                          <span className="admin-muted">à</span>
-                          <input
-                            type="time"
-                            value={day.morning.end}
-                            disabled={!day.enabled}
-                            onChange={(e) =>
-                              updateScheduleInterval(day.dayOfWeek, 'morning', {
-                                end: e.target.value,
-                              })
-                            }
-                            aria-label={`${label} plage 1 fin`}
-                          />
-                        </div>
-
-                        <div className="moniteur-hours-row">
-                          <label className="moniteur-hours-slot-toggle">
-                            <input
-                              type="checkbox"
-                              checked={day.afternoonEnabled}
-                              disabled={!day.enabled}
-                              onChange={(e) =>
-                                updateScheduleDay(day.dayOfWeek, {
-                                  afternoonEnabled: e.target.checked,
-                                })
-                              }
-                            />
-                            <span>2</span>
-                          </label>
-                          <input
-                            type="time"
-                            value={day.afternoon.start}
-                            disabled={!day.enabled || !day.afternoonEnabled}
-                            onChange={(e) =>
-                              updateScheduleInterval(day.dayOfWeek, 'afternoon', {
-                                start: e.target.value,
-                              })
-                            }
-                            aria-label={`${label} plage 2 début`}
-                          />
-                          <span className="admin-muted">à</span>
-                          <input
-                            type="time"
-                            value={day.afternoon.end}
-                            disabled={!day.enabled || !day.afternoonEnabled}
-                            onChange={(e) =>
-                              updateScheduleInterval(day.dayOfWeek, 'afternoon', {
-                                end: e.target.value,
-                              })
-                            }
-                            aria-label={`${label} plage 2 fin`}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-
-              <div className="moniteur-edit-actions moniteur-schedule-actions">
-                <button
-                  type="button"
-                  className={`btn-primary${scheduleJustSaved ? ' is-saved' : ''}`}
-                  disabled={savingSchedule}
-                  onClick={() => void handleSaveSchedule()}
-                >
-                  {savingSchedule ? (
-                    'Enregistrement…'
-                  ) : scheduleJustSaved ? (
-                    <>
-                      <Check size={16} />
-                      Enregistré
-                    </>
-                  ) : (
-                    'Enregistrer la disponibilité'
-                  )}
-                </button>
               </div>
 
               <div ref={scheduleFeedbackRef}>
@@ -964,6 +881,173 @@ export function ReservationsPage() {
                   </p>
                 ) : null}
               </div>
+
+              {!scheduleEditorOpen ? (
+                <div className="moniteur-schedule-summary">
+                  {scheduleSummary.length > 0 ? (
+                    <ul className="moniteur-schedule-summary-list">
+                      {scheduleSummary.map((line) => (
+                        <li key={line}>{line}</li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="admin-muted">
+                      Définissez les jours et horaires pour que les élèves puissent réserver.
+                    </p>
+                  )}
+                  <button
+                    type="button"
+                    className="btn-outline"
+                    onClick={() => {
+                      setScheduleDayHours(
+                        toEditDayHours(selectedMoniteur.weeklyAvailability),
+                      )
+                      setScheduleEditorOpen(true)
+                      setScheduleFeedback(null)
+                      setScheduleJustSaved(false)
+                    }}
+                  >
+                    <Pencil size={15} />
+                    {scheduleSummary.length > 0
+                      ? 'Modifier la disponibilité'
+                      : 'Définir la disponibilité'}
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <div className="moniteur-hours-grid">
+                    {scheduleDayHours.map((day) => {
+                      const label =
+                        WEEK_DAYS.find((item) => item.dayOfWeek === day.dayOfWeek)?.label ||
+                        'Jour'
+                      return (
+                        <div key={day.dayOfWeek} className="moniteur-hours-day-block">
+                          <label className="moniteur-hours-day">
+                            <input
+                              type="checkbox"
+                              checked={day.enabled}
+                              onChange={(e) =>
+                                updateScheduleDay(day.dayOfWeek, {
+                                  enabled: e.target.checked,
+                                  ...(e.target.checked
+                                    ? {}
+                                    : { afternoonEnabled: false }),
+                                })
+                              }
+                            />
+                            <span>{label}</span>
+                          </label>
+
+                          <div className="moniteur-hours-intervals">
+                            <div className="moniteur-hours-row">
+                              <span className="moniteur-hours-slot-label">1</span>
+                              <input
+                                type="time"
+                                value={day.morning.start}
+                                disabled={!day.enabled}
+                                onChange={(e) =>
+                                  updateScheduleInterval(day.dayOfWeek, 'morning', {
+                                    start: e.target.value,
+                                  })
+                                }
+                                aria-label={`${label} plage 1 début`}
+                              />
+                              <span className="admin-muted">à</span>
+                              <input
+                                type="time"
+                                value={day.morning.end}
+                                disabled={!day.enabled}
+                                onChange={(e) =>
+                                  updateScheduleInterval(day.dayOfWeek, 'morning', {
+                                    end: e.target.value,
+                                  })
+                                }
+                                aria-label={`${label} plage 1 fin`}
+                              />
+                            </div>
+
+                            <div className="moniteur-hours-row">
+                              <label className="moniteur-hours-slot-toggle">
+                                <input
+                                  type="checkbox"
+                                  checked={day.afternoonEnabled}
+                                  disabled={!day.enabled}
+                                  onChange={(e) =>
+                                    updateScheduleDay(day.dayOfWeek, {
+                                      afternoonEnabled: e.target.checked,
+                                    })
+                                  }
+                                />
+                                <span>2</span>
+                              </label>
+                              <input
+                                type="time"
+                                value={day.afternoon.start}
+                                disabled={!day.enabled || !day.afternoonEnabled}
+                                onChange={(e) =>
+                                  updateScheduleInterval(day.dayOfWeek, 'afternoon', {
+                                    start: e.target.value,
+                                  })
+                                }
+                                aria-label={`${label} plage 2 début`}
+                              />
+                              <span className="admin-muted">à</span>
+                              <input
+                                type="time"
+                                value={day.afternoon.end}
+                                disabled={!day.enabled || !day.afternoonEnabled}
+                                onChange={(e) =>
+                                  updateScheduleInterval(day.dayOfWeek, 'afternoon', {
+                                    end: e.target.value,
+                                  })
+                                }
+                                aria-label={`${label} plage 2 fin`}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+
+                  <div className="moniteur-edit-actions moniteur-schedule-actions">
+                    {(selectedMoniteur.weeklyAvailability || []).length > 0 ? (
+                      <button
+                        type="button"
+                        className="btn-outline"
+                        disabled={savingSchedule}
+                        onClick={() => {
+                          setScheduleDayHours(
+                            toEditDayHours(selectedMoniteur.weeklyAvailability),
+                          )
+                          setScheduleEditorOpen(false)
+                          setScheduleFeedback(null)
+                          setScheduleJustSaved(false)
+                        }}
+                      >
+                        Annuler
+                      </button>
+                    ) : null}
+                    <button
+                      type="button"
+                      className={`btn-primary${scheduleJustSaved ? ' is-saved' : ''}`}
+                      disabled={savingSchedule}
+                      onClick={() => void handleSaveSchedule()}
+                    >
+                      {savingSchedule ? (
+                        'Enregistrement…'
+                      ) : scheduleJustSaved ? (
+                        <>
+                          <Check size={16} />
+                          Enregistré
+                        </>
+                      ) : (
+                        'Enregistrer la disponibilité'
+                      )}
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           ) : null}
         </div>
