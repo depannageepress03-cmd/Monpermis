@@ -90,6 +90,41 @@ async function hydrateReservationGroup(reservations) {
   return Promise.all(reservations.map((reservation) => hydrateReservation(reservation)))
 }
 
+router.get('/mine', ...withConduiteAccess, async (req, res) => {
+  try {
+    const now = new Date()
+    const today = now.toISOString().slice(0, 10)
+
+    const rows = await Reservation.find({
+      userId: req.user._id,
+      status: { $in: ['pending_payment', 'confirmed'] },
+    })
+      .populate('creneauId')
+      .populate('moniteurId', 'firstName lastName phone vehicleBrand vehiclePhotoUrl photoUrl')
+      .sort({ createdAt: -1 })
+
+    const list = []
+    for (const item of rows) {
+      if (!item.creneauId) continue
+      const start = slotDateTime(item.creneauId.date, item.creneauId.startTime)
+      if (start >= now || item.creneauId.date >= today) {
+        list.push(await hydrateReservation(item))
+      }
+    }
+
+    list.sort((a, b) => {
+      const aKey = `${a.creneau?.date || ''}T${a.creneau?.startTime || ''}`
+      const bKey = `${b.creneau?.date || ''}T${b.creneau?.startTime || ''}`
+      return aKey.localeCompare(bKey)
+    })
+
+    res.json({ success: true, data: { reservations: list } })
+  } catch (error) {
+    console.error('Erreur liste réservations:', error)
+    res.status(500).json({ success: false, error: 'Chargement impossible' })
+  }
+})
+
 router.get('/dashboard', ...withConduiteAccess, async (req, res) => {
   try {
     const now = new Date()

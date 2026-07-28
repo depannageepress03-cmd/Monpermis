@@ -271,20 +271,7 @@ export function ConduiteScreen() {
         ) : null}
 
         <FadeUp delay={180}>
-          <Bouncy scaleTo={0.97} onPress={() => navigation.navigate('ReservationFlow')}>
-            <View style={[styles.actionCard, styles.actionReserve]}>
-              <View style={[styles.actionIcon, styles.actionIconReserve]}>
-                <CalendarPlus size={22} color={dark.green} />
-              </View>
-              <View style={styles.actionCopy}>
-                <Text style={styles.actionTitle}>Réserver une séance</Text>
-                <Text style={styles.actionHint}>Choisir un créneau avec un moniteur</Text>
-              </View>
-              <ChevronRight size={20} color={dark.green} />
-            </View>
-          </Bouncy>
-
-          <Bouncy scaleTo={0.97} style={styles.secondAction} onPress={() => navigation.navigate('LeconsChapitres')}>
+          <Bouncy scaleTo={0.97} onPress={() => navigation.navigate('LeconsChapitres')}>
             <View style={[styles.actionCard, styles.actionLessons]}>
               <View style={[styles.actionIcon, styles.actionIconLessons]}>
                 <BookOpen size={22} color={dark.coral} />
@@ -296,25 +283,76 @@ export function ConduiteScreen() {
               <ChevronRight size={20} color={dark.coral} />
             </View>
           </Bouncy>
+
+          <Bouncy
+            scaleTo={0.97}
+            style={styles.secondAction}
+            onPress={() => navigation.navigate('ReservationFlow')}
+          >
+            <View style={[styles.actionCard, styles.actionReserve]}>
+              <View style={[styles.actionIcon, styles.actionIconReserve]}>
+                <CalendarPlus size={22} color={dark.green} />
+              </View>
+              <View style={styles.actionCopy}>
+                <Text style={styles.actionTitle}>Réserver une séance</Text>
+                <Text style={styles.actionHint}>Choisir un créneau avec un moniteur</Text>
+              </View>
+              <ChevronRight size={20} color={dark.green} />
+            </View>
+          </Bouncy>
         </FadeUp>
 
         <FadeUp delay={220}>
-          <Text style={styles.sectionLabel}>Mes réservations</Text>
+          <View style={styles.sectionHead}>
+            <Text style={styles.sectionLabel}>Mes réservations</Text>
+            <Pressable onPress={() => navigation.navigate('MesReservations')}>
+              <Text style={styles.seeAll}>Voir tout</Text>
+            </Pressable>
+          </View>
           {upcoming.length === 0 ? (
             <View style={styles.emptyCard}>
               <Text style={styles.emptyText}>Aucune séance réservée pour le moment.</Text>
             </View>
           ) : (
-            upcoming.map((item) => (
+            upcoming.slice(0, 3).map((item) => (
               <View key={String(item.id)} style={styles.reservationItem}>
-                <View style={{ flex: 1, minWidth: 0 }}>
+                <Pressable
+                  style={{ flex: 1, minWidth: 0 }}
+                  onPress={() => {
+                    const hours = item.creneau
+                      ? (() => {
+                          const [sh, sm] = item.creneau!.startTime
+                            .split(':')
+                            .map((v) => parseInt(v, 10) || 0)
+                          const [eh, em] = item.creneau!.endTime
+                            .split(':')
+                            .map((v) => parseInt(v, 10) || 0)
+                          return Math.max(0.5, Math.round((eh - sh + (em - sm) / 60) * 2) / 2)
+                        })()
+                      : 0
+                    navigation.navigate('ReservationConfirm', {
+                      reservationId: item.id,
+                      moniteurName: item.moniteur?.fullName || 'Moniteur',
+                      vehicleBrand: item.moniteur?.vehicleBrand || '',
+                      date: item.creneau?.date || '',
+                      startTime: item.creneau?.startTime || '',
+                      endTime: item.creneau?.endTime || '',
+                      hours,
+                      priceFcfa: item.priceFcfa || item.creneau?.priceFcfa || 0,
+                      paymentMethod: item.paymentStatus === 'paid' ? 'solde' : 'mobile_money',
+                      fromList: true,
+                    })
+                  }}
+                >
                   <Text style={styles.reservationTitle}>
-                    {item.creneau ? `${item.creneau.date} · ${item.creneau.startTime}` : 'Séance'}
+                    {item.creneau
+                      ? `${item.creneau.date} · ${item.creneau.startTime} – ${item.creneau.endTime}`
+                      : 'Séance'}
                   </Text>
                   <Text style={styles.reservationMeta}>
                     {item.moniteur?.fullName || 'Moniteur'} · {statusLabel(item)}
                   </Text>
-                </View>
+                </Pressable>
                 {item.canCancel ? (
                   <Pressable
                     style={styles.cancelLink}
@@ -474,8 +512,20 @@ const styles = StyleSheet.create({
     letterSpacing: 0.8,
     textTransform: 'uppercase',
     color: dark.textMuted,
+    marginTop: 0,
+    marginBottom: 0,
+  },
+  sectionHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     marginTop: 26,
     marginBottom: 10,
+  },
+  seeAll: {
+    fontFamily: fonts.bodyBold,
+    fontSize: 13,
+    color: dark.green,
   },
   emptyCard: {
     borderRadius: 16,

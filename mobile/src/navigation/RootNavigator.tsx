@@ -33,6 +33,8 @@ import { MesNotesScreen } from '../screens/code-route/MesNotesScreen'
 import { ECodePermisScreen, ECodePermisTakeScreen } from '../screens/code-route/ECodePermisScreen'
 import { ConduiteScreen } from '../screens/ConduiteScreen'
 import { ReservationFlowScreen } from '../screens/conduite/ReservationFlowScreen'
+import { MesReservationsScreen } from '../screens/conduite/MesReservationsScreen'
+import { ReservationConfirmScreen } from '../screens/conduite/ReservationConfirmScreen'
 import { LeconsChapitresScreen } from '../screens/conduite/LeconsChapitresScreen'
 import { LeconsCoursesScreen } from '../screens/conduite/LeconsCoursesScreen'
 import { LeconDetailScreen } from '../screens/conduite/LeconDetailScreen'
@@ -73,6 +75,8 @@ const linking: LinkingOptions<RootStackParamList> = {
       ECodePermisTake: 'code-de-la-route/e-codepermis/passer',
       Conduite: 'conduite',
       ReservationFlow: 'conduite/reservation',
+      MesReservations: 'conduite/reservations',
+      ReservationConfirm: 'conduite/reservation/confirmation',
       LeconsChapitres: 'conduite/lecons',
       LeconsCourses: 'conduite/lecons/cours',
       LeconDetail: 'conduite/lecons/cours/detail',
@@ -204,6 +208,14 @@ function AppNavigator() {
       <Stack.Screen
         name="ReservationFlow"
         component={ReservationFlowScreen}
+      />
+      <Stack.Screen
+        name="MesReservations"
+        component={MesReservationsScreen}
+      />
+      <Stack.Screen
+        name="ReservationConfirm"
+        component={ReservationConfirmScreen}
       />
       <Stack.Screen
         name="LeconsChapitres"

@@ -102,6 +102,20 @@ export type RootStackParamList = {
   ECodePermisTake: { examNumber: number }
   Conduite: undefined
   ReservationFlow: undefined
+  MesReservations: undefined
+  ReservationConfirm: {
+    reservationId: string
+    moniteurName: string
+    vehicleBrand?: string
+    date: string
+    startTime: string
+    endTime: string
+    hours: number
+    priceFcfa: number
+    paymentMethod: 'solde' | 'mobile_money' | 'promo'
+    whatsappLink?: string
+    fromList?: boolean
+  }
   LeconsChapitres: undefined
   LeconsCourses: {
     chapterId: string

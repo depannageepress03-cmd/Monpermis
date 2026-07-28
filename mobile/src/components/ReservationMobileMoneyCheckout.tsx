@@ -10,15 +10,17 @@ import {
   View,
 } from 'react-native'
 import {
-  AccessRequestError,
-  checkoutMobileMoney,
-  computeModuleAmount,
-  syncAccessRequest,
-  type AccessMe,
-  type AccessModule,
-  type AccessModuleKey,
-  type CheckoutCartItem,
+  createReservation,
+  requestReservationSlot,
+  ReservationError,
+  syncReservationPayment,
   type MobileMoneyOperator,
+  type ReservationItem,
+} from '../api/reservations'
+import {
+  AccessRequestError,
+  fetchAccessMe,
+  redeemPromoCode,
 } from '../api/accessRequests'
 import { dark, fonts } from '../theme'
 
@@ -28,7 +30,6 @@ const OPERATORS: { id: MobileMoneyOperator; label: string }[] = [
   { id: 'celtiis', label: 'Celtiis' },
 ]
 
-/** Préfixes ARCEP Bénin (01XXXX…) → opérateur probable. */
 function guessOperator(phone: string): MobileMoneyOperator | null {
   const digits = phone.replace(/\D/g, '')
   let local = digits
@@ -60,28 +61,54 @@ function formatPrice(amount: number, currency = 'XOF') {
   }).format(amount)
 }
 
-interface Props {
-  visible: boolean
-  items: CheckoutCartItem[]
-  modules: AccessModule[]
-  defaultPhone?: string
-  onClose: () => void
-  onSuccess: (access: AccessMe) => void
+export interface ReservationCheckoutSlot {
+  moniteurId: string
+  date: string
+  startTime: string
+  endTime: string
+  vehicleType: string
+  creneauId?: string
+  hours?: number
+  amount?: number
 }
 
-export function MobileMoneyCheckout({
+interface SoldeSuccessResult {
+  reservations?: ReservationItem[]
+  reservation?: ReservationItem
+  whatsappLink?: string
+}
+
+interface Props {
+  visible: boolean
+  label: string
+  amount: number
+  slot: ReservationCheckoutSlot
+  hoursNeeded: number
+  defaultPhone?: string
+  onClose: () => void
+  onSuccess: (reservations: ReservationItem[]) => void
+  onSoldeSuccess: (result: SoldeSuccessResult) => void
+}
+
+export function ReservationMobileMoneyCheckout({
   visible,
-  items,
-  modules,
+  label,
+  amount,
+  slot,
+  hoursNeeded,
   defaultPhone = '',
   onClose,
   onSuccess,
+  onSoldeSuccess,
 }: Props) {
   const [step, setStep] = useState<'country' | 'operator' | 'phone' | 'waiting'>('country')
   const [operator, setOperator] = useState<MobileMoneyOperator | null>(null)
   const [country, setCountry] = useState('BJ')
   const [phone, setPhone] = useState(defaultPhone)
+  const [promoCode, setPromoCode] = useState('')
+  const [soldeHeures, setSoldeHeures] = useState<number | null>(null)
   const [busy, setBusy] = useState(false)
+  const [promoBusy, setPromoBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -92,9 +119,14 @@ export function MobileMoneyCheckout({
     setOperator(null)
     setCountry('BJ')
     setPhone(defaultPhone)
+    setPromoCode('')
     setError(null)
     setSuccess(null)
     setBusy(false)
+    setPromoBusy(false)
+    fetchAccessMe()
+      .then((data) => setSoldeHeures(data.user.soldeHeures))
+      .catch(() => setSoldeHeures(null))
   }, [visible, defaultPhone])
 
   useEffect(
@@ -104,12 +136,7 @@ export function MobileMoneyCheckout({
     [],
   )
 
-  const lines = items.map((item) => {
-    const module = modules.find((m) => m.key === item.module)
-    const amount = module ? computeModuleAmount(item.module, module.price, item.quantity) : 0
-    return { ...item, label: module?.label || item.module, amount }
-  })
-  const total = lines.reduce((sum, line) => sum + line.amount, 0)
+  const canPayWithSolde = soldeHeures !== null && soldeHeures >= hoursNeeded
 
   const stopPoll = () => {
     if (pollRef.current) {
@@ -118,30 +145,25 @@ export function MobileMoneyCheckout({
     }
   }
 
-  const startPoll = (accessRequestId: string) => {
+  const startPoll = (bookingGroupId: string) => {
     stopPoll()
     let ticks = 0
     const tick = async () => {
       ticks += 1
       try {
-        const result = await syncAccessRequest(accessRequestId)
-        if (result.payment?.status === 'approved' || ['actif', 'valide'].includes(result.accessRequest.status)) {
+        const result = await syncReservationPayment(bookingGroupId)
+        if (result.payment.status === 'approved') {
           stopPoll()
-          setSuccess('Paiement confirmé. Accès activé.')
+          setSuccess('Paiement confirmé. Réservation validée.')
           setBusy(false)
-          onSuccess(result.access)
+          onSuccess(result.reservations)
           return
         }
-        if (
-          result.payment?.status === 'declined' ||
-          result.payment?.status === 'failed' ||
-          result.payment?.status === 'canceled' ||
-          result.accessRequest.status === 'rejete'
-        ) {
+        if (['declined', 'failed', 'canceled'].includes(result.payment.status)) {
           stopPoll()
           setBusy(false)
           setSuccess(null)
-          setError(result.payment?.errorMessage || 'Le paiement n’a pas abouti. Réessaie.')
+          setError(result.payment.errorMessage || 'Le paiement n’a pas abouti. Réessaie.')
           setStep('phone')
         }
       } catch {
@@ -150,13 +172,72 @@ export function MobileMoneyCheckout({
       if (ticks >= 60) {
         stopPoll()
         setBusy(false)
-        setError('Confirmation trop longue. Actualise tes accès dans un instant.')
+        setError('Confirmation trop longue. Vérifie tes réservations dans un instant.')
       }
     }
     void tick()
     pollRef.current = setInterval(() => {
       void tick()
     }, 2000)
+  }
+
+  const applyPromo = async () => {
+    const trimmed = promoCode.trim()
+    if (!trimmed) {
+      setError('Saisis un code promo')
+      return
+    }
+    setPromoBusy(true)
+    setError(null)
+    setSuccess(null)
+    try {
+      const result = await redeemPromoCode(trimmed)
+      const nextSolde = result.access.user.soldeHeures
+      setSoldeHeures(nextSolde)
+      if (nextSolde >= hoursNeeded) {
+        setSuccess(
+          `Code promo appliqué. Solde : ${nextSolde} h — tu peux valider sans Mobile Money.`,
+        )
+      } else {
+        setSuccess(
+          `Code promo appliqué. Solde : ${nextSolde} h (il manque encore des heures pour cette séance).`,
+        )
+      }
+    } catch (err) {
+      setError(
+        err instanceof AccessRequestError ? err.message : 'Code promo invalide ou déjà utilisé',
+      )
+    } finally {
+      setPromoBusy(false)
+    }
+  }
+
+  const confirmWithSolde = async () => {
+    setBusy(true)
+    setError(null)
+    try {
+      let creneauId = slot.creneauId
+      if (!creneauId) {
+        const lockedSlot = await requestReservationSlot({
+          moniteurId: slot.moniteurId,
+          date: slot.date,
+          startTime: slot.startTime,
+          endTime: slot.endTime,
+          vehicleType: slot.vehicleType,
+        })
+        creneauId = String(lockedSlot.creneau.id)
+      }
+      const result = await createReservation({
+        creneauIds: [creneauId],
+        vehicleType: slot.vehicleType,
+        moniteurId: slot.moniteurId,
+        paymentMethod: 'solde',
+      })
+      onSoldeSuccess(result)
+    } catch (err) {
+      setBusy(false)
+      setError(err instanceof ReservationError ? err.message : 'Réservation impossible')
+    }
   }
 
   const submit = async () => {
@@ -176,29 +257,41 @@ export function MobileMoneyCheckout({
     setError(null)
     setSuccess(null)
     try {
-      const result = await checkoutMobileMoney({
-        items,
+      let creneauId = slot.creneauId
+      if (!creneauId) {
+        const lockedSlot = await requestReservationSlot({
+          moniteurId: slot.moniteurId,
+          date: slot.date,
+          startTime: slot.startTime,
+          endTime: slot.endTime,
+          vehicleType: slot.vehicleType,
+        })
+        creneauId = String(lockedSlot.creneau.id)
+      }
+
+      const result = await createReservation({
+        creneauIds: [creneauId],
+        vehicleType: slot.vehicleType,
+        moniteurId: slot.moniteurId,
+        paymentMethod: 'mobile_money',
         operator: detected || operator,
-        country,
         phone,
-        replace: true,
+        country,
       })
-      setOperator(result.operator || detected || operator)
+      setOperator(detected || operator)
       setStep('waiting')
-      setSuccess(result.message)
-      startPoll(result.accessRequest.id)
+      setSuccess(result.message || 'Demande envoyée. Valide sur ton téléphone.')
+      startPoll(result.bookingGroupId)
     } catch (err) {
       setBusy(false)
       setStep('phone')
-      if (err instanceof AccessRequestError) {
-        setError(err.message)
-        if (err.code === 'OPERATOR_MISMATCH') {
-          const expected = guessOperator(phone)
-          if (expected) setOperator(expected)
-        }
-      } else {
-        setError('Paiement impossible. Vérifie le numéro et réessaie.')
-      }
+      setError(
+        err instanceof ReservationError
+          ? err.message
+          : 'Paiement impossible. Vérifie le numéro et réessaie.',
+      )
+      const expected = guessOperator(phone)
+      if (expected) setOperator(expected)
     }
   }
 
@@ -207,32 +300,65 @@ export function MobileMoneyCheckout({
       <View style={styles.backdrop}>
         <View style={styles.card}>
           <View style={styles.header}>
-            <Text style={styles.title}>Paiement Mobile Money</Text>
+            <Text style={styles.title}>Paiement</Text>
             <Pressable onPress={onClose} disabled={busy && step === 'waiting'}>
               <Text style={styles.close}>Fermer</Text>
             </Pressable>
           </View>
 
-          <ScrollView contentContainerStyle={styles.scroll}>
-            {lines.map((line) => (
-              <View key={line.module} style={styles.line}>
-                <Text style={styles.lineLabel}>
-                  {line.label}
-                  {line.module === 'conduite_heures' ? ` × ${line.quantity} h` : ''}
-                  {line.module === 'conduite_heures' && line.quantity >= 2 ? ' (−1 000)' : ''}
-                </Text>
-                <Text style={styles.lineAmount}>{formatPrice(line.amount)}</Text>
-              </View>
-            ))}
+          <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+            <View style={styles.line}>
+              <Text style={styles.lineLabel}>{label}</Text>
+              <Text style={styles.lineAmount}>{formatPrice(amount)}</Text>
+            </View>
             <View style={styles.totalRow}>
               <Text style={styles.totalLabel}>Total</Text>
-              <Text style={styles.totalAmount}>{formatPrice(total)}</Text>
+              <Text style={styles.totalAmount}>{formatPrice(amount)}</Text>
+            </View>
+
+            <View style={styles.promoBox}>
+              <Text style={styles.kicker}>Code promo</Text>
+              <View style={styles.promoRow}>
+                <TextInput
+                  style={[styles.input, styles.promoInput]}
+                  value={promoCode}
+                  onChangeText={setPromoCode}
+                  autoCapitalize="characters"
+                  placeholder="Ex. PROMO2026"
+                  placeholderTextColor={dark.textMuted}
+                  editable={!promoBusy && !(busy && step === 'waiting')}
+                />
+                <Pressable
+                  style={[styles.promoBtn, (promoBusy || !promoCode.trim()) && styles.disabled]}
+                  disabled={promoBusy || !promoCode.trim()}
+                  onPress={() => void applyPromo()}
+                >
+                  <Text style={styles.promoBtnText}>{promoBusy ? '…' : 'Appliquer'}</Text>
+                </Pressable>
+              </View>
+              {soldeHeures !== null ? (
+                <Text style={styles.hint}>Solde actuel : {soldeHeures} h (séance : {hoursNeeded} h)</Text>
+              ) : null}
             </View>
 
             {error ? <Text style={styles.error}>{error}</Text> : null}
             {success ? <Text style={styles.success}>{success}</Text> : null}
 
-            {step === 'country' ? (
+            {canPayWithSolde ? (
+              <Pressable
+                style={[styles.payBtn, busy && styles.disabled]}
+                disabled={busy}
+                onPress={() => void confirmWithSolde()}
+              >
+                {busy ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.payText}>Valider avec mon solde / code promo</Text>
+                )}
+              </Pressable>
+            ) : null}
+
+            {!canPayWithSolde && step === 'country' ? (
               <View style={styles.step}>
                 <Text style={styles.kicker}>1. Pays</Text>
                 <Pressable
@@ -247,7 +373,7 @@ export function MobileMoneyCheckout({
               </View>
             ) : null}
 
-            {step === 'operator' ? (
+            {!canPayWithSolde && step === 'operator' ? (
               <View style={styles.step}>
                 <Text style={styles.kicker}>2. Réseau mobile</Text>
                 {OPERATORS.map((item) => (
@@ -268,7 +394,7 @@ export function MobileMoneyCheckout({
               </View>
             ) : null}
 
-            {step === 'phone' || step === 'waiting' ? (
+            {!canPayWithSolde && (step === 'phone' || step === 'waiting') ? (
               <View style={styles.step}>
                 <Text style={styles.kicker}>3. Numéro Mobile Money</Text>
                 <TextInput
@@ -286,7 +412,8 @@ export function MobileMoneyCheckout({
                 />
                 {guessOperator(phone) ? (
                   <Text style={styles.hint}>
-                    Réseau détecté : {guessOperator(phone)?.toUpperCase()} — choisis le même opérateur.
+                    Réseau détecté : {guessOperator(phone)?.toUpperCase()} — choisis le même
+                    opérateur.
                   </Text>
                 ) : null}
                 {step !== 'waiting' ? (
@@ -303,7 +430,7 @@ export function MobileMoneyCheckout({
                     <ActivityIndicator color="#fff" />
                   ) : (
                     <Text style={styles.payText}>
-                      Payer {formatPrice(total)} ({operator?.toUpperCase() || ''})
+                      Payer {formatPrice(amount)} ({operator?.toUpperCase() || ''})
                     </Text>
                   )}
                 </Pressable>
@@ -321,17 +448,6 @@ export function MobileMoneyCheckout({
       </View>
     </Modal>
   )
-}
-
-export function moduleLabel(key: AccessModuleKey) {
-  const labels: Record<AccessModuleKey, string> = {
-    code: 'Code de la route',
-    conduite_heures: 'Heures de conduite',
-    conduite_videos: 'Vidéos conduite',
-    ecodepermis: 'E-Codepermis',
-    aiChat: 'Chat IA',
-  }
-  return labels[key]
 }
 
 const styles = StyleSheet.create({
@@ -373,6 +489,16 @@ const styles = StyleSheet.create({
   },
   totalLabel: { color: dark.textPrimary, fontFamily: fonts.displayBold, fontSize: 16 },
   totalAmount: { color: dark.green, fontFamily: fonts.displayExtraBold, fontSize: 18 },
+  promoBox: { gap: 8, marginTop: 4 },
+  promoRow: { flexDirection: 'row', gap: 8, alignItems: 'center' },
+  promoInput: { flex: 1 },
+  promoBtn: {
+    backgroundColor: dark.coral,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  promoBtnText: { color: '#fff', fontFamily: fonts.displayBold, fontSize: 13 },
   error: { color: dark.coral, fontFamily: fonts.body, fontSize: 14 },
   success: { color: dark.green, fontFamily: fonts.body, fontSize: 14 },
   step: { gap: 10, marginTop: 8 },
@@ -392,7 +518,12 @@ const styles = StyleSheet.create({
     backgroundColor: dark.surfaceRaised,
   },
   choiceActive: { borderColor: dark.green },
-  choiceText: { color: dark.textPrimary, fontFamily: fonts.bodyBold, fontSize: 15, textAlign: 'center' },
+  choiceText: {
+    color: dark.textPrimary,
+    fontFamily: fonts.bodyBold,
+    fontSize: 15,
+    textAlign: 'center',
+  },
   input: {
     borderWidth: 1,
     borderColor: dark.border,
@@ -410,6 +541,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     paddingVertical: 14,
     alignItems: 'center',
+    marginTop: 4,
   },
   payText: { color: '#fff', fontFamily: fonts.displayBold, fontSize: 15 },
   disabled: { opacity: 0.55 },

@@ -100,6 +100,14 @@ export interface MoniteurPublic {
   city?: string
 }
 
+export interface MoniteurProfile extends MoniteurPublic {
+  phone: string
+  specialties: string[]
+  bio: string
+  photos: string[]
+  videos: string[]
+}
+
 export interface AvailabilityWindow {
   start: string
   end: string
@@ -110,10 +118,21 @@ export interface AvailabilityDay {
   windows: AvailabilityWindow[]
 }
 
+export type MobileMoneyOperator = 'mtn' | 'moov' | 'celtiis'
+
 export function fetchDrivingDashboard() {
   return request<{ progress: DrivingProgress; upcoming: ReservationItem[] }>(
     '/reservations/dashboard',
   )
+}
+
+export async function fetchMyReservations() {
+  try {
+    return await request<{ reservations: ReservationItem[] }>('/reservations/mine')
+  } catch {
+    const dash = await fetchDrivingDashboard()
+    return { reservations: dash.upcoming }
+  }
 }
 
 export function fetchPublicMoniteurs(vehicleType?: string) {
@@ -121,6 +140,10 @@ export function fetchPublicMoniteurs(vehicleType?: string) {
     ? `?vehicleType=${encodeURIComponent(vehicleType)}`
     : ''
   return request<{ moniteurs: MoniteurPublic[] }>(`/reservations/moniteurs${query}`)
+}
+
+export function fetchMoniteurProfile(id: string) {
+  return request<{ moniteur: MoniteurProfile }>(`/reservations/moniteurs/${id}`)
 }
 
 export function fetchMoniteurAvailability(params: {
@@ -186,23 +209,40 @@ export function lockCreneau(creneauId: string) {
 }
 
 export function createReservation(payload: {
-  creneauId: string
+  creneauId?: string
+  creneauIds?: string[]
   vehicleType: string
   moniteurId?: string
+  paymentMethod?: 'solde' | 'mobile_money'
+  operator?: MobileMoneyOperator
+  phone?: string
+  country?: string
 }) {
   return request<{
-    reservation: ReservationItem
-    whatsappLink: string
-    calendarHint: {
+    paymentMethod: 'solde' | 'mobile_money'
+    bookingGroupId: string
+    reservations?: ReservationItem[]
+    reservation?: ReservationItem
+    whatsappLink?: string
+    calendarHint?: {
       title: string
       date: string
       startTime: string
       endTime: string
     }
+    payment?: { id: string; status: string; amount: number; currency: string }
+    message?: string
   }>('/reservations/reservations', {
     method: 'POST',
     body: JSON.stringify(payload),
   })
+}
+
+export function syncReservationPayment(bookingGroupId: string) {
+  return request<{
+    payment: { status: string; errorMessage?: string }
+    reservations: ReservationItem[]
+  }>(`/reservations/checkout/${bookingGroupId}/sync`)
 }
 
 export function cancelReservation(reservationId: string, reason: string) {
