@@ -10,9 +10,8 @@ import {
   ADMIN_WHATSAPP_NUMBER,
   buildWhatsAppLink,
   formatReservationNotifyAdmin,
-  formatReservationReminder,
-  sendWhatsAppMessage,
 } from '../services/whatsapp.js'
+import { runReservationReminders } from '../utils/reservationReminders.js'
 import {
   addLocalDays,
   formatLocalDate,
@@ -45,6 +44,7 @@ import {
 import {
   buildReservationCallbackUrl,
   cancelPendingReservationPayment,
+  applyApprovedReservationPayment,
   syncReservationPaymentFromProvider,
 } from '../utils/reservationPayments.js'
 import { logger } from '../utils/logger.js'
@@ -53,6 +53,41 @@ const router = Router()
 /** Réservations : auth seule — le solde d’heures est contrôlé à la création. */
 const withConduiteAccess = [requireUserAuth]
 const LOCK_MS = 15 * 60 * 1000
+
+/** Créneaux qui bloquent une plage pour les autres élèves (réservés, bloqués, ou verrou pending). */
+function busySlotFilter(viewerUserId, now = new Date()) {
+  return {
+    $or: [
+      { status: { $in: ['reserve', 'bloque'] } },
+      {
+        status: 'libre',
+        lockedUntil: { $gt: now },
+        lockedBy: { $ne: viewerUserId },
+      },
+    ],
+  }
+}
+
+async function findOverlappingBusyCreneau({
+  moniteurId,
+  date,
+  startTime,
+  endTime,
+  viewerUserId,
+  excludeIds = [],
+}) {
+  const candidates = await Creneau.find({
+    moniteurId,
+    date,
+    ...(excludeIds.length ? { _id: { $nin: excludeIds } } : {}),
+    ...busySlotFilter(viewerUserId),
+  }).select('startTime endTime status lockedBy lockedUntil')
+
+  return (
+    candidates.find((slot) => intervalsOverlap(startTime, endTime, slot.startTime, slot.endTime)) ||
+    null
+  )
+}
 
 function asObjectId(value) {
   if (!value) return null
@@ -260,14 +295,7 @@ router.get('/availability', ...withConduiteAccess, async (req, res) => {
     const busyCreneaux = await Creneau.find({
       moniteurId,
       date: { $gte: from, $lte: to },
-      $or: [
-        { status: { $in: ['reserve', 'bloque'] } },
-        {
-          status: 'libre',
-          lockedUntil: { $gt: new Date() },
-          lockedBy: { $ne: req.user._id },
-        },
-      ],
+      ...busySlotFilter(req.user._id),
     }).select('date startTime endTime status')
 
     const busyByDate = {}
@@ -369,14 +397,7 @@ router.post('/request-slot', ...withConduiteAccess, async (req, res) => {
     const conflicting = await Creneau.find({
       moniteurId,
       date,
-      $or: [
-        { status: { $in: ['reserve', 'bloque'] } },
-        {
-          status: 'libre',
-          lockedUntil: { $gt: new Date() },
-          lockedBy: { $ne: req.user._id },
-        },
-      ],
+      ...busySlotFilter(req.user._id),
     }).select('startTime endTime status lockedBy lockedUntil')
 
     const overlap = conflicting.find((slot) =>
@@ -429,6 +450,23 @@ router.post('/request-slot', ...withConduiteAccess, async (req, res) => {
         })
       }
       throw error
+    }
+
+    // TOCTOU : un autre élève a pu créer une plage chevauchante entre le check et l’insert.
+    const raced = await findOverlappingBusyCreneau({
+      moniteurId,
+      date,
+      startTime,
+      endTime,
+      viewerUserId: req.user._id,
+      excludeIds: [creneau._id],
+    })
+    if (raced) {
+      await Creneau.findByIdAndDelete(creneau._id)
+      return res.status(409).json({
+        success: false,
+        error: 'Cette plage vient d’être prise. Choisissez d’autres horaires.',
+      })
     }
 
     const amountFcfa = computeBookingAmount([creneau])
@@ -759,6 +797,25 @@ router.post('/reservations', ...withConduiteAccess, async (req, res) => {
       }
     }
 
+    // Après claim atomique : rejeter un chevauchement concurrent (créneaux distincts, horaires qui se croisent).
+    for (const creneau of claimed) {
+      const overlap = await findOverlappingBusyCreneau({
+        moniteurId: creneau.moniteurId,
+        date: creneau.date,
+        startTime: creneau.startTime,
+        endTime: creneau.endTime,
+        viewerUserId: req.user._id,
+        excludeIds: claimed.map((item) => item._id),
+      })
+      if (overlap) {
+        await releaseAll()
+        return res.status(409).json({
+          success: false,
+          error: 'Cette plage chevauche une séance déjà réservée. Revenez au calendrier.',
+        })
+      }
+    }
+
     const assignedMoniteurId = moniteurId || asId(claimed[0].moniteurId)
     const bookingGroupId = new mongoose.Types.ObjectId()
     const heuresParCreneau = claimed.map((c) => computeCreneauHeures(c))
@@ -852,7 +909,9 @@ router.post('/reservations', ...withConduiteAccess, async (req, res) => {
       await releaseAll()
       return res.status(400).json({
         success: false,
-        error: 'Numéro Mobile Money invalide. Utilisez un numéro béninois (ex. 01 XX XX XX XX).',
+        error:
+          'Ajoutez un numéro Mobile Money valide dans votre profil (ex. 0147880143) avant de réserver.',
+        code: 'PHONE_REQUIRED',
       })
     }
 
@@ -1079,6 +1138,10 @@ router.post('/reservations/:id/cancel', ...withConduiteAccess, async (req, res) 
           reason || 'Annulé par l’utilisateur avant confirmation',
         )
         if (result.paidAlready) {
+          await applyApprovedReservationPayment(result.payment || payment, {
+            eventName: 'cancel.reconcile',
+            eventId: `cancel-reconcile:${(result.payment || payment)._id}`,
+          })
           return res.status(409).json({
             success: false,
             error: 'Le paiement vient d’être confirmé. Impossible d’annuler — contacte l’auto-école.',
@@ -1138,51 +1201,15 @@ router.post('/reservations/:id/cancel', ...withConduiteAccess, async (req, res) 
   }
 })
 
-/** Job manuel / cron : rappels WhatsApp 2 h avant. */
+/** Job manuel / cron : rappels WhatsApp 2 h avant. Header `x-api-key: $CRON_API_KEY`. */
 router.post('/reminders/run', async (req, res) => {
   try {
     const apiKey = req.headers['x-api-key']
-    if (apiKey !== process.env.CRON_API_KEY) {
+    if (!process.env.CRON_API_KEY || apiKey !== process.env.CRON_API_KEY) {
       return res.status(401).json({ success: false, error: 'Non autoris\u00e9' })
     }
-    const now = Date.now()
-    const inTwoHours = now + 2 * 60 * 60 * 1000
-    const windowStart = now + 1.5 * 60 * 60 * 1000
-    const windowEnd = inTwoHours + 30 * 60 * 1000
-
-    const reservations = await Reservation.find({
-      status: 'confirmed',
-      reminderSentAt: null,
-    })
-      .populate('creneauId')
-      .populate('userId', 'firstName phone')
-      .populate('moniteurId', 'firstName lastName')
-
-    let sent = 0
-    for (const reservation of reservations) {
-      if (!reservation.creneauId || !reservation.userId) continue
-      const start = slotDateTime(
-        reservation.creneauId.date,
-        reservation.creneauId.startTime,
-      ).getTime()
-      if (start < windowStart || start > windowEnd) continue
-
-      const moniteurName = reservation.moniteurId
-        ? `${reservation.moniteurId.firstName} ${reservation.moniteurId.lastName}`.trim()
-        : ''
-      const body = formatReservationReminder({
-        firstName: reservation.userId.firstName,
-        date: reservation.creneauId.date,
-        startTime: reservation.creneauId.startTime,
-        moniteurName,
-      })
-      await sendWhatsAppMessage({ to: reservation.userId.phone, body })
-      reservation.reminderSentAt = new Date()
-      await reservation.save()
-      sent += 1
-    }
-
-    res.json({ success: true, data: { sent } })
+    const data = await runReservationReminders()
+    res.json({ success: true, data })
   } catch (error) {
     console.error('Erreur rappels:', error)
     res.status(500).json({ success: false, error: 'Rappels impossibles' })

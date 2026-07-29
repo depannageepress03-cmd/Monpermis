@@ -10,12 +10,7 @@ import {
   type CheckoutCartItem,
   type MobileMoneyOperator,
 } from '../api/accessRequests'
-
-const OPERATORS: { id: MobileMoneyOperator; label: string }[] = [
-  { id: 'mtn', label: 'MTN' },
-  { id: 'moov', label: 'Moov' },
-  { id: 'celtiis', label: 'Celtiis' },
-]
+import { PAYMENT_OPERATORS, paymentOperatorLabel } from '../utils/paymentOperators'
 
 function guessOperator(phone: string): MobileMoneyOperator | null {
   const digits = phone.replace(/\D/g, '')
@@ -153,6 +148,12 @@ export function MobileMoneyCheckout({
       setError('Choisissez un réseau Mobile Money')
       return
     }
+    if (!phone.trim()) {
+      setError(
+        'Indiquez un numéro Mobile Money valide (ex. 0147880143). Ajoutez-le aussi dans Mon profil.',
+      )
+      return
+    }
     const detected = guessOperator(phone)
     if (detected && detected !== operator) {
       setError(
@@ -179,8 +180,8 @@ export function MobileMoneyCheckout({
     } catch (err) {
       setBusy(false)
       setError(err instanceof AccessRequestError ? err.message : 'Paiement impossible')
-      const detected = guessOperator(phone)
-      if (detected) setOperator(detected)
+      const again = guessOperator(phone)
+      if (again) setOperator(again)
     }
   }
 
@@ -226,17 +227,18 @@ export function MobileMoneyCheckout({
           <section className="mm-checkout-step">
             <p className="learner-kicker">1. Réseau mobile</p>
             <div className="mm-checkout-choices">
-              {OPERATORS.map((item) => (
+              {PAYMENT_OPERATORS.map((item) => (
                 <button
                   key={item.id}
                   type="button"
-                  className={operator === item.id ? 'btn-primary' : 'btn-outline'}
+                  className={`mm-checkout-operator${operator === item.id ? ' is-selected' : ''}`}
                   onClick={() => {
                     setOperator(item.id)
                     setStep('phone')
                   }}
                 >
-                  {item.label}
+                  <img src={item.logo} alt={item.alt} className="mm-checkout-operator-logo" />
+                  <span>{item.label}</span>
                 </button>
               ))}
             </div>
@@ -270,12 +272,13 @@ export function MobileMoneyCheckout({
               >
                 {busy
                   ? 'Envoi de la demande…'
-                  : `Payer ${formatPrice(total)} (${operator?.toUpperCase() || ''})`}
+                  : `Payer ${formatPrice(total)} (${paymentOperatorLabel(operator)})`}
               </button>
             </div>
             {step === 'waiting' ? (
               <p className="subscription-status-copy">
-                Validez maintenant la demande de retrait sur votre téléphone ({operator?.toUpperCase()}).
+                Validez maintenant la demande de retrait sur votre téléphone (
+                {paymentOperatorLabel(operator)}).
               </p>
             ) : null}
           </section>

@@ -1,6 +1,7 @@
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import {
+  AlertTriangle,
   Bot,
   BookOpen,
   Car,
@@ -22,6 +23,7 @@ import {
   fetchSubscribers,
   grantSubscription,
   paymentChannelLabel,
+  resolvePaymentRefund,
   subscribeToPaymentStream,
   unitLabel,
   updateAccessModulePricing,
@@ -35,14 +37,14 @@ import { fetchUsers, type AppUser } from '../api/users'
 import { StatusBadge } from '../components/StatusBadge'
 import { getAdminToken, isAuthError } from '../context/AdminAuthContext'
 
-type Tab = 'subscribers' | 'payments' | 'pricing'
+type Tab = 'subscribers' | 'payments' | 'refunds' | 'pricing'
 
 const moduleOptions: { value: AccessModuleKey | ''; label: string }[] = [
   { value: '', label: 'Tous les abonnements' },
   { value: 'code', label: 'Code de la route' },
   { value: 'conduite_heures', label: 'Heures de conduite' },
   { value: 'conduite_videos', label: 'Vidéos conduite' },
-  { value: 'ecodepermis', label: 'E-Codepermis' },
+  { value: 'ecodepermis', label: 'E-Codepermis (inclus Code)' },
 ]
 
 const grantModules: AccessModuleKey[] = [
@@ -108,16 +110,21 @@ export function AbonnementsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const initialTab = (searchParams.get('tab') as Tab | null) || 'subscribers'
   const [tab, setTab] = useState<Tab>(
-    initialTab === 'payments' || initialTab === 'pricing' ? initialTab : 'subscribers',
+    initialTab === 'payments' || initialTab === 'pricing' || initialTab === 'refunds'
+      ? initialTab
+      : 'subscribers',
   )
 
   const [subscribers, setSubscribers] = useState<Subscriber[]>([])
   const [payments, setPayments] = useState<AccessPayment[]>([])
+  const [refundPayments, setRefundPayments] = useState<AccessPayment[]>([])
   const [users, setUsers] = useState<AppUser[]>([])
   const [stats, setStats] = useState<AccessStats | null>(null)
   const [pricing, setPricing] = useState<AccessModulePricing[]>([])
   const [pricingDrafts, setPricingDrafts] = useState<Record<string, string>>({})
   const [pricingBusy, setPricingBusy] = useState<string | null>(null)
+  const [refundNotes, setRefundNotes] = useState<Record<string, string>>({})
+  const [refundBusy, setRefundBusy] = useState<string | null>(null)
 
   const [moduleFilter, setModuleFilter] = useState<AccessModuleKey | ''>('')
   const [query, setQuery] = useState('')
@@ -161,6 +168,13 @@ export function AbonnementsPage() {
     setPayments(rows)
   }, [])
 
+  const loadRefunds = useCallback(async () => {
+    const token = getAdminToken()
+    if (!token) return
+    const { payments: rows } = await fetchApprovedPayments(token, { needsRefund: true })
+    setRefundPayments(rows)
+  }, [])
+
   const loadPricing = useCallback(async () => {
     const token = getAdminToken()
     if (!token) return
@@ -188,13 +202,20 @@ export function AbonnementsPage() {
     setLoading(true)
     setError(null)
     try {
-      await Promise.all([loadSubscribers(), loadPayments(), loadPricing(), loadStats(), loadUsers()])
+      await Promise.all([
+        loadSubscribers(),
+        loadPayments(),
+        loadRefunds(),
+        loadPricing(),
+        loadStats(),
+        loadUsers(),
+      ])
     } catch (err) {
       setError(isAuthError(err) ? err.message : 'Chargement impossible.')
     } finally {
       setLoading(false)
     }
-  }, [loadSubscribers, loadPayments, loadPricing, loadStats, loadUsers])
+  }, [loadSubscribers, loadPayments, loadRefunds, loadPricing, loadStats, loadUsers])
 
   useEffect(() => {
     void refresh()
@@ -207,6 +228,12 @@ export function AbonnementsPage() {
     unsubscribeRef.current = subscribeToPaymentStream(token, {
       onStatusChange: setLiveConnected,
       onPayment: (payment) => {
+        if (payment.needsRefund) {
+          setRefundPayments((current) => {
+            const without = current.filter((item) => item.id !== payment.id)
+            return [payment, ...without]
+          })
+        }
         if (payment.status !== 'approved') return
         setPayments((current) => {
           const without = current.filter((item) => item.id !== payment.id)
@@ -313,6 +340,33 @@ export function AbonnementsPage() {
     }
   }
 
+  const handleResolveRefund = async (paymentId: string) => {
+    const token = getAdminToken()
+    if (!token) return
+    const note = (refundNotes[paymentId] || '').trim()
+    if (!note) {
+      setError('Ajoute une note de résolution (ex. remboursé FedaPay / Mobile Money).')
+      return
+    }
+    setRefundBusy(paymentId)
+    setError(null)
+    setSuccess(null)
+    try {
+      await resolvePaymentRefund(token, paymentId, note)
+      setRefundPayments((current) => current.filter((item) => item.id !== paymentId))
+      setRefundNotes((current) => {
+        const next = { ...current }
+        delete next[paymentId]
+        return next
+      })
+      setSuccess('Paiement marqué comme remboursé / résolu.')
+    } catch (err) {
+      setError(isAuthError(err) ? err.message : 'Résolution impossible.')
+    } finally {
+      setRefundBusy(null)
+    }
+  }
+
   return (
     <div className="admin-page access-requests-page">
       <header className="admin-module-header">
@@ -342,6 +396,15 @@ export function AbonnementsPage() {
           </div>
           <p className="ar-stat-value">{loading ? '…' : payments.length}</p>
           <p className="ar-stat-meta">{formatMoney(approvedRevenue)}</p>
+        </div>
+        <div className="ar-stat-card">
+          <div className="ar-stat-head">
+            <p className="ar-stat-label">À rembourser</p>
+            <div className="ar-stat-icon" style={{ background: 'rgba(220, 38, 38, 0.1)', color: '#b91c1c' }}>
+              <AlertTriangle size={17} />
+            </div>
+          </div>
+          <p className="ar-stat-value">{loading ? '…' : refundPayments.length}</p>
         </div>
         <div className="ar-stat-card ar-stat-card-muted">
           <div className="ar-stat-head">
@@ -374,6 +437,13 @@ export function AbonnementsPage() {
           onClick={() => setActiveTab('payments')}
         >
           Paiements réussis
+        </button>
+        <button
+          type="button"
+          className={tab === 'refunds' ? 'active' : ''}
+          onClick={() => setActiveTab('refunds')}
+        >
+          À rembourser{refundPayments.length > 0 ? ` (${refundPayments.length})` : ''}
         </button>
         <button
           type="button"
@@ -648,6 +718,119 @@ export function AbonnementsPage() {
                       <td className="muted">{payment.fedapayReference || '—'}</td>
                       <td className="muted">
                         {formatDateTime(payment.activatedAt || payment.createdAt)}
+                      </td>
+                    </tr>
+                  )
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
+
+      {tab === 'refunds' ? (
+        <div className="admin-data-table-wrap">
+          <p className="admin-module-subtitle" style={{ marginBottom: 12 }}>
+            Paiements encaissés sans livraison d’accès (orphelins / conflit). Rembourse côté
+            FedaPay / opérateur, puis marque comme résolu avec une note.
+          </p>
+          <table className="admin-data-table">
+            <thead>
+              <tr>
+                <th>Apprenant</th>
+                <th>Montant</th>
+                <th>Type</th>
+                <th>Référence</th>
+                <th>Note / résolution</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading && refundPayments.length === 0 ? (
+                <tr>
+                  <td colSpan={5}>
+                    <div className="ar-empty-row">Chargement…</div>
+                  </td>
+                </tr>
+              ) : refundPayments.length === 0 ? (
+                <tr>
+                  <td colSpan={5}>
+                    <div className="ar-empty-row">
+                      <CheckCircle2 size={26} />
+                      Aucun paiement à rembourser.
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                refundPayments.map((payment) => {
+                  const modules =
+                    payment.modules && payment.modules.length > 0
+                      ? payment.modules
+                      : payment.module
+                        ? [payment.module]
+                        : []
+                  const kindLabel =
+                    payment.kind === 'reservation'
+                      ? 'Réservation'
+                      : payment.kind === 'abonnement'
+                        ? 'Abonnement'
+                        : 'Autre'
+                  return (
+                    <tr key={payment.id}>
+                      <td>
+                        <div className="ar-learner">
+                          <span className="ar-avatar">{initials(payment.learner)}</span>
+                          <div className="ar-learner-body">
+                            <div className="ar-learner-name">{learnerName(payment.learner)}</div>
+                            <div className="ar-learner-meta">
+                              {payment.learner?.phone || payment.learner?.email || '—'}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <strong>{formatMoney(payment.amount, payment.currency)}</strong>
+                        <div className="ar-learner-meta">{paymentChannelLabel(payment)}</div>
+                      </td>
+                      <td>
+                        <StatusBadge tone="warning">{kindLabel}</StatusBadge>
+                        {modules.length ? (
+                          <div className="ar-row-actions" style={{ marginTop: 6 }}>
+                            {modules.map((key) => (
+                              <ModuleChip key={key} module={key} />
+                            ))}
+                          </div>
+                        ) : null}
+                        <div className="ar-learner-meta" style={{ marginTop: 4 }}>
+                          {formatDateTime(payment.activatedAt || payment.createdAt)}
+                        </div>
+                      </td>
+                      <td className="muted">
+                        {payment.fedapayReference || payment.declaredReference || '—'}
+                        {payment.adminNote ? (
+                          <div className="ar-learner-meta" style={{ marginTop: 4, whiteSpace: 'pre-wrap' }}>
+                            {payment.adminNote}
+                          </div>
+                        ) : null}
+                      </td>
+                      <td>
+                        <div className="ar-row-actions" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
+                          <input
+                            value={refundNotes[payment.id] ?? ''}
+                            onChange={(e) =>
+                              setRefundNotes((current) => ({ ...current, [payment.id]: e.target.value }))
+                            }
+                            placeholder="Ex. remboursé MTN le 29/07"
+                            disabled={refundBusy === payment.id}
+                          />
+                          <button
+                            type="button"
+                            className="admin-btn admin-btn-secondary"
+                            disabled={refundBusy === payment.id}
+                            onClick={() => void handleResolveRefund(payment.id)}
+                          >
+                            {refundBusy === payment.id ? '…' : 'Marquer résolu'}
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   )

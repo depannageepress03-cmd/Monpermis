@@ -1,4 +1,5 @@
 import { getApiBase } from './config'
+import { getStoredToken, invalidateSessionIfUnauthorized } from './auth'
 
 interface ApiResponse<T> {
   success: boolean
@@ -8,7 +9,7 @@ interface ApiResponse<T> {
 }
 
 function getToken() {
-  return localStorage.getItem('token') ?? sessionStorage.getItem('token')
+  return getStoredToken()
 }
 
 export class AccessRequestError extends Error {
@@ -36,6 +37,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const body = (await response.json().catch(() => ({}))) as ApiResponse<T>
 
   if (!response.ok || !body.success || body.data === undefined) {
+    invalidateSessionIfUnauthorized(response.status)
     throw new AccessRequestError(body.error ?? 'Action impossible', body.code)
   }
   return body.data

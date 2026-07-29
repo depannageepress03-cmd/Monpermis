@@ -185,6 +185,8 @@ export function MediaContent({ title, text, videoUrl, imageUrl }: MediaContentPr
               b: styles.htmlStrong,
               em: styles.htmlEm,
               u: styles.htmlUnderline,
+              s: styles.htmlStrike,
+              a: styles.htmlLink,
               ul: styles.htmlList,
               ol: styles.htmlList,
               li: styles.htmlListItem,
@@ -285,6 +287,13 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
   },
   htmlUnderline: {
+    textDecorationLine: 'underline',
+  },
+  htmlStrike: {
+    textDecorationLine: 'line-through',
+  },
+  htmlLink: {
+    color: dark.green,
     textDecorationLine: 'underline',
   },
   htmlList: {

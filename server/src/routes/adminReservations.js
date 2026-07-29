@@ -15,7 +15,7 @@ import {
   normalizeVehicleType,
   parseLocalDate,
 } from '../utils/localDate.js'
-import { computeCreneauHeures } from '../utils/creneauDuration.js'
+import { creditHeuresEffectueesForCompletion } from '../utils/reservationLifecycle.js'
 
 function asObjectId(value) {
   if (!value) return null
@@ -554,26 +554,7 @@ router.patch('/reservations/:id', async (req, res) => {
         // Réservations post-pack d'heures : déjà débitées à la réservation, on ne
         // fait qu'enregistrer les heures effectuées. Réservations antérieures
         // (heuresDebitees=0, ancien flux) : comportement historique conservé.
-        if (reservation.heuresDebitees > 0) {
-          if (reservation.userId) {
-            await User.findByIdAndUpdate(reservation.userId, {
-              $inc: { heuresEffectuees: reservation.heuresDebitees },
-            })
-          }
-        } else {
-          const creneau = reservation.creneauId ? await Creneau.findById(reservation.creneauId) : null
-          const heures = computeCreneauHeures(creneau)
-
-          if (reservation.userId) {
-            await User.findByIdAndUpdate(reservation.userId, {
-              $inc: { heuresEffectuees: heures, soldeHeures: -heures },
-            })
-            logger.info('Heures auto-incrémentées (ancien flux)', {
-              userId: String(reservation.userId),
-              heures,
-            })
-          }
-        }
+        await creditHeuresEffectueesForCompletion(reservation)
       }
 
       reservation.status = req.body.status

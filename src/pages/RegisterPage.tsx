@@ -10,6 +10,8 @@ import {
   validateName,
   validatePassword,
   validatePhone,
+  normalizePhone,
+  PHONE_PLACEHOLDER,
 } from '../utils/validation'
 import '../styles/login.css'
 
@@ -42,8 +44,18 @@ export function RegisterPage() {
     setErrors({})
 
     try {
-      const { user, token } = await loginWithGoogle(idToken)
+      const { user, token, needsPhone } = await loginWithGoogle(idToken)
       saveSession(token, user, true)
+      if (needsPhone || !String(user.phone || '').trim()) {
+        navigate('/profil', {
+          replace: true,
+          state: {
+            phoneRequired:
+              'Ajoute ton numéro de téléphone pour payer en Mobile Money et recevoir les rappels.',
+          },
+        })
+        return
+      }
       navigate('/accueil', { replace: true })
     } catch (error) {
       const { message } = getAuthErrorDetails(error)
@@ -80,15 +92,17 @@ export function RegisterPage() {
     setLoading(true)
 
     try {
-      const { user, token } = await registerUser({
+      const { message } = await registerUser({
         firstName,
         lastName,
         email,
-        phone,
+        phone: normalizePhone(phone),
         password,
       })
-      saveSession(token, user, true)
-      navigate('/accueil', { replace: true })
+      navigate('/', {
+        replace: true,
+        state: { message: message || 'Compte créé. Vérifiez votre email puis connectez-vous.' },
+      })
     } catch (error) {
       setErrors({ form: error instanceof Error ? error.message : 'Inscription impossible' })
     } finally {
@@ -148,11 +162,11 @@ export function RegisterPage() {
               label="Téléphone"
               name="phone"
               type="tel"
-              placeholder="Téléphone"
+              placeholder={PHONE_PLACEHOLDER}
               autoComplete="tel"
               inputMode="tel"
               value={phone}
-              onChange={(e) => setPhone(e.target.value)}
+              onChange={(e) => setPhone(normalizePhone(e.target.value))}
               error={errors.phone}
             />
             <AuthInput

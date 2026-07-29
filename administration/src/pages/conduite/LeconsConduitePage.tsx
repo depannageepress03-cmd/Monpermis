@@ -372,16 +372,16 @@ function ModuleEditor({
                 </label>
               ) : null}
 
-              <label className="revision-field">
+              <div className="revision-field">
                 <span>
                   <Type size={16} /> Bloc texte
                 </span>
                 <RichTextEditor
                   value={text}
                   onChange={setText}
-                  placeholder="Explications ou cours théorique — gras, souligné, listes, paragraphes…"
+                  placeholder="Explications ou cours théorique — gras, titres, listes, liens…"
                 />
-              </label>
+              </div>
             </section>
 
             {error ? <p className="form-error">{error}</p> : null}

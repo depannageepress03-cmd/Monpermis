@@ -99,11 +99,69 @@ async function releaseReservationSlot(reservation, { reason, cancelledBy = 'admi
 }
 
 /**
+ * Confirme atomiquement les réservations pending_payment d’un paiement approved
+ * et garantit que les créneaux restent `reserve` (indisponibles aux autres).
+ */
+async function confirmReservationsForApprovedPayment(payment) {
+  if (!payment?.reservationGroupId) {
+    return { reservations: [], unlocked: 0 }
+  }
+
+  const paymentRef = payment.fedapayReference || payment.fedapayTransactionId || ''
+  const pending = await Reservation.find({
+    bookingGroupId: payment.reservationGroupId,
+    status: 'pending_payment',
+  })
+
+  let unlocked = 0
+  for (const reservation of pending) {
+    const updated = await Reservation.findOneAndUpdate(
+      { _id: reservation._id, status: 'pending_payment' },
+      {
+        $set: {
+          status: 'confirmed',
+          paymentStatus: 'paid',
+          paymentRef,
+        },
+      },
+      { new: true },
+    )
+    if (!updated) continue
+    unlocked += 1
+    await Creneau.findByIdAndUpdate(updated.creneauId, {
+      status: 'reserve',
+      lockedUntil: null,
+      lockedBy: null,
+    })
+  }
+
+  // Défensif : même si déjà confirmed, le créneau ne doit jamais rester libre après paiement.
+  const reservations = await Reservation.find({ bookingGroupId: payment.reservationGroupId })
+  for (const reservation of reservations) {
+    if (reservation.status !== 'confirmed') continue
+    await Creneau.findByIdAndUpdate(reservation.creneauId, {
+      status: 'reserve',
+      lockedUntil: null,
+      lockedBy: null,
+    })
+  }
+
+  return { reservations, unlocked }
+}
+
+/**
  * Void FedaPay + annule atomiquement un Payment de réservation encore pending.
  * Si la tx est déjà payée, réconcilie au lieu d’annuler.
  */
 export async function cancelPendingReservationPayment(payment, note) {
-  if (!payment || payment.status !== 'pending') {
+  if (!payment) {
+    return { payment, paidAlready: false }
+  }
+  // Déjà encaissé : ne jamais traiter comme annulable (expire / cancel utilisateur).
+  if (payment.status === 'approved') {
+    return { payment, paidAlready: true }
+  }
+  if (payment.status !== 'pending') {
     return { payment, paidAlready: false }
   }
 
@@ -134,7 +192,12 @@ export async function cancelPendingReservationPayment(payment, note) {
     { $set: { status: 'canceled', errorMessage: note } },
     { new: true },
   )
-  return { payment: canceled || (await Payment.findById(payment._id)), paidAlready: false }
+  // Un webhook concurrent a pu passer le paiement en approved pendant le void.
+  const effective = canceled || (await Payment.findById(payment._id))
+  if (effective?.status === 'approved') {
+    return { payment: effective, paidAlready: true }
+  }
+  return { payment: effective, paidAlready: false }
 }
 
 /** Libère les réservations bloquées en pending_payment depuis trop longtemps (paiement jamais abouti). */
@@ -156,16 +219,30 @@ export async function expireStalePendingReservations() {
     const note = 'Paiement non abouti (délai dépassé)'
 
     if (groupKey) {
+      // Inclut aussi un Payment déjà approved : il faut confirmer, pas libérer.
       const payment = await Payment.findOne({
         reservationGroupId: reservation.bookingGroupId,
-        status: 'pending',
         method: 'fedapay',
+        status: { $in: ['pending', 'approved'] },
       }).sort({ createdAt: -1 })
+
+      if (payment?.status === 'approved') {
+        await applyApprovedReservationPayment(payment, {
+          eventName: 'expire.reconcile',
+          eventId: `expire-reconcile:${payment._id}`,
+        })
+        continue
+      }
 
       if (payment) {
         const result = await cancelPendingReservationPayment(payment, note)
         if (result.paidAlready) {
-          // Paiement abouti entre-temps — ne pas libérer les créneaux.
+          // Paiement abouti entre-temps — confirmer / garantir les créneaux, ne pas libérer.
+          const paid = result.payment || payment
+          await applyApprovedReservationPayment(paid, {
+            eventName: 'expire.reconcile',
+            eventId: `expire-reconcile:${paid._id}`,
+          })
           continue
         }
       }
@@ -191,8 +268,15 @@ export async function applyApprovedReservationPayment(
   payment,
   { eventName = '', eventId = '', raw = null } = {},
 ) {
-  if (eventId && payment.processedEventIds.includes(String(eventId))) {
-    return { payment, alreadyProcessed: true, reservations: [] }
+  if (eventId && (payment.processedEventIds || []).includes(String(eventId))) {
+    // Même événement rejoué : tout de même garantir confirmation + créneaux réservés.
+    const { reservations, unlocked } = await confirmReservationsForApprovedPayment(payment)
+    return {
+      payment: await Payment.findById(payment._id),
+      alreadyProcessed: true,
+      reservations,
+      unlocked,
+    }
   }
 
   if (payment.status === 'approved') {
@@ -202,10 +286,36 @@ export async function applyApprovedReservationPayment(
         $set: { lastEventName: eventName || payment.lastEventName, rawLastEvent: raw },
       })
     }
-    const reservations = payment.reservationGroupId
-      ? await Reservation.find({ bookingGroupId: payment.reservationGroupId })
-      : []
-    return { payment: await Payment.findById(payment._id), alreadyProcessed: true, reservations }
+    // Critique : un retry webhook / expire ne doit pas court-circuiter la confirmation
+    // si le Payment est déjà approved mais les Reservation encore pending_payment.
+    const { reservations, unlocked } = await confirmReservationsForApprovedPayment(payment)
+    const fresh = await Payment.findById(payment._id)
+    const hasConfirmed = reservations.some((r) => r.status === 'confirmed')
+
+    if (!hasConfirmed) {
+      if (fresh && !fresh.needsRefund) {
+        fresh.needsRefund = true
+        fresh.errorMessage =
+          fresh.errorMessage ||
+          'Paiement approved sans créneau livrable (annulé/expiré) — remboursement requis'
+        await fresh.save()
+        logger.warn('Paiement réservation orphelin — needsRefund (retry approved)', {
+          paymentId: String(fresh._id),
+        })
+      }
+      void broadcastReservationPaymentUpdate(fresh, reservations)
+      return {
+        payment: fresh,
+        alreadyProcessed: true,
+        needsRefund: true,
+        orphan: true,
+        reservations,
+        unlocked,
+      }
+    }
+
+    if (unlocked > 0) void broadcastReservationPaymentUpdate(fresh, reservations)
+    return { payment: fresh, alreadyProcessed: unlocked === 0, reservations, unlocked }
   }
 
   if (['canceled', 'failed', 'declined'].includes(payment.status)) {
@@ -252,10 +362,8 @@ export async function applyApprovedReservationPayment(
   if (!claimed) {
     const fresh = await Payment.findById(payment._id)
     if (fresh?.status === 'approved') {
-      const reservations = fresh.reservationGroupId
-        ? await Reservation.find({ bookingGroupId: fresh.reservationGroupId })
-        : []
-      return { payment: fresh, alreadyProcessed: true, reservations }
+      // Concurrent claim : finaliser tout de même les réservations.
+      return applyApprovedReservationPayment(fresh, { eventName, eventId, raw })
     }
     if (fresh && ['canceled', 'failed', 'declined'].includes(fresh.status)) {
       const flagged = await Payment.findByIdAndUpdate(
@@ -287,19 +395,7 @@ export async function applyApprovedReservationPayment(
     return { payment: claimed, alreadyProcessed: false, needsRefund: true, orphan: true, reservations: [] }
   }
 
-  const pending = await Reservation.find({
-    bookingGroupId: claimed.reservationGroupId,
-    status: 'pending_payment',
-  })
-
-  for (const reservation of pending) {
-    reservation.status = 'confirmed'
-    reservation.paymentStatus = 'paid'
-    reservation.paymentRef = claimed.fedapayReference || claimed.fedapayTransactionId || ''
-    await reservation.save()
-  }
-
-  const reservations = await Reservation.find({ bookingGroupId: claimed.reservationGroupId })
+  const { reservations, unlocked } = await confirmReservationsForApprovedPayment(claimed)
   void broadcastReservationPaymentUpdate(claimed, reservations)
 
   if (!reservations.length) {
@@ -313,8 +409,8 @@ export async function applyApprovedReservationPayment(
     return { payment: claimed, alreadyProcessed: false, needsRefund: true, orphan: true, reservations: [] }
   }
 
-  // Approved mais plus aucune réservation pending (expirée / annulée) → orphelin.
-  if (pending.length === 0) {
+  // Approved mais aucune réservation confirmable (annulée/expirée) → orphelin.
+  if (unlocked === 0 && !reservations.some((r) => r.status === 'confirmed')) {
     claimed.needsRefund = true
     claimed.errorMessage =
       claimed.errorMessage ||
@@ -324,7 +420,7 @@ export async function applyApprovedReservationPayment(
     logger.warn('Paiement réservation orphelin — needsRefund', { paymentId: String(claimed._id) })
   }
 
-  return { payment: claimed, reservations, alreadyProcessed: false, unlocked: pending.length }
+  return { payment: claimed, reservations, alreadyProcessed: false, unlocked }
 }
 
 export async function applyFailedReservationPayment(
@@ -332,7 +428,7 @@ export async function applyFailedReservationPayment(
   status,
   { eventName = '', eventId = '', raw = null, message = '' } = {},
 ) {
-  if (eventId && payment.processedEventIds.includes(String(eventId))) {
+  if (eventId && (payment.processedEventIds || []).includes(String(eventId))) {
     return { payment, alreadyProcessed: true, reservations: [] }
   }
 

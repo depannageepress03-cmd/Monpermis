@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import {
   ActivityIndicator,
+  Image,
   Modal,
   Pressable,
   ScrollView,
@@ -23,12 +24,7 @@ import {
 import { dark, fonts } from '../theme'
 import { hapticLight, hapticSuccess } from '../utils/haptics'
 import { clearPendingCheckoutCart, savePendingCheckoutCart } from '../utils/checkoutCart'
-
-const OPERATORS: { id: MobileMoneyOperator; label: string }[] = [
-  { id: 'mtn', label: 'MTN' },
-  { id: 'moov', label: 'Moov' },
-  { id: 'celtiis', label: 'Celtiis' },
-]
+import { PAYMENT_OPERATORS, paymentOperatorLabel } from '../utils/paymentOperators'
 
 /** Seul pays desservi : envoyé au serveur sans étape de sélection. */
 const COUNTRY = 'BJ'
@@ -176,6 +172,12 @@ export function MobileMoneyCheckout({
       setError('Choisis un réseau Mobile Money')
       return
     }
+    if (!phone.trim()) {
+      setError(
+        'Indique un numéro Mobile Money valide (ex. 0147880143). Ajoute-le aussi dans ton profil.',
+      )
+      return
+    }
     const detected = guessOperator(phone)
     if (detected && detected !== operator) {
       setError(
@@ -261,15 +263,18 @@ export function MobileMoneyCheckout({
             {step === 'operator' ? (
               <View style={styles.step}>
                 <Text style={styles.kicker}>1. Réseau mobile</Text>
-                {OPERATORS.map((item) => (
+                {PAYMENT_OPERATORS.map((item) => (
                   <Pressable
                     key={item.id}
                     style={[styles.choice, operator === item.id && styles.choiceActive]}
+                    accessibilityRole="button"
+                    accessibilityLabel={item.alt}
                     onPress={() => {
                       setOperator(item.id)
                       setStep('phone')
                     }}
                   >
+                    <Image source={item.logo} style={styles.choiceLogo} resizeMode="contain" />
                     <Text style={styles.choiceText}>{item.label}</Text>
                   </Pressable>
                 ))}
@@ -297,7 +302,8 @@ export function MobileMoneyCheckout({
                 />
                 {guessOperator(phone) ? (
                   <Text style={styles.hint}>
-                    Réseau détecté : {guessOperator(phone)?.toUpperCase()} — choisis le même opérateur.
+                    Réseau détecté : {paymentOperatorLabel(guessOperator(phone))} — choisis le même
+                    opérateur.
                   </Text>
                 ) : null}
                 {step !== 'waiting' ? (
@@ -314,14 +320,14 @@ export function MobileMoneyCheckout({
                     <ActivityIndicator color="#fff" />
                   ) : (
                     <Text style={styles.payText}>
-                      Payer {formatPrice(total)} ({operator?.toUpperCase() || ''})
+                      Payer {formatPrice(total)} ({paymentOperatorLabel(operator)})
                     </Text>
                   )}
                 </Pressable>
                 {step === 'waiting' ? (
                   <Text style={styles.hint}>
                     Une demande de retrait a été envoyée sur {phone || 'ton téléphone'} (
-                    {operator?.toUpperCase()}).{'\n'}
+                    {paymentOperatorLabel(operator)}).{'\n'}
                     Ouvre la notification MTN/Moov/Celtiis et valide avec ton code secret.
                   </Text>
                 ) : null}
@@ -395,15 +401,24 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   choice: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
     borderWidth: 1,
     borderColor: dark.border,
     borderRadius: 12,
-    paddingVertical: 14,
+    paddingVertical: 12,
     paddingHorizontal: 14,
     backgroundColor: dark.surfaceRaised,
   },
   choiceActive: { borderColor: dark.green },
-  choiceText: { color: dark.textPrimary, fontFamily: fonts.bodyBold, fontSize: 15, textAlign: 'center' },
+  choiceLogo: {
+    width: 48,
+    height: 48,
+    borderRadius: 8,
+    backgroundColor: '#fff',
+  },
+  choiceText: { flex: 1, color: dark.textPrimary, fontFamily: fonts.bodyBold, fontSize: 15 },
   input: {
     borderWidth: 1,
     borderColor: dark.border,

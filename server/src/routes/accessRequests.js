@@ -7,6 +7,7 @@ import { User } from '../models/User.js'
 import {
   activateFreeAccessModules,
   cancelPendingOnlinePayment,
+  CATALOG_HIDDEN_MODULES,
   checkoutCartOnlineAccess,
   computeModuleAmount,
   getUserModuleAccess,
@@ -21,7 +22,10 @@ router.use(requireUserAuth)
 
 router.get('/modules', async (_req, res) => {
   try {
-    const modules = await AccessModulePricing.find({ active: true }).sort({ key: 1 })
+    const modules = await AccessModulePricing.find({
+      active: true,
+      key: { $nin: CATALOG_HIDDEN_MODULES },
+    }).sort({ key: 1 })
     res.json({
       success: true,
       data: {
@@ -46,6 +50,7 @@ router.post('/quote', async (req, res) => {
     let total = 0
     for (const raw of items) {
       if (!ACCESS_MODULES.includes(raw?.module)) continue
+      if (CATALOG_HIDDEN_MODULES.includes(raw.module)) continue
       const pricing = await AccessModulePricing.findOne({ key: raw.module, active: true })
       if (!pricing) continue
       const quantity = Math.max(1, Number(raw.quantity) || 1)

@@ -52,6 +52,7 @@ const unitSuffix: Record<AccessModule['unit'], string> = {
   week: ' / semaine',
 }
 
+/** Offres self-service sur cet écran (heures conduite = espace Conduite). */
 const PRIMARY_KEYS: AccessModuleKey[] = ['code']
 
 export function AbonnementScreen() {
@@ -147,9 +148,9 @@ export function AbonnementScreen() {
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <View style={styles.introRow}>
           <Text style={styles.intro}>
-            Achète l’accès Code par Mobile Money (MTN, Moov, Celtiis). Les cours vidéo de
-            conduite sont gratuits depuis l’espace Conduite ; les heures moniteur s’achètent
-            aussi là-bas.
+            Achète l’accès Code et le Chat IA par Mobile Money (MTN, Moov, Celtiis). Les
+            cours vidéo de conduite sont gratuits depuis l’espace Conduite ; les heures
+            moniteur s’achètent aussi là-bas.
           </Text>
           <Pressable
             style={({ pressed }) => [styles.historyBtn, pressed && styles.pressed]}

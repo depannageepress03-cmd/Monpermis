@@ -1,5 +1,6 @@
 import { getApiBase } from './config'
 import type { AccessModuleKey } from './accessRequests'
+import { getStoredToken, invalidateSessionIfUnauthorized } from './auth'
 
 interface ApiResponse<T> {
   success: boolean
@@ -8,7 +9,7 @@ interface ApiResponse<T> {
 }
 
 function getToken() {
-  return localStorage.getItem('token') ?? sessionStorage.getItem('token')
+  return getStoredToken()
 }
 
 export class PaymentHistoryError extends Error {
@@ -90,6 +91,7 @@ export async function fetchMyPayments() {
   }>
 
   if (!response.ok || !body.success || !body.data) {
+    invalidateSessionIfUnauthorized(response.status)
     throw new PaymentHistoryError(body.error ?? 'Chargement impossible')
   }
   return body.data.payments

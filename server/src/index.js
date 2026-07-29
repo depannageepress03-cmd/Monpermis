@@ -34,8 +34,10 @@ import adminPromoCodesRoutes from './routes/adminPromoCodes.js'
 import { fedapayKeyFingerprint, isFedaPayConfigured } from './services/fedapay.js'
 import { sendMediaAsset } from './middleware/upload.js'
 import { ensureReservationIndexes } from './models/Reservation.js'
-import { ensureAccessModulePricing, expireDueAccessRequests } from './utils/accessRequests.js'
+import { ensureAccessModulePricing, expireDueAccessRequests, warnExpiringAccessRequests } from './utils/accessRequests.js'
 import { expireStalePendingReservations } from './utils/reservationPayments.js'
+import { runReservationReminders } from './utils/reservationReminders.js'
+import { completePastConfirmedReservations } from './utils/reservationLifecycle.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const app = express()
@@ -301,7 +303,10 @@ async function connectMongo() {
       logger.info(`Tarifs modules d'accès initialisés (${pricingSeed.created})`)
     }
     await expireDueAccessRequests()
+    await warnExpiringAccessRequests(Number(process.env.SUBSCRIPTION_EXPIRY_WARN_DAYS) || 3)
     await expireStalePendingReservations()
+    await completePastConfirmedReservations()
+    await runReservationReminders()
 
     setInterval(async () => {
       try {
@@ -310,9 +315,30 @@ async function connectMongo() {
         logger.error('Erreur vérification expirations', { error: e.message })
       }
       try {
+        await warnExpiringAccessRequests(Number(process.env.SUBSCRIPTION_EXPIRY_WARN_DAYS) || 3)
+      } catch (e) {
+        logger.error('Erreur alertes expiration abonnements', { error: e.message })
+      }
+      try {
         await expireStalePendingReservations()
       } catch (e) {
         logger.error('Erreur libération réservations en attente de paiement', { error: e.message })
+      }
+      try {
+        const { completed } = await completePastConfirmedReservations()
+        if (completed > 0) {
+          logger.info('Réservations auto-complétées', { completed })
+        }
+      } catch (e) {
+        logger.error('Erreur auto-complétion réservations', { error: e.message })
+      }
+      try {
+        const { sent } = await runReservationReminders()
+        if (sent > 0) {
+          logger.info('Rappels WhatsApp envoyés', { sent })
+        }
+      } catch (e) {
+        logger.error('Erreur rappels WhatsApp', { error: e.message })
       }
     }, 15 * 60 * 1000)
   } catch (err) {

@@ -153,8 +153,13 @@ router.post('/grant', async (req, res) => {
 /** Flux des paiements réussis (Mobile Money). */
 router.get('/payments', async (req, res) => {
   try {
-    const filter = { status: 'approved' }
-    if (req.query.from || req.query.to) {
+    const needsRefundOnly =
+      req.query.needsRefund === '1' ||
+      req.query.needsRefund === 'true' ||
+      req.query.needsRefund === 'yes'
+
+    const filter = needsRefundOnly ? { needsRefund: true } : { status: 'approved' }
+    if (!needsRefundOnly && (req.query.from || req.query.to)) {
       filter.activatedAt = {}
       if (req.query.from) filter.activatedAt.$gte = new Date(req.query.from)
       if (req.query.to) filter.activatedAt.$lte = new Date(req.query.to)
@@ -165,7 +170,10 @@ router.get('/payments', async (req, res) => {
     const skip = (page - 1) * limit
 
     const [payments, total] = await Promise.all([
-      Payment.find(filter).sort({ activatedAt: -1, createdAt: -1 }).skip(skip).limit(limit),
+      Payment.find(filter)
+        .sort(needsRefundOnly ? { updatedAt: -1, createdAt: -1 } : { activatedAt: -1, createdAt: -1 })
+        .skip(skip)
+        .limit(limit),
       Payment.countDocuments(filter),
     ])
 
@@ -194,6 +202,7 @@ router.get('/payments', async (req, res) => {
             ...p.toAdminJSON(userMap.get(String(p.userId))),
             modules,
             module: modules[0] || null,
+            kind: p.reservationGroupId ? 'reservation' : ids.length ? 'abonnement' : 'autre',
           }
         }),
       },
@@ -201,6 +210,41 @@ router.get('/payments', async (req, res) => {
   } catch (error) {
     logger.error('Erreur liste paiements réussis:', { error: error.message })
     res.status(500).json({ success: false, error: 'Chargement impossible' })
+  }
+})
+
+/** Marque un paiement needsRefund comme traité (remboursement manuel hors plateforme). */
+router.patch('/payments/:id/resolve-refund', async (req, res) => {
+  try {
+    const payment = await Payment.findById(req.params.id)
+    if (!payment) {
+      return res.status(404).json({ success: false, error: 'Paiement introuvable' })
+    }
+    if (!payment.needsRefund) {
+      return res.status(400).json({ success: false, error: 'Ce paiement n’est pas signalé pour remboursement' })
+    }
+
+    const note = String(req.body?.note || '').trim()
+    if (!note) {
+      return res.status(400).json({ success: false, error: 'Une note est obligatoire' })
+    }
+
+    payment.needsRefund = false
+    payment.adminNote = payment.adminNote
+      ? `${payment.adminNote}\n[Remboursement] ${note}`
+      : `[Remboursement] ${note}`
+    payment.verifiedByAdminId = req.admin._id
+    payment.verifiedAt = new Date()
+    await payment.save()
+
+    const user = await User.findById(payment.userId).select('firstName lastName email phone')
+    res.json({
+      success: true,
+      data: { payment: payment.toAdminJSON(user, req.admin) },
+    })
+  } catch (error) {
+    logger.error('Erreur résolution remboursement:', { error: error.message })
+    res.status(500).json({ success: false, error: 'Mise à jour impossible' })
   }
 })
 

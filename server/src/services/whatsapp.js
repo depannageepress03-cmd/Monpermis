@@ -67,7 +67,8 @@ export function formatReservationReminder({ firstName, date, startTime, moniteur
 }
 
 /** Numéro WhatsApp de l'auto-école, utilisé par les élèves pour notifier l'admin d'une réservation. */
-export const ADMIN_WHATSAPP_NUMBER = '0192878702'
+export const ADMIN_WHATSAPP_NUMBER =
+  String(process.env.ADMIN_WHATSAPP_NUMBER || '').trim() || '0192878702'
 
 /** Message envoyé par l'élève à l'admin pour signaler sa réservation. */
 export function formatReservationNotifyAdmin({ firstName, date, startTime, moniteurName }) {

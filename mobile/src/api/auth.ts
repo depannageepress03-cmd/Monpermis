@@ -26,6 +26,7 @@ export interface AuthUser {
 interface AuthData {
   user: AuthUser
   token: string
+  needsPhone?: boolean
 }
 
 export class AuthError extends Error {
@@ -86,7 +87,7 @@ export function registerUser(data: {
   phone: string
   password: string
 }) {
-  return request<AuthData & { message: string }>('/auth/register', {
+  return request<{ message: string; email: string }>('/auth/register', {
     method: 'POST',
     body: JSON.stringify(data),
   })
@@ -124,6 +125,13 @@ export function verifyEmail(token: string) {
   return request<{ message: string }>('/auth/verify-email', {
     method: 'POST',
     body: JSON.stringify({ token }),
+  })
+}
+
+export function resendVerificationEmail(email: string) {
+  return request<{ message: string }>('/auth/resend-verification', {
+    method: 'POST',
+    body: JSON.stringify({ email }),
   })
 }
 

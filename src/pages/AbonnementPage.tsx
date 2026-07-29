@@ -33,6 +33,7 @@ const unitSuffix: Record<AccessModule['unit'], string> = {
   week: ' / semaine',
 }
 
+/** Offres self-service sur cette page (heures conduite = espace Conduite). */
 const PRIMARY_KEYS: AccessModuleKey[] = ['code']
 
 export function AbonnementPage() {
@@ -73,6 +74,7 @@ export function AbonnementPage() {
 
   const cartItems: CheckoutCartItem[] = modules
     .filter((module) => {
+      if (!PRIMARY_KEYS.includes(module.key)) return false
       if (!selected[module.key]) return false
       if (me?.access[module.key]) return false
       return true
@@ -125,7 +127,7 @@ export function AbonnementPage() {
         <PageNavbar title="Mes accès" icon={<CreditCard size={25} />} onBack={() => navigate('/accueil')} />
 
         <header className="auth-header learner-header">
-          <p>Choisissez une ou plusieurs offres, puis payez par Mobile Money (MTN, Moov, Celtiis).</p>
+          <p>Choisissez Code et/ou Chat IA, puis payez par Mobile Money (MTN, Moov, Celtiis).</p>
         </header>
 
         <button
@@ -163,11 +165,13 @@ export function AbonnementPage() {
 
             <section className="subscription-catalog">
               <h2>Offres disponibles</h2>
-              {sortedModules.length === 0 ? (
+              {sortedModules.filter((module) => PRIMARY_KEYS.includes(module.key)).length === 0 ? (
                 <p className="subtitle">Aucun accès n’est disponible pour le moment.</p>
               ) : (
                 <div className="offer-pick-list">
-                  {sortedModules.map((module) => {
+                  {sortedModules
+                    .filter((module) => PRIMARY_KEYS.includes(module.key))
+                    .map((module) => {
                     const isActive = Boolean(me?.access[module.key])
                     const showsQuantity = module.unit === 'hour'
                     const quantity = quantityByModule[module.key] ?? 1

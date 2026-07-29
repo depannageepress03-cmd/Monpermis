@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import {
   ActivityIndicator,
+  Image,
   Modal,
   Pressable,
   ScrollView,
@@ -23,12 +24,7 @@ import {
   redeemPromoCode,
 } from '../api/accessRequests'
 import { dark, fonts } from '../theme'
-
-const OPERATORS: { id: MobileMoneyOperator; label: string }[] = [
-  { id: 'mtn', label: 'MTN' },
-  { id: 'moov', label: 'Moov' },
-  { id: 'celtiis', label: 'Celtiis' },
-]
+import { PAYMENT_OPERATORS, paymentOperatorLabel } from '../utils/paymentOperators'
 
 function guessOperator(phone: string): MobileMoneyOperator | null {
   const digits = phone.replace(/\D/g, '')
@@ -256,7 +252,9 @@ export function ReservationMobileMoneyCheckout({
       return
     }
     if (!phoneDigits || phoneDigits.length < 8) {
-      setError('Indique un numéro Mobile Money valide')
+      setError(
+        'Indique un numéro Mobile Money valide (ex. 0147880143). Ajoute-le aussi dans ton profil.',
+      )
       return
     }
     setBusy(true)
@@ -378,15 +376,18 @@ export function ReservationMobileMoneyCheckout({
             {!canPayWithSolde && step === 'operator' ? (
               <View style={styles.step}>
                 <Text style={styles.kicker}>1. Réseau mobile</Text>
-                {OPERATORS.map((item) => (
+                {PAYMENT_OPERATORS.map((item) => (
                   <Pressable
                     key={item.id}
                     style={[styles.choice, operator === item.id && styles.choiceActive]}
+                    accessibilityRole="button"
+                    accessibilityLabel={item.alt}
                     onPress={() => {
                       setOperator(item.id)
                       setStep('phone')
                     }}
                   >
+                    <Image source={item.logo} style={styles.choiceLogo} resizeMode="contain" />
                     <Text style={styles.choiceText}>{item.label}</Text>
                   </Pressable>
                 ))}
@@ -414,7 +415,7 @@ export function ReservationMobileMoneyCheckout({
                 />
                 {guessOperator(phone) ? (
                   <Text style={styles.hint}>
-                    Réseau détecté : {guessOperator(phone)?.toUpperCase()} — choisis le même
+                    Réseau détecté : {paymentOperatorLabel(guessOperator(phone))} — choisis le même
                     opérateur.
                   </Text>
                 ) : null}
@@ -432,14 +433,14 @@ export function ReservationMobileMoneyCheckout({
                     <ActivityIndicator color="#fff" />
                   ) : (
                     <Text style={styles.payText}>
-                      Payer {formatPrice(amount)} ({operator?.toUpperCase() || ''})
+                      Payer {formatPrice(amount)} ({paymentOperatorLabel(operator)})
                     </Text>
                   )}
                 </Pressable>
                 {step === 'waiting' ? (
                   <Text style={styles.hint}>
                     Une demande de retrait a été envoyée sur {phone || 'ton téléphone'} (
-                    {operator?.toUpperCase()}).{'\n'}
+                    {paymentOperatorLabel(operator)}).{'\n'}
                     Ouvre la notification MTN/Moov/Celtiis et valide avec ton code secret.
                   </Text>
                 ) : null}
@@ -512,19 +513,28 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   choice: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
     borderWidth: 1,
     borderColor: dark.border,
     borderRadius: 12,
-    paddingVertical: 14,
+    paddingVertical: 12,
     paddingHorizontal: 14,
     backgroundColor: dark.surfaceRaised,
   },
   choiceActive: { borderColor: dark.green },
+  choiceLogo: {
+    width: 48,
+    height: 48,
+    borderRadius: 8,
+    backgroundColor: '#fff',
+  },
   choiceText: {
+    flex: 1,
     color: dark.textPrimary,
     fontFamily: fonts.bodyBold,
     fontSize: 15,
-    textAlign: 'center',
   },
   input: {
     borderWidth: 1,

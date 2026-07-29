@@ -59,8 +59,12 @@ export function RegisterScreen() {
   const handleGoogleSuccess = useCallback(
     async (idToken: string) => {
       try {
-        const { user, token } = await loginWithGoogle(idToken)
+        const { user, token, needsPhone } = await loginWithGoogle(idToken)
         await signIn(token, user)
+        if (needsPhone || !String(user.phone || '').trim()) {
+          navigation.reset({ index: 0, routes: [{ name: 'Profile' }] })
+          return
+        }
         navigation.reset({ index: 0, routes: [{ name: 'Home' }] })
       } catch (error) {
         showAuthError(error)

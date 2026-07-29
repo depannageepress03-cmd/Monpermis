@@ -22,6 +22,7 @@ export interface AuthUser {
 interface AuthData {
   user: AuthUser
   token: string
+  needsPhone?: boolean
 }
 
 export class AuthError extends Error {
@@ -76,7 +77,7 @@ export function registerUser(data: {
   phone: string
   password: string
 }) {
-  return request<AuthData & { message: string }>('/auth/register', {
+  return request<{ message: string; email: string }>('/auth/register', {
     method: 'POST',
     body: JSON.stringify(data),
   })
@@ -107,4 +108,26 @@ export function clearSession() {
   localStorage.removeItem('user')
   sessionStorage.removeItem('token')
   sessionStorage.removeItem('user')
+}
+
+export function getStoredToken(): string | null {
+  return localStorage.getItem('token') ?? sessionStorage.getItem('token')
+}
+
+type SessionInvalidatedListener = () => void
+const sessionInvalidatedListeners = new Set<SessionInvalidatedListener>()
+
+export function onSessionInvalidated(listener: SessionInvalidatedListener) {
+  sessionInvalidatedListeners.add(listener)
+  return () => {
+    sessionInvalidatedListeners.delete(listener)
+  }
+}
+
+/** Efface la session locale quand l’API renvoie 401 (JWT invalide / expiré). */
+export function invalidateSessionIfUnauthorized(status: number) {
+  if (status === 401) {
+    clearSession()
+    for (const listener of sessionInvalidatedListeners) listener()
+  }
 }

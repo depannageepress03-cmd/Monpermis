@@ -6,12 +6,12 @@ import {
   type MobileMoneyOperator,
   type ReservationItem,
 } from '../api/reservations'
-
-const OPERATORS: { id: MobileMoneyOperator; label: string }[] = [
-  { id: 'mtn', label: 'MTN' },
-  { id: 'moov', label: 'Moov' },
-  { id: 'celtiis', label: 'Celtiis' },
-]
+import {
+  AccessRequestError,
+  fetchAccessMe,
+  redeemPromoCode,
+} from '../api/accessRequests'
+import { PAYMENT_OPERATORS, paymentOperatorLabel } from '../utils/paymentOperators'
 
 function guessOperator(phone: string): MobileMoneyOperator | null {
   const digits = phone.replace(/\D/g, '')
@@ -42,6 +42,12 @@ function formatPrice(amount: number, currency = 'XOF') {
   )
 }
 
+interface SoldeSuccessResult {
+  reservations?: ReservationItem[]
+  reservation?: ReservationItem
+  whatsappLink?: string
+}
+
 export interface ReservationMobileMoneyCheckoutProps {
   open: boolean
   label: string
@@ -49,9 +55,14 @@ export interface ReservationMobileMoneyCheckoutProps {
   creneauId: string
   vehicleType: string
   moniteurId: string
+  /** Heures de la séance (pour solde / code promo). */
+  hoursNeeded: number
   defaultPhone?: string
   onClose: () => void
   onSuccess: (reservations: ReservationItem[]) => void
+  onSoldeSuccess: (result: SoldeSuccessResult) => void
+  /** Notifie le parent quand le solde change (après code promo). */
+  onSoldeChange?: (soldeHeures: number) => void
 }
 
 export function ReservationMobileMoneyCheckout({
@@ -61,14 +72,20 @@ export function ReservationMobileMoneyCheckout({
   creneauId,
   vehicleType,
   moniteurId,
+  hoursNeeded,
   defaultPhone = '',
   onClose,
   onSuccess,
+  onSoldeSuccess,
+  onSoldeChange,
 }: ReservationMobileMoneyCheckoutProps) {
   const [step, setStep] = useState<'intro' | 'operator' | 'phone' | 'waiting'>('intro')
   const [operator, setOperator] = useState<MobileMoneyOperator | null>(null)
   const [phone, setPhone] = useState(defaultPhone)
+  const [promoCode, setPromoCode] = useState('')
+  const [soldeHeures, setSoldeHeures] = useState<number | null>(null)
   const [busy, setBusy] = useState(false)
+  const [promoBusy, setPromoBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const pollRef = useRef<number | null>(null)
@@ -78,10 +95,18 @@ export function ReservationMobileMoneyCheckout({
     setStep('intro')
     setOperator(null)
     setPhone(defaultPhone)
+    setPromoCode('')
     setError(null)
     setSuccess(null)
     setBusy(false)
-  }, [open, defaultPhone])
+    setPromoBusy(false)
+    fetchAccessMe()
+      .then((data) => {
+        setSoldeHeures(data.user.soldeHeures)
+        onSoldeChange?.(data.user.soldeHeures)
+      })
+      .catch(() => setSoldeHeures(null))
+  }, [open, defaultPhone, onSoldeChange])
 
   useEffect(
     () => () => {
@@ -91,6 +116,8 @@ export function ReservationMobileMoneyCheckout({
   )
 
   if (!open) return null
+
+  const canPayWithSolde = soldeHeures !== null && soldeHeures >= hoursNeeded
 
   const stopPoll = () => {
     if (pollRef.current != null) {
@@ -135,9 +162,64 @@ export function ReservationMobileMoneyCheckout({
     }, 2000)
   }
 
+  const applyPromo = async () => {
+    const trimmed = promoCode.trim()
+    if (!trimmed) {
+      setError('Saisissez un code promo')
+      return
+    }
+    setPromoBusy(true)
+    setError(null)
+    setSuccess(null)
+    try {
+      const result = await redeemPromoCode(trimmed)
+      const nextSolde = result.access.user.soldeHeures
+      setSoldeHeures(nextSolde)
+      onSoldeChange?.(nextSolde)
+      if (nextSolde >= hoursNeeded) {
+        setSuccess(
+          `Code promo appliqué. Solde : ${nextSolde} h — vous pouvez valider sans Mobile Money.`,
+        )
+      } else {
+        setSuccess(
+          `Code promo appliqué. Solde : ${nextSolde} h (il manque encore des heures pour cette séance).`,
+        )
+      }
+    } catch (err) {
+      setError(
+        err instanceof AccessRequestError ? err.message : 'Code promo invalide ou déjà utilisé',
+      )
+    } finally {
+      setPromoBusy(false)
+    }
+  }
+
+  const confirmWithSolde = async () => {
+    setBusy(true)
+    setError(null)
+    try {
+      const result = await createReservation({
+        creneauIds: [creneauId],
+        vehicleType,
+        moniteurId,
+        paymentMethod: 'solde',
+      })
+      onSoldeSuccess(result)
+    } catch (err) {
+      setBusy(false)
+      setError(err instanceof ReservationError ? err.message : 'Réservation impossible')
+    }
+  }
+
   const submit = async () => {
     if (!operator) {
       setError('Choisissez un réseau Mobile Money')
+      return
+    }
+    if (!phone.trim()) {
+      setError(
+        'Indiquez un numéro Mobile Money valide (ex. 0147880143). Ajoutez-le aussi dans Mon profil.',
+      )
       return
     }
     const detected = guessOperator(phone)
@@ -177,7 +259,7 @@ export function ReservationMobileMoneyCheckout({
     <div className="mm-checkout-backdrop" role="dialog" aria-modal="true">
       <div className="mm-checkout-card auth-card learner-card">
         <header className="mm-checkout-header">
-          <h2>Paiement Mobile Money</h2>
+          <h2>Paiement</h2>
           <button type="button" className="btn-outline" onClick={onClose} disabled={busy && step === 'waiting'}>
             Fermer
           </button>
@@ -194,10 +276,50 @@ export function ReservationMobileMoneyCheckout({
           </li>
         </ul>
 
+        <div className="mm-checkout-promo">
+          <p className="learner-kicker">Code promo</p>
+          <div className="promo-code-field">
+            <input
+              type="text"
+              value={promoCode}
+              onChange={(event) => setPromoCode(event.target.value)}
+              autoCapitalize="characters"
+              placeholder="Ex. PROMO2026"
+              disabled={promoBusy || (busy && step === 'waiting')}
+            />
+            <button
+              type="button"
+              className="btn-outline"
+              disabled={promoBusy || !promoCode.trim()}
+              onClick={() => void applyPromo()}
+            >
+              {promoBusy ? '…' : 'Appliquer'}
+            </button>
+          </div>
+          {soldeHeures !== null ? (
+            <p className="subscription-status-copy">
+              Solde actuel : {soldeHeures} h (séance : {hoursNeeded} h)
+            </p>
+          ) : null}
+        </div>
+
         {error ? <p className="form-error">{error}</p> : null}
         {success ? <p className="form-success">{success}</p> : null}
 
-        {step === 'intro' ? (
+        {canPayWithSolde ? (
+          <section className="mm-checkout-step">
+            <button
+              type="button"
+              className="btn-primary"
+              disabled={busy}
+              onClick={() => void confirmWithSolde()}
+            >
+              {busy ? 'Confirmation…' : 'Valider avec mon solde / code promo'}
+            </button>
+          </section>
+        ) : null}
+
+        {!canPayWithSolde && step === 'intro' ? (
           <section className="mm-checkout-step">
             <button type="button" className="btn-primary" onClick={() => setStep('operator')}>
               Passer au paiement
@@ -205,28 +327,32 @@ export function ReservationMobileMoneyCheckout({
           </section>
         ) : null}
 
-        {step === 'operator' ? (
+        {!canPayWithSolde && step === 'operator' ? (
           <section className="mm-checkout-step">
             <p className="learner-kicker">1. Réseau mobile</p>
             <div className="mm-checkout-choices">
-              {OPERATORS.map((item) => (
+              {PAYMENT_OPERATORS.map((item) => (
                 <button
                   key={item.id}
                   type="button"
-                  className={operator === item.id ? 'btn-primary' : 'btn-outline'}
+                  className={`mm-checkout-operator${operator === item.id ? ' is-selected' : ''}`}
                   onClick={() => {
                     setOperator(item.id)
                     setStep('phone')
                   }}
                 >
-                  {item.label}
+                  <img src={item.logo} alt={item.alt} className="mm-checkout-operator-logo" />
+                  <span>{item.label}</span>
                 </button>
               ))}
             </div>
+            <button type="button" className="btn-outline" onClick={() => setStep('intro')}>
+              Retour
+            </button>
           </section>
         ) : null}
 
-        {step === 'phone' || step === 'waiting' ? (
+        {!canPayWithSolde && (step === 'phone' || step === 'waiting') ? (
           <section className="mm-checkout-step">
             <p className="learner-kicker">2. Numéro Mobile Money</p>
             <label className="access-quantity-field">
@@ -235,10 +361,20 @@ export function ReservationMobileMoneyCheckout({
                 type="tel"
                 value={phone}
                 disabled={step === 'waiting'}
-                onChange={(event) => setPhone(event.target.value)}
+                onChange={(event) => {
+                  setPhone(event.target.value)
+                  const detected = guessOperator(event.target.value)
+                  if (detected) setOperator(detected)
+                }}
                 placeholder="01 XX XX XX XX"
               />
             </label>
+            {guessOperator(phone) ? (
+              <p className="subscription-status-copy">
+                Réseau détecté : {paymentOperatorLabel(guessOperator(phone))} — choisissez le même
+                opérateur.
+              </p>
+            ) : null}
             <div className="mm-checkout-actions">
               {step !== 'waiting' ? (
                 <button type="button" className="btn-outline" onClick={() => setStep('operator')}>
@@ -251,12 +387,15 @@ export function ReservationMobileMoneyCheckout({
                 disabled={busy || !phone.trim()}
                 onClick={() => void submit()}
               >
-                {busy ? 'Envoi de la demande…' : `Payer ${formatPrice(amount)} (${operator?.toUpperCase() || ''})`}
+                {busy
+                  ? 'Envoi de la demande…'
+                  : `Payer ${formatPrice(amount)} (${paymentOperatorLabel(operator)})`}
               </button>
             </div>
             {step === 'waiting' ? (
               <p className="subscription-status-copy">
-                Validez maintenant la demande de retrait sur votre téléphone ({operator?.toUpperCase()}).
+                Validez maintenant la demande de retrait sur votre téléphone (
+                {paymentOperatorLabel(operator)}).
               </p>
             ) : null}
           </section>

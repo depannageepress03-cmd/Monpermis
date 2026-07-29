@@ -1,4 +1,5 @@
 import { getApiBase } from './config'
+import { getStoredToken, invalidateSessionIfUnauthorized } from './auth'
 
 interface ApiResponse<T> {
   success: boolean
@@ -15,7 +16,7 @@ export interface Announcement {
 }
 
 function getToken() {
-  return localStorage.getItem('token') ?? sessionStorage.getItem('token')
+  return getStoredToken()
 }
 
 export async function fetchAnnouncements(): Promise<Announcement[]> {
@@ -31,7 +32,10 @@ export async function fetchAnnouncements(): Promise<Announcement[]> {
     const body = (await response.json().catch(() => ({}))) as ApiResponse<{
       announcements: Announcement[]
     }>
-    if (!response.ok || !body.success || !body.data) return []
+    if (!response.ok || !body.success || !body.data) {
+      invalidateSessionIfUnauthorized(response.status)
+      return []
+    }
     return body.data.announcements
   } catch {
     return []

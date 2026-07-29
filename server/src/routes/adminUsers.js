@@ -3,6 +3,7 @@ import { User } from '../models/User.js'
 import { requireAdminAuth } from '../middleware/adminAuth.js'
 import { audit } from '../middleware/audit.js'
 import { buildLearnerJourney } from '../utils/learnerJourney.js'
+import { deleteUserAccount } from '../utils/deleteUserAccount.js'
 import { logger } from '../utils/logger.js'
 
 const router = Router()
@@ -210,14 +211,17 @@ router.patch('/:userId', audit('update', 'user'), async (req, res) => {
 
 router.delete('/:userId', audit('delete', 'user'), async (req, res) => {
   try {
-    const user = await User.findByIdAndDelete(req.params.userId)
+    const user = await User.findById(req.params.userId)
     if (!user) {
       return res.status(404).json({ success: false, error: 'Utilisateur introuvable' })
     }
 
+    const userId = String(user._id)
+    await deleteUserAccount(user._id, { cancelledBy: 'admin' })
+
     res.json({
       success: true,
-      data: { deleted: true, id: String(user._id) },
+      data: { deleted: true, id: userId },
     })
   } catch (error) {
     logger.error('Erreur suppression utilisateur', { error: error.message })

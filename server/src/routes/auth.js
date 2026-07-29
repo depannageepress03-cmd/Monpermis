@@ -1,17 +1,15 @@
 import { Router } from 'express'
 import jwt from 'jsonwebtoken'
 import { User } from '../models/User.js'
-import { Notification } from '../models/Notification.js'
-import { AccessRequest } from '../models/AccessRequest.js'
-import { Payment } from '../models/Payment.js'
-import { AccessAuditLog } from '../models/AccessAuditLog.js'
 import {
   sendVerificationEmail,
   sendWelcomeEmail,
   sendPasswordResetEmail,
 } from '../services/email.js'
+import { normalizeBeninPhone } from '../services/fedapay.js'
 import { generateVerificationToken, getVerificationExpiry } from '../utils/tokens.js'
 import { requireUserAuth } from '../middleware/userAuth.js'
+import { deleteUserAccount } from '../utils/deleteUserAccount.js'
 import { logger } from '../utils/logger.js'
 import { verifyGoogleIdToken } from '../utils/googleAuth.js'
 
@@ -19,6 +17,24 @@ const router = Router()
 
 function createToken(userId) {
   return jwt.sign({ userId }, process.env.JWT_SECRET, { expiresIn: '7d', algorithm: 'HS256' })
+}
+
+/** Normalise un téléphone Bénin (10 chiffres) ; chaîne vide si invalide / vide. */
+function normalizeLearnerPhone(phone) {
+  if (phone == null || String(phone).trim() === '') return ''
+  return normalizeBeninPhone(phone) || ''
+}
+
+async function assertPhoneAvailable(normalizedPhone, excludeUserId = null) {
+  if (!normalizedPhone) return
+  const filter = { phone: normalizedPhone }
+  if (excludeUserId) filter._id = { $ne: excludeUserId }
+  const existing = await User.findOne(filter).select('_id')
+  if (existing) {
+    const error = new Error('Ce numéro de téléphone est déjà utilisé')
+    error.status = 409
+    throw error
+  }
 }
 
 router.post('/register', async (req, res) => {
@@ -44,6 +60,14 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Un ou plusieurs champs sont trop longs' })
     }
 
+    const normalizedPhone = normalizeLearnerPhone(phone)
+    if (!normalizedPhone) {
+      return res.status(400).json({
+        success: false,
+        error: 'Numéro de téléphone invalide. Exemple : 0147880143',
+      })
+    }
+
     const normalizedEmail = email.toLowerCase()
     const existing = await User.findOne({ email: normalizedEmail })
 
@@ -58,12 +82,21 @@ router.post('/register', async (req, res) => {
       return res.status(409).json({ success: false, error: 'Cet email est déjà utilisé' })
     }
 
+    try {
+      await assertPhoneAvailable(normalizedPhone)
+    } catch (phoneError) {
+      return res.status(phoneError.status || 409).json({
+        success: false,
+        error: phoneError.message,
+      })
+    }
+
     const verificationToken = generateVerificationToken()
     const user = await User.create({
       firstName,
       lastName,
       email: normalizedEmail,
-      phone,
+      phone: normalizedPhone,
       password,
       authProvider: 'local',
       isEmailVerified: false,
@@ -75,14 +108,13 @@ router.post('/register', async (req, res) => {
       console.error('Email de vérification non envoyé:', err.message)
     })
 
-    const token = createToken(user._id)
-
+    // Pas de session tant que l’email n’est pas vérifié (connexion locale bloquée aussi).
     res.status(201).json({
       success: true,
       data: {
-        message: 'Compte créé. Vérifiez votre email pour activer votre compte.',
-        user: user.toPublicJSON(),
-        token,
+        message:
+          'Compte créé. Vérifiez votre email pour activer votre compte, puis connectez-vous.',
+        email: user.email,
       },
     })
   } catch (error) {
@@ -122,6 +154,16 @@ router.post('/login', async (req, res) => {
 
     if (!(await user.comparePassword(password))) {
       return res.status(401).json({ success: false, error: 'Email ou mot de passe incorrect' })
+    }
+
+    // Comptes Google déjà isEmailVerified=true — seuls les local non vérifiés sont bloqués.
+    if (user.authProvider !== 'google' && !user.isEmailVerified) {
+      return res.status(403).json({
+        success: false,
+        error: 'Vérifiez votre email avant de vous connecter. Consultez votre boîte de réception.',
+        code: 'EMAIL_NOT_VERIFIED',
+        email: user.email,
+      })
     }
 
     const token = createToken(user._id)
@@ -165,6 +207,45 @@ router.post('/verify-email', async (req, res) => {
   } catch (error) {
     console.error('Erreur v\u00e9rification email:', error)
     res.status(500).json({ success: false, error: 'V\u00e9rification impossible' })
+  }
+})
+
+router.post('/resend-verification', async (req, res) => {
+  try {
+    const email = String(req.body?.email || '')
+      .trim()
+      .toLowerCase()
+    if (!email) {
+      return res.status(400).json({ success: false, error: 'Email requis' })
+    }
+
+    const user = await User.findOne({ email }).select(
+      '+emailVerificationToken +emailVerificationExpires +password',
+    )
+
+    // Réponse neutre pour ne pas révéler si l’email existe.
+    const okMessage = {
+      success: true,
+      data: { message: 'Si un compte non vérifié existe pour cet email, un nouveau lien a été envoyé.' },
+    }
+
+    if (!user || user.isEmailVerified || user.authProvider === 'google' || !user.password) {
+      return res.json(okMessage)
+    }
+
+    const verificationToken = generateVerificationToken()
+    user.emailVerificationToken = verificationToken
+    user.emailVerificationExpires = getVerificationExpiry()
+    await user.save()
+
+    sendVerificationEmail(user, verificationToken).catch((err) => {
+      logger.error('Email de vérification (renvoi) non envoyé', { error: err.message })
+    })
+
+    res.json(okMessage)
+  } catch (error) {
+    logger.error('Erreur resend-verification', { error: error.message })
+    res.status(500).json({ success: false, error: 'Envoi impossible' })
   }
 })
 
@@ -290,10 +371,24 @@ router.patch('/profile', requireUserAuth, async (req, res) => {
     }
 
     if (phone !== undefined) {
-      if (phone.length > 30) {
-        return res.status(400).json({ success: false, error: 'Téléphone trop long' })
+      const normalizedPhone = normalizeLearnerPhone(phone)
+      if (String(phone).trim() && !normalizedPhone) {
+        return res.status(400).json({
+          success: false,
+          error: 'Numéro de téléphone invalide. Exemple : 0147880143',
+        })
       }
-      user.phone = phone.trim()
+      if (normalizedPhone) {
+        try {
+          await assertPhoneAvailable(normalizedPhone, user._id)
+        } catch (phoneError) {
+          return res.status(phoneError.status || 409).json({
+            success: false,
+            error: phoneError.message,
+          })
+        }
+      }
+      user.phone = normalizedPhone
     }
 
     await user.save()
@@ -328,15 +423,7 @@ router.delete('/account', requireUserAuth, async (req, res) => {
       }
     }
 
-    const userId = user._id
-    const accessRequestIds = await AccessRequest.find({ userId }).distinct('_id')
-    await Promise.all([
-      Notification.deleteMany({ userId }),
-      AccessAuditLog.deleteMany({ accessRequestId: { $in: accessRequestIds } }),
-      Payment.deleteMany({ userId }),
-      AccessRequest.deleteMany({ userId }),
-      User.findByIdAndDelete(userId),
-    ])
+    await deleteUserAccount(user._id, { cancelledBy: 'learner' })
 
     res.json({ success: true, data: { deleted: true } })
   } catch (error) {
@@ -419,7 +506,11 @@ router.post('/google', async (req, res) => {
 
     res.json({
       success: true,
-      data: { user: user.toPublicJSON(), token },
+      data: {
+        user: user.toPublicJSON(),
+        token,
+        needsPhone: !String(user.phone || '').trim(),
+      },
     })
   } catch (error) {
     console.error('Erreur connexion Google:', error)

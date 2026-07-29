@@ -43,6 +43,7 @@ export function HomePage() {
   if (loading || !user) return null
 
   const fullName = `${user.firstName} ${user.lastName}`.trim()
+  const needsPhone = !String(user.phone || '').trim()
   const codeLocked = accessMe ? !accessMe.access.code : false
   const conduiteLocked = accessMe
     ? !(accessMe.access.conduite_videos || accessMe.access.conduite_heures || accessMe.user.soldeHeures > 0)
@@ -127,6 +128,21 @@ export function HomePage() {
             </button>
           </div>
         </header>
+
+        {needsPhone ? (
+          <section
+            className="home-app-sub-strip"
+            style={{ marginBottom: 12, borderColor: '#f59e0b', background: '#fffbeb' }}
+          >
+            <div>
+              <strong>Numéro manquant</strong>
+              <span>Ajoute ton téléphone pour Mobile Money et les rappels.</span>
+            </div>
+            <button type="button" onClick={() => navigate('/profil')}>
+              Compléter
+            </button>
+          </section>
+        ) : null}
 
         {/* Mobile stack */}
         <div className="home-mobile-stack">

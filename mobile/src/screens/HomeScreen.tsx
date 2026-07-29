@@ -173,6 +173,19 @@ export function HomeScreen() {
             </Text>
           </View>
 
+          {!String(user.phone || '').trim() ? (
+            <Pressable
+              style={({ pressed }) => [styles.statusStrip, styles.phoneStrip, pressed && styles.pressed]}
+              onPress={() => navigation.navigate('Profile')}
+            >
+              <Text style={styles.statusText} numberOfLines={2}>
+                Numéro manquant — ajoute ton téléphone pour Mobile Money
+              </Text>
+              <Text style={styles.statusAction}>Compléter</Text>
+              <ChevronRight size={16} color={dark.textMuted} />
+            </Pressable>
+          ) : null}
+
           {/* Status strip */}
           <Pressable
             style={({ pressed }) => [styles.statusStrip, pressed && styles.pressed]}
@@ -523,6 +536,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: dark.border,
     marginBottom: 24,
+  },
+  phoneStrip: {
+    borderColor: '#f59e0b',
+    backgroundColor: '#fffbeb',
+    marginBottom: 12,
   },
   statusDot: {
     width: 7,

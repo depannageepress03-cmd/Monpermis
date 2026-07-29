@@ -1,4 +1,5 @@
 import { getApiBase } from './config'
+import { getStoredToken, invalidateSessionIfUnauthorized } from './auth'
 
 interface ApiResponse<T> {
   success: boolean
@@ -20,7 +21,7 @@ export class ContentError extends Error {
 }
 
 function getToken() {
-  return localStorage.getItem('token') ?? sessionStorage.getItem('token')
+  return getStoredToken()
 }
 
 async function request<T>(path: string, options?: RequestInit & { auth?: boolean }): Promise<T> {
@@ -43,6 +44,7 @@ async function request<T>(path: string, options?: RequestInit & { auth?: boolean
   })
   const body = (await response.json().catch(() => ({}))) as ApiResponse<T>
   if (!response.ok || !body.success || body.data === undefined) {
+    if (needAuth) invalidateSessionIfUnauthorized(response.status)
     throw new ContentError(body.error ?? 'Contenu indisponible', response.status, body.code)
   }
   return body.data

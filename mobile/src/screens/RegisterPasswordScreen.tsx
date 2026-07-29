@@ -19,7 +19,6 @@ import { AuthInput } from '../components/AuthInput'
 import { Bouncy } from '../components/Bouncy'
 import { LegalFooter } from '../components/LegalFooter'
 import { BrandName } from '../components/BrandName'
-import { useAuth } from '../context/AuthContext'
 import type { RootStackParamList } from '../navigation/types'
 import { dark, fonts, gradients } from '../theme'
 import { validatePassword } from '../utils/validation'
@@ -36,7 +35,6 @@ interface FormErrors {
 export function RegisterPasswordScreen() {
   const navigation = useNavigation<Nav>()
   const route = useRoute<Route>()
-  const { signIn } = useAuth()
   const { firstName, lastName, email, phone } = route.params
 
   const [password, setPassword] = useState('')
@@ -65,15 +63,25 @@ export function RegisterPasswordScreen() {
     setLoading(true)
 
     try {
-      const { user, token } = await registerUser({
+      const { message } = await registerUser({
         firstName,
         lastName,
         email,
         phone,
         password,
       })
-      await signIn(token, user)
-      navigation.reset({ index: 0, routes: [{ name: 'Home' }] })
+      navigation.reset({
+        index: 0,
+        routes: [
+          {
+            name: 'Login',
+            params: {
+              message:
+                message || 'Compte créé. Vérifie ton email puis connecte-toi.',
+            },
+          },
+        ],
+      })
     } catch (error) {
       showAuthError(error, 'Inscription impossible')
     } finally {

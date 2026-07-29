@@ -22,6 +22,7 @@ import {
   FEDAPAY_MOBILE_OPERATORS,
 } from '../services/fedapay.js'
 import { notifyUser } from '../services/notifications.js'
+import { sendSubscriptionExpiryEmail } from '../services/email.js'
 import { broadcastPaymentEvent } from '../services/paymentEvents.js'
 import { applyHoursDiscount } from './pricing.js'
 import { logger } from './logger.js'
@@ -199,6 +200,78 @@ export async function expireDueAccessRequests(userId = null) {
   return { expired: due.length }
 }
 
+const MODULE_NOTIFY_LABELS = {
+  code: 'Code de la route',
+  conduite_videos: 'Vidéos conduite',
+  ecodepermis: 'E-Codepermis',
+  aiChat: 'Chat IA tuteur',
+}
+
+/**
+ * Alerte N jours avant expiration (email + notification in-app).
+ * Utilise `expiryWarningSent` pour n’envoyer qu’une fois par AccessRequest.
+ */
+export async function warnExpiringAccessRequests(daysBefore = 3) {
+  const days = Math.max(1, Number(daysBefore) || 3)
+  const now = new Date()
+  const cutoff = new Date(now.getTime() + days * 24 * 60 * 60 * 1000)
+
+  const due = await AccessRequest.find({
+    status: 'actif',
+    endAt: { $ne: null, $gt: now, $lte: cutoff },
+    expiryWarningSent: { $ne: true },
+  }).limit(200)
+
+  if (!due.length) return { warned: 0 }
+
+  const userIds = [...new Set(due.map((r) => String(r.userId)))]
+  const users = await User.find({ _id: { $in: userIds } }).select('firstName email')
+  const userMap = new Map(users.map((u) => [String(u._id), u]))
+
+  let warned = 0
+  for (const request of due) {
+    try {
+      const user = userMap.get(String(request.userId))
+      const label = MODULE_NOTIFY_LABELS[request.module] || request.module
+      const expiryDate = request.endAt
+        ? new Date(request.endAt).toLocaleDateString('fr-FR', {
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric',
+          })
+        : 'bientôt'
+
+      void notifyUser(request.userId, {
+        type: 'subscription_expiring',
+        title: 'Abonnement bientôt expiré',
+        body: `Ton accès « ${label} » expire le ${expiryDate}. Renouvelle pour garder l’accès.`,
+        link: 'abonnement',
+      })
+
+      if (user?.email) {
+        void sendSubscriptionExpiryEmail(user, request).catch((error) => {
+          logger.error('Email expiration abonnement échoué', {
+            error: error.message,
+            userId: String(request.userId),
+            accessRequestId: String(request._id),
+          })
+        })
+      }
+
+      request.expiryWarningSent = true
+      await request.save()
+      warned += 1
+    } catch (error) {
+      logger.error('Erreur alerte expiration accessRequest', {
+        error: error.message,
+        id: String(request._id),
+      })
+    }
+  }
+
+  return { warned }
+}
+
 /** Accès courant par module + demandes récentes, pour /me et pour le middleware de porte. */
 export async function getUserModuleAccess(userId) {
   await expireDueAccessRequests(userId)
@@ -248,11 +321,15 @@ const DEFAULT_MODULE_PRICING = [
   { key: 'code', label: 'Code de la route', unit: 'month', price: 2000 },
   { key: 'conduite_heures', label: 'Heures de conduite', unit: 'hour', price: 5000 },
   { key: 'conduite_videos', label: 'Vidéos pédagogiques conduite', unit: 'month', price: 0 },
-  { key: 'ecodepermis', label: 'E-Codepermis', unit: 'month', price: 1000 },
+  /** Inclus dans Code — masqué du catalogue d’achat (active: false). */
+  { key: 'ecodepermis', label: 'E-Codepermis (inclus Code)', unit: 'month', price: 0, active: false },
 ]
 
 /** Modules retirés de la vente (conservés en base pour l’historique). */
 export const RETIRED_ACCESS_MODULES = ['aiChat']
+
+/** Modules non proposés à l’achat self-service (accès via bundling / autre parcours). */
+export const CATALOG_HIDDEN_MODULES = ['ecodepermis']
 
 /** Montant figé pour un module (réduction −1000 FCFA si N≥2 heures de conduite). */
 export function computeModuleAmount(pricingOrKey, quantity = 1, unitPrice = null) {
@@ -288,6 +365,16 @@ export async function ensureAccessModulePricing() {
     migrated += 1
   }
 
+  // Soft migration : E-Codepermis inclus dans Code → retiré du catalogue d’achat.
+  const ecode = await AccessModulePricing.findOne({ key: 'ecodepermis' })
+  if (ecode && (ecode.active !== false || Number(ecode.price) !== 0 || !String(ecode.label).includes('inclus'))) {
+    ecode.active = false
+    ecode.price = 0
+    ecode.label = 'E-Codepermis (inclus Code)'
+    await ecode.save()
+    migrated += 1
+  }
+
   // Chat IA retiré de la vente — garder l’entrée pour l’historique admin.
   const retired = await AccessModulePricing.updateMany(
     { key: { $in: RETIRED_ACCESS_MODULES }, active: { $ne: false } },
@@ -299,6 +386,11 @@ export async function ensureAccessModulePricing() {
 }
 
 export async function getModulePricing(key) {
+  if (CATALOG_HIDDEN_MODULES.includes(key)) {
+    const error = new Error('Ce module n’est pas disponible à l’achat séparément (inclus dans Code)')
+    error.status = 404
+    throw error
+  }
   const pricing = await AccessModulePricing.findOne({ key, active: true })
   if (!pricing) {
     const error = new Error('Ce module n’est pas disponible à l’achat actuellement')
@@ -657,9 +749,10 @@ export async function checkoutCartOnlineAccess({
   const normalizedPhone = normalizeBeninPhone(phone) || normalizeBeninPhone(user.phone)
   if (!normalizedPhone) {
     const error = new Error(
-      'Numéro de téléphone Mobile Money invalide. Indiquez un numéro béninois valide.',
+      'Ajoutez un numéro Mobile Money valide dans votre profil (ex. 0147880143) avant de payer.',
     )
     error.status = 400
+    error.code = 'PHONE_REQUIRED'
     throw error
   }
 

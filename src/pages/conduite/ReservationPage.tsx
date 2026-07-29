@@ -94,6 +94,11 @@ export function ReservationPage() {
 
   const vehicleType = selectedMoniteur?.vehicleTypes?.[0] || selected?.vehicleType || 'voiture'
 
+  const selectedHoursNeeded = useMemo(() => {
+    if (!selected) return 0
+    return estimateHours(selected.startTime, selected.endTime)
+  }, [selected])
+
   const selectedDay = useMemo(
     () => availabilityDays.find((day) => day.date === selectedDate) ?? null,
     [availabilityDays, selectedDate],
@@ -537,7 +542,7 @@ export function ReservationPage() {
               </div>
 
               <div className="payment-choice">
-                {soldeHeures !== null && soldeHeures > 0 ? (
+                {soldeHeures !== null && soldeHeures >= selectedHoursNeeded && selectedHoursNeeded > 0 ? (
                   <button
                     type="button"
                     className="btn-primary reservation-calendar-btn"
@@ -551,7 +556,11 @@ export function ReservationPage() {
                 ) : null}
                 <button
                   type="button"
-                  className={soldeHeures ? 'btn-outline reservation-calendar-btn' : 'btn-primary reservation-calendar-btn'}
+                  className={
+                    soldeHeures !== null && soldeHeures >= selectedHoursNeeded
+                      ? 'btn-outline reservation-calendar-btn'
+                      : 'btn-primary reservation-calendar-btn'
+                  }
                   disabled={busy}
                   onClick={() => setShowMobileMoney(true)}
                 >
@@ -604,11 +613,19 @@ export function ReservationPage() {
           creneauId={String(selected.id)}
           vehicleType={selected.vehicleType || vehicleType}
           moniteurId={moniteurId}
+          hoursNeeded={selectedHoursNeeded}
           defaultPhone={user?.phone || ''}
           onClose={() => setShowMobileMoney(false)}
+          onSoldeChange={setSoldeHeures}
           onSuccess={() => {
             setShowMobileMoney(false)
             setWhatsappLink('')
+            setCalendarUrl(selected ? buildCalendarUrl(selected) : '')
+            setStep('success')
+          }}
+          onSoldeSuccess={(result) => {
+            setShowMobileMoney(false)
+            setWhatsappLink(result.whatsappLink || '')
             setCalendarUrl(selected ? buildCalendarUrl(selected) : '')
             setStep('success')
           }}

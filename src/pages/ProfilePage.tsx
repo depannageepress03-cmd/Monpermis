@@ -1,5 +1,5 @@
 import { type FormEvent, useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { Lock, Trash2, User } from 'lucide-react'
 import {
   changePassword,
@@ -9,13 +9,14 @@ import {
 import { clearSession } from '../api/auth'
 import { PageNavbar } from '../components/PageNavbar'
 import { useAuth } from '../hooks/useAuth'
-import { normalizePhone, validateName, validatePhone } from '../utils/validation'
+import { normalizePhone, PHONE_PLACEHOLDER, validateName, validatePhone } from '../utils/validation'
 import '../styles/auth.css'
 import '../styles/learner.css'
 import '../styles/login.css'
 
 export function ProfilePage() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { user, loading, updateUser } = useAuth()
 
   const [firstName, setFirstName] = useState(user?.firstName ?? '')
@@ -23,6 +24,7 @@ export function ProfilePage() {
   const [phone, setPhone] = useState(user?.phone ?? '')
   const [profileMsg, setProfileMsg] = useState('')
   const [profileError, setProfileError] = useState('')
+  const [phoneHint, setPhoneHint] = useState('')
   const [savingProfile, setSavingProfile] = useState(false)
 
   const [currentPassword, setCurrentPassword] = useState('')
@@ -44,9 +46,22 @@ export function ProfilePage() {
     setPhone(user.phone ?? '')
   }, [user])
 
+  useEffect(() => {
+    const required = (location.state as { phoneRequired?: string } | null)?.phoneRequired
+    if (required) {
+      setPhoneHint(required)
+      navigate(location.pathname, { replace: true, state: null })
+    } else if (user && !String(user.phone || '').trim()) {
+      setPhoneHint(
+        'Ajoute ton numéro de téléphone pour payer en Mobile Money et recevoir les rappels.',
+      )
+    }
+  }, [location.pathname, location.state, navigate, user])
+
   if (loading || !user) return null
 
   const isGoogle = user.authProvider === 'google'
+  const phoneMissing = !String(phone || '').trim()
 
   const handleSaveProfile = async (e: FormEvent) => {
     e.preventDefault()
@@ -67,6 +82,7 @@ export function ProfilePage() {
       })
       updateUser({ ...user, ...updated })
       setProfileMsg('Profil mis à jour')
+      if (String(updated.phone || '').trim()) setPhoneHint('')
     } catch (err) {
       setProfileError(err instanceof Error ? err.message : 'Mise à jour impossible')
     } finally {
@@ -137,6 +153,12 @@ export function ProfilePage() {
 
         <form className="auth-card learner-card" onSubmit={handleSaveProfile} style={{ marginBottom: 12 }}>
           <h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 12 }}>Mes informations</h2>
+          {phoneHint || phoneMissing ? (
+            <p className="signin-banner signin-banner--err" style={{ marginBottom: 12 }}>
+              {phoneHint ||
+                'Ajoute ton numéro de téléphone pour payer en Mobile Money et recevoir les rappels.'}
+            </p>
+          ) : null}
           {profileError ? <p className="signin-form-error">{profileError}</p> : null}
           {profileMsg ? <p style={{ color: '#16a34a', fontWeight: 600 }}>{profileMsg}</p> : null}
           <div className="signin-fields">
@@ -156,7 +178,8 @@ export function ProfilePage() {
               className="auth-input"
               value={phone}
               onChange={(e) => setPhone(normalizePhone(e.target.value))}
-              placeholder="Téléphone"
+              placeholder={PHONE_PLACEHOLDER}
+              aria-invalid={phoneMissing}
             />
           </div>
           <button type="submit" className="btn-primary" disabled={savingProfile} style={{ marginTop: 14 }}>

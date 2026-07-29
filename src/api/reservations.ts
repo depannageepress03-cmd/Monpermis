@@ -1,7 +1,8 @@
 import { getApiBase } from './config'
+import { getStoredToken, invalidateSessionIfUnauthorized } from './auth'
 
 function getToken() {
-  return localStorage.getItem('token') ?? sessionStorage.getItem('token')
+  return getStoredToken()
 }
 
 interface ApiResponse<T> {
@@ -30,6 +31,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   })
   const body = (await response.json().catch(() => ({}))) as ApiResponse<T>
   if (!response.ok || !body.success || body.data === undefined) {
+    invalidateSessionIfUnauthorized(response.status)
     throw new ReservationError(body.error ?? 'Action impossible')
   }
   return body.data

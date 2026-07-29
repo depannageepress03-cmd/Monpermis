@@ -168,6 +168,11 @@ export function ProfileScreen() {
           </View>
 
           <Text style={styles.sectionTitle}>Mes informations</Text>
+          {!String(phone || '').trim() ? (
+            <Text style={styles.phoneHint}>
+              Ajoute ton numéro pour payer en Mobile Money et recevoir les rappels.
+            </Text>
+          ) : null}
           <View style={styles.card}>
             <View style={styles.row}>
               <View style={styles.half}>
@@ -194,6 +199,7 @@ export function ProfileScreen() {
               value={phone}
               onChangeText={(v) => setPhone(normalizePhone(v))}
               keyboardType="phone-pad"
+              placeholder="0147880143"
               error={profileErrors.phone}
             />
             {profileMsg ? <Text style={styles.successMsg}>{profileMsg}</Text> : null}
@@ -318,6 +324,13 @@ const styles = StyleSheet.create({
     color: dark.textPrimary,
     marginTop: 12,
     marginBottom: 4,
+    marginLeft: 2,
+  },
+  phoneHint: {
+    fontFamily: fonts.body,
+    fontSize: 13,
+    color: '#b45309',
+    marginBottom: 8,
     marginLeft: 2,
   },
   card: {

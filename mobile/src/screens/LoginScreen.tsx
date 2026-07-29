@@ -12,9 +12,10 @@ import {
   StyleSheet,
   Text,
   View,
+  Alert,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { loginUser, loginWithGoogle } from '../api/auth'
+import { getAuthErrorDetails, loginUser, loginWithGoogle, resendVerificationEmail } from '../api/auth'
 import { AuthInput } from '../components/AuthInput'
 import { Bouncy } from '../components/Bouncy'
 import { LegalFooter } from '../components/LegalFooter'
@@ -61,20 +62,40 @@ export function LoginScreen() {
     const message = route.params?.message?.trim()
     if (message) {
       setErrors((prev) => ({ ...prev, info: message }))
+      navigation.setParams({ message: undefined })
     }
-  }, [route.params?.message])
+  }, [route.params?.message, navigation])
+
+  const finishAuth = useCallback(
+    async (
+      token: string,
+      user: Awaited<ReturnType<typeof loginUser>>['user'],
+      needsPhone?: boolean,
+    ) => {
+      await signIn(token, user)
+      if (needsPhone || !String(user.phone || '').trim()) {
+        navigation.reset({ index: 0, routes: [{ name: 'Profile' }] })
+        Alert.alert(
+          'Téléphone requis',
+          'Ajoute ton numéro pour payer en Mobile Money et recevoir les rappels.',
+        )
+        return
+      }
+      navigation.reset({ index: 0, routes: [{ name: 'Home' }] })
+    },
+    [navigation, signIn],
+  )
 
   const handleGoogleSuccess = useCallback(
     async (idToken: string) => {
       try {
-        const { user, token } = await loginWithGoogle(idToken)
-        await signIn(token, user)
-        navigation.reset({ index: 0, routes: [{ name: 'Home' }] })
+        const { user, token, needsPhone } = await loginWithGoogle(idToken)
+        await finishAuth(token, user, needsPhone)
       } catch (error) {
         showAuthError(error)
       }
     },
-    [navigation, signIn],
+    [finishAuth],
   )
 
   const {
@@ -90,12 +111,28 @@ export function LoginScreen() {
     }
   }, [googleError])
 
-  useEffect(() => {
-    if (route.params?.message) {
-      setErrors((prev) => ({ ...prev, info: route.params?.message }))
-      navigation.setParams({ message: undefined })
-    }
-  }, [route.params?.message, navigation])
+  const offerResendVerification = (targetEmail: string) => {
+    Alert.alert(
+      'Email non vérifié',
+      'Vérifie ta boîte de réception, ou renvoie un nouveau lien.',
+      [
+        { text: 'OK', style: 'cancel' },
+        {
+          text: 'Renvoyer le lien',
+          onPress: () => {
+            void resendVerificationEmail(targetEmail)
+              .then(() => {
+                Alert.alert(
+                  'Email envoyé',
+                  'Si un compte non vérifié existe, un nouveau lien a été envoyé.',
+                )
+              })
+              .catch((err) => showAuthError(err, 'Envoi impossible'))
+          },
+        },
+      ],
+    )
+  }
 
   const handleSubmit = async () => {
     const emailError = validateEmail(email)
@@ -111,10 +148,15 @@ export function LoginScreen() {
 
     try {
       const { user, token } = await loginUser({ email, password })
-      await signIn(token, user)
-      navigation.reset({ index: 0, routes: [{ name: 'Home' }] })
+      await finishAuth(token, user)
     } catch (error) {
-      showAuthError(error)
+      const { code, email: errEmail, message } = getAuthErrorDetails(error)
+      if (code === 'EMAIL_NOT_VERIFIED') {
+        setErrors({ info: message })
+        offerResendVerification(errEmail || email)
+      } else {
+        showAuthError(error)
+      }
     } finally {
       setLoading(false)
     }

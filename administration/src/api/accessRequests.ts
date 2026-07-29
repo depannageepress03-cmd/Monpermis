@@ -78,6 +78,7 @@ export interface AccessPayment {
   id: string
   accessRequestId: string
   accessRequestIds?: string[]
+  reservationGroupId?: string | null
   userId: string
   method: PaymentMethod
   amount: number
@@ -91,6 +92,7 @@ export interface AccessPayment {
   declaredAt: string | null
   errorMessage: string
   activatedAt: string | null
+  needsRefund?: boolean
   learner: LearnerRef | null
   verifiedByAdmin: { id: string; fullName: string } | null
   verifiedAt: string | null
@@ -99,6 +101,7 @@ export interface AccessPayment {
   updatedAt: string
   module?: AccessModuleKey | null
   modules?: AccessModuleKey[]
+  kind?: 'abonnement' | 'reservation' | 'autre'
 }
 
 export interface AccessStats {
@@ -152,15 +155,24 @@ export function grantSubscription(
 
 export function fetchApprovedPayments(
   token: string,
-  filters: { page?: number } = {},
+  filters: { page?: number; needsRefund?: boolean } = {},
 ) {
   const params = new URLSearchParams()
   if (filters.page) params.set('page', String(filters.page))
+  if (filters.needsRefund) params.set('needsRefund', '1')
   const query = params.toString() ? `?${params.toString()}` : ''
   return apiFetch<{
     payments: AccessPayment[]
     pagination: { page: number; limit: number; total: number; pages: number }
   }>(`/api/admin/access-requests/payments${query}`, {}, token)
+}
+
+export function resolvePaymentRefund(token: string, paymentId: string, note: string) {
+  return apiFetch<{ payment: AccessPayment }>(
+    `/api/admin/access-requests/payments/${paymentId}/resolve-refund`,
+    { method: 'PATCH', body: JSON.stringify({ note }) },
+    token,
+  )
 }
 
 export function fetchAccessModulePricing(token: string) {
