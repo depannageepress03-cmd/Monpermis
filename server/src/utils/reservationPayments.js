@@ -280,9 +280,11 @@ export async function applyApprovedReservationPayment(
     claimed.errorMessage =
       claimed.errorMessage || 'Paiement réservation approved sans groupe — remboursement requis'
     await claimed.save()
-    const error = new Error('Réservation liée introuvable')
-    error.status = 404
-    throw error
+    logger.warn('Paiement réservation orphelin — needsRefund (pas de groupe)', {
+      paymentId: String(claimed._id),
+    })
+    // Ne pas throw : le webhook FedaPay doit recevoir 2xx (état déjà persisté).
+    return { payment: claimed, alreadyProcessed: false, needsRefund: true, orphan: true, reservations: [] }
   }
 
   const pending = await Reservation.find({
@@ -305,9 +307,10 @@ export async function applyApprovedReservationPayment(
     claimed.errorMessage =
       claimed.errorMessage || 'Paiement approved sans réservation — remboursement requis'
     await claimed.save()
-    const error = new Error('Réservation liée introuvable')
-    error.status = 404
-    throw error
+    logger.warn('Paiement réservation orphelin — needsRefund (aucune réservation)', {
+      paymentId: String(claimed._id),
+    })
+    return { payment: claimed, alreadyProcessed: false, needsRefund: true, orphan: true, reservations: [] }
   }
 
   // Approved mais plus aucune réservation pending (expirée / annulée) → orphelin.

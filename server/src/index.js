@@ -121,10 +121,11 @@ const apiLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
 })
-// Corps brut requis pour vérifier la signature HMAC des webhooks FedaPay
+// Corps brut requis pour vérifier la signature HMAC des webhooks FedaPay.
+// Toujours raw sur ce path (ne dépend pas du Content-Type exact de FedaPay).
 app.use(
   '/api/webhooks/fedapay',
-  express.raw({ type: 'application/json' }),
+  express.raw({ type: () => true }),
   fedapayWebhooksRoutes,
 )
 app.use(express.json())
@@ -135,6 +136,7 @@ app.get('/uploads/:kind/:filename', sendMediaAsset)
 app.get('/api/health', (_req, res) => {
   const dbReady = mongoose.connection.readyState === 1
   const fingerprint = fedapayKeyFingerprint()
+  const webhookSecretSet = Boolean(String(process.env.FEDAPAY_WEBHOOK_SECRET || '').trim())
   res.status(dbReady ? 200 : 503).json({
     success: dbReady,
     message: dbReady
@@ -144,6 +146,7 @@ app.get('/api/health', (_req, res) => {
     fedapay: isFedaPayConfigured() ? 'configured' : 'missing',
     fedapayEnvironment: process.env.FEDAPAY_ENVIRONMENT === 'sandbox' ? 'sandbox' : 'live',
     fedapayKeyHint: fingerprint.secretSuffix ? `…${fingerprint.secretSuffix}` : null,
+    fedapayWebhookSecret: webhookSecretSet ? 'configured' : 'missing',
     mobileMoneyModes: { mtn: 'mtn_open', moov: 'moov', celtiis: 'sbin' },
   })
 })

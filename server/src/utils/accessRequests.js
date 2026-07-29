@@ -1165,9 +1165,11 @@ export async function applyApprovedAccessPayment(payment, { eventName = '', even
       claimed.errorMessage || 'Paiement approved sans AccessRequest liée — remboursement requis'
     await claimed.save()
     void broadcastPaymentUpdate(claimed)
-    const error = new Error('Demande d’accès liée introuvable')
-    error.status = 404
-    throw error
+    logger.warn('Paiement access orphelin — needsRefund (pas de demande liée)', {
+      paymentId: String(claimed._id),
+    })
+    // Ne pas throw : le webhook FedaPay doit recevoir 2xx (état déjà persisté).
+    return { payment: claimed, alreadyProcessed: false, needsRefund: true, orphan: true }
   }
 
   const requests = []
@@ -1192,9 +1194,10 @@ export async function applyApprovedAccessPayment(payment, { eventName = '', even
       claimed.errorMessage || 'Paiement approved sans AccessRequest trouvée — remboursement requis'
     await claimed.save()
     void broadcastPaymentUpdate(claimed)
-    const error = new Error('Demande d’accès liée introuvable')
-    error.status = 404
-    throw error
+    logger.warn('Paiement access orphelin — needsRefund (demande introuvable)', {
+      paymentId: String(claimed._id),
+    })
+    return { payment: claimed, alreadyProcessed: false, needsRefund: true, orphan: true }
   }
 
   // Approved mais toutes les demandes déjà rejetées (replace) → argent sans accès.

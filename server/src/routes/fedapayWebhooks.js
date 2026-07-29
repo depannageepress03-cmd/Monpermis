@@ -9,6 +9,7 @@ import {
   applyApprovedReservationPayment,
   applyFailedReservationPayment,
 } from '../utils/reservationPayments.js'
+import { logger } from '../utils/logger.js'
 
 const router = Router()
 
@@ -22,8 +23,21 @@ router.post('/', async (req, res) => {
   try {
     event = constructFedaPayEvent(req.body, signature)
   } catch (error) {
-    console.error('Webhook FedaPay signature invalide:', error.message)
-    return res.status(400).json({ success: false, error: error.message })
+    const missingSecret = /FEDAPAY_WEBHOOK_SECRET/i.test(String(error.message || ''))
+    logger.error('Webhook FedaPay signature invalide', {
+      error: error.message,
+      missingSecret,
+      hasSignature: Boolean(signature),
+      bodyType: Buffer.isBuffer(req.body) ? 'buffer' : typeof req.body,
+      bodyLength: Buffer.isBuffer(req.body)
+        ? req.body.length
+        : String(req.body || '').length,
+    })
+    // Secret manquant = config serveur (503) ; sinon signature/payload invalide (400).
+    return res.status(missingSecret ? 503 : 400).json({
+      success: false,
+      error: error.message,
+    })
   }
 
   const eventName = event?.name || event?.type || ''
@@ -34,7 +48,12 @@ router.post('/', async (req, res) => {
     const payment = await findPaymentFromFedaEvent(object)
 
     if (!payment) {
-      console.warn('Webhook FedaPay sans paiement local:', eventName, object?.id)
+      logger.warn('Webhook FedaPay sans paiement local', {
+        eventName,
+        transactionId: object?.id,
+        reference: object?.reference,
+      })
+      // Accusé de réception : événement inconnu / hors scope — ne pas faire réessayer FedaPay.
       return res.status(200).json({ received: true, ignored: true })
     }
 
@@ -80,7 +99,13 @@ router.post('/', async (req, res) => {
 
     return res.status(200).json({ received: true })
   } catch (error) {
-    console.error('Erreur traitement webhook FedaPay:', error)
+    logger.error('Erreur traitement webhook FedaPay', {
+      error: error.message,
+      eventName,
+      eventId,
+      transactionId: object?.id,
+    })
+    // Erreur transitoire (Mongo, etc.) → 500 pour déclencher le retry FedaPay.
     return res.status(500).json({
       success: false,
       error: error.message || 'Traitement webhook impossible',
