@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 import { dark, fonts } from '../theme'
 import { ensureAudioSession } from '../utils/audioSession'
+import { resolveQuestionPromptUri } from '../utils/questionAudio'
 import {
   playCountdown5to0,
   playGongSound,
@@ -13,6 +14,7 @@ import {
 
 type Props = {
   questionKey: string
+  /** URL réseau éventuelle ; si questionId local, l’audio embarqué est prioritaire. */
   promptUri?: string | null
   onSequenceComplete?: () => void
 }
@@ -124,8 +126,6 @@ export function QuestionAudioSequence({ questionKey, promptUri, onSequenceComple
   completeRef.current = onSequenceComplete
   const isCancelled = () => cancelledRef.current
 
-  const promptUrl = cleanUri(promptUri)
-
   useEffect(() => {
     cancelledRef.current = false
     setStatus('')
@@ -147,6 +147,9 @@ export function QuestionAudioSequence({ questionKey, promptUri, onSequenceComple
       try {
         await ensureAudioSession()
         if (cancelledRef.current) return
+
+        const promptUrl =
+          cleanUri(await resolveQuestionPromptUri(questionKey, promptUri)) || cleanUri(promptUri)
 
         if (promptUrl) {
           const audio: AudioModule = await import('expo-audio')
@@ -205,7 +208,7 @@ export function QuestionAudioSequence({ questionKey, promptUri, onSequenceComple
       setCountdown(null)
       setStatus('')
     }
-  }, [questionKey, promptUrl])
+  }, [questionKey, promptUri])
 
   return (
     <View style={styles.wrap}>

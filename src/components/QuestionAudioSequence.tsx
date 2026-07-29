@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
+import { getBundledCodeAudioUrl } from '../data/codeRoute/audioUrls'
+import { parseLocalQuestionId } from '../data/codeRoute/banks'
 import { resolveMediaUrl } from '../utils/mediaUrl'
 import {
   playCountdown5to0,
@@ -19,7 +21,12 @@ type Props = {
 
 const PAUSE_MS = 600
 
-function cleanUrl(url?: string | null) {
+function cleanUrl(questionKey: string, url?: string | null) {
+  const parsed = parseLocalQuestionId(questionKey)
+  if (parsed) {
+    const bundled = getBundledCodeAudioUrl(parsed.chapterOrder, parsed.questionOrder)
+    if (bundled) return bundled
+  }
   const value = url?.trim() || ''
   return value ? resolveMediaUrl(value) : ''
 }
@@ -59,7 +66,7 @@ export function QuestionAudioSequence({
   const [status, setStatus] = useState('')
   const [countdown, setCountdown] = useState<CountdownValue | null>(null)
 
-  const promptUrl = cleanUrl(promptAudioUrl)
+  const promptUrl = cleanUrl(questionKey, promptAudioUrl)
   const isCancelled = () => cancelledRef.current
 
   useEffect(() => {

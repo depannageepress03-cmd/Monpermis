@@ -1,5 +1,4 @@
 import { Router } from 'express'
-import { Question } from '../models/Question.js'
 import { ECodePermisExam } from '../models/ECodePermisExam.js'
 import { ECodePermisExamAttempt } from '../models/ECodePermisExamAttempt.js'
 import { requireUserAuth } from '../middleware/userAuth.js'
@@ -12,6 +11,7 @@ import {
   scoreLabel,
 } from '../utils/ecodepermis.js'
 import { ensureECodePermisExamSheets } from '../services/ecodepermisExams.js'
+import { loadQuestionsByIds } from '../services/hardcodedQuestions.js'
 import { Chapter } from '../models/Chapter.js'
 import { allRevisionCoursesCompleted } from '../utils/progress.js'
 
@@ -33,7 +33,7 @@ function evaluateAnswers(question, answerIds) {
   const correctIds = new Set(
     (question.answers || [])
       .filter((answer) => answer.isCorrect)
-      .map((answer) => String(answer._id)),
+      .map((answer) => String(answer._id || answer.id)),
   )
   const selectedIds = new Set((answerIds || []).map((id) => String(id)))
   const isCorrect =
@@ -198,7 +198,7 @@ router.post('/exams/:examNumber/start', ...withECodeAccess, async (req, res) => 
       })
     }
 
-    const questions = await Question.find({ _id: { $in: attempt.questionIds } })
+    const questions = await loadQuestionsByIds(attempt.questionIds)
     res.status(201).json({
       success: true,
       data: { attempt: attempt.toPublicJSON(questions) },
@@ -219,7 +219,7 @@ router.get('/exams/attempts/:attemptId', ...withECodeAccess, async (req, res) =>
       return res.status(404).json({ success: false, error: 'Tentative introuvable' })
     }
 
-    const questions = await Question.find({ _id: { $in: attempt.questionIds } })
+    const questions = await loadQuestionsByIds(attempt.questionIds)
     res.json({
       success: true,
       data: { attempt: attempt.toPublicJSON(questions) },
@@ -255,8 +255,8 @@ router.post('/exams/attempts/:attemptId/check', ...withECodeAccess, async (req, 
       return res.status(400).json({ success: false, error: 'Question déjà répondue' })
     }
 
-    const question = await Question.findById(questionId)
-    if (!question || !question.published) {
+    const [question] = await loadQuestionsByIds([questionId])
+    if (!question || question.published === false) {
       return res.status(404).json({ success: false, error: 'Question introuvable' })
     }
 

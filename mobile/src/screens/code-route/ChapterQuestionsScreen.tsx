@@ -32,6 +32,7 @@ import type { RootStackParamList } from '../../navigation/types'
 import { dark, fonts } from '../../theme'
 import { hapticError, hapticSelect, hapticSuccess } from '../../utils/haptics'
 import { playFailSound, playSuccessSound, stopAllQuizAudio } from '../../utils/quizSounds'
+import { rememberChapterOrder } from '../../data/codeRoute/chapterIndex'
 import { resolveMediaUrl } from '../../utils/mediaUrl'
 
 function wait(ms: number) {
@@ -60,7 +61,13 @@ export function ChapterQuestionsScreen() {
   const navigation = useNavigation<Nav>()
   const route = useRoute<Route>()
   const { user, loading } = useRequireAuth(navigation)
-  const { chapterId, chapterName, mode = 'practice', subjectNumber: subjectNumberParam } = route.params
+  const {
+    chapterId,
+    chapterName,
+    chapterOrder,
+    mode = 'practice',
+    subjectNumber: subjectNumberParam,
+  } = route.params
   const isTest = mode === 'test'
   const subjectNumber = Math.max(1, Number(subjectNumberParam) || 1)
 
@@ -110,6 +117,7 @@ export function ChapterQuestionsScreen() {
     setLoadingQuestions(true)
     setError(null)
     try {
+      rememberChapterOrder(chapterId, chapterOrder, chapterName)
       if (isTest) {
         const subject = await fetchChapterTestSubject(chapterId, subjectNumber)
         setSubjectLabel(subject.label || `Sujet ${subjectNumber}`)
@@ -134,7 +142,7 @@ export function ChapterQuestionsScreen() {
     } finally {
       setLoadingQuestions(false)
     }
-  }, [chapterId, isTest, subjectNumber])
+  }, [chapterId, chapterOrder, chapterName, isTest, subjectNumber])
 
   useFocusEffect(
     useCallback(() => {

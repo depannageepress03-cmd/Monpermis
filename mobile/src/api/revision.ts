@@ -1,5 +1,13 @@
 import { getStoredToken, invalidateSessionIfUnauthorized } from './auth'
 import { getApiBase } from './config'
+import { mergeWithStandardChapters, getChapterOrderById } from '../data/codeRoute/chapterIndex'
+import {
+  checkLocalAnswers,
+  getLocalBankByChapterOrder,
+  toPublicLocalQuestion,
+} from '../data/codeRoute/banks'
+import { buildLocalSubject, buildLocalSubjectSummaries } from '../data/codeRoute/subjects'
+import { listStandardChapterShells } from '../data/codeRoute/standardChapters'
 import { cacheGetThenFetch } from '../utils/contentCache'
 
 export interface RevisionModule {
@@ -109,31 +117,46 @@ async function request<T>(path: string, options?: RequestInit & { auth?: boolean
   return body.data
 }
 
+function withStandardChapters(chapters: RevisionChapter[]) {
+  return mergeWithStandardChapters(chapters)
+}
+
 export async function fetchRevisionChapters(): Promise<RevisionChapter[]> {
-  return cacheGetThenFetch('revision:chapters', async () => {
-    const data = await request<{ chapters: RevisionChapter[] }>('/content/revision/chapters', {
-      auth: true,
+  try {
+    return await cacheGetThenFetch('revision:chapters', async () => {
+      const data = await request<{ chapters: RevisionChapter[] }>('/content/revision/chapters', {
+        auth: true,
+      })
+      return withStandardChapters(data.chapters)
     })
-    return data.chapters
-  })
+  } catch {
+    // Hors ligne : catalogue local 21 chapitres.
+    return withStandardChapters(listStandardChapterShells() as RevisionChapter[])
+  }
 }
 
 /** Variante SWR : pousse le cache immédiatement via onData, puis le réseau. */
 export async function fetchRevisionChaptersSWR(
   onData: (chapters: RevisionChapter[], meta: { fromCache: boolean }) => void,
 ) {
-  return cacheGetThenFetch(
-    'revision:chapters',
-    async () => {
-      const data = await request<{ chapters: RevisionChapter[] }>('/content/revision/chapters', {
-        auth: true,
-      })
-      return data.chapters
-    },
-    {
-      onData: (data, meta) => onData(data, { fromCache: meta.fromCache }),
-    },
-  )
+  try {
+    return await cacheGetThenFetch(
+      'revision:chapters',
+      async () => {
+        const data = await request<{ chapters: RevisionChapter[] }>('/content/revision/chapters', {
+          auth: true,
+        })
+        return withStandardChapters(data.chapters)
+      },
+      {
+        onData: (data, meta) => onData(withStandardChapters(data), { fromCache: meta.fromCache }),
+      },
+    )
+  } catch {
+    const local = withStandardChapters(listStandardChapterShells() as RevisionChapter[])
+    onData(local, { fromCache: true })
+    return local
+  }
 }
 
 export async function fetchLearnerProgress(chapterId?: string): Promise<LearnerProgress> {
@@ -370,13 +393,23 @@ export interface RevisionQuestion {
 }
 
 export async function fetchChapterQuestions(chapterId: string): Promise<RevisionQuestion[]> {
-  return cacheGetThenFetch(`revision:questions:${chapterId}`, async () => {
-    const data = await request<{ questions: RevisionQuestion[] }>(
-      `/content/revision/chapters/${encodeURIComponent(chapterId)}/questions`,
-      { auth: true },
-    )
-    return data.questions
-  })
+  const order = getChapterOrderById(chapterId)
+  const localBank = order ? getLocalBankByChapterOrder(order) : null
+  if (localBank) {
+    return localBank.map((q) => toPublicLocalQuestion(q, chapterId))
+  }
+
+  try {
+    return await cacheGetThenFetch(`revision:questions:${chapterId}`, async () => {
+      const data = await request<{ questions: RevisionQuestion[] }>(
+        `/content/revision/chapters/${encodeURIComponent(chapterId)}/questions`,
+        { auth: true },
+      )
+      return data.questions
+    })
+  } catch {
+    return []
+  }
 }
 
 export type RevisionTestSubjectSummary = {
@@ -387,6 +420,11 @@ export type RevisionTestSubjectSummary = {
 }
 
 export async function fetchChapterTestSubjects(chapterId: string) {
+  const order = getChapterOrderById(chapterId)
+  if (order && getLocalBankByChapterOrder(order)) {
+    return buildLocalSubjectSummaries(order, chapterId)
+  }
+
   return request<{
     publishedCount: number
     questionsPerSubject: number
@@ -398,6 +436,13 @@ export async function fetchChapterTestSubject(
   chapterId: string,
   subjectNumber = 1,
 ): Promise<{ number: number; label: string; questions: RevisionQuestion[] }> {
+  const order = getChapterOrderById(chapterId)
+  if (order && getLocalBankByChapterOrder(order)) {
+    const subject = buildLocalSubject(order, chapterId, subjectNumber)
+    if (!subject) throw new ContentError('Sujet test introuvable')
+    return subject
+  }
+
   const data = await request<{
     subject: { number: number; label: string; questions: RevisionQuestion[] }
   }>(
@@ -412,6 +457,9 @@ export async function checkQuestionAnswers(
   questionId: string,
   answerIds: string[],
 ): Promise<{ isCorrect: boolean; correctAnswerIds: string[] }> {
+  const local = checkLocalAnswers(questionId, answerIds)
+  if (local) return local
+
   return request<{ isCorrect: boolean; correctAnswerIds: string[] }>(
     `/content/revision/chapters/${encodeURIComponent(chapterId)}/questions/check`,
     {

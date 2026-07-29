@@ -2529,3 +2529,44 @@
     justify-content: flex-start;
   }
 }
+
+.question-answers-readonly {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.question-answers-readonly li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--white);
+  font-size: 14px;
+}
+.question-answers-readonly li.is-correct {
+  border-color: rgba(0, 176, 80, 0.35);
+  background: var(--green-light);
+  color: var(--green);
+  font-weight: 700;
+}
+.question-audio-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.question-audio-row audio {
+  width: min(100%, 420px);
+}
+.questions-back-link {
+  margin: 8px 0 0;
+}
+.questions-back-link a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}

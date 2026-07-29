@@ -16,6 +16,7 @@ import {
   fetchChapterTestSubjects,
   type RevisionQuestion,
 } from '../../api/revision'
+import { rememberChapterOrder } from '../../data/codeRoute/chapterIndex'
 import { DarkScreen } from '../../components/DarkScreen'
 import { PageNavbar } from '../../components/PageNavbar'
 import { ScreenLoader } from '../../components/ScreenLoader'
@@ -30,7 +31,7 @@ export function ChapterQuestionsListScreen() {
   const navigation = useNavigation<Nav>()
   const route = useRoute<Route>()
   const { user, loading } = useRequireAuth(navigation)
-  const { chapterId, chapterName } = route.params
+  const { chapterId, chapterName, chapterOrder } = route.params
 
   const [questions, setQuestions] = useState<RevisionQuestion[]>([])
   const [loadingList, setLoadingList] = useState(true)
@@ -40,6 +41,7 @@ export function ChapterQuestionsListScreen() {
     setLoadingList(true)
     setError(null)
     try {
+      rememberChapterOrder(chapterId, chapterOrder, chapterName)
       const list = await fetchChapterQuestions(chapterId)
       setQuestions(list)
     } catch (err) {
@@ -48,7 +50,7 @@ export function ChapterQuestionsListScreen() {
     } finally {
       setLoadingList(false)
     }
-  }, [chapterId])
+  }, [chapterId, chapterOrder, chapterName])
 
   useFocusEffect(
     useCallback(() => {
@@ -98,6 +100,7 @@ export function ChapterQuestionsListScreen() {
                   navigation.navigate('ChapterQuestions', {
                     chapterId,
                     chapterName,
+                    chapterOrder,
                     mode: 'practice',
                   })
                 }
@@ -136,7 +139,7 @@ export function ChapterTestSubjectScreen() {
   const navigation = useNavigation<TestNav>()
   const route = useRoute<TestRoute>()
   const { user, loading } = useRequireAuth(navigation)
-  const { chapterId, chapterName } = route.params
+  const { chapterId, chapterName, chapterOrder } = route.params
 
   const [subjects, setSubjects] = useState<
     { number: number; id: string; label: string; questionCount: number }[]
@@ -148,6 +151,7 @@ export function ChapterTestSubjectScreen() {
     setLoadingList(true)
     setError(null)
     try {
+      rememberChapterOrder(chapterId, chapterOrder, chapterName)
       const data = await fetchChapterTestSubjects(chapterId)
       const list = Array.isArray(data?.subjects) ? data.subjects : []
       setSubjects(list)
@@ -160,7 +164,7 @@ export function ChapterTestSubjectScreen() {
     } finally {
       setLoadingList(false)
     }
-  }, [chapterId])
+  }, [chapterId, chapterOrder, chapterName])
 
   useFocusEffect(
     useCallback(() => {
@@ -215,6 +219,7 @@ export function ChapterTestSubjectScreen() {
                     navigation.navigate('ChapterQuestions', {
                       chapterId,
                       chapterName,
+                      chapterOrder,
                       mode: 'test',
                       subjectNumber: subject.number,
                     })

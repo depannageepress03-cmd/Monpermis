@@ -1,7 +1,6 @@
 import { Router } from 'express'
 import { PracticeExam } from '../models/PracticeExam.js'
 import { PracticeExamAttempt } from '../models/PracticeExamAttempt.js'
-import { Question } from '../models/Question.js'
 import { User } from '../models/User.js'
 import { requireAdminAuth } from '../middleware/adminAuth.js'
 import { audit } from '../middleware/audit.js'
@@ -15,6 +14,7 @@ import {
   generatePracticeExamSheets,
   getPracticeExamBankStats,
 } from '../services/practiceExams.js'
+import { loadQuestionsByIds } from '../services/hardcodedQuestions.js'
 
 const router = Router()
 router.use(requireAdminAuth)
@@ -108,7 +108,7 @@ router.get('/practice-exams/:examId', async (req, res) => {
     if (!exam) {
       return res.status(404).json({ success: false, error: 'Examen introuvable' })
     }
-    const questions = await Question.find({ _id: { $in: exam.questionIds } })
+    const questions = await loadQuestionsByIds(exam.questionIds)
     res.json({
       success: true,
       data: { exam: exam.toAdminJSON(questions) },
@@ -129,7 +129,7 @@ router.patch('/practice-exams/:examId', audit('update', 'practice_exam'), async 
       exam.published = Boolean(req.body.published)
     }
     await exam.save()
-    const questions = await Question.find({ _id: { $in: exam.questionIds } })
+    const questions = await loadQuestionsByIds(exam.questionIds)
     res.json({
       success: true,
       data: { exam: exam.toAdminJSON(questions) },

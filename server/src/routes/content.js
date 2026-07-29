@@ -14,13 +14,30 @@ import {
   pickQuestionsForSubject,
   TEST_SUBJECT_SIZE,
 } from '../utils/chapterTestSubjects.js'
+import {
+  checkHardcodedAnswers,
+  hardcodedAsQuestionDocs,
+  listHardcodedQuestionsPublic,
+} from '../services/hardcodedQuestions.js'
+import { ensureStandardRevisionChapters } from '../services/standardRevisionChapters.js'
 
 const router = Router()
 const withCodeAccess = [requireUserAuth, requireModuleAccess('code')]
 
+async function loadChapterQuestionBank(chapter) {
+  const hardcoded = hardcodedAsQuestionDocs(chapter)
+  if (hardcoded) return hardcoded
+  // Banques hors fichiers : vide (plus de questions Mongo pour le code).
+  return []
+}
+
 router.get('/chapters', ...withCodeAccess, async (_req, res) => {
   try {
-    const chapters = await Chapter.find({ published: true }).sort({ order: 1, createdAt: 1 })
+    await ensureStandardRevisionChapters()
+    const chapters = await Chapter.find({ order: { $gte: 1, $lte: 21 } }).sort({
+      order: 1,
+      createdAt: 1,
+    })
     res.json({
       success: true,
       data: {
@@ -36,20 +53,16 @@ router.get('/chapters', ...withCodeAccess, async (_req, res) => {
 router.get('/chapters/:chapterId/questions', ...withCodeAccess, async (req, res) => {
   try {
     const chapter = await Chapter.findById(req.params.chapterId)
-    if (!chapter || !chapter.published) {
+    if (!chapter) {
       return res.status(404).json({ success: false, error: 'Chapitre introuvable' })
     }
 
-    const questions = await Question.find({
-      chapterId: chapter._id,
-      published: true,
-    }).sort({ order: 1, createdAt: 1 })
-
-    res.json({
+    const hardcodedPublic = listHardcodedQuestionsPublic(chapter)
+    return res.json({
       success: true,
       data: {
         chapter: { id: chapter._id, name: chapter.name },
-        questions: questions.map((question) => question.toPublicJSON()),
+        questions: hardcodedPublic || [],
       },
     })
   } catch (error) {
@@ -61,14 +74,12 @@ router.get('/chapters/:chapterId/questions', ...withCodeAccess, async (req, res)
 router.get('/chapters/:chapterId/test-subjects', ...withCodeAccess, async (req, res) => {
   try {
     const chapter = await Chapter.findById(req.params.chapterId)
-    if (!chapter || !chapter.published) {
+    if (!chapter) {
       return res.status(404).json({ success: false, error: 'Chapitre introuvable' })
     }
 
-    const publishedCount = await Question.countDocuments({
-      chapterId: chapter._id,
-      published: true,
-    })
+    const bank = await loadChapterQuestionBank(chapter)
+    const publishedCount = bank.length
     const subjects = buildSubjectSummaries(publishedCount, String(chapter._id))
 
     res.json({
@@ -90,15 +101,12 @@ router.get('/chapters/:chapterId/test-subjects', ...withCodeAccess, async (req, 
 router.get('/chapters/:chapterId/test-subjects/:subjectNumber', ...withCodeAccess, async (req, res) => {
   try {
     const chapter = await Chapter.findById(req.params.chapterId)
-    if (!chapter || !chapter.published) {
+    if (!chapter) {
       return res.status(404).json({ success: false, error: 'Chapitre introuvable' })
     }
 
     const subjectNumber = Math.max(1, parseInt(String(req.params.subjectNumber), 10) || 0)
-    const bank = await Question.find({
-      chapterId: chapter._id,
-      published: true,
-    })
+    const bank = await loadChapterQuestionBank(chapter)
 
     if (bank.length === 0) {
       return res.status(404).json({
@@ -122,7 +130,11 @@ router.get('/chapters/:chapterId/test-subjects/:subjectNumber', ...withCodeAcces
         subject: {
           ...summary,
           questionCount: selected.length,
-          questions: selected.map((question) => question.toPublicJSON()),
+          questions: selected.map((question) =>
+            typeof question.toPublicJSON === 'function'
+              ? question.toPublicJSON()
+              : question,
+          ),
         },
       },
     })
@@ -140,10 +152,7 @@ router.get('/chapters/:chapterId/test-subject', ...withCodeAccess, async (req, r
       return res.status(404).json({ success: false, error: 'Chapitre introuvable' })
     }
 
-    const bank = await Question.find({
-      chapterId: chapter._id,
-      published: true,
-    })
+    const bank = await loadChapterQuestionBank(chapter)
 
     if (bank.length === 0) {
       return res.status(404).json({
@@ -164,7 +173,11 @@ router.get('/chapters/:chapterId/test-subject', ...withCodeAccess, async (req, r
           label: 'Sujet 1',
           chapterId: chapter._id,
           questionCount: selected.length,
-          questions: selected.map((question) => question.toPublicJSON()),
+          questions: selected.map((question) =>
+            typeof question.toPublicJSON === 'function'
+              ? question.toPublicJSON()
+              : question,
+          ),
         },
       },
     })
@@ -186,6 +199,14 @@ router.post('/chapters/:chapterId/questions/check', ...withCodeAccess, async (re
       return res.status(400).json({
         success: false,
         error: 'Question et réponses requises',
+      })
+    }
+
+    const hardcodedCheck = checkHardcodedAnswers(chapter, questionId, answerIds)
+    if (hardcodedCheck) {
+      return res.json({
+        success: true,
+        data: hardcodedCheck,
       })
     }
 

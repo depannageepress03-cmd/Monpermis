@@ -8,8 +8,12 @@ import type {
 
 export function fetchChapterQuestions(token: string, chapterId: string) {
   return apiFetch<{
-    chapter: { id: string; name: string }
+    chapter: { id: string; name: string; order?: number }
     questions: ChapterQuestion[]
+    fileBased?: boolean
+    hardcoded?: boolean
+    awaitingFiles?: boolean
+    readOnly?: boolean
   }>(`/api/admin/revision/chapters/${chapterId}/questions`, {}, token)
 }
 

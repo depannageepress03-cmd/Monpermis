@@ -10,7 +10,9 @@ import {
 } from '../utils/ecodepermis.js'
 
 async function loadPublishedExamQuestionBank() {
-  const chapters = await Chapter.find({ published: true }).select('_id name').sort({ order: 1, createdAt: 1 })
+  const chapters = await Chapter.find({ published: true })
+    .select('_id name order')
+    .sort({ order: 1, createdAt: 1 })
   const chapterIds = chapters.map((chapter) => chapter._id)
   const chapterNameById = new Map(chapters.map((chapter) => [String(chapter._id), chapter.name]))
 
@@ -20,6 +22,17 @@ async function loadPublishedExamQuestionBank() {
       published: true,
       chapterId: { $in: chapterIds },
     }).select('_id chapterId')
+  }
+
+  const { hardcodedAsQuestionDocs } = await import('./hardcodedQuestions.js')
+  for (const chapter of chapters) {
+    const hardcoded = hardcodedAsQuestionDocs(chapter)
+    if (!hardcoded?.length) continue
+    const chapterId = String(chapter._id)
+    questions = questions.filter((q) => String(q.chapterId) !== chapterId)
+    for (const doc of hardcoded) {
+      questions.push({ _id: doc.id, chapterId: chapter._id })
+    }
   }
 
   if (questions.length === 0) {

@@ -1,5 +1,13 @@
 import { getApiBase } from './config'
 import { getStoredToken, invalidateSessionIfUnauthorized } from './auth'
+import {
+  checkLocalAnswers,
+  getLocalBankByChapterOrder,
+  toPublicLocalQuestion,
+} from '../data/codeRoute/banks'
+import { mergeWithStandardChapters, getChapterOrderById } from '../data/codeRoute/chapterIndex'
+import { buildLocalSubject, buildLocalSubjectSummaries } from '../data/codeRoute/subjects'
+import { listStandardChapterShells } from '../data/codeRoute/standardChapters'
 
 interface ApiResponse<T> {
   success: boolean
@@ -112,10 +120,15 @@ export interface CourseSessionStart {
   alreadyCompleted: boolean
 }
 
-export function fetchRevisionChapters() {
-  return request<{ chapters: LearnerChapter[] }>('/content/revision/chapters', { auth: true }).then(
-    (data) => data.chapters,
-  )
+export async function fetchRevisionChapters() {
+  try {
+    const data = await request<{ chapters: LearnerChapter[] }>('/content/revision/chapters', {
+      auth: true,
+    })
+    return mergeWithStandardChapters(data.chapters)
+  } catch {
+    return mergeWithStandardChapters(listStandardChapterShells() as LearnerChapter[])
+  }
 }
 
 export function fetchConduiteChapters() {
@@ -143,11 +156,21 @@ export interface LearnerQuestion {
   answers: LearnerAnswer[]
 }
 
-export function fetchRevisionChapterQuestions(chapterId: string) {
-  return request<{ questions: LearnerQuestion[] }>(
-    `/content/revision/chapters/${encodeURIComponent(chapterId)}/questions`,
-    { auth: true },
-  ).then((data) => data.questions)
+export async function fetchRevisionChapterQuestions(chapterId: string) {
+  const order = getChapterOrderById(chapterId)
+  const localBank = order ? getLocalBankByChapterOrder(order) : null
+  if (localBank) {
+    return localBank.map((q) => toPublicLocalQuestion(q, chapterId))
+  }
+  try {
+    const data = await request<{ questions: LearnerQuestion[] }>(
+      `/content/revision/chapters/${encodeURIComponent(chapterId)}/questions`,
+      { auth: true },
+    )
+    return data.questions
+  } catch {
+    return []
+  }
 }
 
 export type LearnerTestSubjectSummary = {
@@ -157,7 +180,11 @@ export type LearnerTestSubjectSummary = {
   questionCount: number
 }
 
-export function fetchRevisionChapterTestSubjects(chapterId: string) {
+export async function fetchRevisionChapterTestSubjects(chapterId: string) {
+  const order = getChapterOrderById(chapterId)
+  if (order && getLocalBankByChapterOrder(order)) {
+    return buildLocalSubjectSummaries(order, chapterId)
+  }
   return request<{
     publishedCount: number
     questionsPerSubject: number
@@ -165,20 +192,29 @@ export function fetchRevisionChapterTestSubjects(chapterId: string) {
   }>(`/content/revision/chapters/${encodeURIComponent(chapterId)}/test-subjects`, { auth: true })
 }
 
-export function fetchRevisionChapterTestSubject(chapterId: string, subjectNumber = 1) {
-  return request<{
+export async function fetchRevisionChapterTestSubject(chapterId: string, subjectNumber = 1) {
+  const order = getChapterOrderById(chapterId)
+  if (order && getLocalBankByChapterOrder(order)) {
+    const subject = buildLocalSubject(order, chapterId, subjectNumber)
+    if (!subject) throw new ContentError('Sujet test introuvable')
+    return subject
+  }
+  const data = await request<{
     subject: { number: number; label: string; questions: LearnerQuestion[] }
   }>(
     `/content/revision/chapters/${encodeURIComponent(chapterId)}/test-subjects/${encodeURIComponent(String(subjectNumber))}`,
     { auth: true },
-  ).then((data) => data.subject)
+  )
+  return data.subject
 }
 
-export function checkRevisionQuestionAnswers(
+export async function checkRevisionQuestionAnswers(
   chapterId: string,
   questionId: string,
   answerIds: string[],
 ) {
+  const local = checkLocalAnswers(questionId, answerIds)
+  if (local) return local
   return request<{ isCorrect: boolean; correctAnswerIds: string[] }>(
     `/content/revision/chapters/${encodeURIComponent(chapterId)}/questions/check`,
     {

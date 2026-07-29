@@ -13,8 +13,9 @@ const ecodepermisExamSchema = new mongoose.Schema(
       max: ECODEPERMIS_EXAM_COUNT,
       unique: true,
     },
+    // String : ObjectId Mongo ou id hardcodé (ex. hc-ch21-q01).
     questionIds: {
-      type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Question' }],
+      type: [{ type: String }],
       default: [],
       validate: {
         validator(value) {

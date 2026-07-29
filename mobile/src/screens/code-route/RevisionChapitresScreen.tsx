@@ -97,6 +97,7 @@ export function RevisionChapitresScreen() {
     navigation.navigate('ChapterQuestionsList', {
       chapterId: chapter.id,
       chapterName: `${index + 1}. ${chapter.name}`,
+      chapterOrder: chapter.order || index + 1,
     })
   }
 
@@ -104,6 +105,7 @@ export function RevisionChapitresScreen() {
     navigation.navigate('ChapterTestSubject', {
       chapterId: chapter.id,
       chapterName: `${index + 1}. ${chapter.name}`,
+      chapterOrder: chapter.order || index + 1,
     })
   }
 

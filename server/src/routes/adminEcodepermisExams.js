@@ -16,6 +16,7 @@ import {
   ensureECodePermisExamSheets,
   generateECodePermisExamSheets,
 } from '../services/ecodepermisExams.js'
+import { loadQuestionsByIds } from '../services/hardcodedQuestions.js'
 import { Chapter } from '../models/Chapter.js'
 
 const router = Router()
@@ -131,7 +132,7 @@ router.get('/exams/:examId', async (req, res) => {
     if (!exam) {
       return res.status(404).json({ success: false, error: 'Épreuve introuvable' })
     }
-    const questions = await Question.find({ _id: { $in: exam.questionIds } })
+    const questions = await loadQuestionsByIds(exam.questionIds)
     res.json({
       success: true,
       data: { exam: exam.toAdminJSON(questions) },
@@ -152,7 +153,7 @@ router.patch('/exams/:examId', audit('update', 'ecodepermis_exam'), async (req, 
       exam.published = Boolean(req.body.published)
     }
     await exam.save()
-    const questions = await Question.find({ _id: { $in: exam.questionIds } })
+    const questions = await loadQuestionsByIds(exam.questionIds)
     res.json({
       success: true,
       data: { exam: exam.toAdminJSON(questions) },

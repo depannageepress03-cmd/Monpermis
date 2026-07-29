@@ -34,16 +34,12 @@ import {
   Type,
 } from 'lucide-react'
 import {
-  createChapter,
   createCourse,
   createModule,
-  deleteChapter,
   deleteCourse,
   deleteModule,
-  duplicateChapter,
   duplicateModule,
   fetchChapters,
-  reorderChapters,
   reorderCourses,
   reorderModules,
   updateChapter,
@@ -682,7 +678,6 @@ type ChapterWorkspaceTab = 'cours' | 'sujet-test'
 interface ChapterPanelProps {
   chapter: Chapter
   onUpdated: () => void
-  onDuplicated: (chapterId: string) => void
   activeTab: ChapterWorkspaceTab
   onTabChange: (tab: ChapterWorkspaceTab) => void
 }
@@ -690,7 +685,6 @@ interface ChapterPanelProps {
 function ChapterPanel({
   chapter,
   onUpdated,
-  onDuplicated,
   activeTab,
   onTabChange,
 }: ChapterPanelProps) {
@@ -752,35 +746,6 @@ function ChapterPanel({
     }
   }
 
-  const handleDuplicate = async () => {
-    const token = getAdminToken()
-    if (!token) return
-
-    setBusy(true)
-    setError(null)
-    try {
-      const { chapter: copy } = await duplicateChapter(token, chapter.id)
-      onDuplicated(copy.id)
-    } catch (err) {
-      setError(isAuthError(err) ? err.message : 'Duplication impossible')
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  const handleDeleteChapter = async () => {
-    if (!window.confirm(`Supprimer le chapitre « ${chapter.name} » et tout son contenu ?`)) return
-    const token = getAdminToken()
-    if (!token) return
-
-    try {
-      await deleteChapter(token, chapter.id)
-      onUpdated()
-    } catch (err) {
-      setError(isAuthError(err) ? err.message : 'Suppression impossible')
-    }
-  }
-
   const handleCourseDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event
     if (!over || active.id === over.id) return
@@ -821,24 +786,6 @@ function ChapterPanel({
         </div>
         <div className="revision-item-actions">
           <PublishSwitch checked={chapter.published} onChange={handlePublishToggle} disabled={busy} />
-          <button
-            type="button"
-            className="btn-icon-muted"
-            onClick={handleDuplicate}
-            disabled={busy}
-            aria-label="Dupliquer le chapitre"
-            title="Dupliquer"
-          >
-            <Copy size={16} />
-          </button>
-          <button
-            type="button"
-            className="btn-icon-danger"
-            onClick={handleDeleteChapter}
-            aria-label="Supprimer le chapitre"
-          >
-            <Trash2 size={16} />
-          </button>
         </div>
       </div>
 
@@ -948,23 +895,8 @@ function ChapterRailItem({
   active: boolean
   onSelect: () => void
 }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
-    id: chapter.id,
-  })
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.7 : 1,
-  }
-
   return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      className={`revision-rail-item${active ? ' active' : ''}${isDragging ? ' is-dragging' : ''}`}
-    >
-      <DragHandle attributes={attributes} listeners={listeners} />
+    <div className={`revision-rail-item${active ? ' active' : ''}`}>
       <button type="button" className="revision-rail-button" onClick={onSelect}>
         <span className="revision-rail-name">{chapter.name}</span>
         <span className="revision-rail-meta">
@@ -977,15 +909,12 @@ function ChapterRailItem({
 }
 
 export function RevisionChapitresPage() {
-  const sensors = useAdminSensors()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const [chapters, setChapters] = useState<Chapter[]>([])
   const [selectedChapterId, setSelectedChapterId] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<ChapterWorkspaceTab>('cours')
-  const [chapterName, setChapterName] = useState('')
   const [loading, setLoading] = useState(true)
-  const [addingChapter, setAddingChapter] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const loadChapters = useCallback(async (preferSelectedId?: string | null, silent = false) => {
@@ -1051,53 +980,6 @@ export function RevisionChapitresPage() {
     }
   }
 
-  const handleAddChapter = async (e: FormEvent) => {
-    e.preventDefault()
-    const name = chapterName.trim()
-    if (!name) return
-
-    const token = getAdminToken()
-    if (!token) return
-
-    setAddingChapter(true)
-    setError(null)
-    try {
-      const { chapter } = await createChapter(token, name)
-      setChapterName('')
-      await loadChapters(chapter.id, true)
-    } catch (err) {
-      setError(isAuthError(err) ? err.message : 'Création impossible')
-    } finally {
-      setAddingChapter(false)
-    }
-  }
-
-  const handleChapterDragEnd = async (event: DragEndEvent) => {
-    const { active, over } = event
-    if (!over || active.id === over.id) return
-
-    const oldIndex = chapters.findIndex((item) => item.id === active.id)
-    const newIndex = chapters.findIndex((item) => item.id === over.id)
-    if (oldIndex < 0 || newIndex < 0) return
-
-    const next = arrayMove(chapters, oldIndex, newIndex)
-    setChapters(next)
-
-    const token = getAdminToken()
-    if (!token) return
-
-    try {
-      const { chapters: updated } = await reorderChapters(
-        token,
-        next.map((item) => item.id),
-      )
-      setChapters(updated)
-    } catch (err) {
-      await loadChapters(undefined, true)
-      setError(isAuthError(err) ? err.message : 'Réordonnancement impossible')
-    }
-  }
-
   return (
     <div className="revision-shell">
       <header className="revision-page-header">
@@ -1106,24 +988,9 @@ export function RevisionChapitresPage() {
           backLabel="Code de la route"
           kicker="Formation"
           title="Révision par chapitres"
-          subtitle="Chapitre à gauche, cours et aperçu élève à droite."
+          subtitle="21 chapitres standards. Éditez uniquement les cours ; les questions viennent des fichiers."
         />
       </header>
-
-      <form onSubmit={handleAddChapter} className="revision-inline-form revision-add-chapter">
-        <input
-          type="text"
-          value={chapterName}
-          onChange={(e) => setChapterName(e.target.value)}
-          placeholder="Nom du nouveau chapitre"
-          required
-          minLength={2}
-        />
-        <button type="submit" className="btn-primary btn-primary-inline" disabled={addingChapter}>
-          <Plus size={16} />
-          {addingChapter ? 'Création…' : 'Ajouter un chapitre'}
-        </button>
-      </form>
 
       {loading ? (
         <div style={{ padding: 8 }}>
@@ -1134,8 +1001,8 @@ export function RevisionChapitresPage() {
 
       {!loading && chapters.length === 0 ? (
         <EmptyState
-          title="Aucun chapitre"
-          description="Commencez par ajouter votre premier chapitre de révision."
+          title="Chapitres en cours de synchronisation"
+          description="Les 21 chapitres standards seront créés automatiquement au prochain chargement."
         />
       ) : null}
 
@@ -1147,27 +1014,16 @@ export function RevisionChapitresPage() {
                 <h3>Chapitres</h3>
                 <span>{chapters.length}</span>
               </div>
-              <DndContext
-                sensors={sensors}
-                collisionDetection={closestCenter}
-                onDragEnd={handleChapterDragEnd}
-              >
-                <SortableContext
-                  items={chapters.map((item) => item.id)}
-                  strategy={verticalListSortingStrategy}
-                >
-                  <div className="revision-rail-list">
-                    {chapters.map((chapter) => (
-                      <ChapterRailItem
-                        key={chapter.id}
-                        chapter={chapter}
-                        active={chapter.id === selectedChapterId}
-                        onSelect={() => handleSelectChapter(chapter.id)}
-                      />
-                    ))}
-                  </div>
-                </SortableContext>
-              </DndContext>
+              <div className="revision-rail-list">
+                {chapters.map((chapter) => (
+                  <ChapterRailItem
+                    key={chapter.id}
+                    chapter={chapter}
+                    active={chapter.id === selectedChapterId}
+                    onSelect={() => handleSelectChapter(chapter.id)}
+                  />
+                ))}
+              </div>
             </>
           }
           editor={
@@ -1176,14 +1032,13 @@ export function RevisionChapitresPage() {
                 key={selectedChapter.id}
                 chapter={selectedChapter}
                 onUpdated={() => refresh(selectedChapterId)}
-                onDuplicated={(chapterId) => refresh(chapterId)}
                 activeTab={activeTab}
                 onTabChange={handleTabChange}
               />
             ) : (
               <EmptyState
                 title="Aucun chapitre sélectionné"
-                description="Sélectionnez un chapitre dans l’arbre pour éditer son contenu."
+                description="Sélectionnez un chapitre dans l’arbre pour éditer ses cours."
               />
             )
           }
