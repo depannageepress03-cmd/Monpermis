@@ -155,8 +155,18 @@ export function deleteModule(
 export function uploadRevisionImage(token: string, file: File) {
   const formData = new FormData()
   formData.append('image', file)
-  return apiUpload<{ imageUrl: string; mediaBytes: number }>(
+  return apiUpload<{ imageUrl: string; imagePublicId?: string; mediaBytes: number }>(
     '/api/admin/revision/upload-image',
+    formData,
+    token,
+  )
+}
+
+export function uploadRevisionVideo(token: string, file: File) {
+  const formData = new FormData()
+  formData.append('video', file)
+  return apiUpload<{ videoUrl: string; videoPublicId?: string; mediaBytes: number }>(
+    '/api/admin/revision/upload-video',
     formData,
     token,
   )

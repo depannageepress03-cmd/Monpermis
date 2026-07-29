@@ -14,6 +14,13 @@ fs.mkdirSync(audioDir, { recursive: true })
 fs.mkdirSync(vehiclesDir, { recursive: true })
 
 const IMAGE_MIMES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif'])
+const VIDEO_MIMES = new Set([
+  'video/mp4',
+  'video/webm',
+  'video/quicktime',
+  'video/ogg',
+  'video/x-m4v',
+])
 const AUDIO_MIMES = new Set([
   'audio/mpeg',
   'audio/mp3',
@@ -176,6 +183,19 @@ export const audioUpload = multer({
   fileFilter: (_req, file, cb) => {
     if (!AUDIO_MIMES.has(String(file.mimetype || '').toLowerCase())) {
       cb(new Error('Format audio non supporté (MP3, WAV, OGG, WebM)'))
+      return
+    }
+    cb(null, true)
+  },
+})
+
+/** Vidéos cours (code / conduite) → Cloudinary. Limite 100 Mo (plafond typique free). */
+export const videoUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 100 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    if (!VIDEO_MIMES.has(String(file.mimetype || '').toLowerCase())) {
+      cb(new Error('Format vidéo non supporté (MP4, WebM, MOV)'))
       return
     }
     cb(null, true)

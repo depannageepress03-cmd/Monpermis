@@ -11,7 +11,7 @@ import {
 import { PublishSwitch } from '../components/PublishSwitch'
 import { StatusBadge } from '../components/StatusBadge'
 import { getAdminToken, isAuthError } from '../context/AdminAuthContext'
-import { normalizePhone, PHONE_PLACEHOLDER, validatePassword } from '../utils/validation'
+import { normalizePhone, PHONE_PLACEHOLDER, isValidEmailFormat, validatePassword } from '../utils/validation'
 
 function formatDate(value?: string) {
   if (!value) return '—'
@@ -98,7 +98,7 @@ export function UsersPage() {
       setError('Prénom et nom requis (2 caractères minimum)')
       return
     }
-    if (!email.trim().includes('@')) {
+    if (!isValidEmailFormat(email)) {
       setError('Email invalide')
       return
     }
@@ -263,7 +263,9 @@ export function UsersPage() {
               <label htmlFor="user-email">Email</label>
               <input
                 id="user-email"
-                type="email"
+                type="text"
+                inputMode="email"
+                autoComplete="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}

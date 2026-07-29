@@ -27,7 +27,11 @@ export function describeModuleSize(input: {
   }
 
   if (input.mediaType === 'video' && input.videoUrl.trim()) {
-    parts.push('Vidéo (lien externe)')
+    parts.push(
+      input.mediaBytes > 0
+        ? `Vidéo ${formatBytes(input.mediaBytes)}`
+        : 'Vidéo (lien externe)',
+    )
   }
 
   if (input.mediaType === 'image' && input.imageUrl.trim()) {
@@ -46,8 +50,12 @@ export function describeModuleSize(input: {
     }
   }
 
-  const totalKnown = textBytes + (input.mediaType === 'image' ? input.mediaBytes : 0)
-  const warning = input.mediaType === 'image' && input.mediaBytes > 2 * 1024 * 1024
+  const mediaKnown =
+    input.mediaType === 'image' || input.mediaType === 'video' ? input.mediaBytes : 0
+  const totalKnown = textBytes + mediaKnown
+  const warning =
+    (input.mediaType === 'image' && input.mediaBytes > 2 * 1024 * 1024) ||
+    (input.mediaType === 'video' && input.mediaBytes > 50 * 1024 * 1024)
 
   return {
     label: totalKnown > 0 ? `Taille estimée : ${formatBytes(totalKnown)}` : 'Contenu en cours',

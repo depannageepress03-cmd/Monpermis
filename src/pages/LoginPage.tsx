@@ -107,7 +107,7 @@ export function LoginPage() {
     setLoading(true)
 
     try {
-      const { user, token } = await loginUser({ email, password })
+      const { user, token } = await loginUser({ email: email.trim(), password })
       finishAuth(user, token)
     } catch (error) {
       const { message, code, email: errEmail } = getAuthErrorDetails(error)
@@ -153,10 +153,13 @@ export function LoginPage() {
             <AuthInput
               label="Adresse email"
               name="email"
-              type="email"
+              type="text"
               placeholder="Adresse email"
               autoComplete="email"
               inputMode="email"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               error={errors.email}

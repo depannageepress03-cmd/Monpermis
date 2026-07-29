@@ -147,7 +147,7 @@ export function LoginScreen() {
     setLoading(true)
 
     try {
-      const { user, token } = await loginUser({ email, password })
+      const { user, token } = await loginUser({ email: email.trim(), password })
       await finishAuth(token, user)
     } catch (error) {
       const { code, email: errEmail, message } = getAuthErrorDetails(error)

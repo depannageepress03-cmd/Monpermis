@@ -28,6 +28,7 @@ export function AuthInput({ label, error, secureTextEntry, style, ...props }: Au
           placeholderTextColor={dark.textMuted}
           secureTextEntry={isPassword && !showPassword}
           autoCapitalize="none"
+          autoCorrect={false}
           {...props}
         />
         {isPassword && (

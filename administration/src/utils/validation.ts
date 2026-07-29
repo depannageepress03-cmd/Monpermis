@@ -30,3 +30,10 @@ export function validatePassword(password: string): string | undefined {
   if (password.length < 8) return 'Minimum 8 caractères'
   return undefined
 }
+
+/** Permissive email: local@domain with a dot in the domain (+, _, digits, long TLDs OK). */
+export function isValidEmailFormat(email: string): boolean {
+  const value = email.trim()
+  if (!value || value.length > 254) return false
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
+}

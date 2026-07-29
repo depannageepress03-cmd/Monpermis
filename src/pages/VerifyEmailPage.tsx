@@ -87,7 +87,12 @@ export function VerifyEmailPage() {
                 </p>
                 <input
                   className="auth-input"
-                  type="email"
+                  type="text"
+                  inputMode="email"
+                  autoComplete="email"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
                   value={resendEmail}
                   onChange={(e) => setResendEmail(e.target.value)}
                   placeholder="Adresse email"

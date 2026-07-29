@@ -1,6 +1,19 @@
+/**
+ * Permissive email format: local@domain with at least one dot in the domain.
+ * Allows +, _, digits, hyphens, subdomains, and long/new gTLDs.
+ * Rejects spaces and missing @ / domain.
+ */
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+export function isValidEmailFormat(email: string): boolean {
+  const value = email.trim()
+  if (!value || value.length > 254) return false
+  return EMAIL_PATTERN.test(value)
+}
+
 export function validateEmail(email: string): string | undefined {
   if (!email.trim()) return "L'email est requis"
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return 'Email invalide'
+  if (!isValidEmailFormat(email)) return 'Email invalide'
   return undefined
 }
 

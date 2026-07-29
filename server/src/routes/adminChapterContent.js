@@ -1,13 +1,12 @@
 import { Router } from 'express'
-import fs from 'fs'
-import path from 'path'
-import { fileURLToPath } from 'url'
 import { requireAdminAuth } from '../middleware/adminAuth.js'
-import { imageUpload, writeFile } from '../middleware/upload.js'
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const uploadsDir = path.join(__dirname, '../../uploads/images')
-fs.mkdirSync(uploadsDir, { recursive: true })
+import { imageUpload, videoUpload } from '../middleware/upload.js'
+import {
+  resolveCodeMediaFolder,
+  uploadImageBuffer,
+  uploadVideoBuffer,
+} from '../services/cloudinary.js'
+import { logger } from '../utils/logger.js'
 
 function nextOrder(items) {
   if (!items.length) return 0
@@ -42,7 +41,6 @@ function normalizeMediaFields(body) {
 
   if (mediaType === 'video') {
     imageUrl = ''
-    mediaBytes = 0
   } else if (mediaType === 'image') {
     videoUrl = ''
   } else if (mediaType === '') {
@@ -65,7 +63,12 @@ function applyOrder(items, orderedIds) {
   return true
 }
 
-export function createAdminChapterRouter(Model) {
+/**
+ * @param {import('mongoose').Model} Model
+ * @param {{ mediaFolder?: string }} [options]
+ */
+export function createAdminChapterRouter(Model, options = {}) {
+  const mediaFolder = String(options.mediaFolder || '').trim() || resolveCodeMediaFolder()
   const router = Router()
   router.use(requireAdminAuth)
 
@@ -503,7 +506,6 @@ export function createAdminChapterRouter(Model) {
 
       if (mod.mediaType === 'video') {
         mod.imageUrl = ''
-        mod.mediaBytes = 0
       } else if (mod.mediaType === 'image') {
         mod.videoUrl = ''
       } else if (mod.mediaType === '') {
@@ -572,18 +574,57 @@ export function createAdminChapterRouter(Model) {
       }
 
       try {
-        const saved = await writeFile(req.file)
+        const uploaded = await uploadImageBuffer(req.file.buffer, {
+          mimeType: req.file.mimetype,
+          originalName: req.file.originalname,
+          folder: mediaFolder,
+        })
         res.status(201).json({
           success: true,
           data: {
-            imageUrl: `/uploads/images/${saved.filename}`,
-            mediaBytes: saved.size,
+            imageUrl: uploaded.imageUrl,
+            imagePublicId: uploaded.imagePublicId,
+            mediaBytes: uploaded.bytes,
           },
         })
       } catch (err) {
+        logger.error('Upload image cours Cloudinary:', err)
         return res.status(err.status || 400).json({
           success: false,
           error: err.message || 'Enregistrement image impossible',
+        })
+      }
+    })
+  })
+
+  router.post('/upload-video', (req, res) => {
+    videoUpload.single('video')(req, res, async (error) => {
+      if (error) {
+        return res.status(400).json({ success: false, error: error.message })
+      }
+      if (!req.file) {
+        return res.status(400).json({ success: false, error: 'Aucune vidéo fournie' })
+      }
+
+      try {
+        const uploaded = await uploadVideoBuffer(req.file.buffer, {
+          mimeType: req.file.mimetype,
+          originalName: req.file.originalname,
+          folder: mediaFolder,
+        })
+        res.status(201).json({
+          success: true,
+          data: {
+            videoUrl: uploaded.videoUrl,
+            videoPublicId: uploaded.videoPublicId,
+            mediaBytes: uploaded.bytes,
+          },
+        })
+      } catch (err) {
+        logger.error('Upload vidéo cours Cloudinary:', err)
+        return res.status(err.status || 400).json({
+          success: false,
+          error: err.message || 'Enregistrement vidéo impossible',
         })
       }
     })

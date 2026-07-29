@@ -9,7 +9,7 @@ import {
 import { normalizeBeninPhone } from '../services/fedapay.js'
 import { generateVerificationToken, getVerificationExpiry } from '../utils/tokens.js'
 import { requireUserAuth } from '../middleware/userAuth.js'
-import { deleteUserAccount } from '../utils/deleteUserAccount.js'
+import { AccountDeleteBlockedError, deleteUserAccount } from '../utils/deleteUserAccount.js'
 import { logger } from '../utils/logger.js'
 import { verifyGoogleIdToken } from '../utils/googleAuth.js'
 
@@ -427,6 +427,9 @@ router.delete('/account', requireUserAuth, async (req, res) => {
 
     res.json({ success: true, data: { deleted: true } })
   } catch (error) {
+    if (error instanceof AccountDeleteBlockedError || error?.code === 'PAYMENT_IN_PROGRESS') {
+      return res.status(409).json({ success: false, error: error.message })
+    }
     logger.error('Erreur suppression compte', { error: error.message })
     res.status(500).json({ success: false, error: 'Suppression impossible' })
   }

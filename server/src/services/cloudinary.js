@@ -187,6 +187,24 @@ function guessImageExtension(mimeType, originalName = '') {
   return '.jpg'
 }
 
+function guessVideoExtension(mimeType, originalName = '') {
+  const fromName = String(originalName || '')
+    .toLowerCase()
+    .match(/\.[a-z0-9]+$/)?.[0]
+  if (fromName) return fromName
+  const mime = String(mimeType || '').toLowerCase()
+  if (mime.includes('webm')) return '.webm'
+  if (mime.includes('quicktime')) return '.mov'
+  if (mime.includes('ogg')) return '.ogv'
+  return '.mp4'
+}
+
+/** Folder prefix for code / course media (env override). */
+export function resolveCodeMediaFolder(fallback = 'monpermis/code') {
+  const fromEnv = String(process.env.CLOUDINARY_FOLDER || '').trim()
+  return fromEnv || fallback
+}
+
 /**
  * Upload an image buffer to Cloudinary (signed REST upload).
  * @returns {{ imageUrl: string, imagePublicId: string, bytes: number, format?: string }}
@@ -244,6 +262,68 @@ export async function uploadImageBuffer(buffer, { mimeType, originalName, folder
   return {
     imageUrl,
     imagePublicId,
+    bytes: Number(payload.bytes) || buffer.length,
+    format: payload.format,
+  }
+}
+
+/**
+ * Upload a video buffer to Cloudinary (signed REST upload, resource_type=video).
+ * @returns {{ videoUrl: string, videoPublicId: string, bytes: number, format?: string }}
+ */
+export async function uploadVideoBuffer(buffer, { mimeType, originalName, folder = 'monpermis/code' } = {}) {
+  if (!Buffer.isBuffer(buffer) || buffer.length === 0) {
+    throw Object.assign(new Error('Fichier vidéo vide'), { status: 400 })
+  }
+
+  const { cloud_name, api_key, api_secret } = resolveCredentials()
+  const ext = guessVideoExtension(mimeType, originalName)
+  const filename = `video${ext}`
+  const timestamp = Math.floor(Date.now() / 1000)
+  const params = { folder, timestamp }
+  const signature = signParams(params, api_secret)
+
+  const form = new FormData()
+  form.append(
+    'file',
+    new Blob([buffer], { type: mimeType || 'application/octet-stream' }),
+    filename,
+  )
+  form.append('api_key', api_key)
+  form.append('timestamp', String(timestamp))
+  form.append('signature', signature)
+  form.append('folder', folder)
+
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), 300000)
+  let response
+  try {
+    response = await fetch(`https://api.cloudinary.com/v1_1/${cloud_name}/video/upload`, {
+      method: 'POST',
+      body: form,
+      signal: controller.signal,
+    })
+  } catch (error) {
+    clearTimeout(timer)
+    throw Object.assign(new Error(`Upload Cloudinary réseau: ${error.message}`), { status: 502 })
+  }
+  clearTimeout(timer)
+
+  const payload = await response.json().catch(() => ({}))
+  if (!response.ok) {
+    const message = payload?.error?.message || `Upload Cloudinary HTTP ${response.status}`
+    throw Object.assign(new Error(message), { status: response.status >= 500 ? 502 : 400 })
+  }
+
+  const videoUrl = String(payload.secure_url || '').trim()
+  const videoPublicId = String(payload.public_id || '').trim()
+  if (!videoUrl || !videoPublicId) {
+    throw Object.assign(new Error('Réponse Cloudinary invalide'), { status: 502 })
+  }
+
+  return {
+    videoUrl,
+    videoPublicId,
     bytes: Number(payload.bytes) || buffer.length,
     format: payload.format,
   }

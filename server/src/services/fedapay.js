@@ -1,4 +1,5 @@
 import fedapay from 'fedapay'
+import { isValidEmailFormat } from '../utils/emailValidation.js'
 
 const { FedaPay, Transaction, Webhook } = fedapay
 
@@ -190,8 +191,7 @@ export function sanitizeEmail(email) {
   const value = String(email || '')
     .trim()
     .toLowerCase()
-  if (!value) return null
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return null
+  if (!isValidEmailFormat(value)) return null
   return value
 }
 

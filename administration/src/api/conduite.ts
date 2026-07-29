@@ -155,8 +155,18 @@ export function deleteModule(
 export function uploadConduiteImage(token: string, file: File) {
   const formData = new FormData()
   formData.append('image', file)
-  return apiUpload<{ imageUrl: string; mediaBytes: number }>(
+  return apiUpload<{ imageUrl: string; imagePublicId?: string; mediaBytes: number }>(
     '/api/admin/conduite/upload-image',
+    formData,
+    token,
+  )
+}
+
+export function uploadConduiteVideo(token: string, file: File) {
+  const formData = new FormData()
+  formData.append('video', file)
+  return apiUpload<{ videoUrl: string; videoPublicId?: string; mediaBytes: number }>(
+    '/api/admin/conduite/upload-video',
     formData,
     token,
   )

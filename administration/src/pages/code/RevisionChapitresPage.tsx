@@ -50,6 +50,7 @@ import {
   updateCourse,
   updateModule,
   uploadRevisionImage,
+  uploadRevisionVideo,
 } from '../../api/revision'
 import { AdminSectionHeader } from '../../components/AdminSectionHeader'
 import { MediaPreview } from '../../components/MediaPreview'
@@ -190,7 +191,7 @@ function ModuleEditor({
         mediaType,
         videoUrl: mediaType === 'video' ? videoUrl : '',
         imageUrl: mediaType === 'image' ? imageUrl : '',
-        mediaBytes: mediaType === 'image' ? mediaBytes : 0,
+        mediaBytes: mediaType === 'image' || mediaType === 'video' ? mediaBytes : 0,
       })
       setEditing(false)
       setSavedNotice(true)
@@ -217,6 +218,26 @@ function ModuleEditor({
       setVideoUrl('')
     } catch (err) {
       setError(isAuthError(err) ? err.message : 'Import image impossible')
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  const handleVideoUpload = async (file: File | undefined) => {
+    if (!file) return
+    const token = getAdminToken()
+    if (!token) return
+
+    setUploading(true)
+    setError(null)
+    try {
+      const uploaded = await uploadRevisionVideo(token, file)
+      setVideoUrl(uploaded.videoUrl)
+      setMediaBytes(uploaded.mediaBytes || file.size || 0)
+      setMediaType('video')
+      setImageUrl('')
+    } catch (err) {
+      setError(isAuthError(err) ? err.message : 'Import vidéo impossible')
     } finally {
       setUploading(false)
     }
@@ -337,17 +358,46 @@ function ModuleEditor({
               </div>
 
               {mediaType === 'video' ? (
-                <label className="revision-field">
-                  <span>
-                    <Film size={16} /> Lien vidéo
-                  </span>
-                  <input
-                    type="url"
-                    value={videoUrl}
-                    onChange={(e) => setVideoUrl(e.target.value)}
-                    placeholder="https://…"
-                  />
-                </label>
+                <>
+                  <label className="revision-field">
+                    <span>
+                      <Film size={16} /> Fichier vidéo
+                    </span>
+                    <input
+                      type="file"
+                      accept="video/mp4,video/webm,video/quicktime"
+                      onChange={(e) => handleVideoUpload(e.target.files?.[0])}
+                      disabled={uploading}
+                    />
+                    {uploading ? <span className="revision-field-hint">Import en cours…</span> : null}
+                    {videoUrl ? (
+                      <button
+                        type="button"
+                        className="btn-text-danger"
+                        onClick={() => {
+                          setVideoUrl('')
+                          setMediaBytes(0)
+                        }}
+                      >
+                        Retirer la vidéo
+                      </button>
+                    ) : null}
+                  </label>
+                  <label className="revision-field">
+                    <span>
+                      <Film size={16} /> Ou lien YouTube / Vimeo
+                    </span>
+                    <input
+                      type="url"
+                      value={videoUrl}
+                      onChange={(e) => {
+                        setVideoUrl(e.target.value)
+                        setMediaBytes(0)
+                      }}
+                      placeholder="https://…"
+                    />
+                  </label>
+                </>
               ) : null}
 
               {mediaType === 'image' ? (

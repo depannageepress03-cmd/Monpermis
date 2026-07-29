@@ -3,13 +3,12 @@ import { User } from '../models/User.js'
 import { requireAdminAuth } from '../middleware/adminAuth.js'
 import { audit } from '../middleware/audit.js'
 import { buildLearnerJourney } from '../utils/learnerJourney.js'
-import { deleteUserAccount } from '../utils/deleteUserAccount.js'
+import { AccountDeleteBlockedError, deleteUserAccount } from '../utils/deleteUserAccount.js'
+import { isValidEmailFormat } from '../utils/emailValidation.js'
 import { logger } from '../utils/logger.js'
 
 const router = Router()
 router.use(requireAdminAuth)
-
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 function normalizePhone(phone) {
   if (!phone) return ''
@@ -118,7 +117,7 @@ router.post('/', audit('create', 'user'), async (req, res) => {
     }
 
     const normalizedEmail = String(email).toLowerCase().trim()
-    if (!EMAIL_PATTERN.test(normalizedEmail)) {
+    if (!isValidEmailFormat(normalizedEmail)) {
       return res.status(400).json({ success: false, error: 'Email invalide' })
     }
 
@@ -224,6 +223,9 @@ router.delete('/:userId', audit('delete', 'user'), async (req, res) => {
       data: { deleted: true, id: userId },
     })
   } catch (error) {
+    if (error instanceof AccountDeleteBlockedError || error?.code === 'PAYMENT_IN_PROGRESS') {
+      return res.status(409).json({ success: false, error: error.message })
+    }
     logger.error('Erreur suppression utilisateur', { error: error.message })
     res.status(500).json({ success: false, error: 'Suppression impossible' })
   }
