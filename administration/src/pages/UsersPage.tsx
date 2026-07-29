@@ -1,5 +1,5 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
-import { Download, Filter, MoreHorizontal, RefreshCw, Search, Trash2, UserPlus } from 'lucide-react'
+import { Filter, RefreshCw, Search, Trash2, UserPlus } from 'lucide-react'
 import { useSearchParams } from 'react-router-dom'
 import {
   createUser,
@@ -11,6 +11,7 @@ import {
 import { PublishSwitch } from '../components/PublishSwitch'
 import { StatusBadge } from '../components/StatusBadge'
 import { getAdminToken, isAuthError } from '../context/AdminAuthContext'
+import { Button, Drawer, EmptyState, SkeletonBlock } from '../ui'
 import { normalizePhone, PHONE_PLACEHOLDER, isValidEmailFormat, validatePassword } from '../utils/validation'
 
 function formatDate(value?: string) {
@@ -36,6 +37,7 @@ export function UsersPage() {
   const [loading, setLoading] = useState(true)
   const [busyId, setBusyId] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)
+  const [createOpen, setCreateOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [query, setQuery] = useState(() => searchParams.get('q') || '')
@@ -89,6 +91,19 @@ export function UsersPage() {
   const activeCount = users.filter((user) => user.isActive).length
   const suspendedCount = users.length - activeCount
 
+  const resetCreateForm = () => {
+    setFirstName('')
+    setLastName('')
+    setEmail('')
+    setPhone('')
+    setPassword('')
+  }
+
+  const closeCreateDrawer = () => {
+    setCreateOpen(false)
+    resetCreateForm()
+  }
+
   const handleCreate = async (e: FormEvent) => {
     e.preventDefault()
     setError(null)
@@ -125,11 +140,7 @@ export function UsersPage() {
       })
       setUsers((current) => [user, ...current])
       setSuccess(`Compte « ${user.firstName} ${user.lastName} » créé.`)
-      setFirstName('')
-      setLastName('')
-      setEmail('')
-      setPhone('')
-      setPassword('')
+      closeCreateDrawer()
     } catch (err) {
       setError(isAuthError(err) ? err.message : 'Création impossible')
     } finally {
@@ -192,12 +203,15 @@ export function UsersPage() {
   return (
     <div className="admin-page">
       <header className="admin-module-header">
-        <p className="admin-module-kicker">Gestion des comptes</p>
-        <h1 className="admin-module-title">Utilisateurs</h1>
-        <div className="accent-row" aria-hidden>
-          <span className="accent accent-green" />
-          <span className="accent accent-gold" />
-          <span className="accent accent-navy" />
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
+          <div>
+            <p className="admin-module-kicker">Gestion des comptes</p>
+            <h1 className="admin-module-title">Utilisateurs</h1>
+          </div>
+          <Button variant="primary" onClick={() => setCreateOpen(true)}>
+            <UserPlus size={14} strokeWidth={2} />
+            Nouvel apprenant
+          </Button>
         </div>
       </header>
 
@@ -228,140 +242,69 @@ export function UsersPage() {
         </div>
       </section>
 
-      <div className="users-figma-layout">
-        <div className="users-create-card">
-          <div className="users-create-card-head">
-            <p>Nouveau</p>
-            <h3>Créer un compte apprenant</h3>
-          </div>
-          <form onSubmit={handleCreate} className="admin-form">
-            <div>
-              <label htmlFor="user-firstName">Prénom</label>
-              <input
-                id="user-firstName"
-                type="text"
-                required
-                minLength={2}
-                value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
-                placeholder="ex. Adjobi"
-              />
-            </div>
-            <div>
-              <label htmlFor="user-lastName">Nom</label>
-              <input
-                id="user-lastName"
-                type="text"
-                required
-                minLength={2}
-                value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
-                placeholder="ex. Kossou"
-              />
-            </div>
-            <div>
-              <label htmlFor="user-email">Email</label>
-              <input
-                id="user-email"
-                type="text"
-                inputMode="email"
-                autoComplete="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="exemple@gmail.com"
-              />
-            </div>
-            <div>
-              <label htmlFor="user-phone">Téléphone</label>
-              <input
-                id="user-phone"
-                type="tel"
-                inputMode="numeric"
-                value={phone}
-                onChange={(e) => setPhone(normalizePhone(e.target.value))}
-                placeholder={PHONE_PLACEHOLDER}
-              />
-            </div>
-            <div>
-              <label htmlFor="user-password">Mot de passe</label>
-              <input
-                id="user-password"
-                type="password"
-                required
-                minLength={8}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-              />
-            </div>
-            <button type="submit" disabled={creating} className="users-create-submit">
-              <UserPlus size={14} strokeWidth={2} />
-              {creating ? 'Création…' : 'Créer le compte'}
-            </button>
-          </form>
+      <div className="users-table-card">
+        <div className="users-toolbar-figma">
+          <label className="users-search-figma" htmlFor="users-search">
+            <Search size={13} strokeWidth={2} />
+            <input
+              id="users-search"
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Rechercher un apprenant…"
+            />
+          </label>
+          <button type="button" className="dash-filter-btn">
+            <Filter size={12} strokeWidth={2} /> Filtrer
+          </button>
+          <button
+            type="button"
+            className="dash-filter-btn"
+            onClick={() => void loadUsers()}
+            disabled={loading}
+          >
+            <RefreshCw size={12} strokeWidth={2} />
+            Actualiser
+          </button>
         </div>
 
-        <div className="users-table-card">
-          <div className="users-toolbar-figma">
-            <label className="users-search-figma" htmlFor="users-search">
-              <Search size={13} strokeWidth={2} />
-              <input
-                id="users-search"
-                type="search"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Rechercher un apprenant…"
-              />
-            </label>
-            <button type="button" className="dash-filter-btn">
-              <Filter size={12} strokeWidth={2} /> Filtrer
-            </button>
-            <button
-              type="button"
-              className="dash-filter-btn"
-              style={{ border: 'none', background: '#e8f8ef', color: '#00B050', fontWeight: 600 }}
-              onClick={() => void loadUsers()}
-              disabled={loading}
-            >
-              {loading ? <RefreshCw size={12} /> : <Download size={12} strokeWidth={2} />}
-              {loading ? '…' : 'Export'}
-            </button>
+        {error ? <p className="form-error" role="alert" style={{ margin: '12px 18px' }}>{error}</p> : null}
+        {success ? (
+          <p className="form-success" role="status" style={{ margin: '12px 18px' }}>
+            {success}
+          </p>
+        ) : null}
+
+        {loading && users.length === 0 ? (
+          <div style={{ padding: '16px 18px' }}>
+            <SkeletonBlock rows={6} />
           </div>
-
-          {error ? <p className="form-error" role="alert" style={{ margin: '12px 18px' }}>{error}</p> : null}
-          {success ? (
-            <p className="form-success" role="status" style={{ margin: '12px 18px' }}>
-              {success}
-            </p>
-          ) : null}
-
-          <div className="admin-data-table-wrap">
-            <table className="admin-data-table" style={{ minWidth: 480 }}>
-              <thead>
-                <tr>
-                  <th>Apprenant</th>
-                  <th>Téléphone</th>
-                  <th>Inscription</th>
-                  <th>Statut</th>
-                  <th />
-                </tr>
-              </thead>
-              <tbody>
-                {loading && users.length === 0 ? (
+        ) : filteredUsers.length === 0 ? (
+          <EmptyState
+            title={query.trim() ? 'Aucun résultat' : 'Aucun apprenant'}
+            description={
+              query.trim()
+                ? 'Aucun apprenant ne correspond à votre recherche.'
+                : 'Créez le premier compte apprenant pour commencer.'
+            }
+            actionLabel={query.trim() ? undefined : 'Nouvel apprenant'}
+            onAction={query.trim() ? undefined : () => setCreateOpen(true)}
+          />
+        ) : (
+          <>
+            <div className="admin-data-table-wrap">
+              <table className="admin-data-table" style={{ minWidth: 480 }}>
+                <thead>
                   <tr>
-                    <td colSpan={5} className="muted">
-                      Chargement…
-                    </td>
+                    <th>Apprenant</th>
+                    <th>Téléphone</th>
+                    <th>Inscription</th>
+                    <th>Statut</th>
+                    <th />
                   </tr>
-                ) : filteredUsers.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="muted">
-                      Aucun utilisateur trouvé
-                    </td>
-                  </tr>
-                ) : (
-                  filteredUsers.map((user) => {
+                </thead>
+                <tbody>
+                  {filteredUsers.map((user) => {
                     const busy = busyId === user.id
                     return (
                       <tr key={user.id} className={!user.isActive ? 'is-suspended' : undefined}>
@@ -394,49 +337,113 @@ export function UsersPage() {
                           </div>
                         </td>
                         <td>
-                          <div style={{ display: 'flex', gap: 4 }}>
-                            <button
-                              type="button"
-                              className="btn-text-danger"
-                              disabled={busy}
-                              onClick={() => void handleDelete(user)}
-                              aria-label="Supprimer"
-                              style={{ padding: '4px 6px' }}
-                            >
-                              <Trash2 size={12} strokeWidth={2} />
-                            </button>
-                            <button
-                              type="button"
-                              className="dash-filter-btn"
-                              style={{ border: 0, padding: '4px 6px' }}
-                              aria-label="Plus"
-                            >
-                              <MoreHorizontal size={14} strokeWidth={2} />
-                            </button>
-                          </div>
+                          <button
+                            type="button"
+                            className="btn-text-danger"
+                            disabled={busy}
+                            onClick={() => void handleDelete(user)}
+                            aria-label="Supprimer"
+                            style={{ padding: '4px 6px' }}
+                          >
+                            <Trash2 size={12} strokeWidth={2} />
+                          </button>
                         </td>
                       </tr>
                     )
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          <div className="users-pagination">
-            <p>
-              {filteredUsers.length} apprenant{filteredUsers.length > 1 ? 's' : ''}
-            </p>
-            <div className="users-page-btns">
-              <button type="button" className="is-active">
-                1
-              </button>
-              <button type="button">2</button>
-              <button type="button">3</button>
+                  })}
+                </tbody>
+              </table>
             </div>
-          </div>
-        </div>
+
+            <div className="users-pagination">
+              <p>
+                {filteredUsers.length} apprenant{filteredUsers.length > 1 ? 's' : ''}
+              </p>
+            </div>
+          </>
+        )}
       </div>
+
+      <Drawer
+        open={createOpen}
+        title="Créer un compte apprenant"
+        subtitle="Le compte sera actif immédiatement après création."
+        onClose={closeCreateDrawer}
+        footer={
+          <>
+            <Button variant="ghost" onClick={closeCreateDrawer}>
+              Annuler
+            </Button>
+            <Button variant="primary" type="submit" form="create-user-form" disabled={creating}>
+              <UserPlus size={14} strokeWidth={2} />
+              {creating ? 'Création…' : 'Créer le compte'}
+            </Button>
+          </>
+        }
+      >
+        <form id="create-user-form" onSubmit={handleCreate} className="admin-form">
+          <div>
+            <label htmlFor="user-firstName">Prénom</label>
+            <input
+              id="user-firstName"
+              type="text"
+              required
+              minLength={2}
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+              placeholder="ex. Adjobi"
+            />
+          </div>
+          <div>
+            <label htmlFor="user-lastName">Nom</label>
+            <input
+              id="user-lastName"
+              type="text"
+              required
+              minLength={2}
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
+              placeholder="ex. Kossou"
+            />
+          </div>
+          <div>
+            <label htmlFor="user-email">Email</label>
+            <input
+              id="user-email"
+              type="text"
+              inputMode="email"
+              autoComplete="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="exemple@gmail.com"
+            />
+          </div>
+          <div>
+            <label htmlFor="user-phone">Téléphone</label>
+            <input
+              id="user-phone"
+              type="tel"
+              inputMode="numeric"
+              value={phone}
+              onChange={(e) => setPhone(normalizePhone(e.target.value))}
+              placeholder={PHONE_PLACEHOLDER}
+            />
+          </div>
+          <div>
+            <label htmlFor="user-password">Mot de passe</label>
+            <input
+              id="user-password"
+              type="password"
+              required
+              minLength={8}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
+            />
+          </div>
+        </form>
+      </Drawer>
     </div>
   )
 }

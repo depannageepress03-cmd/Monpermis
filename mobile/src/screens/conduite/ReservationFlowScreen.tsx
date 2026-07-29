@@ -6,7 +6,6 @@ import {
   ActivityIndicator,
   Animated,
   Image,
-  Linking,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -43,6 +42,7 @@ import type { RootStackParamList } from '../../navigation/types'
 import { dark, fonts } from '../../theme'
 import { resolveMediaUrl } from '../../utils/mediaUrl'
 import { resolveMoniteurVideoEmbed } from '../../utils/mediaEmbed'
+import { safeOpenUrl } from '../../utils/safeOpenUrl'
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'ReservationFlow'>
 type Step = 'moniteur' | 'profile' | 'duration' | 'slots'
@@ -566,7 +566,7 @@ export function ReservationFlowScreen() {
                     <Pressable
                       key={video}
                       style={styles.secondaryBtn}
-                      onPress={() => void Linking.openURL(embed.watchUrl)}
+                      onPress={() => void safeOpenUrl(embed.watchUrl)}
                     >
                       <Text style={styles.secondaryBtnText}>Ouvrir la vidéo</Text>
                     </Pressable>

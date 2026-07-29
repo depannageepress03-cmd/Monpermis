@@ -20,7 +20,9 @@ import {
 import { AuthInput } from '../components/AuthInput'
 import { Bouncy } from '../components/Bouncy'
 import { DarkHeader, DarkScreen } from '../components/DarkScreen'
+import { ScreenLoader } from '../components/ScreenLoader'
 import { useAuth } from '../context/AuthContext'
+import { useRequireAuth } from '../hooks/useRequireAuth'
 import type { RootStackParamList } from '../navigation/types'
 import { dark, fonts } from '../theme'
 import { normalizePhone, validateName, validatePhone } from '../utils/validation'
@@ -29,7 +31,8 @@ type Nav = NativeStackNavigationProp<RootStackParamList, 'Profile'>
 
 export function ProfileScreen() {
   const navigation = useNavigation<Nav>()
-  const { user, updateUser, signOut } = useAuth()
+  const { user, loading: authLoading } = useRequireAuth(navigation)
+  const { updateUser, signOut } = useAuth()
 
   const [firstName, setFirstName] = useState(user?.firstName ?? '')
   const [lastName, setLastName] = useState(user?.lastName ?? '')
@@ -54,6 +57,15 @@ export function ProfileScreen() {
   const [savingPw, setSavingPw] = useState(false)
   const [deletePassword, setDeletePassword] = useState('')
   const [deleting, setDeleting] = useState(false)
+
+  if (authLoading || !user) {
+    return (
+      <DarkScreen>
+        <DarkHeader title="Mon profil" onBack={() => navigation.goBack()} icon={User} />
+        <ScreenLoader />
+      </DarkScreen>
+    )
+  }
 
   const handleSaveProfile = async () => {
     const errs = {
@@ -338,18 +350,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: dark.green,
     textAlign: 'center',
-  },
-  googleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  googleText: {
-    flex: 1,
-    fontFamily: fonts.body,
-    fontSize: 13,
-    lineHeight: 19,
-    color: dark.textMuted,
   },
   dangerCard: {
     borderColor: 'rgba(239, 68, 68, 0.35)',

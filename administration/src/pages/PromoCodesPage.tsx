@@ -11,6 +11,7 @@ import {
 } from '../api/promoCodes'
 import { StatusBadge } from '../components/StatusBadge'
 import { getAdminToken, isAuthError } from '../context/AdminAuthContext'
+import { Button, Drawer, EmptyState, SkeletonBlock } from '../ui'
 
 const MODULE_OPTIONS: { value: PromoModuleKey; label: string }[] = [
   { value: 'code', label: 'Code de la route' },
@@ -36,6 +37,7 @@ export function PromoCodesPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
+  const [createOpen, setCreateOpen] = useState(false)
 
   const [code, setCode] = useState('')
   const [label, setLabel] = useState('')
@@ -85,6 +87,11 @@ export function PromoCodesPage() {
     setMaxUses('')
   }
 
+  const closeCreateDrawer = () => {
+    setCreateOpen(false)
+    resetForm()
+  }
+
   const handleCreate = async (e: FormEvent) => {
     e.preventDefault()
     const token = getAdminToken()
@@ -115,7 +122,7 @@ export function PromoCodesPage() {
         maxUses: maxUses ? Number(maxUses) : null,
       })
       setSuccess(`Code « ${promoCode.code} » créé.`)
-      resetForm()
+      closeCreateDrawer()
       await load()
     } catch (err) {
       setError(isAuthError(err) ? err.message : 'Création impossible')
@@ -159,12 +166,20 @@ export function PromoCodesPage() {
   return (
     <div className="admin-page">
       <header className="admin-module-header">
-        <p className="admin-module-kicker">Abonnements</p>
-        <h1 className="admin-module-title">Codes promo</h1>
-        <p className="admin-module-subtitle">
-          Créez des codes donnant un accès gratuit à un ou plusieurs modules. Les élèves les
-          saisissent dans l’application pour débloquer l’accès instantanément.
-        </p>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
+          <div>
+            <p className="admin-module-kicker">Abonnements</p>
+            <h1 className="admin-module-title">Codes promo</h1>
+            <p className="admin-module-subtitle">
+              Créez des codes donnant un accès gratuit à un ou plusieurs modules. Les élèves les
+              saisissent dans l’application pour débloquer l’accès instantanément.
+            </p>
+          </div>
+          <Button variant="primary" onClick={() => setCreateOpen(true)}>
+            <Plus size={16} />
+            Nouveau code
+          </Button>
+        </div>
       </header>
 
       {error ? <p className="form-error">{error}</p> : null}
@@ -172,10 +187,90 @@ export function PromoCodesPage() {
 
       <section className="admin-section">
         <div className="admin-section-head">
-          <h3 className="admin-section-label">Nouveau code</h3>
+          <h3 className="admin-section-label">Codes existants</h3>
         </div>
-        <form onSubmit={handleCreate} className="admin-section-body">
-          <div className="admin-toolbar">
+        <div className="admin-section-body">
+          {loading ? (
+            <SkeletonBlock rows={5} />
+          ) : codes.length === 0 ? (
+            <EmptyState
+              title="Aucun code promo"
+              description="Créez un code pour offrir un accès gratuit à vos apprenants."
+              actionLabel="Nouveau code"
+              onAction={() => setCreateOpen(true)}
+            />
+          ) : (
+            <div className="admin-list">
+              {codes.map((item) => (
+                <div key={item.id} className="admin-list-item">
+                  <div className="admin-list-main">
+                    <div className="promo-code-icon">
+                      <Gift size={16} />
+                    </div>
+                    <div className="admin-list-text">
+                      <strong>{item.code}</strong>
+                      <span>
+                        {item.modules.map((m) => moduleLabel(m)).join(' · ')}
+                        {item.modules.includes('conduite_heures') ? ` (+${item.heuresBonus} h)` : ''}
+                        {item.modules.some((m) => m !== 'conduite_heures')
+                          ? ` · ${item.durationQuantity} ${DURATION_UNIT_OPTIONS.find((u) => u.value === item.durationUnit)?.label}`
+                          : ''}
+                      </span>
+                      {item.label ? <span className="admin-muted">{item.label}</span> : null}
+                    </div>
+                  </div>
+                  <div className="admin-list-actions">
+                    <span className="admin-chip">
+                      {item.usesCount} / {item.maxUses ?? '∞'} utilisation{item.usesCount > 1 ? 's' : ''}
+                    </span>
+                    <StatusBadge tone={item.active ? 'success' : 'neutral'}>
+                      {item.active ? 'Actif' : 'Désactivé'}
+                    </StatusBadge>
+                    <button
+                      type="button"
+                      className="btn-outline-sm"
+                      disabled={togglingId === item.id}
+                      onClick={() => void handleToggleActive(item)}
+                      title={item.active ? 'Désactiver' : 'Réactiver'}
+                    >
+                      <Power size={15} />
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-outline-sm btn-danger-sm"
+                      disabled={deletingId === item.id}
+                      onClick={() => void handleDelete(item)}
+                      title="Supprimer"
+                    >
+                      <Trash2 size={15} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
+
+      <Drawer
+        open={createOpen}
+        title="Nouveau code promo"
+        subtitle="Les apprenants saisissent le code dans l’application mobile."
+        onClose={closeCreateDrawer}
+        footer={
+          <>
+            <Button variant="ghost" onClick={closeCreateDrawer}>
+              Annuler
+            </Button>
+            <Button variant="primary" type="submit" form="create-promo-form" disabled={saving}>
+              <Plus size={16} />
+              {saving ? 'Création…' : 'Créer le code'}
+            </Button>
+          </>
+        }
+      >
+        <form id="create-promo-form" onSubmit={handleCreate} className="admin-form">
+          <div className="admin-toolbar" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
             <label className="admin-field">
               Code
               <input
@@ -227,7 +322,7 @@ export function PromoCodesPage() {
             </div>
           </div>
 
-          <div className="admin-toolbar">
+          <div className="admin-toolbar" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
             <label className="admin-field">
               Durée d’accès (modules temporels)
               <div className="promo-duration-row">
@@ -260,73 +355,8 @@ export function PromoCodesPage() {
               </label>
             ) : null}
           </div>
-
-          <button type="submit" className="admin-btn admin-btn-primary" disabled={saving}>
-            <Plus size={16} />
-            {saving ? 'Création…' : 'Créer le code'}
-          </button>
         </form>
-      </section>
-
-      <section className="admin-section">
-        <div className="admin-section-head">
-          <h3 className="admin-section-label">Codes existants</h3>
-        </div>
-        <div className="admin-section-body">
-          {loading ? <p className="admin-empty">Chargement…</p> : null}
-          {!loading && codes.length === 0 ? (
-            <p className="admin-empty">Aucun code promo pour le moment.</p>
-          ) : null}
-          <div className="admin-list">
-            {codes.map((item) => (
-              <div key={item.id} className="admin-list-item">
-                <div className="admin-list-main">
-                  <div className="promo-code-icon">
-                    <Gift size={16} />
-                  </div>
-                  <div className="admin-list-text">
-                    <strong>{item.code}</strong>
-                    <span>
-                      {item.modules.map((m) => moduleLabel(m)).join(' · ')}
-                      {item.modules.includes('conduite_heures') ? ` (+${item.heuresBonus} h)` : ''}
-                      {item.modules.some((m) => m !== 'conduite_heures')
-                        ? ` · ${item.durationQuantity} ${DURATION_UNIT_OPTIONS.find((u) => u.value === item.durationUnit)?.label}`
-                        : ''}
-                    </span>
-                    {item.label ? <span className="admin-muted">{item.label}</span> : null}
-                  </div>
-                </div>
-                <div className="admin-list-actions">
-                  <span className="admin-chip">
-                    {item.usesCount} / {item.maxUses ?? '∞'} utilisation{item.usesCount > 1 ? 's' : ''}
-                  </span>
-                  <StatusBadge tone={item.active ? 'success' : 'neutral'}>
-                    {item.active ? 'Actif' : 'Désactivé'}
-                  </StatusBadge>
-                  <button
-                    type="button"
-                    className="btn-outline-sm"
-                    disabled={togglingId === item.id}
-                    onClick={() => void handleToggleActive(item)}
-                    title={item.active ? 'Désactiver' : 'Réactiver'}
-                  >
-                    <Power size={15} />
-                  </button>
-                  <button
-                    type="button"
-                    className="btn-outline-sm btn-danger-sm"
-                    disabled={deletingId === item.id}
-                    onClick={() => void handleDelete(item)}
-                    title="Supprimer"
-                  >
-                    <Trash2 size={15} />
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+      </Drawer>
     </div>
   )
 }

@@ -9,16 +9,15 @@ import {
   LogOut,
   Megaphone,
   Menu,
-  Plus,
   ScrollText,
   Search,
   Shield,
-  UserPlus,
   Users,
+  UserRound,
   Wallet,
   X,
 } from 'lucide-react'
-import { FormEvent, useEffect, useState } from 'react'
+import { FormEvent, useEffect, useMemo, useState } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import logoUrl from '../assets/logo.png'
 import { fetchDashboardSummary } from '../api/dashboard'
@@ -36,45 +35,71 @@ type NavItem = {
   match?: (pathname: string) => boolean
 }
 
-const navItems: NavItem[] = [
-  { to: '/', label: 'Tableau de bord', end: true, icon: LayoutDashboard },
+type NavGroup = { id: string; label: string; items: NavItem[] }
+
+const navGroups: NavGroup[] = [
   {
-    to: '/code',
-    label: 'Code de la route',
-    icon: BookOpen,
-    match: (pathname) => pathname === '/code' || pathname.startsWith('/code/'),
+    id: 'overview',
+    label: 'Vue d’ensemble',
+    items: [{ to: '/', label: 'Tableau de bord', end: true, icon: LayoutDashboard }],
   },
   {
-    to: '/conduite',
-    label: 'Conduite',
-    icon: Car,
-    match: (pathname) =>
-      (pathname === '/conduite' || pathname.startsWith('/conduite/')) &&
-      !pathname.startsWith('/conduite/reservations') &&
-      !pathname.startsWith('/conduite/moniteurs'),
+    id: 'content',
+    label: 'Contenu',
+    items: [
+      {
+        to: '/code',
+        label: 'Code de la route',
+        icon: BookOpen,
+        match: (pathname) => pathname === '/code' || pathname.startsWith('/code/'),
+      },
+      {
+        to: '/conduite',
+        label: 'Conduite',
+        icon: Car,
+        match: (pathname) =>
+          (pathname === '/conduite' || pathname.startsWith('/conduite/')) &&
+          !pathname.startsWith('/conduite/reservations') &&
+          !pathname.startsWith('/conduite/moniteurs'),
+      },
+      { to: '/annonces', label: 'Annonces', icon: Megaphone },
+    ],
   },
   {
-    to: '/conduite/reservations',
-    label: 'Réservations',
-    icon: CalendarDays,
-    match: (pathname) =>
-      pathname.startsWith('/conduite/reservations') || pathname.startsWith('/conduite/moniteurs'),
+    id: 'ops',
+    label: 'Opérations',
+    items: [
+      {
+        to: '/conduite/reservations',
+        label: 'Réservations',
+        icon: CalendarDays,
+        match: (pathname) => pathname.startsWith('/conduite/reservations'),
+      },
+      {
+        to: '/conduite/moniteurs',
+        label: 'Moniteurs',
+        icon: UserRound,
+        match: (pathname) => pathname.startsWith('/conduite/moniteurs'),
+      },
+      { to: '/utilisateurs', label: 'Utilisateurs', icon: Users },
+      { to: '/abonnements', label: 'Abonnés', icon: Wallet },
+      { to: '/codes-promo', label: 'Codes promo', icon: Gift },
+    ],
   },
-  { to: '/utilisateurs', label: 'Utilisateurs', icon: Users },
-  { to: '/abonnements', label: 'Abonnés', icon: Wallet },
-  { to: '/codes-promo', label: 'Codes promo', icon: Gift },
-  { to: '/annonces', label: 'Annonces', icon: Megaphone },
-  { to: '/administrateurs', label: 'Administrateurs', icon: Shield },
-  { to: '/journal-audit', label: 'Journal d’audit', icon: ScrollText },
-  { to: '/creer-admin', label: 'Créer un admin', icon: UserPlus },
+  {
+    id: 'system',
+    label: 'Système',
+    items: [
+      { to: '/administrateurs', label: 'Administrateurs', icon: Shield },
+      { to: '/journal-audit', label: 'Journal d’audit', icon: ScrollText },
+    ],
+  },
 ]
 
 function pageLabel(pathname: string) {
   if (pathname === '/') return 'Tableau de bord'
   if (pathname.startsWith('/utilisateurs')) return 'Utilisateurs'
-  if (pathname.startsWith('/abonnements') || pathname.startsWith('/demandes-acces')) {
-    return 'Abonnés'
-  }
+  if (pathname.startsWith('/abonnements') || pathname.startsWith('/demandes-acces')) return 'Abonnés'
   if (pathname.startsWith('/codes-promo')) return 'Codes promo'
   if (pathname.startsWith('/administrateurs')) return 'Administrateurs'
   if (pathname.startsWith('/journal-audit')) return 'Journal d’audit'
@@ -83,15 +108,25 @@ function pageLabel(pathname: string) {
   if (pathname.startsWith('/code/revision-chapitres')) return 'Révision par chapitres'
   if (pathname.startsWith('/code/examens-test')) return 'Examens test'
   if (pathname.startsWith('/code/suivi-apprenants')) return 'Suivi apprenants'
-  if (pathname.startsWith('/code/mes-notes')) return 'Suivi apprenants'
   if (pathname.startsWith('/code/e-codepermis')) return 'E-Codepermis'
   if (pathname.startsWith('/code')) return 'Code de la route'
   if (pathname.startsWith('/conduite/lecons')) return 'Leçons de conduite'
-  if (pathname.startsWith('/conduite/reservations') || pathname.startsWith('/conduite/moniteurs')) {
-    return 'Réservations'
-  }
+  if (pathname.startsWith('/conduite/reservations')) return 'Réservations'
+  if (pathname.startsWith('/conduite/moniteurs')) return 'Moniteurs'
   if (pathname.startsWith('/conduite')) return 'Conduite'
+  if (pathname.startsWith('/annonces')) return 'Annonces'
   return 'Administration'
+}
+
+function breadcrumbParent(pathname: string): { to: string; label: string } | null {
+  if (pathname.startsWith('/code/') && pathname !== '/code') return { to: '/code', label: 'Code' }
+  if (pathname.startsWith('/conduite/') && pathname !== '/conduite') {
+    return { to: '/conduite', label: 'Conduite' }
+  }
+  if (pathname.startsWith('/administrateurs/')) {
+    return { to: '/administrateurs', label: 'Administrateurs' }
+  }
+  return null
 }
 
 function adminInitials(fullName?: string) {
@@ -100,6 +135,8 @@ function adminInitials(fullName?: string) {
   if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase()
   return parts[0].slice(0, 2).toUpperCase()
 }
+
+type SearchTarget = { label: string; to: string }
 
 export function AdminLayout() {
   const { admin, signOut } = useAdminAuth()
@@ -142,12 +179,26 @@ export function AdminLayout() {
   const isMobile = width < 640
   const isTablet = width >= 640 && width < 1080
   const closeMobile = () => setMobileOpen(false)
+  const currentLabel = pageLabel(location.pathname)
+  const parentCrumb = breadcrumbParent(location.pathname)
+
+  const searchTargets = useMemo((): SearchTarget[] => {
+    const q = searchQuery.trim()
+    if (!q) return []
+    const encoded = encodeURIComponent(q)
+    return [
+      { label: `Utilisateurs · « ${q} »`, to: `/utilisateurs?q=${encoded}` },
+      { label: `Abonnés · « ${q} »`, to: `/abonnements?q=${encoded}` },
+      { label: `Réservations · « ${q} »`, to: `/conduite/reservations?q=${encoded}` },
+    ]
+  }, [searchQuery])
 
   const handleSearch = (e: FormEvent) => {
     e.preventDefault()
-    const q = searchQuery.trim()
-    if (!q) return
-    navigate(`/utilisateurs?q=${encodeURIComponent(q)}`)
+    const first = searchTargets[0]
+    if (!first) return
+    navigate(first.to)
+    setSearchFocused(false)
   }
 
   const initials = adminInitials(admin?.fullName)
@@ -165,14 +216,14 @@ export function AdminLayout() {
         aria-label="Navigation"
         inert={isMobile && !mobileOpen ? true : undefined}
       >
-          <div className="sidebar-brand">
-            <img src={logoUrl} alt={SITE_NAME} className="sidebar-logo" />
-            <div className="sidebar-brand-text">
-              <p className="sidebar-brand-name">
-                <BrandName onDark />
-              </p>
-              <p className="sidebar-brand-kicker">Espace admin</p>
-            </div>
+        <div className="sidebar-brand">
+          <img src={logoUrl} alt={SITE_NAME} className="sidebar-logo" />
+          <div className="sidebar-brand-text">
+            <p className="sidebar-brand-name">
+              <BrandName onDark />
+            </p>
+            <p className="sidebar-brand-kicker">Espace admin</p>
+          </div>
           {isMobile ? (
             <button
               type="button"
@@ -185,41 +236,34 @@ export function AdminLayout() {
           ) : null}
         </div>
 
-        <div className="sidebar-cta-wrap">
-          <Link
-            to="/conduite/reservations"
-            className="sidebar-cta"
-            onClick={closeMobile}
-            title="Gérer réservations"
-          >
-            <Plus size={14} strokeWidth={2.5} />
-            <span className="sidebar-cta-label">Gérer réservations</span>
-          </Link>
-        </div>
-
         <nav className="sidebar-nav">
-          <ul className="sidebar-list">
-            {navItems.map((item) => {
-              const Icon = item.icon
-              return (
-                <li key={item.to}>
-                  <NavLink
-                    to={item.to}
-                    end={item.end}
-                    onClick={closeMobile}
-                    title={item.label}
-                    className={({ isActive }) => {
-                      const active = item.match ? item.match(location.pathname) : isActive
-                      return `sidebar-link${active ? ' active' : ''}`
-                    }}
-                  >
-                    <Icon size={16} strokeWidth={2} />
-                    <span className="sidebar-link-label">{item.label}</span>
-                  </NavLink>
-                </li>
-              )
-            })}
-          </ul>
+          {navGroups.map((group) => (
+            <div key={group.id} className="sidebar-group">
+              <p className="sidebar-group-label">{group.label}</p>
+              <ul className="sidebar-list">
+                {group.items.map((item) => {
+                  const Icon = item.icon
+                  return (
+                    <li key={item.to}>
+                      <NavLink
+                        to={item.to}
+                        end={item.end}
+                        onClick={closeMobile}
+                        title={item.label}
+                        className={({ isActive }) => {
+                          const active = item.match ? item.match(location.pathname) : isActive
+                          return `sidebar-link${active ? ' active' : ''}`
+                        }}
+                      >
+                        <Icon size={16} strokeWidth={2} />
+                        <span className="sidebar-link-label">{item.label}</span>
+                      </NavLink>
+                    </li>
+                  )
+                })}
+              </ul>
+            </div>
+          ))}
         </nav>
 
         <div className="sidebar-profile">
@@ -255,34 +299,54 @@ export function AdminLayout() {
             </button>
           ) : null}
 
-          {!isMobile ? (
-            <div className="admin-breadcrumb">
-              <span>Admin</span>
-              <ChevronRight size={12} />
-              <strong>{pageLabel(location.pathname)}</strong>
-            </div>
-          ) : (
-            <div className="admin-breadcrumb-spacer" />
-          )}
+          <nav className="admin-breadcrumb" aria-label="Fil d’Ariane">
+            <Link to="/">Admin</Link>
+            {parentCrumb ? (
+              <>
+                <ChevronRight size={12} aria-hidden />
+                <Link to={parentCrumb.to}>{parentCrumb.label}</Link>
+              </>
+            ) : null}
+            <ChevronRight size={12} aria-hidden />
+            <strong>{currentLabel}</strong>
+          </nav>
 
-          <form
-            className={`admin-global-search${searchFocused ? ' is-focused' : ''}`}
-            onSubmit={handleSearch}
-            role="search"
-          >
-            <Search size={14} strokeWidth={2} aria-hidden />
-            {!isMobile ? (
+          <div className="admin-search-wrap">
+            <form
+              className={`admin-global-search${searchFocused ? ' is-focused' : ''}`}
+              onSubmit={handleSearch}
+              role="search"
+            >
+              <Search size={14} strokeWidth={2} aria-hidden />
               <input
                 type="search"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onFocus={() => setSearchFocused(true)}
-                onBlur={() => setSearchFocused(false)}
+                onBlur={() => window.setTimeout(() => setSearchFocused(false), 150)}
                 placeholder="Rechercher…"
                 aria-label="Recherche globale"
               />
+            </form>
+            {searchFocused && searchTargets.length > 0 ? (
+              <div className="admin-search-results" role="listbox">
+                {searchTargets.map((target) => (
+                  <button
+                    key={target.to}
+                    type="button"
+                    className="admin-search-result"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => {
+                      navigate(target.to)
+                      setSearchFocused(false)
+                    }}
+                  >
+                    {target.label}
+                  </button>
+                ))}
+              </div>
             ) : null}
-          </form>
+          </div>
 
           <button
             type="button"
@@ -298,10 +362,6 @@ export function AdminLayout() {
           >
             <Bell size={16} strokeWidth={1.8} />
           </button>
-
-          <div className="admin-topbar-avatar" title={admin?.fullName || 'Administrateur'}>
-            {initials}
-          </div>
         </header>
 
         <div className="admin-shell-card">

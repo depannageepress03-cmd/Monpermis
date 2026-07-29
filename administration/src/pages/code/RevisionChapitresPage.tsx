@@ -53,6 +53,7 @@ import {
   uploadRevisionVideo,
 } from '../../api/revision'
 import { AdminSectionHeader } from '../../components/AdminSectionHeader'
+import { CmsWorkspace, EmptyState, SkeletonBlock } from '../../ui'
 import { MediaPreview } from '../../components/MediaPreview'
 import { PublishSwitch } from '../../components/PublishSwitch'
 import { RichTextEditor } from '../../components/RichTextEditor'
@@ -1124,47 +1125,53 @@ export function RevisionChapitresPage() {
         </button>
       </form>
 
-      {loading ? <p className="revision-empty">Chargement…</p> : null}
+      {loading ? (
+        <div style={{ padding: 8 }}>
+          <SkeletonBlock rows={5} />
+        </div>
+      ) : null}
       {error ? <p className="form-error" role="alert">{error}</p> : null}
 
       {!loading && chapters.length === 0 ? (
-        <div className="admin-panel revision-empty-panel">
-          <p className="revision-empty">Commencez par ajouter votre premier chapitre.</p>
-        </div>
+        <EmptyState
+          title="Aucun chapitre"
+          description="Commencez par ajouter votre premier chapitre de révision."
+        />
       ) : null}
 
       {!loading && chapters.length > 0 ? (
-        <div className="revision-layout">
-          <aside className="revision-rail admin-panel">
-            <div className="revision-rail-header">
-              <h3>Chapitres</h3>
-              <span>{chapters.length}</span>
-            </div>
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragEnd={handleChapterDragEnd}
-            >
-              <SortableContext
-                items={chapters.map((item) => item.id)}
-                strategy={verticalListSortingStrategy}
+        <CmsWorkspace
+          tree={
+            <>
+              <div className="revision-rail-header">
+                <h3>Chapitres</h3>
+                <span>{chapters.length}</span>
+              </div>
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleChapterDragEnd}
               >
-                <div className="revision-rail-list">
-                  {chapters.map((chapter) => (
-                    <ChapterRailItem
-                      key={chapter.id}
-                      chapter={chapter}
-                      active={chapter.id === selectedChapterId}
-                      onSelect={() => handleSelectChapter(chapter.id)}
-                    />
-                  ))}
-                </div>
-              </SortableContext>
-            </DndContext>
-          </aside>
-
-          <section className="revision-workspace">
-            {selectedChapter ? (
+                <SortableContext
+                  items={chapters.map((item) => item.id)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  <div className="revision-rail-list">
+                    {chapters.map((chapter) => (
+                      <ChapterRailItem
+                        key={chapter.id}
+                        chapter={chapter}
+                        active={chapter.id === selectedChapterId}
+                        onSelect={() => handleSelectChapter(chapter.id)}
+                      />
+                    ))}
+                  </div>
+                </SortableContext>
+              </DndContext>
+            </>
+          }
+          editor={
+            selectedChapter ? (
               <ChapterPanel
                 key={selectedChapter.id}
                 chapter={selectedChapter}
@@ -1174,12 +1181,13 @@ export function RevisionChapitresPage() {
                 onTabChange={handleTabChange}
               />
             ) : (
-              <div className="admin-panel">
-                <p className="revision-empty">Sélectionnez un chapitre pour éditer son contenu.</p>
-              </div>
-            )}
-          </section>
-        </div>
+              <EmptyState
+                title="Aucun chapitre sélectionné"
+                description="Sélectionnez un chapitre dans l’arbre pour éditer son contenu."
+              />
+            )
+          }
+        />
       ) : null}
     </div>
   )

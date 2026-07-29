@@ -10,6 +10,7 @@ import type { RootStackParamList } from './types'
 import { IntroScreen } from '../screens/IntroScreen'
 import { OnboardingScreen } from '../screens/OnboardingScreen'
 import { LoginScreen } from '../screens/LoginScreen'
+import { ForgotPasswordScreen } from '../screens/ForgotPasswordScreen'
 import { HomeScreen } from '../screens/HomeScreen'
 import { RegisterScreen } from '../screens/RegisterScreen'
 import { RegisterPasswordScreen } from '../screens/RegisterPasswordScreen'
@@ -48,6 +49,7 @@ const linking: LinkingOptions<RootStackParamList> = {
       Intro: '',
       Onboarding: 'bienvenue',
       Login: 'connexion',
+      ForgotPassword: 'mot-de-passe-oublie',
       Register: 'inscription',
       RegisterPassword: 'inscription/mot-de-passe',
       TermsOfUse: 'conditions-utilisation',
@@ -99,6 +101,10 @@ function AppNavigator() {
         name="Login"
         component={LoginScreen}
         options={{ animation: 'fade', animationDuration: 480 }}
+      />
+      <Stack.Screen
+        name="ForgotPassword"
+        component={ForgotPasswordScreen}
       />
       <Stack.Screen
         name="Home"

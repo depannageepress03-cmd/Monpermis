@@ -1,8 +1,30 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import * as SecureStore from 'expo-secure-store'
 import { getApiBase } from './config'
 
 const TOKEN_KEY = 'token'
 const USER_KEY = 'user'
+
+/** Migre un JWT encore stocké en clair (AsyncStorage) vers SecureStore. */
+async function readTokenSecure(): Promise<string | null> {
+  try {
+    const secure = await SecureStore.getItemAsync(TOKEN_KEY)
+    if (secure) return secure
+  } catch {
+    // SecureStore indisponible → fallback legacy ci-dessous
+  }
+
+  const legacy = await AsyncStorage.getItem(TOKEN_KEY)
+  if (!legacy) return null
+
+  try {
+    await SecureStore.setItemAsync(TOKEN_KEY, legacy)
+    await AsyncStorage.removeItem(TOKEN_KEY)
+  } catch {
+    // Garde le legacy si SecureStore échoue (rare)
+  }
+  return legacy
+}
 
 interface ApiResponse<T> {
   success: boolean
@@ -18,7 +40,7 @@ export interface AuthUser {
   lastName: string
   email?: string
   phone: string
-  authProvider?: 'local' | 'google'
+  authProvider?: 'local'
   isEmailVerified?: boolean
   createdAt: string
 }
@@ -203,18 +225,23 @@ export function changePassword(data: {
 }
 
 export async function saveSession(token: string, user: AuthUser) {
-  await AsyncStorage.multiSet([
-    [TOKEN_KEY, token],
-    [USER_KEY, JSON.stringify(user)],
-  ])
+  await SecureStore.setItemAsync(TOKEN_KEY, token)
+  // Scrub éventuel token legacy en clair
+  await AsyncStorage.removeItem(TOKEN_KEY)
+  await AsyncStorage.setItem(USER_KEY, JSON.stringify(user))
 }
 
 export async function clearSession() {
+  try {
+    await SecureStore.deleteItemAsync(TOKEN_KEY)
+  } catch {
+    // ignore
+  }
   await AsyncStorage.multiRemove([TOKEN_KEY, USER_KEY])
 }
 
 export async function getStoredToken(): Promise<string | null> {
-  return AsyncStorage.getItem(TOKEN_KEY)
+  return readTokenSecure()
 }
 
 export async function getStoredUser(): Promise<AuthUser | null> {
@@ -223,7 +250,7 @@ export async function getStoredUser(): Promise<AuthUser | null> {
   try {
     return JSON.parse(raw) as AuthUser
   } catch {
-    await AsyncStorage.multiRemove([TOKEN_KEY, USER_KEY])
+    await clearSession()
     return null
   }
 }

@@ -4,7 +4,6 @@ import type { NativeStackNavigationProp, NativeStackScreenProps } from '@react-n
 import { ExternalLink, Megaphone } from 'lucide-react-native'
 import {
   Image,
-  Linking,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -25,6 +24,7 @@ import { useRequireAuth } from '../hooks/useRequireAuth'
 import type { RootStackParamList } from '../navigation/types'
 import { dark, fonts } from '../theme'
 import { resolveMediaUrl } from '../utils/mediaUrl'
+import { safeOpenUrl } from '../utils/safeOpenUrl'
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ActualiteDetail'>
 type Nav = NativeStackNavigationProp<RootStackParamList, 'ActualiteDetail'>
@@ -75,7 +75,7 @@ export function ActualiteDetailScreen() {
       else navigation.navigate('Home')
       return
     }
-    void Linking.openURL(item.ctaUrl)
+    void safeOpenUrl(item.ctaUrl)
   }
 
   return (

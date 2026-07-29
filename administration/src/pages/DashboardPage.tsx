@@ -5,8 +5,8 @@ import {
   ArrowUpRight,
   Car,
   CreditCard,
-  Download,
   Filter,
+  RefreshCw,
   TrendingUp,
   Wallet,
   Zap,
@@ -23,6 +23,7 @@ import {
 import type { AccessModuleKey } from '../api/accessRequests'
 import { paymentChannelLabel } from '../api/accessRequests'
 import { getAdminToken, isAuthError, useAdminAuth } from '../context/AdminAuthContext'
+import { Skeleton, SkeletonBlock } from '../ui'
 
 const emptySummary: DashboardSummary = {
   users: { total: 0, active: 0, suspended: 0 },
@@ -214,11 +215,6 @@ export function DashboardPage() {
           <p className="admin-module-subtitle" style={{ marginTop: 4 }}>
             Suivi live des paiements Mobile Money réussis et des abonnements actifs.
           </p>
-          <div className="admin-module-accent-row" aria-hidden>
-            <span className="admin-module-accent is-green" />
-            <span className="admin-module-accent is-gold" />
-            <span className="admin-module-accent is-navy" />
-          </div>
         </header>
         <div className="dash-page-actions">
           <span className={`dash-live-pill${liveConnected ? ' is-live' : ''}`}>
@@ -228,8 +224,8 @@ export function DashboardPage() {
           <span className="dash-month-pill" style={{ textTransform: 'capitalize' }}>
             {monthLabel}
           </span>
-          <button type="button" className="dash-export-btn" onClick={() => void load()}>
-            <Download size={13} strokeWidth={2} />
+          <button type="button" className="dash-export-btn ui-btn" onClick={() => void load()}>
+            <RefreshCw size={13} strokeWidth={2} />
             Actualiser
           </button>
         </div>
@@ -242,7 +238,9 @@ export function DashboardPage() {
           <div className="dash-hero-top">
             <div>
               <p className="dash-hero-label">Apprenants actifs</p>
-              <p className="dash-hero-value">{loading ? '…' : summary.users.active}</p>
+              <p className="dash-hero-value">
+                {loading ? <Skeleton height={36} width={80} /> : summary.users.active}
+              </p>
             </div>
             <div className="dash-hero-delta">
               <TrendingUp size={12} strokeWidth={2.5} />
@@ -268,7 +266,9 @@ export function DashboardPage() {
               <CreditCard size={14} strokeWidth={2} />
             </div>
           </div>
-          <p className="dash-stat-num">{loading ? '…' : formatXof(summary.revenue.total)}</p>
+          <p className="dash-stat-num">
+            {loading ? <Skeleton height={28} width={120} /> : formatXof(summary.revenue.total)}
+          </p>
           <div className="dash-stat-foot is-green">
             <TrendingUp size={12} strokeWidth={2} />
             {formatXof(summary.revenue.month)} ce mois · {summary.revenue.transactions} paiements
@@ -282,7 +282,9 @@ export function DashboardPage() {
               <Wallet size={14} strokeWidth={2} />
             </div>
           </div>
-          <p className="dash-stat-num">{loading ? '…' : summary.revenue.transactions}</p>
+          <p className="dash-stat-num">
+            {loading ? <Skeleton height={28} width={48} /> : summary.revenue.transactions}
+          </p>
           <div className="dash-stat-foot is-green">
             <TrendingUp size={12} strokeWidth={2} />
             {formatXof(summary.revenue.month)} ce mois
@@ -296,7 +298,9 @@ export function DashboardPage() {
               <CreditCard size={14} strokeWidth={2} />
             </div>
           </div>
-          <p className="dash-stat-num">{loading ? '…' : summary.accessRequests.active}</p>
+          <p className="dash-stat-num">
+            {loading ? <Skeleton height={28} width={48} /> : summary.accessRequests.active}
+          </p>
           <div className="dash-stat-foot is-red">
             <TrendingUp size={12} strokeWidth={2} />
             {summary.accessRequests.expired} expirés
@@ -310,7 +314,9 @@ export function DashboardPage() {
               <Car size={14} strokeWidth={2} />
             </div>
           </div>
-          <p className="dash-stat-num">{loading ? '…' : summary.conduite.courses}</p>
+          <p className="dash-stat-num">
+            {loading ? <Skeleton height={28} width={48} /> : summary.conduite.courses}
+          </p>
           <div className="dash-stat-foot is-green">
             <TrendingUp size={12} strokeWidth={2} />
             {summary.conduite.moniteursActive} moniteurs actifs
@@ -326,8 +332,14 @@ export function DashboardPage() {
           <div>
             <p className="dash-stat-label">Chapitres code</p>
             <p className="dash-secondary-num">
-              {loading ? '…' : summary.code.published}
-              <span className="muted">/{summary.code.chapters}</span>
+              {loading ? (
+                <Skeleton height={24} width={64} />
+              ) : (
+                <>
+                  {summary.code.published}
+                  <span className="muted">/{summary.code.chapters}</span>
+                </>
+              )}
             </p>
             <p className="dash-secondary-hint">
               {Math.max(summary.code.chapters - summary.code.published, 0)} en rédaction
@@ -341,7 +353,9 @@ export function DashboardPage() {
           </div>
           <div>
             <p className="dash-stat-label">Créneaux libres</p>
-            <p className="dash-secondary-num">{loading ? '…' : summary.conduite.creneauxLibre}</p>
+            <p className="dash-secondary-num">
+              {loading ? <Skeleton height={24} width={48} /> : summary.conduite.creneauxLibre}
+            </p>
             <p className="dash-secondary-hint">disponibles</p>
           </div>
         </div>
@@ -409,13 +423,7 @@ export function DashboardPage() {
 
           <div className="dash-activity-list">
             {loading && approvedLivePayments.length === 0 ? (
-              <div className="dash-activity-item">
-                <span className="dash-activity-dot" style={{ background: '#94a3b8' }} />
-                <div>
-                  <strong>Chargement…</strong>
-                  <span>Récupération des derniers paiements</span>
-                </div>
-              </div>
+              <SkeletonBlock rows={3} />
             ) : approvedLivePayments.length === 0 ? (
               <div className="dash-activity-item">
                 <span className="dash-activity-dot" style={{ background: '#00B050' }} />

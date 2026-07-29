@@ -109,8 +109,26 @@ function VideoPlayer({
         bounces={false}
         setSupportMultipleWindows={false}
         androidLayerType="hardware"
-        originWhitelist={['*']}
-        mixedContentMode="always"
+        originWhitelist={[
+          'https://*',
+          'https://www.youtube-nocookie.com',
+          'https://player.vimeo.com',
+          'https://*.vimeo.com',
+          'https://*.youtube.com',
+          'https://*.googlevideo.com',
+        ]}
+        mixedContentMode="never"
+        onShouldStartLoadWithRequest={(request) => {
+          const url = request.url || ''
+          if (url === 'about:blank' || url.startsWith('data:')) return true
+          return (
+            url.startsWith('https://') ||
+            url.startsWith('blob:') ||
+            url.includes('youtube') ||
+            url.includes('vimeo') ||
+            url.includes('localhost')
+          )
+        }}
         onLoadStart={() => setLoading(true)}
         onLoadEnd={() => setLoading(false)}
         onError={() => {
@@ -152,7 +170,7 @@ export function MediaContent({ title, text, videoUrl, imageUrl }: MediaContentPr
 
   const videoSrc =
     video?.kind === 'video'
-      ? resolveMediaUrl(video.src) ?? video.src
+      ? resolveMediaUrl(video.src)
       : video?.src
 
   return (

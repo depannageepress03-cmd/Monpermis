@@ -9,6 +9,7 @@ import {
 } from '../api/admins'
 import { StatusBadge } from '../components/StatusBadge'
 import { getAdminToken, isAuthError } from '../context/AdminAuthContext'
+import { EmptyState, SkeletonBlock } from '../ui'
 import { actionLabel, formatAuditDate, resourceLabel, summarizeMetadata } from '../utils/auditLabels'
 
 export function AuditLogPage() {
@@ -205,7 +206,15 @@ export function AuditLogPage() {
       ) : null}
 
       <section className="admin-section">
-        <div className="admin-section-body" style={{ padding: 0 }}>
+        <div className="admin-section-body" style={{ padding: loading && logs.length === 0 ? 16 : 0 }}>
+          {loading && logs.length === 0 ? (
+            <SkeletonBlock rows={6} />
+          ) : !loading && logs.length === 0 ? (
+            <EmptyState
+              title="Aucune entrée"
+              description="Aucune entrée ne correspond à ces filtres."
+            />
+          ) : (
           <div className="admin-data-table-wrap">
             <table className="admin-data-table" style={{ minWidth: 860 }}>
               <thead>
@@ -220,20 +229,6 @@ export function AuditLogPage() {
                 </tr>
               </thead>
               <tbody>
-                {loading && logs.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="muted">
-                      Chargement…
-                    </td>
-                  </tr>
-                ) : null}
-                {!loading && logs.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="muted">
-                      Aucune entrée pour ces filtres
-                    </td>
-                  </tr>
-                ) : null}
                 {logs.map((entry) => (
                   <tr key={entry.id}>
                     <td>{formatAuditDate(entry.createdAt)}</td>
@@ -258,6 +253,7 @@ export function AuditLogPage() {
               </tbody>
             </table>
           </div>
+          )}
         </div>
       </section>
 

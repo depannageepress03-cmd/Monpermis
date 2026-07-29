@@ -12,8 +12,11 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { LegalFooter } from '../components/LegalFooter'
 import { BrandName } from '../components/BrandName'
+import { Bouncy } from '../components/Bouncy'
+import { buildPasswordHelpWhatsAppUrl } from '../config/support'
 import type { RootStackParamList } from '../navigation/types'
 import { dark, fonts } from '../theme'
+import { safeOpenUrl } from '../utils/safeOpenUrl'
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'ForgotPassword'>
 
@@ -36,13 +39,22 @@ export function ForgotPasswordScreen() {
                 resizeMode="contain"
               />
               <BrandName size={22} style={styles.brand} mainColor={dark.textPrimary} />
-              <Text style={styles.title}>Code oublié</Text>
+              <Text style={styles.title}>Mot de passe oublié</Text>
               <Text style={styles.subtitle}>
-                La connexion se fait avec ton numéro de téléphone et ton code. Pour réinitialiser
-                ton code, contacte le support Monpermis (WhatsApp ou message) en indiquant ton
-                numéro de téléphone.
+                La connexion se fait avec ton numéro de téléphone et ton mot de passe. Pour le
+                réinitialiser, contacte le support Monpermis sur WhatsApp en indiquant ton numéro.
               </Text>
             </View>
+
+            <Bouncy
+              onPress={() => void safeOpenUrl(buildPasswordHelpWhatsAppUrl())}
+              scaleTo={0.97}
+              style={styles.ctaWrap}
+            >
+              <View style={styles.ctaBtn}>
+                <Text style={styles.ctaText}>Contacter le support WhatsApp</Text>
+              </View>
+            </Bouncy>
 
             <Text style={styles.footer}>
               <Text style={styles.link} onPress={() => navigation.navigate('Login')}>
@@ -69,7 +81,7 @@ const styles = StyleSheet.create({
   },
   header: {
     alignItems: 'center',
-    marginBottom: 32,
+    marginBottom: 28,
   },
   logo: { width: 110, height: 74, marginBottom: 12 },
   brand: { marginBottom: 16 },
@@ -88,6 +100,20 @@ const styles = StyleSheet.create({
     color: dark.textMuted,
     textAlign: 'center',
     maxWidth: 320,
+  },
+  ctaWrap: { marginBottom: 24 },
+  ctaBtn: {
+    minHeight: 52,
+    borderRadius: 999,
+    backgroundColor: dark.green,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+  },
+  ctaText: {
+    fontFamily: fonts.bodyBold,
+    fontSize: 15,
+    color: '#0B0F1A',
   },
   footer: {
     marginTop: 8,

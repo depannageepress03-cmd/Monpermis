@@ -36,6 +36,7 @@ import {
 import { fetchUsers, type AppUser } from '../api/users'
 import { StatusBadge } from '../components/StatusBadge'
 import { getAdminToken, isAuthError } from '../context/AdminAuthContext'
+import { SkeletonBlock } from '../ui'
 
 type Tab = 'subscribers' | 'payments' | 'refunds' | 'pricing'
 
@@ -604,7 +605,7 @@ export function AbonnementsPage() {
                 {loading && subscribers.length === 0 ? (
                   <tr>
                     <td colSpan={6}>
-                      <div className="ar-empty-row">Chargement…</div>
+                      <SkeletonBlock rows={4} />
                     </td>
                   </tr>
                 ) : subscribers.length === 0 ? (
@@ -669,7 +670,7 @@ export function AbonnementsPage() {
               {loading && payments.length === 0 ? (
                 <tr>
                   <td colSpan={6}>
-                    <div className="ar-empty-row">Chargement…</div>
+                    <SkeletonBlock rows={4} />
                   </td>
                 </tr>
               ) : payments.length === 0 ? (

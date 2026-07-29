@@ -94,11 +94,21 @@ export function resolveVideoEmbed(url: string): { kind: 'iframe' | 'video'; src:
     if (isYoutubeOrVimeoHost(parsed)) {
       return null
     }
+
+    // Hors YouTube/Vimeo : uniquement HTTPS (pas de schémas arbitraires / file / javascript)
+    if (parsed.protocol !== 'https:') {
+      return null
+    }
+    return { kind: 'video', src: parsed.toString() }
   } catch {
-    // URL relative ou invalide : lecture directe
+    // URL relative : sera résolue côté MediaContent via resolveMediaUrl
   }
 
-  return { kind: 'video', src: trimmed }
+  if (trimmed.startsWith('/')) {
+    return { kind: 'video', src: trimmed }
+  }
+
+  return null
 }
 
 /** Profil moniteur : uniquement YouTube / Vimeo (jamais d’URL arbitraire). */

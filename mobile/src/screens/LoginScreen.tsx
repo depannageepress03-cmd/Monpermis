@@ -161,6 +161,14 @@ export function LoginScreen() {
                   onChangeText={setPassword}
                   error={errors.password}
                 />
+                <Text style={styles.forgotWrap}>
+                  <Text
+                    style={styles.link}
+                    onPress={() => navigation.navigate('ForgotPassword')}
+                  >
+                    Mot de passe oublié ?
+                  </Text>
+                </Text>
               </View>
 
               <Bouncy
@@ -256,6 +264,10 @@ const styles = StyleSheet.create({
   fields: {
     gap: 18,
     marginBottom: 20,
+  },
+  forgotWrap: {
+    marginTop: -8,
+    textAlign: 'right',
   },
   submitBtn: {
     width: '100%',

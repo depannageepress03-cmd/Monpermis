@@ -5,11 +5,11 @@ import {
   ImagePlus,
   Megaphone,
   Pencil,
+  Plus,
   Save,
   Search,
   Send,
   Trash2,
-  X,
 } from 'lucide-react'
 import {
   createAnnouncement,
@@ -26,6 +26,7 @@ import {
 } from '../api/announcements'
 import { RichTextEditor } from '../components/RichTextEditor'
 import { getAdminToken, isAuthError } from '../context/AdminAuthContext'
+import { Button, Drawer, EmptyState, SkeletonBlock } from '../ui'
 import { resolveMediaUrl } from '../utils/mediaUrl'
 import { stripHtml } from '../utils/richText'
 
@@ -95,6 +96,7 @@ export function AnnouncementsPage() {
   const [loading, setLoading] = useState(true)
   const [form, setForm] = useState(emptyForm)
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [composeOpen, setComposeOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -133,6 +135,15 @@ export function AnnouncementsPage() {
   const resetForm = () => {
     setForm(emptyForm())
     setEditingId(null)
+    setComposeOpen(false)
+  }
+
+  const openCompose = () => {
+    setForm(emptyForm())
+    setEditingId(null)
+    setError(null)
+    setSuccess(null)
+    setComposeOpen(true)
   }
 
   const fillForm = (a: Announcement) => {
@@ -150,7 +161,7 @@ export function AnnouncementsPage() {
     })
     setError(null)
     setSuccess(null)
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+    setComposeOpen(true)
   }
 
   const buildPayload = (extra: Record<string, unknown> = {}) => ({
@@ -381,37 +392,15 @@ export function AnnouncementsPage() {
       ? 'Renvoyer une notification'
       : 'Publier et notifier'
 
-  return (
-    <div className="admin-page">
-      <div className="admin-page-intro">
-        <p className="admin-page-intro-label">Communication</p>
-        <h2 className="admin-page-intro-title">Annonces &amp; actualités</h2>
-        <p className="admin-page-intro-text">
-          Rédigez un brouillon, prévisualisez, puis publiez avec confirmation. Seuls les comptes
-          actifs ciblés reçoivent une notification.
-        </p>
-      </div>
-
-      <section className="admin-section">
-        <div className="admin-section-head">
-          <h3 className="admin-section-label">
-            {editingId ? 'Modifier l’annonce' : 'Nouvelle annonce'}
-          </h3>
-          {editingId ? (
-            <button type="button" className="btn-outline-sm" onClick={resetForm}>
-              <X size={14} />
-              Annuler l’édition
-            </button>
-          ) : null}
-        </div>
-        <div className="admin-section-body">
-          <form
-            onSubmit={(e) => {
-              e.preventDefault()
-              void handleSaveDraft()
-            }}
-            className="create-admin-form"
-          >
+  const composeForm = (
+    <form
+      id="announcement-compose-form"
+      onSubmit={(e) => {
+        e.preventDefault()
+        void handleSaveDraft()
+      }}
+      className="create-admin-form"
+    >
             <div className="create-admin-grid">
               <div className="create-admin-field">
                 <label htmlFor="ann-title">
@@ -625,9 +614,27 @@ export function AnnouncementsPage() {
                 </button>
               )}
             </div>
-          </form>
+    </form>
+  )
+
+  return (
+    <div className="admin-page">
+      <div className="admin-page-intro">
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
+          <div>
+            <p className="admin-page-intro-label">Communication</p>
+            <h2 className="admin-page-intro-title">Annonces &amp; actualités</h2>
+            <p className="admin-page-intro-text">
+              Rédigez un brouillon, prévisualisez, puis publiez avec confirmation. Seuls les comptes
+              actifs ciblés reçoivent une notification.
+            </p>
+          </div>
+          <Button variant="primary" onClick={openCompose}>
+            <Plus size={16} />
+            Nouvelle annonce
+          </Button>
         </div>
-      </section>
+      </div>
 
       <section className="admin-section">
         <div className="admin-section-head">
@@ -670,16 +677,15 @@ export function AnnouncementsPage() {
           </div>
 
           {loading ? (
-            <p className="muted">Chargement…</p>
+            <SkeletonBlock rows={5} />
           ) : items.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '2rem 1rem' }}>
-              <Megaphone size={32} style={{ opacity: 0.35, marginBottom: 8 }} />
-              <p style={{ fontWeight: 600, margin: '0 0 4px' }}>Aucune annonce</p>
-              <p className="muted" style={{ margin: 0 }}>
-                Créez un brouillon ci-dessus, prévisualisez-le, puis publiez-le pour le diffuser aux
-                apprenants.
-              </p>
-            </div>
+            <EmptyState
+              title="Aucune annonce"
+              description="Créez un brouillon, prévisualisez-le, puis publiez-le pour le diffuser aux apprenants."
+              actionLabel="Nouvelle annonce"
+              onAction={openCompose}
+              icon={<Megaphone size={32} style={{ opacity: 0.35 }} />}
+            />
           ) : (
             <div className="admin-data-table-wrap">
               <table className="admin-data-table">
@@ -760,6 +766,15 @@ export function AnnouncementsPage() {
           )}
         </div>
       </section>
+
+      <Drawer
+        open={composeOpen}
+        title={editingId ? 'Modifier l’annonce' : 'Nouvelle annonce'}
+        subtitle="Enregistrez un brouillon ou publiez avec notification."
+        onClose={resetForm}
+      >
+        {composeForm}
+      </Drawer>
 
       {previewOpen ? (
         <div className="modal-backdrop" onClick={() => setPreviewOpen(false)}>
