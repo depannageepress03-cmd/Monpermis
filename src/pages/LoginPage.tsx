@@ -26,21 +26,6 @@ export function LoginPage() {
   }>({})
   const [loading, setLoading] = useState(false)
 
-  const finishAuth = (user: { phone?: string }, token: string) => {
-    saveSession(token, user as Parameters<typeof saveSession>[1], true)
-    if (!String(user.phone || '').trim()) {
-      navigate('/profil', {
-        replace: true,
-        state: {
-          phoneRequired:
-            'Ajoute ton numéro de téléphone pour payer en Mobile Money et recevoir les rappels.',
-        },
-      })
-      return
-    }
-    navigate('/accueil', { replace: true })
-  }
-
   useEffect(() => {
     if (flashMessage) {
       setErrors((prev) => ({ ...prev, info: flashMessage }))
@@ -64,10 +49,21 @@ export function LoginPage() {
 
     try {
       const { user, token } = await loginUser({
-        phone: normalizePhone(phone),
+        identifier: normalizePhone(phone),
         password,
       })
-      finishAuth(user, token)
+      saveSession(token, user, true)
+      if (!String(user.phone || '').trim()) {
+        navigate('/profil', {
+          replace: true,
+          state: {
+            phoneRequired:
+              'Ajoute ton numéro de téléphone pour payer en Mobile Money et recevoir les rappels.',
+          },
+        })
+        return
+      }
+      navigate('/accueil', { replace: true })
     } catch (error) {
       const { message } = getAuthErrorDetails(error)
       setErrors({ form: message })
@@ -103,10 +99,10 @@ export function LoginPage() {
               error={errors.phone}
             />
             <AuthInput
-              label="Code"
+              label="Mot de passe"
               name="password"
               type="password"
-              placeholder="Ton code"
+              placeholder="Ton mot de passe"
               autoComplete="current-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -114,14 +110,11 @@ export function LoginPage() {
             />
           </div>
 
-          <p className="signin-forgot">
-            <Link to="/mot-de-passe-oublie">Code oublié ?</Link>
-          </p>
-
           <button
             type="submit"
             className="signin-btn-continue signin-btn-continue--app"
             disabled={loading}
+            style={{ marginTop: 20 }}
           >
             {loading ? 'Connexion en cours…' : 'Se connecter'}
           </button>

@@ -32,7 +32,7 @@ const SECTIONS = [
   {
     title: '2. Données collectées',
     paragraphs: [
-      'Nous collectons les données nécessaires au compte : identité (prénom, nom), téléphone, code de connexion, progression pédagogique, abonnements et réservations.',
+      'Nous collectons les données nécessaires au compte : identité, téléphone, identifiants de connexion, progression pédagogique, abonnements et réservations.',
       'Les paiements sont traités via FedaPay ; nous ne stockons pas les données complètes de carte bancaire.',
     ],
   },

@@ -14,7 +14,7 @@ export function validateEmail(email: string): string | undefined {
 }
 
 export function validatePassword(password: string): string | undefined {
-  if (!password) return 'Le code est requis'
+  if (!password) return 'Le mot de passe est requis'
   if (password.length < 8) return 'Minimum 8 caractères'
   return undefined
 }

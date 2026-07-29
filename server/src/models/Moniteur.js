@@ -9,6 +9,10 @@ const availabilitySlotSchema = new mongoose.Schema(
   { _id: false },
 )
 
+export const MONITEUR_BIO_MAX = 2000
+export const MONITEUR_PHOTOS_MAX = 12
+export const MONITEUR_VIDEOS_MAX = 6
+
 const moniteurSchema = new mongoose.Schema(
   {
     firstName: { type: String, required: true, trim: true },
@@ -31,15 +35,16 @@ const moniteurSchema = new mongoose.Schema(
     /** Ville / zone où le moniteur intervient — critère de choix pour l'élève. */
     city: { type: String, default: '', trim: true },
     /** Présentation du moniteur affichée sur son profil public. */
-    bio: { type: String, default: '', trim: true },
+    bio: { type: String, default: '', trim: true, maxlength: MONITEUR_BIO_MAX },
     /** Galerie de photos du moniteur (URLs). */
     photos: { type: [String], default: [] },
-    /** Vidéos de présentation (URLs externes, même logique que les cours). */
+    /** Vidéos de présentation (URLs YouTube / Vimeo). */
     videos: { type: [String], default: [] },
   },
   { timestamps: true },
 )
 
+/** Admin only — includes phone and full scheduling data. */
 moniteurSchema.methods.toJSONSafe = function toJSONSafe() {
   return {
     id: String(this._id),
@@ -61,6 +66,31 @@ moniteurSchema.methods.toJSONSafe = function toJSONSafe() {
     videos: this.videos || [],
     createdAt: this.createdAt,
     updatedAt: this.updatedAt,
+  }
+}
+
+/** Learner list card — no phone, no heavy media payloads. */
+moniteurSchema.methods.toPublicListJSON = function toPublicListJSON() {
+  return {
+    id: String(this._id),
+    fullName: `${this.firstName} ${this.lastName}`.trim(),
+    vehicleTypes: this.vehicleTypes || [],
+    defaultPriceFcfa: this.defaultPriceFcfa || 5000,
+    vehicleBrand: this.vehicleBrand || '',
+    vehiclePhotoUrl: this.vehiclePhotoUrl || '',
+    photoUrl: this.photoUrl || '',
+    city: this.city || '',
+  }
+}
+
+/** Learner profile page — no phone. */
+moniteurSchema.methods.toPublicProfileJSON = function toPublicProfileJSON() {
+  return {
+    ...this.toPublicListJSON(),
+    specialties: this.specialties || [],
+    bio: this.bio || '',
+    photos: this.photos || [],
+    videos: this.videos || [],
   }
 }
 

@@ -23,9 +23,6 @@ import { PaymentHistoryPage } from './pages/PaymentHistoryPage'
 import { HomePage } from './pages/HomePage'
 import { LoginPage } from './pages/LoginPage'
 import { RegisterPage } from './pages/RegisterPage'
-import { ForgotPasswordPage } from './pages/ForgotPasswordPage'
-import { ResetPasswordPage } from './pages/ResetPasswordPage'
-import { VerifyEmailPage } from './pages/VerifyEmailPage'
 import { TermsOfUsePage } from './pages/TermsOfUsePage'
 import { PrivacyPolicyPage } from './pages/PrivacyPolicyPage'
 import { MentionsLegalesPage } from './pages/MentionsLegalesPage'
@@ -40,9 +37,9 @@ export default function App() {
       <Route path="/intro" element={<IntroPage />} />
       <Route path="/" element={<LoginPage />} />
       <Route path="/inscription" element={<RegisterPage />} />
-      <Route path="/mot-de-passe-oublie" element={<ForgotPasswordPage />} />
-      <Route path="/reinitialiser-mot-de-passe" element={<ResetPasswordPage />} />
-      <Route path="/verifier-email" element={<VerifyEmailPage />} />
+      <Route path="/mot-de-passe-oublie" element={<Navigate to="/" replace />} />
+      <Route path="/reinitialiser-mot-de-passe" element={<Navigate to="/" replace />} />
+      <Route path="/verifier-email" element={<Navigate to="/" replace />} />
       <Route path="/conditions-utilisation" element={<TermsOfUsePage />} />
       <Route path="/politique-de-confidentialite" element={<PrivacyPolicyPage />} />
       <Route path="/mentions-legales" element={<MentionsLegalesPage />} />

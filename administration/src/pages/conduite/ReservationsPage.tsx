@@ -34,6 +34,36 @@ function mediaSrc(url: string) {
   return resolveMediaUrl(url)
 }
 
+const MONITEUR_BIO_MAX = 2000
+const MONITEUR_PHOTOS_MAX = 12
+const MONITEUR_VIDEOS_MAX = 6
+
+function isAllowedMoniteurVideoUrl(raw: string): boolean {
+  const trimmed = raw.trim()
+  if (!trimmed) return false
+  try {
+    const withScheme = /^[a-z][a-z0-9+.-]*:/i.test(trimmed) ? trimmed : `https://${trimmed}`
+    const url = new URL(withScheme)
+    if (url.protocol !== 'https:' && url.protocol !== 'http:') return false
+    const host = url.hostname.replace(/^www\./, '')
+    if (host === 'youtu.be') return url.pathname.split('/').filter(Boolean).length >= 1
+    if (
+      host === 'youtube.com' ||
+      host === 'm.youtube.com' ||
+      host === 'youtube-nocookie.com' ||
+      host === 'music.youtube.com'
+    ) {
+      return Boolean(url.searchParams.get('v') || /\/(embed|shorts|live|v)\//.test(url.pathname))
+    }
+    if (host.endsWith('vimeo.com')) {
+      return url.pathname.split('/').some((part) => /^\d+$/.test(part))
+    }
+    return false
+  } catch {
+    return false
+  }
+}
+
 function paymentBadge(reservation: ReservationAdmin) {
   if (reservation.heuresDebitees > 0) {
     return { label: 'Payé (solde d’heures)', tone: 'is-success' }
@@ -355,13 +385,17 @@ export function ReservationsPage() {
 
   const handleEditGalleryUpload = async (file: File | null) => {
     if (!file) return
+    if (editPhotos.length >= MONITEUR_PHOTOS_MAX) {
+      setError(`Maximum ${MONITEUR_PHOTOS_MAX} photos dans la galerie.`)
+      return
+    }
     const token = getAdminToken()
     if (!token) return
     setUploadingEditPhoto(true)
     setError(null)
     try {
       const { imageUrl } = await uploadVehiclePhoto(token, file)
-      setEditPhotos((prev) => [...prev, imageUrl])
+      setEditPhotos((prev) => [...prev, imageUrl].slice(0, MONITEUR_PHOTOS_MAX))
     } catch (err) {
       setError(isAuthError(err) ? err.message : 'Import photo impossible')
     } finally {
@@ -408,6 +442,19 @@ export function ReservationsPage() {
   const addEditVideo = () => {
     const url = editNewVideoUrl.trim()
     if (!url) return
+    if (!isAllowedMoniteurVideoUrl(url)) {
+      setError('Vidéo : uniquement un lien YouTube ou Vimeo (https).')
+      return
+    }
+    if (editVideos.length >= MONITEUR_VIDEOS_MAX) {
+      setError(`Maximum ${MONITEUR_VIDEOS_MAX} vidéos de présentation.`)
+      return
+    }
+    if (editVideos.includes(url)) {
+      setEditNewVideoUrl('')
+      return
+    }
+    setError('')
     setEditVideos((prev) => [...prev, url])
     setEditNewVideoUrl('')
   }
@@ -435,7 +482,7 @@ export function ReservationsPage() {
     try {
       const slots = fromEditDayHours(editDayHours)
       const { moniteur } = await updateMoniteur(token, editingMoniteur.id, {
-        bio: editBio.trim(),
+        bio: editBio.trim().slice(0, MONITEUR_BIO_MAX),
         phone: editPhone.trim(),
         specialties: editSpecialties
           .split(',')
@@ -445,8 +492,8 @@ export function ReservationsPage() {
         vehiclePhotoUrl: editVehiclePhotoUrl,
         photoUrl: editPhotoUrl,
         city: editCity.trim(),
-        photos: editPhotos,
-        videos: editVideos,
+        photos: editPhotos.slice(0, MONITEUR_PHOTOS_MAX),
+        videos: editVideos.slice(0, MONITEUR_VIDEOS_MAX),
         weeklyAvailability: slots,
       })
       setSuccess(`« ${moniteur.fullName} » enregistré (profil + disponibilité).`)
@@ -889,10 +936,14 @@ export function ReservationsPage() {
                         Présentation
                         <textarea
                           value={editBio}
-                          onChange={(e) => setEditBio(e.target.value)}
+                          onChange={(e) => setEditBio(e.target.value.slice(0, MONITEUR_BIO_MAX))}
                           placeholder="Présentez ce moniteur aux élèves (expérience, pédagogie…)"
                           rows={3}
+                          maxLength={MONITEUR_BIO_MAX}
                         />
+                        <span className="admin-muted" style={{ fontSize: 12 }}>
+                          {editBio.length}/{MONITEUR_BIO_MAX}
+                        </span>
                       </label>
 
                       <div className="moniteur-edit-label">
@@ -1071,7 +1122,7 @@ export function ReservationsPage() {
                       </div>
 
                       <div className="moniteur-edit-label">
-                        Vidéos de présentation (liens)
+                        Vidéos de présentation (YouTube ou Vimeo)
                         <div className="moniteur-video-list">
                           {editVideos.map((url) => (
                             <div key={url} className="moniteur-video-item">
@@ -1089,7 +1140,7 @@ export function ReservationsPage() {
                             <input
                               value={editNewVideoUrl}
                               onChange={(e) => setEditNewVideoUrl(e.target.value)}
-                              placeholder="https://…"
+                              placeholder="https://www.youtube.com/watch?v=…"
                             />
                             <button type="button" className="btn-outline-sm" onClick={addEditVideo}>
                               <Plus size={14} />

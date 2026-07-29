@@ -375,7 +375,7 @@ export function HomeScreen() {
               </View>
               <View style={styles.modalRow}>
                 <Text style={styles.modalRowLabel}>Compte</Text>
-                <Text style={styles.modalRowValue}>Téléphone / code</Text>
+                <Text style={styles.modalRowValue}>Téléphone / mot de passe</Text>
               </View>
             </View>
 

@@ -102,13 +102,13 @@ export function ProfilePage() {
       return
     }
     if (newPassword !== confirmPassword) {
-      setPwError('Les codes ne correspondent pas')
+      setPwError('Les mots de passe ne correspondent pas')
       return
     }
     setSavingPw(true)
     try {
       await changePassword(currentPassword, newPassword)
-      setPwMsg('Code modifié')
+      setPwMsg('Mot de passe modifié')
       setCurrentPassword('')
       setNewPassword('')
       setConfirmPassword('')
@@ -182,7 +182,7 @@ export function ProfilePage() {
         </form>
 
         <form className="auth-card learner-card" onSubmit={handleChangePassword} style={{ marginBottom: 12 }}>
-          <h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 12 }}>Changer de code</h2>
+          <h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 12 }}>Changer de mot de passe</h2>
           {pwError ? <p className="signin-form-error">{pwError}</p> : null}
           {pwMsg ? <p style={{ color: '#16a34a', fontWeight: 600 }}>{pwMsg}</p> : null}
           <div className="signin-fields">
@@ -191,25 +191,25 @@ export function ProfilePage() {
               className="auth-input"
               value={currentPassword}
               onChange={(e) => setCurrentPassword(e.target.value)}
-              placeholder="Code actuel"
+              placeholder="Mot de passe actuel"
             />
             <input
               type="password"
               className="auth-input"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
-              placeholder="Nouveau code"
+              placeholder="Nouveau mot de passe"
             />
             <input
               type="password"
               className="auth-input"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              placeholder="Confirmer le code"
+              placeholder="Confirmer le mot de passe"
             />
           </div>
           <button type="submit" className="btn-primary" disabled={savingPw} style={{ marginTop: 14 }}>
-            {savingPw ? 'Modification…' : 'Modifier le code'}
+            {savingPw ? 'Modification…' : 'Modifier le mot de passe'}
           </button>
         </form>
 
@@ -227,7 +227,7 @@ export function ProfilePage() {
               className="auth-input"
               value={deletePassword}
               onChange={(e) => setDeletePassword(e.target.value)}
-              placeholder="Code pour confirmer"
+              placeholder="Mot de passe pour confirmer"
               style={{ marginBottom: 12 }}
             />
           ) : null}

@@ -49,9 +49,9 @@ export function RegisterPasswordScreen() {
   const handleSubmit = async () => {
     const passwordError = validatePassword(password)
     const confirmPasswordError = !confirmPassword
-      ? 'Confirme ton code'
+      ? 'Confirme ton mot de passe'
       : confirmPassword !== password
-        ? 'Les codes ne correspondent pas'
+        ? 'Les mots de passe ne correspondent pas'
         : undefined
 
     if (passwordError || confirmPasswordError) {
@@ -76,7 +76,7 @@ export function RegisterPasswordScreen() {
             name: 'Login',
             params: {
               message:
-                message || 'Compte créé. Connecte-toi avec ton téléphone et ton code.',
+                message || 'Compte créé. Connecte-toi avec ton téléphone et ton mot de passe.',
             },
           },
         ],
@@ -116,16 +116,16 @@ export function RegisterPasswordScreen() {
                 resizeMode="contain"
               />
               <BrandName size={22} style={styles.brand} mainColor={dark.textPrimary} />
-              <Text style={styles.title}>Ton code</Text>
+              <Text style={styles.title}>Mot de passe</Text>
               <Text style={styles.subtitle}>
-                Choisis un code secret (mot de passe) pour finaliser ton inscription.
+                Choisis un mot de passe pour finaliser ton inscription.
               </Text>
             </View>
 
             <View style={styles.fields}>
               <AuthInput
-                label="Code"
-                placeholder="Ton code secret"
+                label="Mot de passe"
+                placeholder="Ton mot de passe"
                 secureTextEntry
                 autoComplete="new-password"
                 value={password}
@@ -133,8 +133,8 @@ export function RegisterPasswordScreen() {
                 error={errors.password}
               />
               <AuthInput
-                label="Confirmer le code"
-                placeholder="Confirmer le code"
+                label="Confirmer le mot de passe"
+                placeholder="Confirmer le mot de passe"
                 secureTextEntry
                 autoComplete="new-password"
                 value={confirmPassword}

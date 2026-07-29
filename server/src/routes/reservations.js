@@ -91,10 +91,13 @@ async function findOverlappingBusyCreneau({
 
 function asObjectId(value) {
   if (!value) return null
-  if (mongoose.Types.ObjectId.isValid(value)) {
-    return new mongoose.Types.ObjectId(value)
+  const raw = String(value).trim()
+  if (!/^[a-fA-F0-9]{24}$/.test(raw)) return null
+  try {
+    return new mongoose.Types.ObjectId(raw)
+  } catch {
+    return null
   }
-  return null
 }
 
 function slotDateTime(date, time) {
@@ -126,7 +129,7 @@ function asId(value) {
 
 async function hydrateReservation(reservation) {
   await reservation.populate([
-    { path: 'moniteurId', select: 'firstName lastName phone vehicleBrand vehiclePhotoUrl photoUrl' },
+    { path: 'moniteurId', select: 'firstName lastName vehicleBrand vehiclePhotoUrl photoUrl' },
     { path: 'creneauId' },
   ])
   const moniteur = reservation.moniteurId
@@ -136,7 +139,6 @@ async function hydrateReservation(reservation) {
       ? {
           id: asId(moniteur._id || moniteur),
           fullName: `${moniteur.firstName} ${moniteur.lastName}`.trim(),
-          phone: moniteur.phone || '',
           vehicleBrand: moniteur.vehicleBrand || '',
           vehiclePhotoUrl: moniteur.vehiclePhotoUrl || '',
           photoUrl: moniteur.photoUrl || '',
@@ -247,7 +249,7 @@ router.get('/moniteurs', ...withConduiteAccess, async (req, res) => {
     const moniteurs = await Moniteur.find(filter).sort({ lastName: 1, firstName: 1 })
     res.json({
       success: true,
-      data: { moniteurs: moniteurs.map((item) => item.toJSONSafe()) },
+      data: { moniteurs: moniteurs.map((item) => item.toPublicListJSON()) },
     })
   } catch (error) {
     console.error('Erreur moniteurs publics:', error)
@@ -257,11 +259,15 @@ router.get('/moniteurs', ...withConduiteAccess, async (req, res) => {
 
 router.get('/moniteurs/:id', ...withConduiteAccess, async (req, res) => {
   try {
-    const moniteur = await Moniteur.findOne({ _id: req.params.id, active: true })
+    const moniteurId = asObjectId(req.params.id)
+    if (!moniteurId) {
+      return res.status(404).json({ success: false, error: 'Moniteur introuvable' })
+    }
+    const moniteur = await Moniteur.findOne({ _id: moniteurId, active: true })
     if (!moniteur) {
       return res.status(404).json({ success: false, error: 'Moniteur introuvable' })
     }
-    res.json({ success: true, data: { moniteur: moniteur.toJSONSafe() } })
+    res.json({ success: true, data: { moniteur: moniteur.toPublicProfileJSON() } })
   } catch (error) {
     console.error('Erreur profil moniteur:', error)
     res.status(500).json({ success: false, error: 'Chargement impossible' })
@@ -319,7 +325,7 @@ router.get('/availability', ...withConduiteAccess, async (req, res) => {
     res.json({
       success: true,
       data: {
-        moniteur: moniteur.toJSONSafe(),
+        moniteur: moniteur.toPublicListJSON(),
         from,
         to,
         hourlyPriceFcfa: moniteur.defaultPriceFcfa || 5000,

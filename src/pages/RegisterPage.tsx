@@ -1,6 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom'
 import { type FormEvent, useState } from 'react'
-import { registerUser, getAuthErrorDetails } from '../api/auth'
+import { registerUser } from '../api/auth'
 import { AuthInput } from '../components/AuthInput'
 import { BrandName } from '../components/BrandName'
 import { LegalFooter } from '../components/LegalFooter'
@@ -62,12 +62,11 @@ export function RegisterPage() {
       navigate('/', {
         replace: true,
         state: {
-          message: message || 'Compte créé. Connecte-toi avec ton téléphone et ton code.',
+          message: message || 'Compte créé. Connecte-toi avec ton téléphone et ton mot de passe.',
         },
       })
     } catch (error) {
-      const { message } = getAuthErrorDetails(error)
-      setErrors({ form: message || 'Inscription impossible' })
+      setErrors({ form: error instanceof Error ? error.message : 'Inscription impossible' })
     } finally {
       setLoading(false)
     }
@@ -122,17 +121,17 @@ export function RegisterPage() {
               error={errors.phone}
             />
             <AuthInput
-              label="Code"
+              label="Mot de passe"
               name="password"
               type="password"
-              placeholder="Ton code secret"
+              placeholder="Ton mot de passe"
               autoComplete="new-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               error={errors.password}
             />
             <p className="signin-field-hint">
-              Code du compte · min. 8 caractères, majuscule, minuscule et chiffre.
+              Mot de passe · min. 8 caractères, majuscule, minuscule et chiffre.
             </p>
           </div>
 

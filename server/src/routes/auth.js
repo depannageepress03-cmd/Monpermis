@@ -44,7 +44,7 @@ router.post('/register', async (req, res) => {
     if (!firstName || !lastName || !phone || !password) {
       return res.status(400).json({
         success: false,
-        error: 'Prénom, nom, téléphone et code sont requis',
+        error: 'Prénom, nom, téléphone et mot de passe sont requis',
       })
     }
 
@@ -127,7 +127,7 @@ router.post('/register', async (req, res) => {
       data: {
         message: hasEmail
           ? 'Compte créé. Vérifiez votre email pour activer votre compte, puis connectez-vous.'
-          : 'Compte créé. Connectez-vous avec votre téléphone et votre code.',
+          : 'Compte créé. Connectez-vous avec votre téléphone et votre mot de passe.',
         email: user.email || '',
         phone: user.phone,
       },
@@ -150,20 +150,20 @@ router.post('/login', async (req, res) => {
   try {
     const password = req.body?.password
     const identifier = String(
-      req.body?.identifier || req.body?.email || req.body?.phone || '',
+      req.body?.identifier || req.body?.phone || req.body?.email || '',
     ).trim()
 
     if (!identifier || !password) {
       return res.status(400).json({
         success: false,
-        error: 'Téléphone et code requis',
+error: 'Téléphone et mot de passe requis',
       })
     }
 
     if (identifier.includes('@')) {
       return res.status(400).json({
         success: false,
-        error: 'Connecte-toi avec ton numéro de téléphone et ton code',
+error: 'Connecte-toi avec ton numéro de téléphone',
       })
     }
 
@@ -181,7 +181,7 @@ router.post('/login', async (req, res) => {
     if (!user) {
       return res.status(401).json({
         success: false,
-        error: 'Téléphone ou code incorrect',
+error: 'Téléphone ou mot de passe incorrect',
       })
     }
 
@@ -195,8 +195,8 @@ router.post('/login', async (req, res) => {
     if (!user.password) {
       return res.status(401).json({
         success: false,
-        error:
-          'Ce compte n’a pas encore de code. Contacte le support Monpermis pour en définir un.',
+error:
+          'Ce compte n’a pas encore de mot de passe. Contacte le support Monpermis pour en définir un.',
         code: 'NO_PASSWORD',
       })
     }
@@ -204,7 +204,7 @@ router.post('/login', async (req, res) => {
     if (!(await user.comparePassword(password))) {
       return res.status(401).json({
         success: false,
-        error: 'Téléphone ou code incorrect',
+error: 'Téléphone ou mot de passe incorrect',
       })
     }
 
@@ -497,9 +497,9 @@ router.delete('/account', requireUserAuth, async (req, res) => {
 })
 
 router.post('/google', (_req, res) => {
-  res.status(410).json({
+  return res.status(410).json({
     success: false,
-    error: 'La connexion Google n’est plus disponible. Utilise ton téléphone et ton code.',
+    error: 'La connexion Google n’est plus disponible. Utilise ton téléphone et ton mot de passe.',
     code: 'GOOGLE_DISABLED',
   })
 })

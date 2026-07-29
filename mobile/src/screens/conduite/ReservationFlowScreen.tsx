@@ -42,6 +42,7 @@ import { useRequireAuth } from '../../hooks/useRequireAuth'
 import type { RootStackParamList } from '../../navigation/types'
 import { dark, fonts } from '../../theme'
 import { resolveMediaUrl } from '../../utils/mediaUrl'
+import { resolveMoniteurVideoEmbed } from '../../utils/mediaEmbed'
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'ReservationFlow'>
 type Step = 'moniteur' | 'profile' | 'duration' | 'slots'
@@ -490,8 +491,9 @@ export function ReservationFlowScreen() {
                   </View>
                 ) : null}
                 <Text style={styles.typeText}>
-                  {profile.vehicleTypes?.[0] || 'Véhicule'} ·{' '}
-                  {profile.defaultPriceFcfa.toLocaleString('fr-FR')} FCFA/h
+                  {(profile.vehicleTypes?.filter(Boolean).join(' · ') || 'Véhicule') +
+                    ' · ' +
+                    `${profile.defaultPriceFcfa.toLocaleString('fr-FR')} FCFA/h`}
                 </Text>
               </View>
             </View>
@@ -518,7 +520,9 @@ export function ReservationFlowScreen() {
                 <Text style={styles.section}>Présentation</Text>
                 <Text style={styles.bioText}>{profile.bio}</Text>
               </View>
-            ) : null}
+            ) : (
+              <Text style={styles.empty}>Présentation non renseignée pour le moment.</Text>
+            )}
 
             {profile.specialties?.length ? (
               <View>
@@ -550,19 +554,27 @@ export function ReservationFlowScreen() {
                   ))}
                 </ScrollView>
               </View>
-            ) : null}
+            ) : (
+              <Text style={styles.empty}>Pas encore de galerie photo.</Text>
+            )}
 
             {profile.videos?.length
-              ? profile.videos.map((video) => (
-                  <Pressable
-                    key={video}
-                    style={styles.secondaryBtn}
-                    onPress={() => void Linking.openURL(video)}
-                  >
-                    <Text style={styles.secondaryBtnText}>Ouvrir la vidéo</Text>
-                  </Pressable>
-                ))
-              : null}
+              ? profile.videos.map((video) => {
+                  const embed = resolveMoniteurVideoEmbed(video)
+                  if (!embed) return null
+                  return (
+                    <Pressable
+                      key={video}
+                      style={styles.secondaryBtn}
+                      onPress={() => void Linking.openURL(embed.watchUrl)}
+                    >
+                      <Text style={styles.secondaryBtnText}>Ouvrir la vidéo</Text>
+                    </Pressable>
+                  )
+                })
+              : (
+                <Text style={styles.empty}>Pas encore de vidéo de présentation.</Text>
+              )}
 
             <Pressable style={styles.primaryBtn} onPress={() => setStep('duration')}>
               <Text style={styles.primaryBtnText}>Choisir ce moniteur</Text>

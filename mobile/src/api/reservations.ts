@@ -107,7 +107,6 @@ export interface MoniteurPublic {
 }
 
 export interface MoniteurProfile extends MoniteurPublic {
-  phone: string
   specialties: string[]
   bio: string
   photos: string[]

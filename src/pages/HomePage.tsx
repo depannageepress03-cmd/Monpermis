@@ -311,7 +311,7 @@ export function HomePage() {
               </div>
               <div>
                 <dt>Compte</dt>
-                <dd>Téléphone / code</dd>
+                <dd>Téléphone / mot de passe</dd>
               </div>
             </dl>
             <button
