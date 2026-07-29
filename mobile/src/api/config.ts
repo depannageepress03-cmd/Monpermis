@@ -12,7 +12,7 @@ function getExpoDevApiBase(): string | null {
   const ip = host.split(':')[0]
   if (!ip) return null
 
-  return `http://${ip}:5000/api`
+  return `http://${ip}:5001/api`
 }
 
 export function getApiBase(): string {
@@ -33,9 +33,10 @@ export function getApiBase(): string {
   }
 
   if (Platform.OS === 'android') {
-    return 'http://10.0.2.2:5000/api'
+    // 5001 : sur macOS le port 5000 est souvent pris par AirPlay.
+    return 'http://10.0.2.2:5001/api'
   }
 
-  return 'http://localhost:5000/api'
+  return 'http://localhost:5001/api'
 }
 

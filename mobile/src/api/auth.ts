@@ -137,13 +137,36 @@ export function deleteAccount(data: { password?: string; confirm: boolean }) {
 async function authedRequest<T>(path: string, options?: RequestInit): Promise<T> {
   const token = await getStoredToken()
   if (!token) throw new AuthError('Authentification requise')
-  return request<T>(path, {
-    ...options,
-    headers: {
-      Authorization: `Bearer ${token}`,
-      ...options?.headers,
-    },
-  })
+
+  let response: Response
+  try {
+    response = await fetch(`${getApiBase()}${path}`, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+        ...options?.headers,
+      },
+    })
+  } catch {
+    throw new AuthError(
+      'Impossible de joindre le serveur. Vérifiez votre connexion internet.',
+    )
+  }
+
+  let body: ApiResponse<T>
+  try {
+    body = await response.json()
+  } catch {
+    throw new AuthError('Réponse serveur invalide')
+  }
+
+  if (!response.ok || !body.success) {
+    await invalidateSessionIfUnauthorized(response.status)
+    throw new AuthError(body.error || 'Une erreur est survenue', body.code, body.email)
+  }
+
+  return body.data as T
 }
 
 export function updateProfile(data: {
@@ -190,5 +213,41 @@ export async function getStoredUser(): Promise<AuthUser | null> {
   } catch {
     await AsyncStorage.multiRemove([TOKEN_KEY, USER_KEY])
     return null
+  }
+}
+
+type SessionInvalidatedListener = () => void
+const sessionInvalidatedListeners = new Set<SessionInvalidatedListener>()
+
+export function onSessionInvalidated(listener: SessionInvalidatedListener) {
+  sessionInvalidatedListeners.add(listener)
+  return () => {
+    sessionInvalidatedListeners.delete(listener)
+  }
+}
+
+/** Efface la session locale quand l’API renvoie 401 (JWT invalide / expiré). */
+export async function invalidateSessionIfUnauthorized(status: number) {
+  if (status === 401) {
+    await clearSession()
+    for (const listener of sessionInvalidatedListeners) listener()
+  }
+}
+
+/** Sonde légère : false si le token est rejeté (401). Hors-ligne → true (conserve la session). */
+export async function probeSession(): Promise<boolean> {
+  const token = await getStoredToken()
+  if (!token) return false
+  try {
+    const response = await fetch(`${getApiBase()}/access-requests/me`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    if (response.status === 401) {
+      await invalidateSessionIfUnauthorized(401)
+      return false
+    }
+    return response.ok
+  } catch {
+    return true
   }
 }

@@ -22,16 +22,41 @@ export function normalizeTime(value) {
   return String(value || '').trim().slice(0, 5)
 }
 
-/** Fenêtres hebdo pour une date calendaire (YYYY-MM-DD). */
-export function windowsForDate(weeklyAvailability, dateStr) {
+/** Préavis minimal avant le début d'une séance réservable. */
+export const BOOKING_LEAD_MINUTES = 60
+
+/**
+ * Tronque les fenêtres d'aujourd'hui au plus tôt réservable (maintenant + préavis).
+ * Les autres dates ne sont pas modifiées ; une fenêtre entièrement passée disparaît.
+ */
+export function clipWindowsToLeadTime(windows, dateStr, now = new Date()) {
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(
+    now.getDate(),
+  ).padStart(2, '0')}`
+  if (dateStr > today) return windows
+  if (dateStr < today) return []
+
+  const earliest = now.getHours() * 60 + now.getMinutes() + BOOKING_LEAD_MINUTES
+  return windows
+    .map((slot) => {
+      const start = timeToMinutes(slot.start)
+      return start >= earliest ? slot : { start: minutesToTime(earliest), end: slot.end }
+    })
+    .filter((slot) => timeToMinutes(slot.end) > timeToMinutes(slot.start))
+}
+
+/** Fenêtres hebdo pour une date calendaire (YYYY-MM-DD), heures déjà passées exclues. */
+export function windowsForDate(weeklyAvailability, dateStr, now = new Date()) {
   const day = new Date(`${dateStr}T12:00:00`).getDay()
-  return (weeklyAvailability || [])
+  const windows = (weeklyAvailability || [])
     .filter((slot) => Number(slot.dayOfWeek) === day)
     .map((slot) => ({
       start: normalizeTime(slot.start || '08:00'),
       end: normalizeTime(slot.end || '18:00'),
     }))
     .filter((slot) => timeToMinutes(slot.end) > timeToMinutes(slot.start))
+
+  return clipWindowsToLeadTime(windows, dateStr, now)
 }
 
 /** Soustrait des intervalles occupés d’une liste de fenêtres libres. */

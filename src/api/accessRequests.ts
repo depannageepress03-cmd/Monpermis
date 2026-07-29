@@ -179,6 +179,16 @@ export const checkoutMobileMoney = (payload: {
     body: JSON.stringify(payload),
   })
 
+export const claimFreeAccess = (modules: AccessModuleKey[] = ['conduite_videos']) =>
+  request<{
+    accessRequests: AccessRequest[]
+    access: AccessMe
+    message: string
+  }>('/access-requests/claim-free', {
+    method: 'POST',
+    body: JSON.stringify({ modules }),
+  })
+
 export const createAccessRequest = (payload: {
   module: AccessModuleKey
   quantity: number

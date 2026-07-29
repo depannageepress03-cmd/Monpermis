@@ -21,49 +21,80 @@ router.post('/redeem', async (req, res) => {
     if (!promo || !promo.active) {
       return res.status(404).json({ success: false, error: 'Code promo invalide' })
     }
-    if (promo.maxUses != null && promo.usesCount >= promo.maxUses) {
-      return res.status(410).json({ success: false, error: 'Ce code promo a atteint son nombre maximal d’utilisations' })
-    }
 
-    const already = await PromoCodeRedemption.findOne({ promoCodeId: promo._id, userId: req.user._id })
-    if (already) {
-      return res.status(409).json({ success: false, error: 'Vous avez déjà utilisé ce code promo' })
-    }
-
-    const unlockedModules = []
-    for (const module of promo.modules) {
-      if (module === 'conduite_heures') {
-        if (promo.heuresBonus > 0) {
-          await User.findByIdAndUpdate(req.user._id, { $inc: { soldeHeures: promo.heuresBonus } })
-        }
-        unlockedModules.push(module)
-        continue
-      }
-
-      const request = await AccessRequest.create({
+    // 1) Réserve la rédemption (index unique) — empêche le double-clic / courses parallèles.
+    let redemption
+    try {
+      redemption = await PromoCodeRedemption.create({
+        promoCodeId: promo._id,
         userId: req.user._id,
-        module,
-        status: 'en_attente',
-        amount: 0,
-        quantity: promo.durationQuantity,
-        unit: promo.durationUnit,
       })
-      await transitionAccessRequest(request, 'en_verification', {
-        actor: 'system',
-        actorLabel: 'Code promo',
-        note: promo.code,
-      })
-      await transitionAccessRequest(request, 'valide', {
-        actor: 'system',
-        actorLabel: 'Code promo',
-        note: promo.code,
-      })
-      unlockedModules.push(module)
+    } catch (error) {
+      if (error?.code === 11000) {
+        return res.status(409).json({ success: false, error: 'Vous avez déjà utilisé ce code promo' })
+      }
+      throw error
     }
 
-    promo.usesCount += 1
-    await promo.save()
-    await PromoCodeRedemption.create({ promoCodeId: promo._id, userId: req.user._id })
+    // 2) Incrémente usesCount atomiquement avec plafond maxUses.
+    const useFilter = { _id: promo._id, active: true }
+    if (promo.maxUses != null) {
+      useFilter.usesCount = { $lt: promo.maxUses }
+    }
+    const claimed = await PromoCode.findOneAndUpdate(useFilter, { $inc: { usesCount: 1 } }, { new: true })
+    if (!claimed) {
+      await PromoCodeRedemption.deleteOne({ _id: redemption._id })
+      return res
+        .status(410)
+        .json({ success: false, error: 'Ce code promo a atteint son nombre maximal d’utilisations' })
+    }
+
+    // 3) Crédite modules / heures (après claim unique).
+    const unlockedModules = []
+    try {
+      for (const module of claimed.modules) {
+        if (module === 'conduite_heures') {
+          if (claimed.heuresBonus > 0) {
+            await User.findByIdAndUpdate(req.user._id, { $inc: { soldeHeures: claimed.heuresBonus } })
+          }
+          unlockedModules.push(module)
+          continue
+        }
+
+        const request = await AccessRequest.create({
+          userId: req.user._id,
+          module,
+          status: 'en_attente',
+          amount: 0,
+          quantity: claimed.durationQuantity,
+          unit: claimed.durationUnit,
+        })
+        await transitionAccessRequest(request, 'en_verification', {
+          actor: 'system',
+          actorLabel: 'Code promo',
+          note: claimed.code,
+        })
+        await transitionAccessRequest(request, 'valide', {
+          actor: 'system',
+          actorLabel: 'Code promo',
+          note: claimed.code,
+        })
+        unlockedModules.push(module)
+      }
+    } catch (creditError) {
+      // Compensation best-effort si le crédit échoue après claim.
+      try {
+        await PromoCodeRedemption.deleteOne({ _id: redemption._id })
+        await PromoCode.findByIdAndUpdate(claimed._id, { $inc: { usesCount: -1 } })
+      } catch (compensateError) {
+        logger.error('Compensation rédemption promo échouée', {
+          error: compensateError.message,
+          promoId: String(claimed._id),
+          userId: String(req.user._id),
+        })
+      }
+      throw creditError
+    }
 
     const access = await getUserModuleAccess(req.user._id)
     const user = await User.findById(req.user._id).select('soldeHeures')

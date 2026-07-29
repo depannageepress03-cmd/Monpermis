@@ -53,6 +53,9 @@ function guessOperator(phone: string): MobileMoneyOperator | null {
   return null
 }
 
+/** Seul pays desservi : envoyé au serveur sans étape de sélection. */
+const COUNTRY = 'BJ'
+
 function formatPrice(amount: number, currency = 'XOF') {
   return new Intl.NumberFormat('fr-FR', {
     style: 'currency',
@@ -101,9 +104,8 @@ export function ReservationMobileMoneyCheckout({
   onSuccess,
   onSoldeSuccess,
 }: Props) {
-  const [step, setStep] = useState<'country' | 'operator' | 'phone' | 'waiting'>('country')
+  const [step, setStep] = useState<'intro' | 'operator' | 'phone' | 'waiting'>('intro')
   const [operator, setOperator] = useState<MobileMoneyOperator | null>(null)
-  const [country, setCountry] = useState('BJ')
   const [phone, setPhone] = useState(defaultPhone)
   const [promoCode, setPromoCode] = useState('')
   const [soldeHeures, setSoldeHeures] = useState<number | null>(null)
@@ -115,9 +117,8 @@ export function ReservationMobileMoneyCheckout({
 
   useEffect(() => {
     if (!visible) return
-    setStep('country')
+    setStep('intro')
     setOperator(null)
-    setCountry('BJ')
     setPhone(defaultPhone)
     setPromoCode('')
     setError(null)
@@ -282,7 +283,7 @@ export function ReservationMobileMoneyCheckout({
         paymentMethod: 'mobile_money',
         operator: chosenOperator,
         phone: phoneDigits,
-        country: country || 'BJ',
+        country: COUNTRY,
       })
       setOperator(chosenOperator)
       setStep('waiting')
@@ -366,24 +367,17 @@ export function ReservationMobileMoneyCheckout({
               </Pressable>
             ) : null}
 
-            {!canPayWithSolde && step === 'country' ? (
+            {!canPayWithSolde && step === 'intro' ? (
               <View style={styles.step}>
-                <Text style={styles.kicker}>1. Pays</Text>
-                <Pressable
-                  style={[styles.choice, styles.choiceActive]}
-                  onPress={() => {
-                    setCountry('BJ')
-                    setStep('operator')
-                  }}
-                >
-                  <Text style={styles.choiceText}>Bénin (+229)</Text>
+                <Pressable style={styles.payBtn} onPress={() => setStep('operator')}>
+                  <Text style={styles.payText}>Passer au paiement</Text>
                 </Pressable>
               </View>
             ) : null}
 
             {!canPayWithSolde && step === 'operator' ? (
               <View style={styles.step}>
-                <Text style={styles.kicker}>2. Réseau mobile</Text>
+                <Text style={styles.kicker}>1. Réseau mobile</Text>
                 {OPERATORS.map((item) => (
                   <Pressable
                     key={item.id}
@@ -396,7 +390,7 @@ export function ReservationMobileMoneyCheckout({
                     <Text style={styles.choiceText}>{item.label}</Text>
                   </Pressable>
                 ))}
-                <Pressable style={styles.backBtn} onPress={() => setStep('country')}>
+                <Pressable style={styles.backBtn} onPress={() => setStep('intro')}>
                   <Text style={styles.backText}>Retour</Text>
                 </Pressable>
               </View>
@@ -404,7 +398,7 @@ export function ReservationMobileMoneyCheckout({
 
             {!canPayWithSolde && (step === 'phone' || step === 'waiting') ? (
               <View style={styles.step}>
-                <Text style={styles.kicker}>3. Numéro Mobile Money</Text>
+                <Text style={styles.kicker}>2. Numéro Mobile Money</Text>
                 <TextInput
                   style={styles.input}
                   keyboardType="phone-pad"

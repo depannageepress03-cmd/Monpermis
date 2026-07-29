@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from 'react'
 import {
   Image,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -75,6 +76,23 @@ export function CodeRouteScreen() {
   const [modules, setModules] = useState<AccessModule[]>([])
   const [accessLoading, setAccessLoading] = useState(true)
   const [checkoutOpen, setCheckoutOpen] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
+
+  const loadAccess = useCallback(async (silent = false) => {
+    if (!user) return
+    if (!silent) setAccessLoading(true)
+    try {
+      const [me, catalog] = await Promise.all([fetchAccessMe(), fetchAccessModules()])
+      setAccessMe(me)
+      setModules(catalog)
+    } catch {
+      setAccessMe(null)
+      setModules([])
+    } finally {
+      setAccessLoading(false)
+      setRefreshing(false)
+    }
+  }, [user])
 
   useFocusEffect(
     useCallback(() => {
@@ -84,18 +102,8 @@ export function CodeRouteScreen() {
   )
 
   useEffect(() => {
-    if (!user) return
-    void Promise.all([fetchAccessMe(), fetchAccessModules()])
-      .then(([me, catalog]) => {
-        setAccessMe(me)
-        setModules(catalog)
-      })
-      .catch(() => {
-        setAccessMe(null)
-        setModules([])
-      })
-      .finally(() => setAccessLoading(false))
-  }, [user])
+    void loadAccess()
+  }, [loadAccess])
 
   if (loading || !user) return <ScreenLoader />
 
@@ -176,7 +184,20 @@ export function CodeRouteScreen() {
     <View style={styles.root}>
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
         {header}
-        <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          contentContainerStyle={styles.scroll}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => {
+                setRefreshing(true)
+                void loadAccess(true)
+              }}
+              tintColor={dark.green}
+            />
+          }
+        >
           <FadeUp delay={60}>
             <View style={styles.accents}>
               <View style={[styles.accent, styles.accentGreen]} />

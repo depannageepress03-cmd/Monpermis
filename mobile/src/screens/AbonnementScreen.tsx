@@ -29,6 +29,11 @@ import { ScreenLoader } from '../components/ScreenLoader'
 import { useRequireAuth } from '../hooks/useRequireAuth'
 import type { RootStackParamList } from '../navigation/types'
 import { dark, fonts } from '../theme'
+import {
+  clearPendingCheckoutCart,
+  loadPendingCheckoutCart,
+  type PendingCheckoutCart,
+} from '../utils/checkoutCart'
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'Abonnement'>
 
@@ -47,7 +52,7 @@ const unitSuffix: Record<AccessModule['unit'], string> = {
   week: ' / semaine',
 }
 
-const PRIMARY_KEYS: AccessModuleKey[] = ['code', 'conduite_videos', 'conduite_heures']
+const PRIMARY_KEYS: AccessModuleKey[] = ['code']
 
 export function AbonnementScreen() {
   const navigation = useNavigation<Nav>()
@@ -64,14 +69,20 @@ export function AbonnementScreen() {
   const [promoBusy, setPromoBusy] = useState(false)
   const [promoError, setPromoError] = useState<string | null>(null)
   const [promoSuccess, setPromoSuccess] = useState<string | null>(null)
+  const [pendingCart, setPendingCart] = useState<PendingCheckoutCart | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
-      const [moduleCatalog, meResult] = await Promise.all([fetchAccessModules(), fetchAccessMe()])
+      const [moduleCatalog, meResult, savedCart] = await Promise.all([
+        fetchAccessModules(),
+        fetchAccessMe(),
+        loadPendingCheckoutCart(),
+      ])
       setModules(moduleCatalog)
       setMe(meResult)
+      setPendingCart(savedCart?.source === 'abonnement' ? savedCart : null)
     } catch (err) {
       setError(err instanceof AccessRequestError ? err.message : 'Chargement impossible')
     } finally {
@@ -87,6 +98,7 @@ export function AbonnementScreen() {
 
   const cartItems: CheckoutCartItem[] = modules
     .filter((module) => {
+      if (!PRIMARY_KEYS.includes(module.key)) return false
       if (!selected[module.key]) return false
       if (module.key !== 'conduite_heures' && me?.access[module.key]) return false
       return true
@@ -135,7 +147,9 @@ export function AbonnementScreen() {
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <View style={styles.introRow}>
           <Text style={styles.intro}>
-            Choisis une ou plusieurs offres, puis paie par Mobile Money (MTN, Moov, Celtiis).
+            Achète l’accès Code par Mobile Money (MTN, Moov, Celtiis). Les cours vidéo de
+            conduite sont gratuits depuis l’espace Conduite ; les heures moniteur s’achètent
+            aussi là-bas.
           </Text>
           <Pressable
             style={({ pressed }) => [styles.historyBtn, pressed && styles.pressed]}
@@ -155,6 +169,41 @@ export function AbonnementScreen() {
           <>
             {error ? <Text style={styles.error}>{error}</Text> : null}
 
+            {pendingCart ? (
+              <View style={styles.resumeCard}>
+                <Text style={styles.kicker}>Paiement interrompu</Text>
+                <Text style={styles.statusCopy}>
+                  Tu as un panier en cours. Reprends là où tu t’étais arrêté.
+                </Text>
+                <View style={styles.resumeActions}>
+                  <Pressable
+                    style={styles.payBtn}
+                    onPress={() => {
+                      const next: Partial<Record<AccessModuleKey, boolean>> = {}
+                      for (const item of pendingCart.items) next[item.module] = true
+                      setSelected(next)
+                      setQuantityByModule(
+                        Object.fromEntries(
+                          pendingCart.items.map((item) => [item.module, String(item.quantity)]),
+                        ),
+                      )
+                      setCheckoutOpen(true)
+                    }}
+                  >
+                    <Text style={styles.payText}>Reprendre le paiement</Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => {
+                      void clearPendingCheckoutCart()
+                      setPendingCart(null)
+                    }}
+                  >
+                    <Text style={styles.selectHint}>Ignorer</Text>
+                  </Pressable>
+                </View>
+              </View>
+            ) : null}
+
             {me ? (
               <View style={styles.statusCardOutline}>
                 <Text style={styles.kicker}>
@@ -171,7 +220,9 @@ export function AbonnementScreen() {
 
             <Text style={styles.catalogTitle}>Offres disponibles</Text>
             <View style={styles.planList}>
-              {sortedModules.map((module) => {
+              {sortedModules
+                .filter((module) => PRIMARY_KEYS.includes(module.key))
+                .map((module) => {
                 const isActive = Boolean(me?.access[module.key]) && module.key !== 'conduite_heures'
                 const showsQuantity = module.unit === 'hour'
                 const quantity = Math.max(1, Number(quantityByModule[module.key]) || 1)
@@ -231,6 +282,16 @@ export function AbonnementScreen() {
             </View>
 
             <Pressable
+              style={({ pressed }) => [styles.conduiteLink, pressed && styles.pressed]}
+              onPress={() => navigation.navigate('Conduite')}
+            >
+              <Text style={styles.conduiteLinkTitle}>Espace conduite</Text>
+              <Text style={styles.conduiteLinkCopy}>
+                Cours vidéo gratuits · réserver / acheter des heures avec moniteur
+              </Text>
+            </Pressable>
+
+            <Pressable
               style={[styles.payBtn, cartItems.length === 0 && styles.disabled]}
               disabled={cartItems.length === 0}
               onPress={() => setCheckoutOpen(true)}
@@ -288,6 +349,8 @@ export function AbonnementScreen() {
           setMe(access)
           setSelected({})
           setCheckoutOpen(false)
+          setPendingCart(null)
+          void clearPendingCheckoutCart()
         }}
       />
     </DarkScreen>
@@ -314,6 +377,16 @@ const styles = StyleSheet.create({
   empty: { alignItems: 'center', gap: 12, paddingVertical: 44 },
   emptyText: { color: dark.textMuted, fontSize: 15, fontFamily: fonts.body },
   error: { color: dark.coral, marginBottom: 12, fontFamily: fonts.body },
+  resumeCard: {
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(240,180,41,0.45)',
+    backgroundColor: 'rgba(240,180,41,0.10)',
+    padding: 16,
+    marginBottom: 16,
+    gap: 8,
+  },
+  resumeActions: { gap: 10, marginTop: 4 },
   statusCardOutline: {
     borderRadius: 18,
     borderWidth: 1,
@@ -393,6 +466,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   payText: { color: '#fff', fontFamily: fonts.displayBold, fontSize: 15 },
+  conduiteLink: {
+    marginTop: 16,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: dark.border,
+    backgroundColor: dark.surface,
+    padding: 16,
+    gap: 4,
+  },
+  conduiteLinkTitle: { fontFamily: fonts.displayBold, fontSize: 16, color: dark.textPrimary },
+  conduiteLinkCopy: { fontFamily: fonts.body, fontSize: 13, lineHeight: 20, color: dark.textMuted },
   disabled: { opacity: 0.5 },
   pressed: { opacity: 0.85 },
 })

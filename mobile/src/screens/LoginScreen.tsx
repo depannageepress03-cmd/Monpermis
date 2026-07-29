@@ -57,6 +57,13 @@ export function LoginScreen() {
     ]).start()
   }, [contentOpacity, contentTranslate])
 
+  useEffect(() => {
+    const message = route.params?.message?.trim()
+    if (message) {
+      setErrors((prev) => ({ ...prev, info: message }))
+    }
+  }, [route.params?.message])
+
   const handleGoogleSuccess = useCallback(
     async (idToken: string) => {
       try {

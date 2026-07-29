@@ -1,5 +1,14 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
-import { AuthUser, clearSession, getStoredToken, getStoredUser, saveSession } from '../api/auth'
+import {
+  AuthUser,
+  clearSession,
+  getStoredToken,
+  getStoredUser,
+  onSessionInvalidated,
+  probeSession,
+  saveSession,
+} from '../api/auth'
+import { showAppToast } from '../components/AppToast'
 
 interface AuthContextValue {
   user: AuthUser | null
@@ -17,21 +26,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let cancelled = false
-    getStoredUser()
-      .then((stored) => {
-        if (!cancelled) setUser(stored)
-      })
-      .catch((error) => {
+    ;(async () => {
+      try {
+        const stored = await getStoredUser()
+        if (!stored) {
+          if (!cancelled) setUser(null)
+          return
+        }
+        const stillValid = await probeSession()
+        if (cancelled) return
+        if (!stillValid) {
+          setUser(null)
+          return
+        }
+        setUser(stored)
+      } catch (error) {
         console.warn('Session locale illisible, réinitialisation:', error)
-        void clearSession()
+        await clearSession()
         if (!cancelled) setUser(null)
-      })
-      .finally(() => {
+      } finally {
         if (!cancelled) setLoading(false)
-      })
+      }
+    })()
     return () => {
       cancelled = true
     }
+  }, [])
+
+  useEffect(() => {
+    return onSessionInvalidated(() => {
+      setUser(null)
+      showAppToast('Session expirée. Reconnecte-toi pour continuer.', 'error')
+    })
   }, [])
 
   const signIn = useCallback(async (token: string, nextUser: AuthUser) => {

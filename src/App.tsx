@@ -19,6 +19,7 @@ import {
 } from './pages/code-route/RevisionChapterQuizPages'
 import { RevisionCourseDetailPage } from './pages/code-route/RevisionCourseDetailPage'
 import { AbonnementPage } from './pages/AbonnementPage'
+import { PaymentHistoryPage } from './pages/PaymentHistoryPage'
 import { HomePage } from './pages/HomePage'
 import { LoginPage } from './pages/LoginPage'
 import { RegisterPage } from './pages/RegisterPage'
@@ -47,6 +48,7 @@ export default function App() {
       <Route path="/profil" element={<ProfilePage />} />
       <Route path="/notifications" element={<NotificationsPage />} />
       <Route path="/abonnement" element={<AbonnementPage />} />
+      <Route path="/abonnement/historique" element={<PaymentHistoryPage />} />
       <Route path="/code-de-la-route" element={<CodeRoutePage />} />
       <Route path="/code-de-la-route/revision-chapitres" element={<RevisionChapitresPage />} />
       <Route

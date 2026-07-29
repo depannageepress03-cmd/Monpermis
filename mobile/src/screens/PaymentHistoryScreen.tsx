@@ -4,11 +4,12 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { History } from 'lucide-react-native'
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native'
 import {
-  AccessRequestError,
-  fetchAccessMe,
-  type AccessMe,
-  type AccessRequest,
-} from '../api/accessRequests'
+  fetchMyPayments,
+  paymentChannelLabel,
+  paymentStatusLabel,
+  PaymentHistoryError,
+  type PaymentHistoryItem,
+} from '../api/payments'
 import { DarkScreen, DarkHeader } from '../components/DarkScreen'
 import { ScreenLoader } from '../components/ScreenLoader'
 import { useRequireAuth } from '../hooks/useRequireAuth'
@@ -17,17 +18,11 @@ import { dark, fonts } from '../theme'
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'HistoriquePaiements'>
 
-const moduleLabels: Record<AccessRequest['module'], string> = {
-  code: 'Code de la route',
-  conduite_heures: 'Heures de conduite',
-  conduite_videos: 'Vidéos conduite',
-  ecodepermis: 'E-Codepermis',
-  aiChat: 'Chat IA',
-}
-
 function formatDate(value: string | null | undefined) {
   return value
-    ? new Intl.DateTimeFormat('fr-FR', { dateStyle: 'long' }).format(new Date(value))
+    ? new Intl.DateTimeFormat('fr-FR', { dateStyle: 'long', timeStyle: 'short' }).format(
+        new Date(value),
+      )
     : '—'
 }
 
@@ -39,24 +34,23 @@ function formatPrice(price: number, currency: string) {
   }).format(price)
 }
 
-function requestStatus(status: AccessRequest['status']) {
+function statusTone(status: PaymentHistoryItem['status']) {
   switch (status) {
-    case 'actif':
-    case 'valide':
-      return { label: 'Actif', color: dark.green, soft: dark.greenSoft }
-    case 'expire':
-      return { label: 'Expiré', color: dark.textMuted, soft: dark.surfaceRaised }
-    case 'rejete':
-      return { label: 'Rejeté', color: dark.coral, soft: dark.coralSoft }
+    case 'approved':
+      return { color: dark.green, soft: dark.greenSoft }
+    case 'pending':
+      return { color: '#F0B429', soft: 'rgba(240,180,41,0.14)' }
+    case 'canceled':
+      return { color: dark.textMuted, soft: dark.surfaceRaised }
     default:
-      return { label: 'En attente', color: '#F0B429', soft: 'rgba(240,180,41,0.14)' }
+      return { color: dark.coral, soft: dark.coralSoft }
   }
 }
 
 export function PaymentHistoryScreen() {
   const navigation = useNavigation<Nav>()
   const { user, loading: authLoading } = useRequireAuth(navigation)
-  const [access, setAccess] = useState<AccessMe | null>(null)
+  const [payments, setPayments] = useState<PaymentHistoryItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -64,9 +58,9 @@ export function PaymentHistoryScreen() {
     setLoading(true)
     setError(null)
     try {
-      setAccess(await fetchAccessMe())
+      setPayments(await fetchMyPayments())
     } catch (err) {
-      setError(err instanceof AccessRequestError ? err.message : 'Chargement impossible')
+      setError(err instanceof PaymentHistoryError ? err.message : 'Chargement impossible')
     } finally {
       setLoading(false)
     }
@@ -77,8 +71,6 @@ export function PaymentHistoryScreen() {
   }, [user, load])
 
   if (authLoading || !user) return <ScreenLoader />
-
-  const requests = access?.requests || []
 
   return (
     <DarkScreen>
@@ -94,31 +86,56 @@ export function PaymentHistoryScreen() {
           <Text style={styles.error}>{error}</Text>
         ) : (
           <>
-            <Text style={styles.sectionLabel}>Mes demandes d’accès</Text>
-            {requests.length === 0 ? (
+            <Text style={styles.sectionLabel}>Abonnements et séances payés</Text>
+            {payments.length === 0 ? (
               <View style={styles.emptyCard}>
-                <Text style={styles.emptyText}>Aucune demande pour le moment.</Text>
+                <Text style={styles.emptyText}>
+                  Aucun paiement pour le moment. Tes achats d’accès et tes réservations payées
+                  apparaîtront ici.
+                </Text>
               </View>
             ) : (
-              requests.map((req) => {
-                const st = requestStatus(req.status)
+              payments.map((payment) => {
+                const tone = statusTone(payment.status)
                 return (
-                  <View key={req.id} style={styles.card}>
+                  <View key={payment.id} style={styles.card}>
                     <View style={styles.cardTop}>
-                      <Text style={styles.cardTitle} numberOfLines={1}>
-                        {moduleLabels[req.module] || req.module}
+                      <Text style={styles.cardTitle} numberOfLines={2}>
+                        {payment.title}
                       </Text>
-                      <View style={[styles.badge, { backgroundColor: st.soft }]}>
-                        <Text style={[styles.badgeText, { color: st.color }]}>{st.label}</Text>
+                      <View style={[styles.badge, { backgroundColor: tone.soft }]}>
+                        <Text style={[styles.badgeText, { color: tone.color }]}>
+                          {paymentStatusLabel(payment.status)}
+                        </Text>
                       </View>
                     </View>
-                    <Text style={styles.cardMeta}>
-                      {formatPrice(req.amount, req.currency)}
-                      {req.quantity > 1 ? ` · ×${req.quantity}` : ''}
+
+                    <Text style={styles.cardAmount}>
+                      {formatPrice(payment.amount, payment.currency)}
                     </Text>
-                    <Text style={styles.cardMeta}>Demandé le {formatDate(req.createdAt)}</Text>
-                    {req.endAt ? (
-                      <Text style={styles.cardMeta}>Valable jusqu’au {formatDate(req.endAt)}</Text>
+
+                    <Text style={styles.cardMeta}>
+                      {payment.kind === 'reservation' ? 'Séance de conduite' : 'Abonnement'}
+                      {payment.moniteurName ? ` · ${payment.moniteurName}` : ''}
+                      {payment.paymentMethod
+                        ? ` · ${paymentChannelLabel(payment.paymentMethod)}`
+                        : ''}
+                    </Text>
+                    <Text style={styles.cardMeta}>Le {formatDate(payment.createdAt)}</Text>
+
+                    {payment.lines.length > 1
+                      ? payment.lines.map((line, index) => (
+                          <Text key={`${payment.id}-${index}`} style={styles.cardLine}>
+                            • {line.label} — {formatPrice(line.amount, payment.currency)}
+                          </Text>
+                        ))
+                      : null}
+
+                    {payment.fedapayReference ? (
+                      <Text style={styles.cardMeta}>Réf. {payment.fedapayReference}</Text>
+                    ) : null}
+                    {payment.errorMessage ? (
+                      <Text style={styles.error}>{payment.errorMessage}</Text>
                     ) : null}
                   </View>
                 )
@@ -152,7 +169,7 @@ const styles = StyleSheet.create({
     backgroundColor: dark.surface,
     padding: 18,
   },
-  emptyText: { fontFamily: fonts.body, color: dark.textMuted },
+  emptyText: { fontFamily: fonts.body, color: dark.textMuted, lineHeight: 20 },
   card: {
     borderRadius: 16,
     borderWidth: 1,
@@ -163,7 +180,9 @@ const styles = StyleSheet.create({
   },
   cardTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
   cardTitle: { flex: 1, fontFamily: fonts.displayBold, fontSize: 16, color: dark.textPrimary },
+  cardAmount: { fontFamily: fonts.displayBold, fontSize: 20, color: dark.textPrimary },
   badge: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
   badgeText: { fontFamily: fonts.displayBold, fontSize: 12 },
   cardMeta: { fontFamily: fonts.body, fontSize: 13, color: dark.textMuted },
+  cardLine: { fontFamily: fonts.body, fontSize: 13, color: dark.textMuted },
 })

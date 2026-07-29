@@ -32,6 +32,26 @@ function mediaSrc(url: string) {
   return resolveMediaUrl(url)
 }
 
+/**
+ * Une séance payée en Mobile Money a heuresDebitees = 0 : sans ce badge, rien
+ * n'indiquerait à l'admin que l'élève a bien réglé.
+ */
+function paymentBadge(reservation: ReservationAdmin) {
+  if (reservation.heuresDebitees > 0) {
+    return { label: 'Payé (solde d’heures)', tone: 'is-success' }
+  }
+  switch (reservation.paymentStatus) {
+    case 'paid':
+      return { label: 'Payé (Mobile Money)', tone: 'is-success' }
+    case 'pending_validation':
+      return { label: 'Paiement en attente', tone: 'is-warning' }
+    case 'refunded':
+      return { label: 'Remboursé', tone: '' }
+    default:
+      return { label: 'Non payé', tone: 'is-danger' }
+  }
+}
+
 type TimeInterval = {
   start: string
   end: string
@@ -908,6 +928,9 @@ export function ReservationsPage() {
                         ? `${reservation.heuresDebitees} h débitée${reservation.heuresDebitees > 1 ? 's' : ''}`
                         : `${(reservation.priceFcfa || 0).toLocaleString('fr-FR')} FCFA`}
                     </span>
+                    {reservation.paymentRef ? (
+                      <span className="admin-muted">Réf. paiement : {reservation.paymentRef}</span>
+                    ) : null}
                     {reservation.cancellationReason ? (
                       <span className="admin-muted">
                         Motif d’annulation
@@ -923,9 +946,12 @@ export function ReservationsPage() {
                 </div>
                 <div className="admin-list-actions">
                   <span className="admin-chip">{reservation.status}</span>
-                  {reservation.heuresDebitees > 0 ? (
-                    <span className="admin-chip is-success">Prépayé</span>
-                  ) : null}
+                  {(() => {
+                    const badge = paymentBadge(reservation)
+                    return (
+                      <span className={`admin-chip ${badge.tone}`.trim()}>{badge.label}</span>
+                    )
+                  })()}
                   <button
                     type="button"
                     className="btn-outline-sm btn-danger-sm"

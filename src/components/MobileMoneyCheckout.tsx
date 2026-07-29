@@ -40,7 +40,8 @@ function guessOperator(phone: string): MobileMoneyOperator | null {
   return null
 }
 
-const COUNTRIES = [{ id: 'BJ', label: 'Bénin (+229)' }]
+/** Seul pays desservi : envoyé au serveur sans étape de sélection. */
+const COUNTRY = 'BJ'
 
 function formatPrice(amount: number, currency = 'XOF') {
   return new Intl.NumberFormat('fr-FR', { style: 'currency', currency, maximumFractionDigits: 0 }).format(
@@ -65,9 +66,8 @@ export function MobileMoneyCheckout({
   onClose,
   onSuccess,
 }: MobileMoneyCheckoutProps) {
-  const [step, setStep] = useState<'operator' | 'country' | 'phone' | 'waiting'>('operator')
+  const [step, setStep] = useState<'intro' | 'operator' | 'phone' | 'waiting'>('intro')
   const [operator, setOperator] = useState<MobileMoneyOperator | null>(null)
-  const [country, setCountry] = useState('BJ')
   const [phone, setPhone] = useState(defaultPhone)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -76,9 +76,8 @@ export function MobileMoneyCheckout({
 
   useEffect(() => {
     if (!open) return
-    setStep('operator')
+    setStep('intro')
     setOperator(null)
-    setCountry('BJ')
     setPhone(defaultPhone)
     setError(null)
     setSuccess(null)
@@ -169,7 +168,7 @@ export function MobileMoneyCheckout({
       const result = await checkoutMobileMoney({
         items,
         operator: detected || operator,
-        country,
+        country: COUNTRY,
         phone,
         replace: true,
       })
@@ -215,6 +214,14 @@ export function MobileMoneyCheckout({
         {error ? <p className="form-error">{error}</p> : null}
         {success ? <p className="form-success">{success}</p> : null}
 
+        {step === 'intro' ? (
+          <section className="mm-checkout-step">
+            <button type="button" className="btn-primary" onClick={() => setStep('operator')}>
+              Passer au paiement
+            </button>
+          </section>
+        ) : null}
+
         {step === 'operator' ? (
           <section className="mm-checkout-step">
             <p className="learner-kicker">1. Réseau mobile</p>
@@ -226,27 +233,6 @@ export function MobileMoneyCheckout({
                   className={operator === item.id ? 'btn-primary' : 'btn-outline'}
                   onClick={() => {
                     setOperator(item.id)
-                    setStep('country')
-                  }}
-                >
-                  {item.label}
-                </button>
-              ))}
-            </div>
-          </section>
-        ) : null}
-
-        {step === 'country' ? (
-          <section className="mm-checkout-step">
-            <p className="learner-kicker">2. Pays</p>
-            <div className="mm-checkout-choices">
-              {COUNTRIES.map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  className={country === item.id ? 'btn-primary' : 'btn-outline'}
-                  onClick={() => {
-                    setCountry(item.id)
                     setStep('phone')
                   }}
                 >
@@ -254,15 +240,12 @@ export function MobileMoneyCheckout({
                 </button>
               ))}
             </div>
-            <button type="button" className="btn-outline" onClick={() => setStep('operator')}>
-              Retour
-            </button>
           </section>
         ) : null}
 
         {step === 'phone' || step === 'waiting' ? (
           <section className="mm-checkout-step">
-            <p className="learner-kicker">3. Numéro Mobile Money</p>
+            <p className="learner-kicker">2. Numéro Mobile Money</p>
             <label className="access-quantity-field">
               Téléphone
               <input
@@ -275,7 +258,7 @@ export function MobileMoneyCheckout({
             </label>
             <div className="mm-checkout-actions">
               {step !== 'waiting' ? (
-                <button type="button" className="btn-outline" onClick={() => setStep('country')}>
+                <button type="button" className="btn-outline" onClick={() => setStep('operator')}>
                   Retour
                 </button>
               ) : null}

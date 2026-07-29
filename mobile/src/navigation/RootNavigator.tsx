@@ -4,9 +4,11 @@ import * as Linking from 'expo-linking'
 import { StatusBar } from 'expo-status-bar'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { AppErrorBoundary } from '../components/AppErrorBoundary'
+import { AppToastHost } from '../components/AppToast'
 import { AuthProvider } from '../context/AuthContext'
 import type { RootStackParamList } from './types'
 import { IntroScreen } from '../screens/IntroScreen'
+import { OnboardingScreen } from '../screens/OnboardingScreen'
 import { LoginScreen } from '../screens/LoginScreen'
 import { ForgotPasswordScreen } from '../screens/ForgotPasswordScreen'
 import { ResetPasswordScreen } from '../screens/ResetPasswordScreen'
@@ -46,6 +48,7 @@ const linking: LinkingOptions<RootStackParamList> = {
   config: {
     screens: {
       Intro: '',
+      Onboarding: 'bienvenue',
       Login: 'connexion',
       ForgotPassword: 'connexion/mot-de-passe-oublie',
       ResetPassword: 'reinitialiser-mot-de-passe',
@@ -91,6 +94,11 @@ function AppNavigator() {
       screenOptions={{ headerShown: false, animation: 'slide_from_right' }}
     >
       <Stack.Screen name="Intro" component={IntroScreen} options={{ animation: 'none' }} />
+      <Stack.Screen
+        name="Onboarding"
+        component={OnboardingScreen}
+        options={{ animation: 'fade', animationDuration: 420 }}
+      />
       <Stack.Screen
         name="Login"
         component={LoginScreen}
@@ -241,6 +249,7 @@ export function RootNavigator() {
           <NavigationContainer linking={linking}>
             <StatusBar style="dark" />
             <AppNavigator />
+            <AppToastHost />
           </NavigationContainer>
         </AuthProvider>
       </AppErrorBoundary>

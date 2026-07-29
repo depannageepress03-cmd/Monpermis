@@ -21,12 +21,17 @@ import {
   type MobileMoneyOperator,
 } from '../api/accessRequests'
 import { dark, fonts } from '../theme'
+import { hapticLight, hapticSuccess } from '../utils/haptics'
+import { clearPendingCheckoutCart, savePendingCheckoutCart } from '../utils/checkoutCart'
 
 const OPERATORS: { id: MobileMoneyOperator; label: string }[] = [
   { id: 'mtn', label: 'MTN' },
   { id: 'moov', label: 'Moov' },
   { id: 'celtiis', label: 'Celtiis' },
 ]
+
+/** Seul pays desservi : envoyé au serveur sans étape de sélection. */
+const COUNTRY = 'BJ'
 
 /** Préfixes ARCEP Bénin (01XXXX…) → opérateur probable. */
 function guessOperator(phone: string): MobileMoneyOperator | null {
@@ -77,9 +82,8 @@ export function MobileMoneyCheckout({
   onClose,
   onSuccess,
 }: Props) {
-  const [step, setStep] = useState<'country' | 'operator' | 'phone' | 'waiting'>('country')
+  const [step, setStep] = useState<'intro' | 'operator' | 'phone' | 'waiting'>('intro')
   const [operator, setOperator] = useState<MobileMoneyOperator | null>(null)
-  const [country, setCountry] = useState('BJ')
   const [phone, setPhone] = useState(defaultPhone)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -88,14 +92,20 @@ export function MobileMoneyCheckout({
 
   useEffect(() => {
     if (!visible) return
-    setStep('country')
+    setStep('intro')
     setOperator(null)
-    setCountry('BJ')
     setPhone(defaultPhone)
     setError(null)
     setSuccess(null)
     setBusy(false)
-  }, [visible, defaultPhone])
+    if (items.length > 0) {
+      void savePendingCheckoutCart({
+        items,
+        savedAt: Date.now(),
+        source: 'abonnement',
+      })
+    }
+  }, [visible, defaultPhone, items])
 
   useEffect(
     () => () => {
@@ -129,6 +139,8 @@ export function MobileMoneyCheckout({
           stopPoll()
           setSuccess('Paiement confirmé. Accès activé.')
           setBusy(false)
+          void clearPendingCheckoutCart()
+          void hapticSuccess()
           onSuccess(result.access)
           return
         }
@@ -179,7 +191,7 @@ export function MobileMoneyCheckout({
       const result = await checkoutMobileMoney({
         items,
         operator: detected || operator,
-        country,
+        country: COUNTRY,
         phone,
         replace: true,
       })
@@ -232,24 +244,23 @@ export function MobileMoneyCheckout({
             {error ? <Text style={styles.error}>{error}</Text> : null}
             {success ? <Text style={styles.success}>{success}</Text> : null}
 
-            {step === 'country' ? (
+            {step === 'intro' ? (
               <View style={styles.step}>
-                <Text style={styles.kicker}>1. Pays</Text>
                 <Pressable
-                  style={[styles.choice, styles.choiceActive]}
+                  style={styles.payBtn}
                   onPress={() => {
-                    setCountry('BJ')
+                    void hapticLight()
                     setStep('operator')
                   }}
                 >
-                  <Text style={styles.choiceText}>Bénin (+229)</Text>
+                  <Text style={styles.payText}>Passer au paiement</Text>
                 </Pressable>
               </View>
             ) : null}
 
             {step === 'operator' ? (
               <View style={styles.step}>
-                <Text style={styles.kicker}>2. Réseau mobile</Text>
+                <Text style={styles.kicker}>1. Réseau mobile</Text>
                 {OPERATORS.map((item) => (
                   <Pressable
                     key={item.id}
@@ -262,7 +273,7 @@ export function MobileMoneyCheckout({
                     <Text style={styles.choiceText}>{item.label}</Text>
                   </Pressable>
                 ))}
-                <Pressable style={styles.backBtn} onPress={() => setStep('country')}>
+                <Pressable style={styles.backBtn} onPress={() => setStep('intro')}>
                   <Text style={styles.backText}>Retour</Text>
                 </Pressable>
               </View>
@@ -270,7 +281,7 @@ export function MobileMoneyCheckout({
 
             {step === 'phone' || step === 'waiting' ? (
               <View style={styles.step}>
-                <Text style={styles.kicker}>3. Numéro Mobile Money</Text>
+                <Text style={styles.kicker}>2. Numéro Mobile Money</Text>
                 <TextInput
                   style={styles.input}
                   keyboardType="phone-pad"

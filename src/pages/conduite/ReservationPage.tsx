@@ -2,9 +2,13 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { CalendarPlus, Check } from 'lucide-react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
+  computeDrivingAmount,
   createReservation,
+  earliestBookableTime,
   fetchMoniteurAvailability,
   fetchPublicMoniteurs,
+  HOURS_DISCOUNT_FCFA,
+  HOURS_DISCOUNT_MIN_HOURS,
   requestReservationSlot,
   ReservationError,
   type AvailabilityDay,
@@ -63,6 +67,9 @@ export function ReservationPage() {
   const [startTime, setStartTime] = useState('')
   const [endTime, setEndTime] = useState('')
   const [selected, setSelected] = useState<ReservationSlot | null>(null)
+  const [selectedAmount, setSelectedAmount] = useState(0)
+  const [hoursDiscount, setHoursDiscount] = useState(HOURS_DISCOUNT_FCFA)
+  const [hoursDiscountMin, setHoursDiscountMin] = useState(HOURS_DISCOUNT_MIN_HOURS)
   const [soldeHeures, setSoldeHeures] = useState<number | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -92,14 +99,38 @@ export function ReservationPage() {
     [availabilityDays, selectedDate],
   )
 
+  /**
+   * Filet de sécurité si la page reste ouverte : on retronque les fenêtres du jour
+   * pour ne jamais proposer une heure devenue passée entre-temps.
+   */
+  const visibleWindows = useMemo(() => {
+    const windows = selectedDay?.windows ?? []
+    const floor = selectedDate ? earliestBookableTime(selectedDate) : null
+    if (!floor) return windows
+    return windows
+      .map((window) => (window.start >= floor ? window : { start: floor, end: window.end }))
+      .filter((window) => window.end > window.start)
+  }, [selectedDay, selectedDate])
+
   const previewHours = useMemo(() => {
     if (!startTime || !endTime || endTime <= startTime) return 0
     return estimateHours(startTime, endTime)
   }, [startTime, endTime])
 
   const previewPrice = useMemo(
-    () => Math.round(hourlyPriceFcfa * previewHours),
-    [hourlyPriceFcfa, previewHours],
+    () => computeDrivingAmount(hourlyPriceFcfa, previewHours, hoursDiscount, hoursDiscountMin),
+    [hourlyPriceFcfa, previewHours, hoursDiscount, hoursDiscountMin],
+  )
+
+  const previewDiscount = useMemo(
+    () => Math.max(0, Math.round(hourlyPriceFcfa * previewHours) - previewPrice),
+    [hourlyPriceFcfa, previewHours, previewPrice],
+  )
+
+  /** Aucun créneau avant maintenant + préavis : le serveur refuserait la réservation. */
+  const minTimeToday = useMemo(
+    () => (selectedDate ? earliestBookableTime(selectedDate) : null),
+    [selectedDate],
   )
 
   const loadMoniteurs = useCallback(async () => {
@@ -123,6 +154,8 @@ export function ReservationPage() {
       const data = await fetchMoniteurAvailability({ moniteurId, days: 14 })
       setAvailabilityDays(data.days)
       setHourlyPriceFcfa(data.hourlyPriceFcfa || data.moniteur.defaultPriceFcfa || 5000)
+      if (data.hoursDiscountFcfa !== undefined) setHoursDiscount(data.hoursDiscountFcfa)
+      if (data.hoursDiscountMinHours !== undefined) setHoursDiscountMin(data.hoursDiscountMinHours)
       const first = data.days[0]
       if (first) {
         setSelectedDate(first.date)
@@ -163,11 +196,11 @@ export function ReservationPage() {
   }, [step, loadAvailability])
 
   useEffect(() => {
-    if (!selectedDay?.windows?.length) return
-    const first = selectedDay.windows[0]
+    if (!visibleWindows.length) return
+    const first = visibleWindows[0]
     setStartTime(first.start)
     setEndTime(first.end)
-  }, [selectedDay])
+  }, [visibleWindows])
 
   const onRequestSlot = async () => {
     if (!moniteurId || !selectedDate || !startTime || !endTime) {
@@ -189,6 +222,7 @@ export function ReservationPage() {
         vehicleType,
       })
       setSelected(data.creneau)
+      setSelectedAmount(data.amountFcfa ?? data.creneau.priceFcfa)
       setStep('payment')
     } catch (err) {
       setError(err instanceof ReservationError ? err.message : 'Plage indisponible')
@@ -387,8 +421,13 @@ export function ReservationPage() {
                   <p className="subtitle" style={{ marginTop: 6 }}>
                     Plages libres — touchez pour préremplir, puis ajustez si besoin.
                   </p>
+                  {visibleWindows.length === 0 ? (
+                    <p className="subtitle">
+                      Plus de créneau disponible aujourd’hui. Choisissez un autre jour.
+                    </p>
+                  ) : null}
                   <div className="slots-row">
-                    {selectedDay.windows.map((window) => {
+                    {visibleWindows.map((window) => {
                       const active = startTime === window.start && endTime === window.end
                       return (
                         <button
@@ -411,6 +450,7 @@ export function ReservationPage() {
                       <input
                         type="time"
                         value={startTime}
+                        min={minTimeToday ?? undefined}
                         onChange={(e) => setStartTime(e.target.value)}
                       />
                     </label>
@@ -419,10 +459,16 @@ export function ReservationPage() {
                       <input
                         type="time"
                         value={endTime}
+                        min={startTime || minTimeToday || undefined}
                         onChange={(e) => setEndTime(e.target.value)}
                       />
                     </label>
                   </div>
+                  {minTimeToday ? (
+                    <p className="subtitle">
+                      Réservation possible à partir de {minTimeToday} aujourd’hui.
+                    </p>
+                  ) : null}
                   {previewHours > 0 ? (
                     <p className="availability-duration">
                       Durée : {previewHours} h · environ{' '}
@@ -431,15 +477,18 @@ export function ReservationPage() {
                         currency: 'XOF',
                         maximumFractionDigits: 0,
                       }).format(previewPrice)}
+                      {previewDiscount > 0
+                        ? ` (remise ${new Intl.NumberFormat('fr-FR').format(previewDiscount)} FCFA incluse)`
+                        : ''}
                     </p>
                   ) : null}
                   <button
                     type="button"
                     className="btn-primary"
-                    disabled={busy || !startTime || !endTime}
+                    disabled={busy || !startTime || !endTime || visibleWindows.length === 0}
                     onClick={() => void onRequestSlot()}
                   >
-                    {busy ? 'Vérification…' : 'Continuer avec cet horaire'}
+                    {busy ? 'Vérification…' : 'Continuer vers le paiement'}
                   </button>
                 </div>
               ) : null}
@@ -477,8 +526,14 @@ export function ReservationPage() {
                     style: 'currency',
                     currency: 'XOF',
                     maximumFractionDigits: 0,
-                  }).format(selected.priceFcfa)}
+                  }).format(selectedAmount)}
                 </p>
+                {selected.priceFcfa > selectedAmount ? (
+                  <p className="subtitle">
+                    Remise de {new Intl.NumberFormat('fr-FR').format(selected.priceFcfa - selectedAmount)}{' '}
+                    FCFA appliquée dès {hoursDiscountMin} h.
+                  </p>
+                ) : null}
               </div>
 
               <div className="payment-choice">
@@ -545,7 +600,7 @@ export function ReservationPage() {
         <ReservationMobileMoneyCheckout
           open={showMobileMoney}
           label={`${selected.date} · ${selected.startTime} avec ${selectedMoniteur?.fullName || selected.moniteur?.fullName || 'le moniteur'}`}
-          amount={selected.priceFcfa}
+          amount={selectedAmount}
           creneauId={String(selected.id)}
           vehicleType={selected.vehicleType || vehicleType}
           moniteurId={moniteurId}

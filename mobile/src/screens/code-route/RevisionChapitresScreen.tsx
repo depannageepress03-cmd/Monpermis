@@ -1,9 +1,8 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { useFocusEffect, useNavigation } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { BookOpen, ClipboardList, HelpCircle, Layers, Lock } from 'lucide-react-native'
 import {
-  ActivityIndicator,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -14,12 +13,14 @@ import {
 import {
   ContentError,
   fetchLearnerProgress,
-  fetchRevisionChapters,
+  fetchRevisionChaptersSWR,
   type RevisionChapter,
 } from '../../api/revision'
 import { DarkScreen } from '../../components/DarkScreen'
+import { EmptyState } from '../../components/EmptyState'
 import { PageNavbar } from '../../components/PageNavbar'
 import { ScreenLoader } from '../../components/ScreenLoader'
+import { SkeletonList } from '../../components/Skeleton'
 import { useRequireAuth } from '../../hooks/useRequireAuth'
 import type { RootStackParamList } from '../../navigation/types'
 import { dark, fonts } from '../../theme'
@@ -43,16 +44,19 @@ export function RevisionChapitresScreen() {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const hasDataRef = useRef(false)
 
   const loadChapters = useCallback(async (silent = false) => {
-    if (!silent) setLoading(true)
+    if (!silent && !hasDataRef.current) setLoading(true)
     setError(null)
     try {
-      const [data, progress] = await Promise.all([
-        fetchRevisionChapters(),
-        fetchLearnerProgress(),
-      ])
-      setChapters(data)
+      const progressPromise = fetchLearnerProgress()
+      await fetchRevisionChaptersSWR((data, meta) => {
+        setChapters(data)
+        if (data.length > 0) hasDataRef.current = true
+        if (meta.fromCache) setLoading(false)
+      })
+      const progress = await progressPromise
 
       const byChapter: Record<string, Set<string>> = {}
       for (const entry of progress.completedCourses) {
@@ -62,7 +66,9 @@ export function RevisionChapitresScreen() {
       setCompletedCourseIdsByChapter(byChapter)
       setCompletedTestIds(new Set(progress.completedTests.map((entry) => entry.chapterId)))
     } catch (err) {
-      setError(err instanceof ContentError ? err.message : 'Chargement impossible')
+      if (!hasDataRef.current) {
+        setError(err instanceof ContentError ? err.message : 'Chargement impossible')
+      }
     } finally {
       setLoading(false)
       setRefreshing(false)
@@ -133,13 +139,9 @@ export function RevisionChapitresScreen() {
             </Text>
           </View>
 
-          {loading ? (
-            <View style={styles.centerBox}>
-              <ActivityIndicator color={dark.green} size="large" />
-            </View>
-          ) : null}
+          {loading && chapters.length === 0 ? <SkeletonList count={5} /> : null}
 
-          {error ? (
+          {error && chapters.length === 0 ? (
             <View style={styles.centerBox}>
               <Text style={styles.errorText}>{error}</Text>
               <Pressable style={styles.retryBtn} onPress={() => void loadChapters()}>
@@ -149,15 +151,14 @@ export function RevisionChapitresScreen() {
           ) : null}
 
           {!loading && !error && chapters.length === 0 ? (
-            <View style={styles.centerBox}>
-              <Text style={styles.emptyTitle}>Aucun chapitre disponible</Text>
-              <Text style={styles.emptyText}>
-                Les chapitres publiés par votre auto-école apparaîtront ici.
-              </Text>
-            </View>
+            <EmptyState
+              icon={<Layers size={30} color={dark.textMuted} />}
+              title="Aucun chapitre disponible"
+              message="Les chapitres publiés par votre auto-école apparaîtront ici."
+            />
           ) : null}
 
-          {!loading && !error
+          {chapters.length > 0 && !error
             ? chapters.map((chapter, index) => {
                 const chapterUnlocked = isChapterUnlocked(
                   index,

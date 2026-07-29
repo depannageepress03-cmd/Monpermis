@@ -999,6 +999,8 @@
   color: var(--navy-muted);
 }
 .admin-chip.is-success { background: var(--green-light); color: var(--green-deep); }
+.admin-chip.is-warning { background: var(--gold-light); color: #8a5b00; }
+.admin-chip.is-danger { background: var(--error-light); color: var(--error); }
 
 .promo-module-choices {
   display: flex;

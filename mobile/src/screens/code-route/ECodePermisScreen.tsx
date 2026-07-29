@@ -22,6 +22,8 @@ import {
   type PracticeExamsOverview,
 } from '../../api/revision'
 import { DarkScreen } from '../../components/DarkScreen'
+import { AnimatedCheckmark } from '../../components/AnimatedCheckmark'
+import { ConfettiBurst } from '../../components/ConfettiBurst'
 import { PageNavbar } from '../../components/PageNavbar'
 import { QuestionAudioSequence } from '../../components/QuestionAudioSequence'
 import { ScreenLoader } from '../../components/ScreenLoader'
@@ -451,6 +453,7 @@ export function ECodePermisTakeScreen() {
 
   return (
     <DarkScreen>
+        <ConfettiBurst active={Boolean(finished && finalScore?.passed)} />
         <PageNavbar
           title={`Épreuve ${examNumber}`}
           icon={ShieldCheck}
@@ -470,7 +473,8 @@ export function ECodePermisTakeScreen() {
 
           {finished && finalScore ? (
             <View style={styles.resultBox}>
-              <Text style={styles.resultTitle}>
+              <AnimatedCheckmark active color={finalScore.passed ? dark.green : dark.coral} />
+              <Text style={[styles.resultTitle, { marginTop: 12 }]}>
                 {finalScore.passed ? 'Épreuve réussie' : 'Épreuve non réussie'}
               </Text>
               <Text style={styles.resultScore}>{finalScore.scoreLabel}</Text>

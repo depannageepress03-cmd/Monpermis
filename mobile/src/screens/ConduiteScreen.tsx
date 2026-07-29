@@ -24,7 +24,7 @@ import {
   type ReservationItem,
   ReservationError,
 } from '../api/reservations'
-import { fetchAccessMe, fetchAccessModules, computeModuleAmount, type AccessMe, type AccessModule, type CheckoutCartItem } from '../api/accessRequests'
+import { fetchAccessMe, fetchAccessModules, computeModuleAmount, claimFreeAccess, type AccessMe, type AccessModule, type CheckoutCartItem } from '../api/accessRequests'
 import { Bouncy } from '../components/Bouncy'
 import { DarkHeader, DarkScreen } from '../components/DarkScreen'
 import { ProgressBar } from '../components/ProgressBar'
@@ -58,10 +58,10 @@ export function ConduiteScreen() {
   const [accessMe, setAccessMe] = useState<AccessMe | null>(null)
   const [modules, setModules] = useState<AccessModule[]>([])
   const [accessLoading, setAccessLoading] = useState(true)
-  const [pickVideos, setPickVideos] = useState(true)
   const [pickHours, setPickHours] = useState(false)
   const [hoursQty, setHoursQty] = useState('1')
   const [checkoutOpen, setCheckoutOpen] = useState(false)
+  const [claimingFree, setClaimingFree] = useState(false)
 
   const load = useCallback(async () => {
     setLoadingDash(true)
@@ -114,9 +114,9 @@ export function ConduiteScreen() {
 
   const conduiteUnlocked = Boolean(
     accessMe &&
-      (accessMe.access.conduite_videos ||
-        accessMe.access.conduite_heures ||
-        accessMe.user.soldeHeures > 0),
+      (accessMe.access?.conduite_videos ||
+        accessMe.access?.conduite_heures ||
+        (accessMe.user?.soldeHeures || 0) > 0),
   )
 
   useEffect(() => {
@@ -141,28 +141,37 @@ export function ConduiteScreen() {
   }
 
   if (!conduiteUnlocked) {
-    const videosModule = modules.find((m) => m.key === 'conduite_videos')
     const hoursModule = modules.find((m) => m.key === 'conduite_heures')
     const qty = Math.max(1, Number(hoursQty) || 1)
-    const videosPrice = videosModule ? computeModuleAmount('conduite_videos', videosModule.price, 1) : 1500
     const hoursPrice = hoursModule
       ? computeModuleAmount('conduite_heures', hoursModule.price, qty)
       : qty >= 2
         ? qty * 5000 - 1000
         : qty * 5000
-    const cartItems: CheckoutCartItem[] = []
-    if (pickVideos && !accessMe?.access.conduite_videos) {
-      cartItems.push({ module: 'conduite_videos', quantity: 1 })
-    }
-    if (pickHours) cartItems.push({ module: 'conduite_heures', quantity: qty })
-    const cartTotal =
-      (pickVideos && !accessMe?.access.conduite_videos ? videosPrice : 0) + (pickHours ? hoursPrice : 0)
+    const cartItems: CheckoutCartItem[] = pickHours
+      ? [{ module: 'conduite_heures', quantity: qty }]
+      : []
+    const cartTotal = pickHours ? hoursPrice : 0
     const formatPrice = (amount: number) =>
       new Intl.NumberFormat('fr-FR', {
         style: 'currency',
         currency: 'XOF',
         maximumFractionDigits: 0,
       }).format(amount)
+
+    const activateFreeVideos = async () => {
+      setClaimingFree(true)
+      setError(null)
+      try {
+        const result = await claimFreeAccess(['conduite_videos'])
+        setAccessMe(result.access)
+        navigation.navigate('LeconsChapitres')
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Activation impossible')
+      } finally {
+        setClaimingFree(false)
+      }
+    }
 
     return (
       <DarkScreen>
@@ -173,16 +182,18 @@ export function ConduiteScreen() {
           </View>
           <Text style={styles.accessStateTitle}>Choisir tes accès conduite</Text>
           <Text style={styles.accessStateCopy}>
-            Sélectionne une ou deux offres. Chaque abonnement est indépendant.
+            Les cours vidéo sont gratuits. Les heures avec moniteur restent payantes.
           </Text>
+          {error ? <Text style={styles.error}>{error}</Text> : null}
 
-          {!accessMe?.access.conduite_videos ? (
+          {!accessMe?.access?.conduite_videos ? (
             <Pressable
-              style={[styles.offerCard, pickVideos && styles.offerCardSelected]}
-              onPress={() => setPickVideos((v) => !v)}
+              style={[styles.offerCard, styles.offerCardSelected]}
+              disabled={claimingFree}
+              onPress={() => void activateFreeVideos()}
             >
               <Text style={styles.offerTitle}>Cours vidéo de conduite</Text>
-              <Text style={styles.offerPrice}>{formatPrice(videosPrice)} / mois</Text>
+              {claimingFree ? <Text style={styles.offerPrice}>Activation…</Text> : null}
             </Pressable>
           ) : null}
 
@@ -208,15 +219,13 @@ export function ConduiteScreen() {
             />
           ) : null}
 
-          <Bouncy
-            scaleTo={0.97}
-            disabled={cartItems.length === 0}
-            onPress={() => setCheckoutOpen(true)}
-          >
-            <View style={[styles.accessButton, cartItems.length === 0 && { opacity: 0.5 }]}>
-              <Text style={styles.accessButtonText}>Payer {formatPrice(cartTotal)}</Text>
-            </View>
-          </Bouncy>
+          {pickHours ? (
+            <Bouncy scaleTo={0.97} disabled={claimingFree} onPress={() => setCheckoutOpen(true)}>
+              <View style={[styles.accessButton, claimingFree && { opacity: 0.5 }]}>
+                <Text style={styles.accessButtonText}>Payer {formatPrice(cartTotal)}</Text>
+              </View>
+            </Bouncy>
+          ) : null}
         </ScrollView>
         <MobileMoneyCheckout
           visible={checkoutOpen}

@@ -8,6 +8,7 @@ import { IntroLogoMark } from '../components/IntroLogoMark'
 import { MONPERMIS_INTRO_HTML } from '../assets/monpermisIntroHtml'
 import { useAuth } from '../context/AuthContext'
 import type { RootStackParamList } from '../navigation/types'
+import { hasCompletedOnboarding } from '../utils/onboarding'
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'Intro'>
 
@@ -30,29 +31,35 @@ export function IntroScreen() {
     setStatusBarStyle('dark')
   }, [])
 
-  const goNext = useCallback(() => {
+  const goNext = useCallback(async () => {
     if (navigatedRef.current) return
     if (!revealDoneRef.current) return
     if (loadingRef.current) return
     navigatedRef.current = true
-    navigation.replace(userRef.current ? 'Home' : 'Login')
+
+    if (userRef.current) {
+      navigation.replace('Home')
+      return
+    }
+
+    const seen = await hasCompletedOnboarding()
+    navigation.replace(seen ? 'Login' : 'Onboarding')
   }, [navigation])
 
   const markRevealDone = useCallback(() => {
     if (revealDoneRef.current) return
     revealDoneRef.current = true
-    goNext()
+    void goNext()
   }, [goNext])
 
-  // Dès que l’auth est prête, retenter la navigation si l’intro est finie
   useEffect(() => {
-    if (!loading) goNext()
+    if (!loading) void goNext()
   }, [loading, goNext])
 
   useEffect(() => {
     const safety = setTimeout(() => {
       revealDoneRef.current = true
-      goNext()
+      void goNext()
     }, MAX_INTRO_MS)
     return () => clearTimeout(safety)
   }, [goNext])
@@ -73,7 +80,10 @@ export function IntroScreen() {
       ) : (
         <WebView
           originWhitelist={['*']}
-          source={{ html: MONPERMIS_INTRO_HTML, baseUrl: Platform.OS === 'android' ? 'file:///android_asset/' : undefined }}
+          source={{
+            html: MONPERMIS_INTRO_HTML,
+            baseUrl: Platform.OS === 'android' ? 'file:///android_asset/' : undefined,
+          }}
           style={styles.webview}
           containerStyle={styles.webview}
           scrollEnabled={false}
@@ -87,7 +97,6 @@ export function IntroScreen() {
           onMessage={onWebMessage}
           onError={() => setUseNativeFallback(true)}
           onHttpError={() => setUseNativeFallback(true)}
-          // Android : évite un flash blanc / fond sombre
           androidLayerType="hardware"
         />
       )}
@@ -103,6 +112,6 @@ const styles = StyleSheet.create({
   webview: {
     flex: 1,
     backgroundColor: INTRO_BG,
-    opacity: 0.99, // force composition layer (évite WebView transparent bug)
+    opacity: 0.99,
   },
 })

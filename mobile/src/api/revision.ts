@@ -1,5 +1,6 @@
-import { getStoredToken } from './auth'
+import { getStoredToken, invalidateSessionIfUnauthorized } from './auth'
 import { getApiBase } from './config'
+import { cacheGetThenFetch } from '../utils/contentCache'
 
 export interface RevisionModule {
   id: string
@@ -101,6 +102,7 @@ async function request<T>(path: string, options?: RequestInit & { auth?: boolean
 
   const body = (await response.json().catch(() => ({}))) as ApiResponse<T>
   if (!response.ok || !body.success || !body.data) {
+    if (auth) await invalidateSessionIfUnauthorized(response.status)
     throw new ContentError(body.error ?? 'Contenu indisponible')
   }
 
@@ -108,8 +110,30 @@ async function request<T>(path: string, options?: RequestInit & { auth?: boolean
 }
 
 export async function fetchRevisionChapters(): Promise<RevisionChapter[]> {
-  const data = await request<{ chapters: RevisionChapter[] }>('/content/revision/chapters', { auth: true })
-  return data.chapters
+  return cacheGetThenFetch('revision:chapters', async () => {
+    const data = await request<{ chapters: RevisionChapter[] }>('/content/revision/chapters', {
+      auth: true,
+    })
+    return data.chapters
+  })
+}
+
+/** Variante SWR : pousse le cache immédiatement via onData, puis le réseau. */
+export async function fetchRevisionChaptersSWR(
+  onData: (chapters: RevisionChapter[], meta: { fromCache: boolean }) => void,
+) {
+  return cacheGetThenFetch(
+    'revision:chapters',
+    async () => {
+      const data = await request<{ chapters: RevisionChapter[] }>('/content/revision/chapters', {
+        auth: true,
+      })
+      return data.chapters
+    },
+    {
+      onData: (data, meta) => onData(data, { fromCache: meta.fromCache }),
+    },
+  )
 }
 
 export async function fetchLearnerProgress(chapterId?: string): Promise<LearnerProgress> {
@@ -346,11 +370,13 @@ export interface RevisionQuestion {
 }
 
 export async function fetchChapterQuestions(chapterId: string): Promise<RevisionQuestion[]> {
-  const data = await request<{ questions: RevisionQuestion[] }>(
-    `/content/revision/chapters/${encodeURIComponent(chapterId)}/questions`,
-    { auth: true },
-  )
-  return data.questions
+  return cacheGetThenFetch(`revision:questions:${chapterId}`, async () => {
+    const data = await request<{ questions: RevisionQuestion[] }>(
+      `/content/revision/chapters/${encodeURIComponent(chapterId)}/questions`,
+      { auth: true },
+    )
+    return data.questions
+  })
 }
 
 export type RevisionTestSubjectSummary = {

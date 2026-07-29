@@ -8,7 +8,10 @@ export function useRequireAuth(navigation: NavigationProp<RootStackParamList>) {
 
   useEffect(() => {
     if (!loading && !user) {
-      navigation.reset({ index: 0, routes: [{ name: 'Intro' }] })
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'Login', params: { message: 'Session expirée. Reconnecte-toi.' } }],
+      })
     }
   }, [loading, user, navigation])
 

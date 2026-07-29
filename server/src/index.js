@@ -28,6 +28,7 @@ import announcementsRoutes from './routes/announcements.js'
 import adminAnnouncementsRoutes from './routes/adminAnnouncements.js'
 import fedapayWebhooksRoutes from './routes/fedapayWebhooks.js'
 import accessRequestsRoutes from './routes/accessRequests.js'
+import paymentsRoutes from './routes/payments.js'
 import adminAccessRequestsRoutes from './routes/adminAccessRequests.js'
 import promoCodesRoutes from './routes/promoCodes.js'
 import adminPromoCodesRoutes from './routes/adminPromoCodes.js'
@@ -173,6 +174,7 @@ app.use('/api/admin/users', adminUsersRoutes)
 app.use('/api/admin/dashboard', adminDashboardRoutes)
 app.use('/api/admin/access-requests', adminAccessRequestsRoutes)
 app.use('/api/access-requests', accessRequestsRoutes)
+app.use('/api/payments', paymentsRoutes)
 app.use('/api/admin/promo-codes', adminPromoCodesRoutes)
 app.use('/api/promo-codes', promoCodesRoutes)
 app.use('/api/ai', aiTutorRoutes)

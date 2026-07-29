@@ -19,12 +19,18 @@ import {
   type RevisionQuestion,
 } from '../../api/revision'
 import { DarkScreen } from '../../components/DarkScreen'
+import { EmptyState } from '../../components/EmptyState'
+import { AnimatedCheckmark } from '../../components/AnimatedCheckmark'
+import { ConfettiBurst } from '../../components/ConfettiBurst'
 import { PageNavbar } from '../../components/PageNavbar'
+import { ProgressBar } from '../../components/ProgressBar'
 import { ScreenLoader } from '../../components/ScreenLoader'
 import { QuestionAudioSequence } from '../../components/QuestionAudioSequence'
+import { SkeletonList } from '../../components/Skeleton'
 import { useRequireAuth } from '../../hooks/useRequireAuth'
 import type { RootStackParamList } from '../../navigation/types'
 import { dark, fonts } from '../../theme'
+import { hapticError, hapticSelect, hapticSuccess } from '../../utils/haptics'
 import { playFailSound, playSuccessSound, stopAllQuizAudio } from '../../utils/quizSounds'
 import { resolveMediaUrl } from '../../utils/mediaUrl'
 
@@ -36,6 +42,19 @@ function wait(ms: number) {
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'ChapterQuestions'>
 type Route = RouteProp<RootStackParamList, 'ChapterQuestions'>
+
+type ReviewEntry = {
+  question: RevisionQuestion
+  selectedIds: string[]
+  correctAnswerIds: string[]
+  isCorrect: boolean
+}
+
+function progressColor(ratio: number) {
+  if (ratio < 0.34) return dark.coral
+  if (ratio < 0.67) return '#F0B429'
+  return dark.green
+}
 
 export function ChapterQuestionsScreen() {
   const navigation = useNavigation<Nav>()
@@ -61,6 +80,9 @@ export function ChapterQuestionsScreen() {
   const [savingTest, setSavingTest] = useState(false)
   const [testSaved, setTestSaved] = useState(false)
   const [sequenceLive, setSequenceLive] = useState(true)
+  const [audioPaused, setAudioPaused] = useState(false)
+  const [reviewHistory, setReviewHistory] = useState<ReviewEntry[]>([])
+  const [reviewing, setReviewing] = useState(false)
 
   const selectedIdsRef = useRef(selectedIds)
   selectedIdsRef.current = selectedIds
@@ -103,6 +125,9 @@ export function ChapterQuestionsScreen() {
       setFinished(false)
       setTestSaved(false)
       setSequenceLive(true)
+      setReviewHistory([])
+      setReviewing(false)
+      setAudioPaused(false)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Chargement impossible')
       setQuestions([])
@@ -121,6 +146,7 @@ export function ChapterQuestionsScreen() {
     setSequenceLive(true)
     setSelectedIds(new Set())
     setResult(null)
+    setAudioPaused(false)
     stopAllQuizAudio()
   }, [index])
 
@@ -176,12 +202,25 @@ export function ChapterQuestionsScreen() {
     setSequenceLive(false)
     stopAllQuizAudio()
     try {
+      const currentQuestion = questionsRef.current[indexRef.current]
       setResult({ isCorrect: false, correctAnswerIds: [] })
+      if (currentQuestion) {
+        setReviewHistory((prev) => [
+          ...prev,
+          {
+            question: currentQuestion,
+            selectedIds: [],
+            correctAnswerIds: [],
+            isCorrect: false,
+          },
+        ])
+      }
       const nextScore = {
         correct: scoreRef.current.correct,
         total: scoreRef.current.total + 1,
       }
       setScore(nextScore)
+      void hapticError()
       void playFailSound()
       await finishOrAdvance(nextScore)
     } finally {
@@ -200,13 +239,27 @@ export function ChapterQuestionsScreen() {
       try {
         const check = await checkQuestionAnswers(chapterId, currentQuestion.id, ids)
         setResult(check)
+        setReviewHistory((prev) => [
+          ...prev,
+          {
+            question: currentQuestion,
+            selectedIds: ids,
+            correctAnswerIds: check.correctAnswerIds || [],
+            isCorrect: check.isCorrect,
+          },
+        ])
         const nextScore = {
           correct: scoreRef.current.correct + (check.isCorrect ? 1 : 0),
           total: scoreRef.current.total + 1,
         }
         setScore(nextScore)
-        if (check.isCorrect) await playSuccessSound()
-        else await playFailSound()
+        if (check.isCorrect) {
+          void hapticSuccess()
+          await playSuccessSound()
+        } else {
+          void hapticError()
+          await playFailSound()
+        }
         await wait(900)
         await finishOrAdvance(nextScore)
       } catch (err) {
@@ -239,6 +292,7 @@ export function ChapterQuestionsScreen() {
 
   const toggleAnswer = (answerId: string) => {
     if (result || checking) return
+    void hapticSelect()
     setSelectedIds((prev) => {
       const next = new Set(prev)
       if (next.has(answerId)) next.delete(answerId)
@@ -249,8 +303,11 @@ export function ChapterQuestionsScreen() {
 
   if (loading || !user) return <ScreenLoader />
 
+  const ratio = questions.length > 0 ? (index + (finished ? 1 : 0)) / questions.length : 0
+
   return (
     <DarkScreen>
+        <ConfettiBurst active={finished && score.total > 0 && score.correct / score.total >= 0.7} />
         <PageNavbar
           title={chapterName}
           icon={isTest ? ClipboardList : HelpCircle}
@@ -258,7 +315,17 @@ export function ChapterQuestionsScreen() {
           numberOfLines={2}
         />
 
-        <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          contentContainerStyle={styles.scroll}
+          showsVerticalScrollIndicator={false}
+          onScrollBeginDrag={() => {
+            if (sequenceLive && !result) {
+              setAudioPaused(true)
+              stopAllQuizAudio()
+            }
+          }}
+          scrollEventThrottle={16}
+        >
           <View style={styles.header}>
             <Text style={styles.kicker}>{isTest ? subjectLabel || 'Sujet test' : 'Questions'}</Text>
             <View style={styles.accentRow}>
@@ -274,9 +341,7 @@ export function ChapterQuestionsScreen() {
           </View>
 
           {loadingQuestions ? (
-            <View style={styles.centerBox}>
-              <ActivityIndicator color={dark.green} />
-            </View>
+            <SkeletonList count={3} />
           ) : error ? (
             <View style={styles.centerBox}>
               <Text style={styles.emptyTitle}>Erreur</Text>
@@ -286,19 +351,78 @@ export function ChapterQuestionsScreen() {
               </Pressable>
             </View>
           ) : questions.length === 0 ? (
-            <View style={styles.centerBox}>
-              <Text style={styles.emptyTitle}>
-                {isTest ? 'Aucun sujet test' : 'Aucune question'}
-              </Text>
+            <EmptyState
+              icon={<HelpCircle size={30} color={dark.textMuted} />}
+              title={isTest ? 'Aucun sujet test' : 'Aucune question'}
+              message={
+                isTest
+                  ? 'Aucune question publiée pour ce chapitre.'
+                  : 'Les questions publiées de ce chapitre apparaîtront ici.'
+              }
+            />
+          ) : reviewing ? (
+            <View style={styles.reviewWrap}>
+              <Text style={styles.emptyTitle}>Mode correction</Text>
               <Text style={styles.emptyText}>
-                {isTest
-                  ? 'Aucune question publiée pour ce chapitre. Publiez des questions dans l’admin pour activer le sujet test automatique.'
-                  : 'Les questions publiées de ce chapitre apparaîtront ici.'}
+                {score.correct}/{score.total} — revois tes réponses et les bonnes.
               </Text>
+              {reviewHistory.map((entry, reviewIndex) => (
+                <View key={`${entry.question.id}-${reviewIndex}`} style={styles.reviewCard}>
+                  <View style={styles.reviewHead}>
+                    <Text style={styles.progress}>
+                      Q{reviewIndex + 1}
+                      {entry.isCorrect ? ' · Correct' : ' · Incorrect'}
+                    </Text>
+                    {entry.isCorrect ? (
+                      <Check size={18} color={dark.green} />
+                    ) : (
+                      <X size={18} color={dark.coral} />
+                    )}
+                  </View>
+                  {entry.question.prompt.text ? (
+                    <Text style={styles.promptText}>{entry.question.prompt.text}</Text>
+                  ) : null}
+                  {entry.question.answers.map((answer) => {
+                    const wasSelected = entry.selectedIds.includes(answer.id)
+                    const isGood = entry.correctAnswerIds.includes(answer.id)
+                    return (
+                      <View
+                        key={answer.id}
+                        style={[
+                          styles.answerRow,
+                          isGood && styles.answerCorrect,
+                          wasSelected && !isGood && styles.answerWrong,
+                        ]}
+                      >
+                        <Text style={styles.answerLabel}>{answer.label.toUpperCase()}</Text>
+                        {answer.text ? <Text style={styles.answerText}>{answer.text}</Text> : null}
+                        <Text style={styles.reviewHint}>
+                          {isGood ? 'Bonne réponse' : wasSelected ? 'Ta réponse' : ''}
+                        </Text>
+                      </View>
+                    )
+                  })}
+                </View>
+              ))}
+              <Pressable style={styles.primaryBtn} onPress={() => setReviewing(false)}>
+                <Text style={styles.primaryBtnText}>Retour au score</Text>
+              </Pressable>
             </View>
           ) : finished ? (
             <View style={styles.centerBox}>
-              <Text style={styles.emptyTitle}>Terminé</Text>
+              <AnimatedCheckmark
+                active
+                color={
+                  score.total > 0 && score.correct / score.total >= 0.5 ? dark.green : dark.coral
+                }
+              />
+              <Text style={[styles.emptyTitle, { marginTop: 16 }]}>
+                {score.total > 0 && score.correct / score.total >= 0.7
+                  ? 'Bravo !'
+                  : score.total > 0 && score.correct / score.total >= 0.5
+                    ? 'Bien joué'
+                    : 'Terminé'}
+              </Text>
               <Text style={styles.scoreText}>
                 {score.correct} / {score.total} bonne{score.total > 1 ? 's' : ''} réponse
                 {score.total > 1 ? 's' : ''}
@@ -312,8 +436,13 @@ export function ChapterQuestionsScreen() {
                       : 'Sujet test terminé.'}
                 </Text>
               ) : null}
-              <Pressable style={styles.primaryBtn} onPress={() => void loadQuestions()}>
-                <Text style={styles.primaryBtnText}>Recommencer</Text>
+              {reviewHistory.length > 0 ? (
+                <Pressable style={styles.primaryBtn} onPress={() => setReviewing(true)}>
+                  <Text style={styles.primaryBtnText}>Mode correction</Text>
+                </Pressable>
+              ) : null}
+              <Pressable style={styles.secondaryBtn} onPress={() => void loadQuestions()}>
+                <Text style={styles.secondaryBtnText}>Recommencer</Text>
               </Pressable>
               <Pressable
                 style={styles.secondaryBtn}
@@ -324,21 +453,35 @@ export function ChapterQuestionsScreen() {
             </View>
           ) : question ? (
             <View>
-              <Text style={styles.progress}>
-                Question {index + 1} / {questions.length}
-              </Text>
+              <View style={styles.progressBlock}>
+                <Text style={styles.progress}>
+                  Question {index + 1} / {questions.length}
+                </Text>
+                <ProgressBar progress={ratio} color={progressColor(ratio)} height={10} />
+              </View>
 
               <View style={styles.promptCard}>
                 <Text style={styles.promptLabel}>Énonce</Text>
                 {question.prompt.text ? (
                   <Text style={styles.promptText}>{question.prompt.text}</Text>
                 ) : null}
-                {sequenceLive && !result && question.prompt.audioUrl ? (
+                {sequenceLive && !result && !audioPaused && question.prompt.audioUrl ? (
                   <QuestionAudioSequence
                     questionKey={question.id}
                     promptUri={resolveMediaUrl(question.prompt.audioUrl)}
                     onSequenceComplete={handleSequenceComplete}
                   />
+                ) : null}
+                {audioPaused && sequenceLive && !result ? (
+                  <Pressable
+                    style={styles.secondaryBtn}
+                    onPress={() => {
+                      setAudioPaused(false)
+                      setSequenceLive(true)
+                    }}
+                  >
+                    <Text style={styles.secondaryBtnText}>Reprendre l’audio</Text>
+                  </Pressable>
                 ) : null}
                 {question.prompt.imageUrls.length > 0 ? (
                   <View style={styles.images}>
@@ -490,6 +633,33 @@ const styles = StyleSheet.create({
     color: dark.textMuted,
     marginBottom: 12,
     letterSpacing: 0.4,
+  },
+  progressBlock: {
+    gap: 10,
+    marginBottom: 16,
+  },
+  reviewWrap: {
+    gap: 12,
+    paddingBottom: 20,
+  },
+  reviewCard: {
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: dark.border,
+    backgroundColor: dark.surface,
+    padding: 14,
+    gap: 8,
+  },
+  reviewHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  reviewHint: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: 12,
+    color: dark.textMuted,
+    marginTop: 4,
   },
   promptCard: {
     borderRadius: 18,

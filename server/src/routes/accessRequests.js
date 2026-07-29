@@ -5,6 +5,7 @@ import { AccessRequest } from '../models/AccessRequest.js'
 import { Payment } from '../models/Payment.js'
 import { User } from '../models/User.js'
 import {
+  activateFreeAccessModules,
   cancelPendingOnlinePayment,
   checkoutCartOnlineAccess,
   computeModuleAmount,
@@ -124,6 +125,32 @@ router.post('/checkout', async (req, res) => {
       error: error.message || 'Paiement impossible à initier',
       code: error.code || undefined,
       expectedOperator: error.expectedOperator || undefined,
+    })
+  }
+})
+
+/** Active les modules à 0 FCFA (ex. vidéos de conduite) sans paiement. */
+router.post('/claim-free', async (req, res) => {
+  try {
+    const modules = Array.isArray(req.body?.modules) ? req.body.modules : ['conduite_videos']
+    const activated = await activateFreeAccessModules({ user: req.user, modules })
+    const access = await getUserModuleAccess(req.user._id)
+    res.status(201).json({
+      success: true,
+      data: {
+        accessRequests: activated.map((r) => r.toPublicJSON()),
+        access: { ...access, user: { soldeHeures: req.user.soldeHeures || 0 } },
+        message:
+          activated.length > 0
+            ? 'Accès gratuit activé.'
+            : 'Accès déjà actif.',
+      },
+    })
+  } catch (error) {
+    logger.error('Erreur activation gratuite:', { error: error.message })
+    res.status(error.status || 500).json({
+      success: false,
+      error: error.message || 'Activation impossible',
     })
   }
 })

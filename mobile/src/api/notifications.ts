@@ -1,4 +1,4 @@
-import { getStoredToken } from './auth'
+import { getStoredToken, invalidateSessionIfUnauthorized } from './auth'
 import { getApiBase } from './config'
 
 interface ApiResponse<T> {
@@ -37,6 +37,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 
   const body = (await response.json().catch(() => ({}))) as ApiResponse<T>
   if (!response.ok || !body.success || body.data === undefined) {
+    await invalidateSessionIfUnauthorized(response.status)
     throw new Error(body.error ?? 'Action impossible')
   }
   return body.data

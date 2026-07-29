@@ -7,6 +7,7 @@ export type RegisterProfileParams = {
 
 export type RootStackParamList = {
   Intro: undefined
+  Onboarding: undefined
   Login: { message?: string } | undefined
   ForgotPassword: undefined
   ResetPassword: { token?: string } | undefined

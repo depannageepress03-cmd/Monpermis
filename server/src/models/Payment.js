@@ -67,6 +67,11 @@ const paymentSchema = new mongoose.Schema(
 
     errorMessage: { type: String, default: '' },
     activatedAt: { type: Date, default: null },
+    /**
+     * True when FedaPay reports approved after we already canceled/superseded locally,
+     * or when approved but no access/reservation could be delivered — admin must refund.
+     */
+    needsRefund: { type: Boolean, default: false, index: true },
   },
   { timestamps: true },
 )
@@ -95,6 +100,7 @@ paymentSchema.methods.toPublicJSON = function toPublicJSON() {
     declaredAt: this.declaredAt,
     errorMessage: this.errorMessage || '',
     activatedAt: this.activatedAt,
+    needsRefund: Boolean(this.needsRefund),
     createdAt: this.createdAt,
     updatedAt: this.updatedAt,
   }
@@ -119,6 +125,7 @@ paymentSchema.methods.toAdminJSON = function toAdminJSON(user, verifierAdmin) {
     verifiedByAdmin: verifier ? { id: verifier._id, fullName: verifier.fullName } : null,
     verifiedAt: this.verifiedAt,
     adminNote: this.adminNote || '',
+    needsRefund: Boolean(this.needsRefund),
   }
 }
 

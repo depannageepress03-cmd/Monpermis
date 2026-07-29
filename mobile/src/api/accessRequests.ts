@@ -1,4 +1,4 @@
-import { getStoredToken } from './auth'
+import { getStoredToken, invalidateSessionIfUnauthorized } from './auth'
 import { getApiBase } from './config'
 
 interface ApiResponse<T> {
@@ -49,6 +49,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 
   const body = (await response.json().catch(() => ({}))) as ApiResponse<T>
   if (!response.ok || !body.success || body.data === undefined) {
+    await invalidateSessionIfUnauthorized(response.status)
     throw new AccessRequestError(body.error ?? 'Action impossible', body.code)
   }
   return body.data
@@ -187,6 +188,16 @@ export const checkoutMobileMoney = (payload: {
   request<MobileMoneyCheckoutResult>('/access-requests/checkout', {
     method: 'POST',
     body: JSON.stringify(payload),
+  })
+
+export const claimFreeAccess = (modules: AccessModuleKey[] = ['conduite_videos']) =>
+  request<{
+    accessRequests: AccessRequest[]
+    access: AccessMe
+    message: string
+  }>('/access-requests/claim-free', {
+    method: 'POST',
+    body: JSON.stringify({ modules }),
   })
 
 export const createAccessRequest = (payload: {

@@ -9,6 +9,7 @@ import { AccessAuditLog } from '../models/AccessAuditLog.js'
 import { Payment } from '../models/Payment.js'
 import { User } from '../models/User.js'
 import {
+  cancelFedaPayTransaction,
   createFedaPayCheckout,
   guessBeninMobileOperator,
   mapFedaPayStatus,
@@ -22,6 +23,7 @@ import {
 } from '../services/fedapay.js'
 import { notifyUser } from '../services/notifications.js'
 import { broadcastPaymentEvent } from '../services/paymentEvents.js'
+import { applyHoursDiscount } from './pricing.js'
 import { logger } from './logger.js'
 
 /**
@@ -118,13 +120,17 @@ export async function transitionAccessRequest(request, toStatus, { actor, actorL
   request.status = toStatus
   if (note) request.lastDecisionNote = note
 
-  if (toStatus === 'valide') {
-    if (QUANTITY_BASED_MODULES.includes(request.module)) {
-      if (!request.hoursCredited) {
-        await User.findByIdAndUpdate(request.userId, { $inc: { soldeHeures: request.quantity } })
-        request.hoursCredited = true
-      }
+  if (toStatus === 'valide' && QUANTITY_BASED_MODULES.includes(request.module)) {
+    // Crédit heures atomique : webhook + sync ne doivent jamais double-créditer.
+    const claimedCredit = await AccessRequest.findOneAndUpdate(
+      { _id: request._id, hoursCredited: { $ne: true } },
+      { $set: { hoursCredited: true } },
+      { new: true },
+    )
+    if (claimedCredit) {
+      await User.findByIdAndUpdate(request.userId, { $inc: { soldeHeures: request.quantity } })
     }
+    request.hoursCredited = true
   }
 
   await request.save()
@@ -241,7 +247,7 @@ export async function getUserModuleAccess(userId) {
 const DEFAULT_MODULE_PRICING = [
   { key: 'code', label: 'Code de la route', unit: 'month', price: 2000 },
   { key: 'conduite_heures', label: 'Heures de conduite', unit: 'hour', price: 5000 },
-  { key: 'conduite_videos', label: 'Vidéos pédagogiques conduite', unit: 'month', price: 1500 },
+  { key: 'conduite_videos', label: 'Vidéos pédagogiques conduite', unit: 'month', price: 0 },
   { key: 'ecodepermis', label: 'E-Codepermis', unit: 'month', price: 1000 },
   { key: 'aiChat', label: 'Chat IA tuteur', unit: 'month', price: 1000 },
 ]
@@ -254,11 +260,8 @@ export function computeModuleAmount(pricingOrKey, quantity = 1, unitPrice = null
       ? Number(unitPrice)
       : Number(typeof pricingOrKey === 'object' ? pricingOrKey?.price : 0) || 0
   const qty = Math.max(1, Number(quantity) || 1)
-  let amount = Math.round(price * qty)
-  if (key === 'conduite_heures' && qty >= 2) {
-    amount = Math.max(0, amount - 1000)
-  }
-  return amount
+  const amount = Math.round(price * qty)
+  return key === 'conduite_heures' ? applyHoursDiscount(amount, qty) : amount
 }
 
 /** Amorçage idempotent des 5 tarifs — n'écrase jamais un prix déjà modifié par l'admin. */
@@ -273,11 +276,11 @@ export async function ensureAccessModulePricing() {
     }
   }
 
-  // Soft migration : ancien seed vidéos 500/week → 1500/month (une seule fois).
+  // Soft migration : vidéos de conduite → gratuites (0 FCFA / mois).
   const videos = await AccessModulePricing.findOne({ key: 'conduite_videos' })
-  if (videos && videos.unit === 'week' && Number(videos.price) === 500) {
+  if (videos && (videos.unit !== 'month' || Number(videos.price) !== 0)) {
     videos.unit = 'month'
-    videos.price = 1500
+    videos.price = 0
     videos.label = 'Vidéos pédagogiques conduite'
     await videos.save()
     migrated += 1
@@ -424,21 +427,58 @@ export async function startFedaPayForRequest(user, request) {
   }
 }
 
+/**
+ * Annule une demande pending + son Payment. Tente d’abord void FedaPay.
+ * Si la tx distante est déjà payée, on réconcilie (approve) au lieu d’annuler.
+ * @returns {{ request, paidAlready?: boolean }}
+ */
 async function cancelPendingRequestAndPayment(request, user, note) {
   if (!['en_attente', 'paiement_declare', 'en_verification'].includes(request.status)) {
-    return request
+    return { request }
   }
-  await transitionAccessRequest(request, 'rejete', { actor: 'user', note })
+
   const payment = await Payment.findOne({
     $or: [{ accessRequestId: request._id }, { accessRequestIds: request._id }],
   }).sort({ createdAt: -1 })
-  if (payment && payment.status === 'pending') {
-    payment.status = 'canceled'
-    payment.errorMessage = note
-    await payment.save()
-    void broadcastPaymentUpdate(payment, { user, module: request.module })
+
+  if (payment?.status === 'pending' && payment.method === 'fedapay' && payment.fedapayTransactionId) {
+    const voidResult = await cancelFedaPayTransaction(payment.fedapayTransactionId)
+    if (voidResult.reason === 'already_paid') {
+      // Ne pas annuler localement : l’argent a déjà été pris.
+      try {
+        await syncAccessPaymentFromProvider(payment)
+      } catch (error) {
+        logger.warn('Réconciliation après void already_paid échouée', {
+          error: error.message,
+          paymentId: String(payment._id),
+        })
+      }
+      return { request: await AccessRequest.findById(request._id), paidAlready: true }
+    }
+    if (!voidResult.canceled) {
+      logger.warn('Void FedaPay échoué à l’annulation', {
+        paymentId: String(payment._id),
+        reason: voidResult.reason,
+        error: voidResult.error || null,
+      })
+    }
   }
-  return request
+
+  await transitionAccessRequest(request, 'rejete', { actor: 'user', note })
+
+  if (payment?.status === 'pending') {
+    // Atomique : un webhook concurrent ne doit pas passer canceled → approved sans needsRefund.
+    const canceled = await Payment.findOneAndUpdate(
+      { _id: payment._id, status: 'pending' },
+      { $set: { status: 'canceled', errorMessage: note } },
+      { new: true },
+    )
+    if (canceled) {
+      void broadcastPaymentUpdate(canceled, { user, module: request.module })
+    }
+  }
+
+  return { request: await AccessRequest.findById(request._id) }
 }
 
 /**
@@ -514,11 +554,23 @@ export async function purchaseOnlineAccess({ user, module, quantity = 1, replace
       }
 
       if (existing && ['en_attente', 'paiement_declare', 'en_verification'].includes(existing.status)) {
-        await cancelPendingRequestAndPayment(
+        const cancelResult = await cancelPendingRequestAndPayment(
           existing,
           user,
           replace ? 'Remplacé par un nouveau paiement en ligne' : 'Ancien paiement abandonné ou échoué',
         )
+        if (cancelResult.paidAlready) {
+          const active = cancelResult.request
+          const paidPayment = await Payment.findOne({
+            $or: [{ accessRequestId: active._id }, { accessRequestIds: active._id }],
+          }).sort({ createdAt: -1 })
+          return {
+            kind: 'already_active',
+            accessRequest: active,
+            payment: paidPayment,
+          }
+        }
+        existing = cancelResult.request
       }
     } else if (existing) {
       await cancelPendingRequestAndPayment(existing, user, 'Demande incomplète remplacée par un paiement en ligne')
@@ -632,11 +684,14 @@ export async function checkoutCartOnlineAccess({
     }
 
     const pricing = await getModulePricing(module)
+    const amount = computeModuleAmount(pricing, quantity)
+    // Modules gratuits : activés hors FedaPay (claim-free), jamais facturés ici.
+    if (amount <= 0) continue
     normalizedItems.push({
       module,
       quantity,
       pricing,
-      amount: computeModuleAmount(pricing, quantity),
+      amount,
     })
   }
 
@@ -654,7 +709,15 @@ export async function checkoutCartOnlineAccess({
       status: { $in: ['en_attente', 'paiement_declare', 'en_verification'] },
     })
     if (existing && replace) {
-      await cancelPendingRequestAndPayment(existing, user, 'Remplacé par un nouveau paiement Mobile Money')
+      const cancelResult = await cancelPendingRequestAndPayment(
+        existing,
+        user,
+        'Remplacé par un nouveau paiement Mobile Money',
+      )
+      if (cancelResult.paidAlready && ['actif', 'valide'].includes(cancelResult.request?.status)) {
+        // Module déjà payé pendant le replace — on l’enlève du panier.
+        item._skip = true
+      }
     } else if (existing && !replace) {
       const error = new Error('Un paiement est déjà en cours pour cette offre')
       error.status = 409
@@ -662,8 +725,15 @@ export async function checkoutCartOnlineAccess({
     }
   }
 
+  const payableItems = normalizedItems.filter((item) => !item._skip)
+  if (!payableItems.length) {
+    const error = new Error('Aucune offre à payer (accès déjà actifs)')
+    error.status = 400
+    throw error
+  }
+
   const requests = []
-  for (const item of normalizedItems) {
+  for (const item of payableItems) {
     const request = await createAccessRequest({
       user,
       module: item.module,
@@ -879,6 +949,78 @@ export async function adminGrantModuleAccess({ userId, module, quantity = 1, not
   return request
 }
 
+/**
+ * Active uniquement les modules toujours gratuits (whitelist stricte).
+ * `conduite_heures` n’est jamais claimable ici, même à prix 0.
+ */
+const CLAIM_FREE_WHITELIST = ['conduite_videos']
+
+export async function activateFreeAccessModules({ user, modules }) {
+  const wanted = Array.isArray(modules)
+    ? [...new Set(modules.filter((key) => typeof key === 'string'))]
+    : []
+  if (!wanted.length) {
+    const error = new Error('Aucun module gratuit à activer')
+    error.status = 400
+    throw error
+  }
+
+  const rejected = wanted.filter((key) => !CLAIM_FREE_WHITELIST.includes(key))
+  if (rejected.length) {
+    const error = new Error(
+      `Modules non éligibles au gratuit : ${rejected.join(', ')}. Seul « conduite_videos » peut être activé sans paiement.`,
+    )
+    error.status = 400
+    throw error
+  }
+
+  const current = await getUserModuleAccess(user._id)
+  const activated = []
+
+  for (const module of wanted) {
+    if (current.access[module]) continue
+
+    const pricing = await getModulePricing(module)
+
+    const existing = await AccessRequest.findOne({
+      userId: user._id,
+      module,
+      status: { $in: ['en_attente', 'paiement_declare', 'en_verification'] },
+    })
+    if (existing) {
+      await cancelPendingRequestAndPayment(existing, user, 'Remplacé par une activation gratuite')
+    }
+
+    const request = new AccessRequest({
+      userId: user._id,
+      module,
+      status: 'actif',
+      quantity: 1,
+      amount: 0,
+      currency: pricing.currency || 'XOF',
+      unit: pricing.unit,
+      lastDecisionNote: 'Activation gratuite',
+      startAt: new Date(),
+      // Accès gratuit sans date d’expiration (durée « ouverte »).
+      endAt: new Date('2099-12-31T23:59:59.000Z'),
+    })
+    await request.save()
+
+    await AccessAuditLog.create({
+      accessRequestId: request._id,
+      fromStatus: '',
+      toStatus: request.status,
+      actor: `user:${user._id}`,
+      actorLabel: `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Apprenant',
+      note: 'Activation gratuite',
+    })
+    void broadcastAccessRequestUpdate(request, user)
+    activated.push(request)
+  }
+
+  return activated
+}
+
 /** Décision admin sur une demande en_attente ou paiement_declare — note obligatoire. */
 export async function adminValidateAccessRequest(request, payment, { decision, note, admin }) {
   const trimmedNote = String(note || '').trim()
@@ -940,22 +1082,96 @@ export async function applyApprovedAccessPayment(payment, { eventName = '', even
     return { payment, alreadyProcessed: true }
   }
 
-  payment.status = 'approved'
-  payment.lastEventName = eventName || payment.lastEventName
-  payment.rawLastEvent = raw
-  payment.activatedAt = new Date()
-  if (eventId) payment.processedEventIds.push(String(eventId))
-  await payment.save()
-  void broadcastPaymentUpdate(payment)
+  // Déjà livré — idempotent (webhook + sync).
+  if (payment.status === 'approved') {
+    if (eventId) {
+      await Payment.findByIdAndUpdate(payment._id, {
+        $addToSet: { processedEventIds: String(eventId) },
+        $set: { lastEventName: eventName || payment.lastEventName, rawLastEvent: raw },
+      })
+    }
+    return { payment: await Payment.findById(payment._id), alreadyProcessed: true }
+  }
 
-  const requestIds = payment.linkedRequestIds()
+  // Paiement remplacé / annulé localement : ne jamais passer en approved sans livraison.
+  if (['canceled', 'failed', 'declined'].includes(payment.status)) {
+    const flagged = await Payment.findByIdAndUpdate(
+      payment._id,
+      {
+        $set: {
+          needsRefund: true,
+          lastEventName: eventName || payment.lastEventName,
+          rawLastEvent: raw,
+          errorMessage:
+            payment.errorMessage ||
+            `Paiement orphelin (statut ${payment.status}) — FedaPay approved après annulation, remboursement requis`,
+        },
+        ...(eventId ? { $addToSet: { processedEventIds: String(eventId) } } : {}),
+      },
+      { new: true },
+    )
+    logger.warn('FedaPay approved ignoré — payment déjà terminal', {
+      paymentId: String(payment._id),
+      status: payment.status,
+    })
+    void broadcastPaymentUpdate(flagged)
+    return { payment: flagged, alreadyProcessed: true, needsRefund: true, orphan: true }
+  }
+
+  // Transition atomique pending → approved (course webhook vs sync).
+  const update = {
+    $set: {
+      status: 'approved',
+      lastEventName: eventName || payment.lastEventName,
+      rawLastEvent: raw,
+      activatedAt: new Date(),
+    },
+  }
+  if (eventId) update.$addToSet = { processedEventIds: String(eventId) }
+
+  const claimed = await Payment.findOneAndUpdate({ _id: payment._id, status: 'pending' }, update, {
+    new: true,
+  })
+
+  if (!claimed) {
+    const fresh = await Payment.findById(payment._id)
+    if (fresh?.status === 'approved') {
+      return { payment: fresh, alreadyProcessed: true }
+    }
+    if (fresh && ['canceled', 'failed', 'declined'].includes(fresh.status)) {
+      const flagged = await Payment.findByIdAndUpdate(
+        fresh._id,
+        {
+          $set: {
+            needsRefund: true,
+            errorMessage:
+              fresh.errorMessage ||
+              `Paiement orphelin (statut ${fresh.status}) — remboursement requis`,
+          },
+        },
+        { new: true },
+      )
+      return { payment: flagged, alreadyProcessed: true, needsRefund: true, orphan: true }
+    }
+    return { payment: fresh || payment, alreadyProcessed: true }
+  }
+
+  void broadcastPaymentUpdate(claimed)
+
+  const requestIds = claimed.linkedRequestIds()
   if (!requestIds.length) {
+    claimed.needsRefund = true
+    claimed.errorMessage =
+      claimed.errorMessage || 'Paiement approved sans AccessRequest liée — remboursement requis'
+    await claimed.save()
+    void broadcastPaymentUpdate(claimed)
     const error = new Error('Demande d’accès liée introuvable')
     error.status = 404
     throw error
   }
 
   const requests = []
+  let unlocked = 0
   for (const id of requestIds) {
     const request = await AccessRequest.findById(id)
     if (!request) continue
@@ -965,17 +1181,34 @@ export async function applyApprovedAccessPayment(payment, { eventName = '', even
         actorLabel: 'FedaPay',
         note: eventName,
       })
+      unlocked += 1
     }
     requests.push(await AccessRequest.findById(id))
   }
 
   if (!requests.length) {
+    claimed.needsRefund = true
+    claimed.errorMessage =
+      claimed.errorMessage || 'Paiement approved sans AccessRequest trouvée — remboursement requis'
+    await claimed.save()
+    void broadcastPaymentUpdate(claimed)
     const error = new Error('Demande d’accès liée introuvable')
     error.status = 404
     throw error
   }
 
-  return { payment, request: requests[0], requests, alreadyProcessed: false }
+  // Approved mais toutes les demandes déjà rejetées (replace) → argent sans accès.
+  if (unlocked === 0) {
+    claimed.needsRefund = true
+    claimed.errorMessage =
+      claimed.errorMessage ||
+      'Paiement approved sans demande livrable (déjà rejetée/remplacée) — remboursement requis'
+    await claimed.save()
+    void broadcastPaymentUpdate(claimed)
+    logger.warn('Paiement access orphelin — needsRefund', { paymentId: String(claimed._id) })
+  }
+
+  return { payment: claimed, request: requests[0], requests, alreadyProcessed: false, unlocked }
 }
 
 export async function applyFailedAccessPayment(
@@ -987,15 +1220,49 @@ export async function applyFailedAccessPayment(
     return { payment, alreadyProcessed: true }
   }
 
-  payment.status = status
-  payment.lastEventName = eventName || payment.lastEventName
-  payment.errorMessage = message || payment.errorMessage
-  payment.rawLastEvent = raw
-  if (eventId) payment.processedEventIds.push(String(eventId))
-  await payment.save()
-  void broadcastPaymentUpdate(payment)
+  if (payment.status === 'approved') {
+    // Ne jamais rétrograder un paiement déjà livré.
+    if (eventId) {
+      await Payment.findByIdAndUpdate(payment._id, {
+        $addToSet: { processedEventIds: String(eventId) },
+      })
+    }
+    return { payment, alreadyProcessed: true }
+  }
 
-  const requestIds = payment.linkedRequestIds()
+  if (['canceled', 'failed', 'declined'].includes(payment.status) && payment.status !== status) {
+    // Déjà terminal (ex. cancel local) — enregistre l’événement sans changer le statut.
+    const update = {
+      $set: {
+        lastEventName: eventName || payment.lastEventName,
+        rawLastEvent: raw,
+      },
+    }
+    if (message && !payment.errorMessage) update.$set.errorMessage = message
+    if (eventId) update.$addToSet = { processedEventIds: String(eventId) }
+    const updated = await Payment.findByIdAndUpdate(payment._id, update, { new: true })
+    return { payment: updated, alreadyProcessed: true }
+  }
+
+  const update = {
+    $set: {
+      status,
+      lastEventName: eventName || payment.lastEventName,
+      errorMessage: message || payment.errorMessage,
+      rawLastEvent: raw,
+    },
+  }
+  if (eventId) update.$addToSet = { processedEventIds: String(eventId) }
+
+  const claimed = await Payment.findOneAndUpdate(
+    { _id: payment._id, status: { $in: ['pending', status] } },
+    update,
+    { new: true },
+  )
+  const effective = claimed || (await Payment.findById(payment._id))
+  if (claimed) void broadcastPaymentUpdate(claimed)
+
+  const requestIds = effective?.linkedRequestIds?.() || []
   const requests = []
   for (const id of requestIds) {
     const request = await AccessRequest.findById(id)
@@ -1009,7 +1276,7 @@ export async function applyFailedAccessPayment(
     }
   }
 
-  return { payment, request: requests[0] || null, requests, alreadyProcessed: false }
+  return { payment: effective, request: requests[0] || null, requests, alreadyProcessed: !claimed }
 }
 
 export async function syncAccessPaymentFromProvider(payment) {
@@ -1023,8 +1290,22 @@ export async function syncAccessPaymentFromProvider(payment) {
   else if (remoteMode === 'moov') payment.paymentMethod = 'moov'
   else if (remoteMode) payment.paymentMethod = remoteMode
 
+  const syncEventId = `sync:${payment.fedapayTransactionId}`
+
+  // Persiste métadonnées FedaPay avant transition (apply* fait un findOneAndUpdate ciblé).
+  await Payment.findByIdAndUpdate(payment._id, {
+    $set: {
+      fedapayReference: payment.fedapayReference,
+      ...(payment.paymentMethod ? { paymentMethod: payment.paymentMethod } : {}),
+    },
+  })
+
   if (mapped === 'approved') {
-    await applyApprovedAccessPayment(payment, { eventName: 'transaction.synced', raw: remote })
+    await applyApprovedAccessPayment(payment, {
+      eventName: 'transaction.synced',
+      eventId: syncEventId,
+      raw: remote,
+    })
   } else if (mapped === 'declined' || mapped === 'canceled' || mapped === 'failed') {
     const code = String(remote.last_error_code || '').toUpperCase()
     let message =
@@ -1038,11 +1319,11 @@ export async function syncAccessPaymentFromProvider(payment) {
     }
     await applyFailedAccessPayment(payment, mapped, {
       eventName: 'transaction.synced',
+      eventId: syncEventId,
       message,
       raw: remote,
     })
-  } else {
-    payment.status = 'pending'
+  } else if (payment.status === 'pending') {
     await payment.save()
   }
 

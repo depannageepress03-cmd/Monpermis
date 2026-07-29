@@ -1,4 +1,4 @@
-import { getStoredToken } from './auth'
+import { getStoredToken, invalidateSessionIfUnauthorized } from './auth'
 import { getApiBase } from './config'
 
 interface ApiResponse<T> {
@@ -28,7 +28,10 @@ export async function fetchAnnouncements(): Promise<Announcement[]> {
     const body = (await response.json().catch(() => ({}))) as ApiResponse<{
       announcements: Announcement[]
     }>
-    if (!response.ok || !body.success || !body.data) return []
+    if (!response.ok || !body.success || !body.data) {
+      await invalidateSessionIfUnauthorized(response.status)
+      return []
+    }
     return body.data.announcements
   } catch {
     return []

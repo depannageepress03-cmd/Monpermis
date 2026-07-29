@@ -390,6 +390,39 @@ export async function retrieveFedaPayTransaction(transactionId) {
   }
 }
 
+/**
+ * Annule / supprime une transaction FedaPay encore non payée (DELETE /transactions/:id).
+ * Best-effort : ne lance jamais — les appelants marquent le Payment local `canceled`
+ * même si le void distant échoue (un webhook tardif sera ignoré via needsRefund).
+ *
+ * @returns {{ canceled: boolean, reason: string, status?: string, error?: string }}
+ */
+export async function cancelFedaPayTransaction(transactionId) {
+  if (!transactionId) return { canceled: false, reason: 'missing_id' }
+  try {
+    ensureConfigured()
+    const transaction = await Transaction.retrieve(transactionId)
+    const status = String(transaction.status || '').toLowerCase()
+    if (
+      ['approved', 'transferred'].includes(status) ||
+      (typeof transaction.wasPaid === 'function' && transaction.wasPaid())
+    ) {
+      return { canceled: false, reason: 'already_paid', status }
+    }
+    if (['canceled', 'cancelled', 'declined', 'failed', 'deleted'].includes(status)) {
+      return { canceled: true, reason: 'already_terminal', status }
+    }
+    await transaction.delete()
+    return { canceled: true, reason: 'deleted', status }
+  } catch (error) {
+    return {
+      canceled: false,
+      reason: 'error',
+      error: formatFedaPayError(error),
+    }
+  }
+}
+
 export function constructFedaPayEvent(rawBody, signatureHeader) {
   const secret = String(process.env.FEDAPAY_WEBHOOK_SECRET || '').trim()
   if (!secret) {

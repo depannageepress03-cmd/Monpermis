@@ -1,4 +1,5 @@
 import mongoose from 'mongoose'
+import { computeDrivingAmount, HOURS_DISCOUNT_FCFA } from '../utils/pricing.js'
 
 export const ACCESS_MODULES = ['code', 'conduite_heures', 'conduite_videos', 'ecodepermis', 'aiChat']
 export const ACCESS_MODULE_UNITS = ['flat', 'month', 'hour', 'week']
@@ -36,8 +37,8 @@ accessModulePricingSchema.methods.toPublicJSON = function toPublicJSON() {
     /** Montant pour 1 unité (après règles métier éventuelles). */
     amountForOne: this.key === 'conduite_heures' ? price : price,
     /** Exemple 2 heures avec remise −1000. */
-    amountForTwoHours: this.key === 'conduite_heures' ? Math.max(0, price * 2 - 1000) : null,
-    hoursDiscount: this.key === 'conduite_heures' ? 1000 : 0,
+    amountForTwoHours: this.key === 'conduite_heures' ? computeDrivingAmount(price, 2) : null,
+    hoursDiscount: this.key === 'conduite_heures' ? HOURS_DISCOUNT_FCFA : 0,
   }
 }
 

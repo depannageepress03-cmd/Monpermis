@@ -20,6 +20,12 @@ import {
 } from '../utils/localDate.js'
 import { computeCreneauHeures } from '../utils/creneauDuration.js'
 import {
+  applyHoursDiscount,
+  HOURS_DISCOUNT_FCFA,
+  HOURS_DISCOUNT_MIN_HOURS,
+} from '../utils/pricing.js'
+import {
+  BOOKING_LEAD_MINUTES,
   intervalsOverlap,
   isValidHhMm,
   isWithinWindows,
@@ -38,6 +44,7 @@ import {
 } from '../services/fedapay.js'
 import {
   buildReservationCallbackUrl,
+  cancelPendingReservationPayment,
   syncReservationPaymentFromProvider,
 } from '../utils/reservationPayments.js'
 import { logger } from '../utils/logger.js'
@@ -57,6 +64,17 @@ function asObjectId(value) {
 
 function slotDateTime(date, time) {
   return new Date(`${date}T${time}:00`)
+}
+
+/**
+ * Montant réellement dû pour un ensemble de créneaux réservés ensemble.
+ * Les priceFcfa des créneaux sont des prix de ligne sans remise : la remise
+ * heures de conduite n'est retirée qu'une fois, sur le total de la réservation.
+ */
+function computeBookingAmount(creneaux) {
+  const base = creneaux.reduce((sum, creneau) => sum + (creneau.priceFcfa || 5000), 0)
+  const heures = creneaux.reduce((sum, creneau) => sum + computeCreneauHeures(creneau), 0)
+  return applyHoursDiscount(base, heures)
 }
 
 function canCancel(creneau) {
@@ -277,6 +295,8 @@ router.get('/availability', ...withConduiteAccess, async (req, res) => {
         from,
         to,
         hourlyPriceFcfa: moniteur.defaultPriceFcfa || 5000,
+        hoursDiscountFcfa: HOURS_DISCOUNT_FCFA,
+        hoursDiscountMinHours: HOURS_DISCOUNT_MIN_HOURS,
         days,
       },
     })
@@ -308,6 +328,17 @@ router.post('/request-slot', ...withConduiteAccess, async (req, res) => {
       return res.status(404).json({ success: false, error: 'Moniteur introuvable' })
     }
 
+    // Contrôlé avant les fenêtres : un horaire trop proche est tronqué par
+    // windowsForDate, ce qui produirait un message d'indisponibilité trompeur.
+    const startAt = slotDateTime(date, startTime)
+    if (startAt.getTime() <= Date.now() + BOOKING_LEAD_MINUTES * 60 * 1000) {
+      return res.status(400).json({
+        success: false,
+        error: `Réservez au moins ${BOOKING_LEAD_MINUTES} minutes à l’avance. Choisissez un horaire plus tard.`,
+        code: 'SLOT_TOO_SOON',
+      })
+    }
+
     const windows = windowsForDate(moniteur.weeklyAvailability, date)
     if (!windows.length) {
       return res.status(400).json({
@@ -328,11 +359,6 @@ router.post('/request-slot', ...withConduiteAccess, async (req, res) => {
     }
     if (heures > 6) {
       return res.status(400).json({ success: false, error: 'Durée maximale : 6 heures' })
-    }
-
-    const startAt = slotDateTime(date, startTime)
-    if (startAt.getTime() <= Date.now()) {
-      return res.status(400).json({ success: false, error: 'Choisissez un horaire dans le futur' })
     }
 
     await Creneau.updateMany(
@@ -377,6 +403,8 @@ router.post('/request-slot', ...withConduiteAccess, async (req, res) => {
         'voiture',
     )
     const hourly = moniteur.defaultPriceFcfa || 5000
+    // priceFcfa reste le prix de ligne sans remise : la remise heures s'applique
+    // une seule fois par réservation (voir computeBookingAmount).
     const priceFcfa = Math.round(hourly * heures)
     const lockedUntil = new Date(Date.now() + LOCK_MS)
 
@@ -403,6 +431,8 @@ router.post('/request-slot', ...withConduiteAccess, async (req, res) => {
       throw error
     }
 
+    const amountFcfa = computeBookingAmount([creneau])
+
     res.status(201).json({
       success: true,
       data: {
@@ -418,6 +448,8 @@ router.post('/request-slot', ...withConduiteAccess, async (req, res) => {
           },
         },
         hours: heures,
+        amountFcfa,
+        hoursDiscountFcfa: Math.max(0, priceFcfa - amountFcfa),
         lockedUntil,
       },
     })
@@ -457,7 +489,10 @@ router.get('/creneaux', ...withConduiteAccess, async (req, res) => {
       .sort({ date: 1, startTime: 1 })
 
     const byDate = {}
+    const earliestStart = Date.now() + BOOKING_LEAD_MINUTES * 60 * 1000
     for (const slot of creneaux) {
+      // Jamais proposer un créneau déjà passé ou trop proche du préavis.
+      if (slotDateTime(slot.date, slot.startTime).getTime() <= earliestStart) continue
       const locked =
         slot.lockedUntil &&
         slot.lockedUntil > new Date() &&
@@ -631,10 +666,11 @@ router.post('/quote', ...withConduiteAccess, async (req, res) => {
 
     const moniteur = creneaux[0].moniteurId
     const hours = creneaux.reduce((sum, c) => sum + computeCreneauHeures(c), 0)
-    const amount = creneaux.reduce(
+    const baseAmount = creneaux.reduce(
       (sum, c) => sum + (c.priceFcfa || moniteur?.defaultPriceFcfa || 5000),
       0,
     )
+    const amount = applyHoursDiscount(baseAmount, hours)
     const soldeHeures = req.user.soldeHeures || 0
 
     res.json({
@@ -654,6 +690,8 @@ router.post('/quote', ...withConduiteAccess, async (req, res) => {
         endTime: creneaux[creneaux.length - 1].endTime,
         hours,
         amount,
+        baseAmount,
+        hoursDiscountFcfa: Math.max(0, baseAmount - amount),
         currency: 'XOF',
         soldeHeures,
         soldeSuffisant: soldeHeures >= hours,
@@ -831,7 +869,7 @@ router.post('/reservations', ...withConduiteAccess, async (req, res) => {
     }
     if (guessed) mode = guessed
 
-    const totalAmount = claimed.reduce((sum, c) => sum + (c.priceFcfa || 5000), 0)
+    const totalAmount = computeBookingAmount(claimed)
     if (totalAmount < 100) {
       await releaseAll()
       return res.status(400).json({
@@ -1024,6 +1062,53 @@ router.post('/reservations/:id/cancel', ...withConduiteAccess, async (req, res) 
       return res.status(400).json({
         success: false,
         error: 'Annulation possible uniquement jusqu’à 24 h avant la séance',
+      })
+    }
+
+    // pending_payment : void FedaPay + annule le Payment du groupe avant de libérer les créneaux.
+    if (reservation.status === 'pending_payment' && reservation.bookingGroupId) {
+      const payment = await Payment.findOne({
+        reservationGroupId: reservation.bookingGroupId,
+        status: 'pending',
+        method: 'fedapay',
+      }).sort({ createdAt: -1 })
+
+      if (payment) {
+        const result = await cancelPendingReservationPayment(
+          payment,
+          reason || 'Annulé par l’utilisateur avant confirmation',
+        )
+        if (result.paidAlready) {
+          return res.status(409).json({
+            success: false,
+            error: 'Le paiement vient d’être confirmé. Impossible d’annuler — contacte l’auto-école.',
+          })
+        }
+      }
+
+      const siblings = await Reservation.find({
+        bookingGroupId: reservation.bookingGroupId,
+        status: 'pending_payment',
+        userId: req.user._id,
+      })
+      for (const sibling of siblings) {
+        sibling.status = 'cancelled'
+        sibling.paymentStatus = 'unpaid'
+        sibling.cancelledAt = new Date()
+        sibling.cancellationReason = reason
+        sibling.cancelledBy = 'learner'
+        await sibling.save()
+        await Creneau.findByIdAndUpdate(sibling.creneauId, {
+          status: 'libre',
+          lockedUntil: null,
+          lockedBy: null,
+        })
+      }
+
+      const cancelled = siblings.find((s) => String(s._id) === String(reservation._id)) || siblings[0]
+      return res.json({
+        success: true,
+        data: { reservation: await hydrateReservation(cancelled || reservation) },
       })
     }
 

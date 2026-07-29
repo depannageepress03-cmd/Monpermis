@@ -7,6 +7,7 @@ import {
   Image,
   Modal,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -20,12 +21,14 @@ import { LegalFooter } from '../components/LegalFooter'
 import { BrandName } from '../components/BrandName'
 import { HomeBottomAnimation } from '../components/HomeBottomAnimation'
 import { InfiniteImageMarquee } from '../components/InfiniteImageMarquee'
+import { HomeSkeleton } from '../components/Skeleton'
 import { ScreenLoader } from '../components/ScreenLoader'
 import { useAuth } from '../context/AuthContext'
 import { useRequireAuth } from '../hooks/useRequireAuth'
 import { useUnreadNotifications } from '../hooks/useUnreadNotifications'
 import type { RootStackParamList } from '../navigation/types'
 import { colors, dark, fonts } from '../theme'
+import { cacheGetThenFetch } from '../utils/contentCache'
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'Home'>
 
@@ -43,13 +46,44 @@ export function HomeScreen() {
   const [profileOpen, setProfileOpen] = useState(false)
   const [accessMe, setAccessMe] = useState<AccessMe | null>(null)
   const [announcements, setAnnouncements] = useState<Announcement[]>([])
+  const [bootstrapping, setBootstrapping] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const unreadCount = useUnreadNotifications(Boolean(user))
 
-  useEffect(() => {
+  const loadHome = useCallback(async (silent = false) => {
     if (!user) return
-    void fetchAccessMe().then(setAccessMe).catch(() => setAccessMe(null))
-    void fetchAnnouncements().then(setAnnouncements).catch(() => setAnnouncements([]))
+    if (!silent) setBootstrapping(true)
+    try {
+      await Promise.all([
+        cacheGetThenFetch(
+          `access:me:${user.id}`,
+          () => fetchAccessMe(),
+          {
+            maxAgeMs: 2 * 60 * 1000,
+            onData: (data) => {
+              setAccessMe(data)
+              setBootstrapping(false)
+            },
+          },
+        ).catch(() => setAccessMe(null)),
+        cacheGetThenFetch(
+          'announcements',
+          () => fetchAnnouncements(),
+          {
+            maxAgeMs: 5 * 60 * 1000,
+            onData: (data) => setAnnouncements(data),
+          },
+        ).catch(() => setAnnouncements([])),
+      ])
+    } finally {
+      setBootstrapping(false)
+      setRefreshing(false)
+    }
   }, [user])
+
+  useEffect(() => {
+    void loadHome()
+  }, [loadHome])
 
   useFocusEffect(
     useCallback(() => {
@@ -79,8 +113,21 @@ export function HomeScreen() {
   return (
     <View style={styles.root}>
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-        <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
-          {/* Top bar */}
+        <ScrollView
+          contentContainerStyle={styles.body}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => {
+                setRefreshing(true)
+                void loadHome(true)
+              }}
+              tintColor={dark.green}
+            />
+          }
+        >
+          {bootstrapping && !accessMe ? <HomeSkeleton /> : null}
           <View style={styles.topBar}>
             <View style={styles.topBarLeft}>
               <View style={styles.logoBadge}>

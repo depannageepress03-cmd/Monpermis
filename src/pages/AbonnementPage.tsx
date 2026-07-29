@@ -1,4 +1,4 @@
-import { Check, Clock, CreditCard, LoaderCircle, Lock } from 'lucide-react'
+import { Check, Clock, CreditCard, History, LoaderCircle, Lock } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
@@ -127,6 +127,15 @@ export function AbonnementPage() {
         <header className="auth-header learner-header">
           <p>Choisissez une ou plusieurs offres, puis payez par Mobile Money (MTN, Moov, Celtiis).</p>
         </header>
+
+        <button
+          type="button"
+          className="btn-outline"
+          onClick={() => navigate('/abonnement/historique')}
+        >
+          <History size={16} style={{ verticalAlign: '-3px', marginRight: 6 }} />
+          Historique des paiements
+        </button>
 
         {loading ? (
           <div className="auth-card learner-card learner-empty">

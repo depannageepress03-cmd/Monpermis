@@ -65,7 +65,7 @@ export function ReservationMobileMoneyCheckout({
   onClose,
   onSuccess,
 }: ReservationMobileMoneyCheckoutProps) {
-  const [step, setStep] = useState<'operator' | 'phone' | 'waiting'>('operator')
+  const [step, setStep] = useState<'intro' | 'operator' | 'phone' | 'waiting'>('intro')
   const [operator, setOperator] = useState<MobileMoneyOperator | null>(null)
   const [phone, setPhone] = useState(defaultPhone)
   const [busy, setBusy] = useState(false)
@@ -75,7 +75,7 @@ export function ReservationMobileMoneyCheckout({
 
   useEffect(() => {
     if (!open) return
-    setStep('operator')
+    setStep('intro')
     setOperator(null)
     setPhone(defaultPhone)
     setError(null)
@@ -196,6 +196,14 @@ export function ReservationMobileMoneyCheckout({
 
         {error ? <p className="form-error">{error}</p> : null}
         {success ? <p className="form-success">{success}</p> : null}
+
+        {step === 'intro' ? (
+          <section className="mm-checkout-step">
+            <button type="button" className="btn-primary" onClick={() => setStep('operator')}>
+              Passer au paiement
+            </button>
+          </section>
+        ) : null}
 
         {step === 'operator' ? (
           <section className="mm-checkout-step">

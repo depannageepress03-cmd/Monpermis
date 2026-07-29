@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigation } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
-import { CalendarPlus, MapPin } from 'lucide-react-native'
+import { CalendarOff, CalendarPlus, Check, MapPin } from 'lucide-react-native'
 import {
   ActivityIndicator,
+  Animated,
   Image,
   Linking,
   Pressable,
@@ -13,10 +14,14 @@ import {
   View,
 } from 'react-native'
 import {
+  computeDrivingAmount,
   createReservation,
+  earliestBookableTime,
   fetchMoniteurAvailability,
   fetchMoniteurProfile,
   fetchPublicMoniteurs,
+  HOURS_DISCOUNT_FCFA,
+  HOURS_DISCOUNT_MIN_HOURS,
   requestReservationSlot,
   ReservationError,
   type AvailabilityDay,
@@ -26,6 +31,7 @@ import {
 } from '../../api/reservations'
 import { fetchAccessMe } from '../../api/accessRequests'
 import { DarkScreen } from '../../components/DarkScreen'
+import { EmptyState } from '../../components/EmptyState'
 import { PageNavbar } from '../../components/PageNavbar'
 import {
   ReservationMobileMoneyCheckout,
@@ -53,12 +59,21 @@ function minutesToTime(total: number) {
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
 }
 
-/** Créneaux de départ possibles pour une durée, dans les fenêtres libres. */
-function slotsForDuration(windows: AvailabilityWindow[], durationHours: number, stepMinutes = 30) {
+/**
+ * Créneaux de départ possibles pour une durée, dans les fenêtres libres.
+ * `minStart` exclut les heures déjà passées si l'écran reste ouvert.
+ */
+function slotsForDuration(
+  windows: AvailabilityWindow[],
+  durationHours: number,
+  minStart: string | null = null,
+  stepMinutes = 30,
+) {
   const durationMin = Math.round(durationHours * 60)
+  const floorMin = minStart ? timeToMinutes(minStart) : -1
   const out: { start: string; end: string }[] = []
   for (const window of windows) {
-    const startMin = timeToMinutes(window.start)
+    const startMin = Math.max(timeToMinutes(window.start), floorMin)
     const endMin = timeToMinutes(window.end)
     for (let t = startMin; t + durationMin <= endMin; t += stepMinutes) {
       out.push({
@@ -104,6 +119,8 @@ export function ReservationFlowScreen() {
   const [profile, setProfile] = useState<MoniteurProfile | null>(null)
   const [availabilityDays, setAvailabilityDays] = useState<AvailabilityDay[]>([])
   const [hourlyPriceFcfa, setHourlyPriceFcfa] = useState(5000)
+  const [hoursDiscount, setHoursDiscount] = useState(HOURS_DISCOUNT_FCFA)
+  const [hoursDiscountMin, setHoursDiscountMin] = useState(HOURS_DISCOUNT_MIN_HOURS)
   const [durationHours, setDurationHours] = useState(1)
   const [selectedDate, setSelectedDate] = useState('')
   const [selectedStart, setSelectedStart] = useState('')
@@ -113,6 +130,17 @@ export function ReservationFlowScreen() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [mmOpen, setMmOpen] = useState(false)
+  const stepProgress = useRef(new Animated.Value(0)).current
+
+  const stepOrder = step === 'moniteur' || step === 'profile' ? 0 : step === 'duration' ? 1 : 2
+
+  useEffect(() => {
+    Animated.timing(stepProgress, {
+      toValue: stepOrder / 2,
+      duration: 280,
+      useNativeDriver: false,
+    }).start()
+  }, [stepOrder, stepProgress])
 
   const selectedMoniteur = useMemo(
     () => moniteurs.find((item) => item.id === moniteurId) ?? profile,
@@ -125,7 +153,7 @@ export function ReservationFlowScreen() {
     return availabilityDays
       .map((day) => ({
         date: day.date,
-        slots: slotsForDuration(day.windows, durationHours),
+        slots: slotsForDuration(day.windows, durationHours, earliestBookableTime(day.date)),
       }))
       .filter((day) => day.slots.length > 0)
   }, [availabilityDays, durationHours])
@@ -135,7 +163,13 @@ export function ReservationFlowScreen() {
     [daysWithSlots, selectedDate],
   )
 
-  const priceFcfa = Math.round(hourlyPriceFcfa * durationHours)
+  const priceFcfa = computeDrivingAmount(
+    hourlyPriceFcfa,
+    durationHours,
+    hoursDiscount,
+    hoursDiscountMin,
+  )
+  const priceDiscount = Math.max(0, Math.round(hourlyPriceFcfa * durationHours) - priceFcfa)
 
   const loadMoniteurs = useCallback(async () => {
     setBusy(true)
@@ -173,6 +207,8 @@ export function ReservationFlowScreen() {
       const data = await fetchMoniteurAvailability({ moniteurId, days: 14 })
       setAvailabilityDays(data.days)
       setHourlyPriceFcfa(data.hourlyPriceFcfa || data.moniteur.defaultPriceFcfa || 5000)
+      if (data.hoursDiscountFcfa !== undefined) setHoursDiscount(data.hoursDiscountFcfa)
+      if (data.hoursDiscountMinHours !== undefined) setHoursDiscountMin(data.hoursDiscountMinHours)
     } catch (err) {
       setError(err instanceof ReservationError ? err.message : 'Disponibilités indisponibles')
     } finally {
@@ -297,7 +333,7 @@ export function ReservationFlowScreen() {
           startTime: selectedStart,
           endTime: selectedEnd,
           hours: durationHours,
-          priceFcfa: data.creneau.priceFcfa || priceFcfa,
+          priceFcfa: data.amountFcfa ?? priceFcfa,
           paymentMethod: 'solde',
           whatsappLink: result.whatsappLink,
         })
@@ -332,32 +368,53 @@ export function ReservationFlowScreen() {
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
-        <View style={styles.stepsRow}>
-          {[
-            { id: 'moniteur', label: 'Moniteur' },
-            { id: 'duration', label: 'Durée' },
-            { id: 'slots', label: 'Créneau' },
-          ].map((item, index) => {
-            const order = { moniteur: 0, profile: 0, duration: 1, slots: 2 } as const
-            const currentOrder = order[step]
-            const itemOrder = item.id === 'moniteur' ? 0 : item.id === 'duration' ? 1 : 2
-            const current = currentOrder === itemOrder
-            const active = currentOrder >= itemOrder
-            return (
-              <View
-                key={item.id}
-                style={[
-                  styles.stepPill,
-                  current && styles.stepPillCurrent,
-                  active && !current && styles.stepPillDone,
-                ]}
-              >
-                <Text style={[styles.stepPillText, (current || active) && styles.stepPillTextActive]}>
-                  {index + 1}. {item.label}
-                </Text>
-              </View>
-            )
-          })}
+        <View style={styles.stepper}>
+          <View style={styles.stepperTrack}>
+            <Animated.View
+              style={[
+                styles.stepperFill,
+                {
+                  width: stepProgress.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: ['0%', '100%'],
+                  }),
+                },
+              ]}
+            />
+          </View>
+          <View style={styles.stepsRow}>
+            {[
+              { id: 'moniteur', label: 'Moniteur' },
+              { id: 'duration', label: 'Durée' },
+              { id: 'slots', label: 'Créneau' },
+            ].map((item, index) => {
+              const itemOrder = index
+              const current = stepOrder === itemOrder
+              const done = stepOrder > itemOrder
+              return (
+                <View key={item.id} style={styles.stepItem}>
+                  <View
+                    style={[
+                      styles.stepDot,
+                      (current || done) && styles.stepDotActive,
+                      current && styles.stepDotCurrent,
+                    ]}
+                  >
+                    {done ? (
+                      <Check size={12} color="#0B0F1A" strokeWidth={3} />
+                    ) : (
+                      <Text style={[styles.stepDotText, (current || done) && styles.stepDotTextActive]}>
+                        {index + 1}
+                      </Text>
+                    )}
+                  </View>
+                  <Text style={[styles.stepPillText, (current || done) && styles.stepPillTextActive]}>
+                    {item.label}
+                  </Text>
+                </View>
+              )
+            })}
+          </View>
         </View>
 
         {step === 'moniteur' ? (
@@ -555,7 +612,13 @@ export function ReservationFlowScreen() {
                       {hours} h
                     </Text>
                     <Text style={[styles.durationPrice, active && styles.durationChipTextActive]}>
-                      {(hourlyPriceFcfa * hours).toLocaleString('fr-FR')} F
+                      {computeDrivingAmount(
+                        hourlyPriceFcfa,
+                        hours,
+                        hoursDiscount,
+                        hoursDiscountMin,
+                      ).toLocaleString('fr-FR')}{' '}
+                      F
                     </Text>
                   </Pressable>
                 )
@@ -590,6 +653,7 @@ export function ReservationFlowScreen() {
                 </Text>
                 <Text style={styles.brandText}>
                   ~ {priceFcfa.toLocaleString('fr-FR')} FCFA
+                  {priceDiscount > 0 ? ` (−${priceDiscount.toLocaleString('fr-FR')})` : ''}
                   {soldeHeures !== null ? ` · solde ${soldeHeures} h` : ''}
                 </Text>
               </View>
@@ -601,10 +665,21 @@ export function ReservationFlowScreen() {
             {busy ? <ActivityIndicator color={dark.green} style={{ marginVertical: 12 }} /> : null}
 
             {daysWithSlots.length === 0 && !busy ? (
-              <Text style={styles.empty}>
-                Aucun créneau de {durationHours} h disponible sur les 14 prochains jours. Réduisez
-                la durée ou changez de moniteur.
-              </Text>
+              <EmptyState
+                icon={<CalendarOff size={30} color={dark.textMuted} />}
+                title="Aucun créneau disponible"
+                message={`Pas de plage de ${durationHours} h libre sur les 14 prochains jours.`}
+                action={
+                  <View style={{ width: '100%', gap: 8 }}>
+                    <Pressable style={styles.primaryBtn} onPress={() => setStep('duration')}>
+                      <Text style={styles.primaryBtnText}>Réduire la durée</Text>
+                    </Pressable>
+                    <Pressable style={styles.secondaryBtn} onPress={() => setStep('moniteur')}>
+                      <Text style={styles.secondaryBtnText}>Voir un autre moniteur</Text>
+                    </Pressable>
+                  </View>
+                }
+              />
             ) : null}
 
             <Text style={styles.section}>Jour</Text>
@@ -644,6 +719,17 @@ export function ReservationFlowScreen() {
               <View style={styles.dayCard}>
                 <Text style={styles.dayTitle}>{formatDateLabel(selectedDate)}</Text>
                 <Text style={styles.fieldLabel}>Horaires libres ({durationHours} h)</Text>
+                {earliestBookableTime(selectedDate) ? (
+                  <Text style={styles.brandText}>
+                    Réservation possible à partir de {earliestBookableTime(selectedDate)}{' '}
+                    aujourd’hui.
+                  </Text>
+                ) : null}
+                {selectedDaySlots.length === 0 ? (
+                  <Text style={styles.empty}>
+                    Plus de créneau disponible aujourd’hui. Choisissez un autre jour.
+                  </Text>
+                ) : null}
                 <View style={styles.slotsRow}>
                   {selectedDaySlots.map((slot) => {
                     const active = selectedStart === slot.start && selectedEnd === slot.end
@@ -653,6 +739,7 @@ export function ReservationFlowScreen() {
                         onPress={() => {
                           setSelectedStart(slot.start)
                           setSelectedEnd(slot.end)
+                          void import('../../utils/haptics').then((m) => m.hapticSelect())
                         }}
                         style={[styles.windowChip, active && styles.windowChipActive]}
                       >
@@ -674,16 +761,6 @@ export function ReservationFlowScreen() {
                     </Text>
                   </View>
                 ) : null}
-
-                <Pressable
-                  style={[styles.primaryBtn, (busy || !selectedStart) && styles.disabled]}
-                  disabled={busy || !selectedStart}
-                  onPress={() => void onContinue()}
-                >
-                  <Text style={styles.primaryBtnText}>
-                    {busy ? 'Vérification…' : 'Continuer'}
-                  </Text>
-                </Pressable>
               </View>
             ) : null}
 
@@ -696,6 +773,27 @@ export function ReservationFlowScreen() {
           </View>
         ) : null}
       </ScrollView>
+
+      {step === 'slots' && selectedStart && selectedEnd ? (
+        <View style={styles.stickyBar}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.stickyTitle}>
+              {selectedDate} · {selectedStart}–{selectedEnd}
+            </Text>
+            <Text style={styles.stickyPrice}>
+              {priceFcfa.toLocaleString('fr-FR')} FCFA
+              {priceDiscount > 0 ? ` (−${priceDiscount.toLocaleString('fr-FR')})` : ''}
+            </Text>
+          </View>
+          <Pressable
+            style={[styles.stickyBtn, busy && styles.disabled]}
+            disabled={busy}
+            onPress={() => void onContinue()}
+          >
+            <Text style={styles.stickyBtnText}>{busy ? '…' : 'Confirmer'}</Text>
+          </Pressable>
+        </View>
+      ) : null}
 
       {checkoutSlot ? (
         <ReservationMobileMoneyCheckout
@@ -746,8 +844,88 @@ export function ReservationFlowScreen() {
 }
 
 const styles = StyleSheet.create({
-  scroll: { paddingHorizontal: 22, paddingTop: 14, paddingBottom: 32 },
-  stepsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
+  scroll: { paddingHorizontal: 22, paddingTop: 14, paddingBottom: 120 },
+  stickyBar: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    paddingBottom: 22,
+    borderTopWidth: 1,
+    borderTopColor: dark.border,
+    backgroundColor: dark.bg,
+  },
+  stickyTitle: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 13,
+    color: dark.textPrimary,
+  },
+  stickyPrice: {
+    fontFamily: fonts.displayBold,
+    fontSize: 16,
+    color: dark.green,
+    marginTop: 2,
+  },
+  stickyBtn: {
+    borderRadius: 14,
+    backgroundColor: dark.green,
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+    minWidth: 110,
+    alignItems: 'center',
+  },
+  stickyBtnText: {
+    color: '#0B0F1A',
+    fontFamily: fonts.displayBold,
+    fontSize: 15,
+  },
+  stepsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  stepper: { marginBottom: 18, gap: 10 },
+  stepperTrack: {
+    height: 4,
+    borderRadius: 999,
+    backgroundColor: dark.border,
+    overflow: 'hidden',
+  },
+  stepperFill: {
+    height: '100%',
+    borderRadius: 999,
+    backgroundColor: dark.green,
+  },
+  stepItem: { flex: 1, alignItems: 'center', gap: 6 },
+  stepDot: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    borderWidth: 1.5,
+    borderColor: dark.border,
+    backgroundColor: dark.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepDotActive: {
+    borderColor: dark.green,
+    backgroundColor: dark.green,
+  },
+  stepDotCurrent: {
+    backgroundColor: dark.greenSoft,
+    borderColor: dark.green,
+  },
+  stepDotText: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 12,
+    color: dark.textMuted,
+  },
+  stepDotTextActive: { color: dark.textPrimary },
   stepPill: {
     borderRadius: 999,
     borderWidth: 1,

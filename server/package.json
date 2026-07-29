@@ -9,6 +9,8 @@
     "test:email": "node scripts/test-email.js",
     "verify:user": "node scripts/verify-user.js",
     "seed:admin": "node scripts/seed-admin.js",
+    "seed:local": "node scripts/seed-local-test.mjs",
+    "check:local": "node scripts/check-local-flow.mjs",
     "migrate:audios:cloudinary": "node scripts/migrate-audios-to-cloudinary.mjs",
     "audit:audios": "node scripts/audit-question-audios.mjs"
   },
