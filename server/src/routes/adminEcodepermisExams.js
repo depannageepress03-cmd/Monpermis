@@ -8,19 +8,42 @@ import {
   ECODEPERMIS_EXAM_COUNT,
   ECODEPERMIS_EXAM_PASS_SCORE,
   ECODEPERMIS_EXAM_SIZE,
+  computeQuestionBankFingerprint,
+  summarizeChapterBank,
 } from '../utils/ecodepermis.js'
 import {
-  countPublishedQuestions,
   ensureECodePermisExamSheets,
   generateECodePermisExamSheets,
 } from '../services/ecodepermisExams.js'
+import { Chapter } from '../models/Chapter.js'
 
 const router = Router()
 router.use(requireAdminAuth)
 
+async function loadBankMeta() {
+  const chapters = await Chapter.find({ published: true }).select('_id name')
+  const chapterIds = chapters.map((chapter) => chapter._id)
+  const chapterNameById = new Map(chapters.map((chapter) => [String(chapter._id), chapter.name]))
+  let questions = []
+  if (chapterIds.length > 0) {
+    questions = await Question.find({
+      published: true,
+      chapterId: { $in: chapterIds },
+    }).select('_id chapterId')
+  }
+  if (questions.length === 0) {
+    questions = await Question.find({ published: true }).select('_id chapterId')
+  }
+  return {
+    bankCount: questions.length,
+    chapterBank: summarizeChapterBank(questions, chapterNameById),
+    fingerprint: computeQuestionBankFingerprint(questions),
+  }
+}
+
 router.get('/exams', async (_req, res) => {
   try {
-    const bankCount = await countPublishedQuestions()
+    const bankStats = await loadBankMeta()
     const exams = await ECodePermisExam.find().sort({ examNumber: 1 })
     const recentAttempts = await ECodePermisExamAttempt.find({ status: 'completed' })
       .sort({ completedAt: -1 })
@@ -29,16 +52,23 @@ router.get('/exams', async (_req, res) => {
     const userIds = [...new Set(recentAttempts.map((a) => String(a.userId)))]
     const users = await User.find({ _id: { $in: userIds } }).select('firstName lastName email')
     const userMap = new Map(users.map((u) => [String(u._id), u]))
+    const bankReady =
+      exams.length === ECODEPERMIS_EXAM_COUNT &&
+      bankStats.bankCount >= ECODEPERMIS_EXAM_SIZE &&
+      exams.every((exam) => String(exam.bankFingerprint || '') === bankStats.fingerprint)
 
     res.json({
       success: true,
       data: {
-        bankCount,
+        bankCount: bankStats.bankCount,
+        chapterBank: bankStats.chapterBank,
+        chapterCount: bankStats.chapterBank.length,
         requiredSize: ECODEPERMIS_EXAM_SIZE,
         examTotal: ECODEPERMIS_EXAM_COUNT,
         passScore: ECODEPERMIS_EXAM_PASS_SCORE,
         examCount: exams.length,
-        ready: exams.length === ECODEPERMIS_EXAM_COUNT && bankCount >= ECODEPERMIS_EXAM_SIZE,
+        ready: bankReady,
+        stale: exams.length > 0 && !bankReady && bankStats.bankCount >= ECODEPERMIS_EXAM_SIZE,
         exams: exams.map((exam) => ({
           id: exam._id,
           examNumber: exam.examNumber,
@@ -74,6 +104,8 @@ router.post('/exams/generate', async (_req, res) => {
       success: true,
       data: {
         bankCount: result.bankCount,
+        chapterBank: result.chapterBank || [],
+        chapterCount: (result.chapterBank || []).length,
         requiredSize: ECODEPERMIS_EXAM_SIZE,
         examTotal: ECODEPERMIS_EXAM_COUNT,
         passScore: ECODEPERMIS_EXAM_PASS_SCORE,
@@ -140,6 +172,7 @@ router.post('/exams/ensure', async (_req, res) => {
       success: true,
       data: {
         bankCount: result.bankCount,
+        chapterBank: result.chapterBank || [],
         examCount: result.examCount,
         generated: Boolean(result.generated),
         passScore: ECODEPERMIS_EXAM_PASS_SCORE,

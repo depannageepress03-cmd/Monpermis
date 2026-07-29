@@ -119,8 +119,8 @@ export function ECodePermisScreen() {
           <Text style={styles.kicker}>Conditions réelles</Text>
           <Text style={styles.title}>E-Codepermis</Text>
           <Text style={styles.subtitle}>
-            {data?.examTotal ?? 30} épreuves mélangées aléatoirement · {data?.requiredSize ?? 20}{' '}
-            questions · note /20 · seuil {data?.passScore ?? 14}/20
+            {data?.examTotal ?? 30} épreuves · mélange de tous les chapitres ·{' '}
+            {data?.requiredSize ?? 20} questions · seuil {data?.passScore ?? 14}/20
           </Text>
 
           {loading ? <ActivityIndicator color={dark.green} /> : null}

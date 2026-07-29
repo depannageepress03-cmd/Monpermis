@@ -89,7 +89,7 @@ export function ExamensTestPage() {
         <header className="auth-header learner-header">
           <p className="learner-kicker">Auto-évaluation</p>
           <p>
-            {data?.examTotal ?? 24} examens blancs mélangés aléatoirement ·{' '}
+            {data?.examTotal ?? 24} sujets de test · mélange aléatoire de tous les chapitres ·{' '}
             {data?.requiredSize ?? 20} questions · note sur 20 · moyenne {data?.passScore ?? 14}/20
           </p>
         </header>
@@ -137,7 +137,7 @@ export function ExamensTestPage() {
                     {data.exams.map((exam) => (
                       <article key={exam.id} className={`practice-exam-card is-${exam.status}`}>
                         <div>
-                          <strong>Examen {exam.examNumber}</strong>
+                          <strong>Sujet {exam.examNumber}</strong>
                           <small>
                             {exam.questionCount} questions
                             {exam.score

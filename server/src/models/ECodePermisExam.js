@@ -24,6 +24,7 @@ const ecodepermisExamSchema = new mongoose.Schema(
       },
     },
     published: { type: Boolean, default: true },
+    bankFingerprint: { type: String, default: '' },
   },
   { timestamps: true },
 )

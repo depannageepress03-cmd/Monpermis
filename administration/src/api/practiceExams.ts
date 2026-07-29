@@ -1,12 +1,21 @@
 import { apiFetch } from './client'
 
+export interface AdminChapterBankItem {
+  chapterId: string
+  chapterName: string
+  questionCount: number
+}
+
 export interface AdminPracticeExamOverview {
   bankCount: number
+  chapterBank?: AdminChapterBankItem[]
+  chapterCount?: number
   requiredSize: number
   examTotal: number
   passScore: number
   examCount: number
   ready: boolean
+  stale?: boolean
   exams: {
     id: string
     examNumber: number

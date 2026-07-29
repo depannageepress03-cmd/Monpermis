@@ -38,7 +38,7 @@ const categories = [
   {
     id: 'ExamensTest' as const,
     label: 'Examens test',
-    subtitle: '(auto-évaluation)',
+    subtitle: '(24 sujets · tous les chapitres)',
     image: require('../../assets/code-route/cards/examens.jpg'),
     tone: 'yellow' as const,
   },

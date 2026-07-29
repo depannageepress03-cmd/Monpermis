@@ -10,9 +10,9 @@ export function ExamensTestAdminPage() {
   return (
     <BaseExamAdminPage
       title="Examens test"
-      kicker="Auto-évaluation"
-      itemLabel="Examen"
-      itemsLabel="examens"
+      kicker="24 sujets · mélange par chapitres"
+      itemLabel="Sujet"
+      itemsLabel="sujets"
       backTo="/code"
       backLabel="Code de la route"
       fetchOverview={fetchAdminPracticeExams}

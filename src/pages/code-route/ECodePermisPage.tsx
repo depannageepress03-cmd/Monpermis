@@ -124,9 +124,8 @@ export function ECodePermisPage() {
         <header className="auth-header learner-header">
           <p className="learner-kicker">Conditions réelles</p>
           <p>
-            {data?.examTotal ?? 30} épreuves mélangées aléatoirement parmi tous les cours et
-            chapitres · {data?.requiredSize ?? 20} questions · note sur 20 · seuil de réussite{' '}
-            {data?.passScore ?? 14}/20
+            {data?.examTotal ?? 30} épreuves · mélange équilibré de tous les chapitres publiés ·{' '}
+            {data?.requiredSize ?? 20} questions · note sur 20 · seuil {data?.passScore ?? 14}/20
           </p>
         </header>
 

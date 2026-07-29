@@ -24,6 +24,8 @@ const practiceExamSchema = new mongoose.Schema(
       },
     },
     published: { type: Boolean, default: true },
+    /** Empreinte de la banque au moment de la génération (régénération auto si obsolète). */
+    bankFingerprint: { type: String, default: '' },
   },
   { timestamps: true },
 )

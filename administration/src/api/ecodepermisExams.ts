@@ -2,11 +2,18 @@ import { apiFetch } from './client'
 
 export interface AdminECodePermisOverview {
   bankCount: number
+  chapterBank?: {
+    chapterId: string
+    chapterName: string
+    questionCount: number
+  }[]
+  chapterCount?: number
   requiredSize: number
   examTotal: number
   passScore: number
   examCount: number
   ready: boolean
+  stale?: boolean
   exams: {
     id: string
     examNumber: number

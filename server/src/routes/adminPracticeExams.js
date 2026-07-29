@@ -10,9 +10,9 @@ import {
   PRACTICE_EXAM_SIZE,
 } from '../utils/practiceExam.js'
 import {
-  countPublishedQuestions,
   ensurePracticeExamSheets,
   generatePracticeExamSheets,
+  getPracticeExamBankStats,
 } from '../services/practiceExams.js'
 
 const router = Router()
@@ -20,7 +20,7 @@ router.use(requireAdminAuth)
 
 router.get('/practice-exams', async (_req, res) => {
   try {
-    const bankCount = await countPublishedQuestions()
+    const bankStats = await getPracticeExamBankStats()
     const exams = await PracticeExam.find().sort({ examNumber: 1 })
     const recentAttempts = await PracticeExamAttempt.find({ status: 'completed' })
       .sort({ completedAt: -1 })
@@ -29,16 +29,23 @@ router.get('/practice-exams', async (_req, res) => {
     const userIds = [...new Set(recentAttempts.map((a) => String(a.userId)))]
     const users = await User.find({ _id: { $in: userIds } }).select('firstName lastName email')
     const userMap = new Map(users.map((u) => [String(u._id), u]))
+    const bankReady =
+      exams.length === PRACTICE_EXAM_COUNT &&
+      bankStats.bankCount >= PRACTICE_EXAM_SIZE &&
+      exams.every((exam) => String(exam.bankFingerprint || '') === bankStats.fingerprint)
 
     res.json({
       success: true,
       data: {
-        bankCount,
+        bankCount: bankStats.bankCount,
+        chapterBank: bankStats.chapterBank,
+        chapterCount: bankStats.chapterBank.length,
         requiredSize: PRACTICE_EXAM_SIZE,
         examTotal: PRACTICE_EXAM_COUNT,
         passScore: PRACTICE_EXAM_PASS_SCORE,
         examCount: exams.length,
-        ready: exams.length === PRACTICE_EXAM_COUNT && bankCount >= PRACTICE_EXAM_SIZE,
+        ready: bankReady,
+        stale: exams.length > 0 && !bankReady && bankStats.bankCount >= PRACTICE_EXAM_SIZE,
         exams: exams.map((exam) => ({
           id: exam._id,
           examNumber: exam.examNumber,
@@ -74,6 +81,8 @@ router.post('/practice-exams/generate', async (_req, res) => {
       success: true,
       data: {
         bankCount: result.bankCount,
+        chapterBank: result.chapterBank || [],
+        chapterCount: (result.chapterBank || []).length,
         requiredSize: PRACTICE_EXAM_SIZE,
         examTotal: PRACTICE_EXAM_COUNT,
         passScore: PRACTICE_EXAM_PASS_SCORE,
@@ -140,6 +149,7 @@ router.post('/practice-exams/ensure', async (_req, res) => {
       success: true,
       data: {
         bankCount: result.bankCount,
+        chapterBank: result.chapterBank || [],
         examCount: result.examCount,
         generated: Boolean(result.generated),
         passScore: PRACTICE_EXAM_PASS_SCORE,

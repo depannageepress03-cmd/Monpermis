@@ -26,13 +26,22 @@ interface RecentResult {
   learnerEmail: string
 }
 
+interface ChapterBankItem {
+  chapterId: string
+  chapterName: string
+  questionCount: number
+}
+
 interface ExamOverview {
   bankCount: number
+  chapterBank?: ChapterBankItem[]
+  chapterCount?: number
   requiredSize: number
   examTotal: number
   passScore: number
   examCount: number
   ready: boolean
+  stale?: boolean
   exams: ExamItem[]
   recentResults: RecentResult[]
 }
@@ -110,7 +119,7 @@ export function BaseExamAdminPage(config: BaseExamConfig) {
     try {
       const result = await config.generateExams(token)
       setSuccess(
-        `${result.examCount} ${config.itemsLabel} généré(e)s (mélange aléatoire, ${result.requiredSize} questions / ${config.itemLabel}).`,
+        `${result.examCount} ${config.itemsLabel} généré(e)s (mélange aléatoire équilibré par chapitre, ${result.requiredSize} questions / ${config.itemLabel}).`,
       )
       await load()
     } catch (err) {
@@ -173,6 +182,10 @@ export function BaseExamAdminPage(config: BaseExamConfig) {
               <span>Questions publiées</span>
             </article>
             <article>
+              <strong>{data.chapterCount ?? data.chapterBank?.length ?? 0}</strong>
+              <span>Chapitres dans le mix</span>
+            </article>
+            <article>
               <strong>{data.examCount}/{data.examTotal}</strong>
               <span>{config.itemsLabel} formé(e)s</span>
             </article>
@@ -180,17 +193,15 @@ export function BaseExamAdminPage(config: BaseExamConfig) {
               <strong>{data.passScore}/20</strong>
               <span>Seuil de réussite</span>
             </article>
-            <article>
-              <strong>{data.recentResults.length}</strong>
-              <span>Résultats récents</span>
-            </article>
           </div>
 
           <div className="questions-toolbar">
             <p className="questions-toolbar-meta">
               {data.ready
-                ? `Les ${data.examTotal} ${config.itemsLabel} sont prêt(e)s. Régénérez pour re-mélanger les questions.`
-                : `Il faut au moins ${data.requiredSize} questions publiées pour générer les ${config.itemsLabel}.`}
+                ? `Les ${data.examTotal} ${config.itemsLabel} sont prêt(e)s (mélange équilibré sur tous les chapitres publiés). Régénérez pour re-mélanger.`
+                : data.stale
+                  ? `La banque de questions a changé : régénérez pour mettre à jour les ${data.examTotal} ${config.itemsLabel}.`
+                  : `Il faut au moins ${data.requiredSize} questions publiées (chapitres publiés) pour générer les ${config.itemsLabel}.`}
             </p>
             <div className="practice-admin-actions">
               <button type="button" className="btn-outline" onClick={() => void load()}>
@@ -208,6 +219,25 @@ export function BaseExamAdminPage(config: BaseExamConfig) {
               </button>
             </div>
           </div>
+
+          {data.chapterBank && data.chapterBank.length > 0 ? (
+            <section className="practice-results-block">
+              <h3>Banque par chapitre (source du mélange)</h3>
+              <div className="practice-results-list">
+                {data.chapterBank.map((chapter) => (
+                  <article key={chapter.chapterId}>
+                    <div>
+                      <strong>{chapter.chapterName}</strong>
+                      <small>Chapitre publié</small>
+                    </div>
+                    <span className="practice-score-pill">
+                      {chapter.questionCount} Q
+                    </span>
+                  </article>
+                ))}
+              </div>
+            </section>
+          ) : null}
 
           <div className="practice-exam-grid">
             {data.exams.length === 0 ? (

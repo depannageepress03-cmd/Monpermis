@@ -119,8 +119,8 @@ export function ExamensTestScreen() {
           <Text style={styles.kicker}>Auto-évaluation</Text>
           <Text style={styles.title}>Examens test</Text>
           <Text style={styles.subtitle}>
-            {data?.examTotal ?? 24} examens blancs · {data?.requiredSize ?? 20} questions · note /20
-            · moyenne {data?.passScore ?? 14}/20
+            {data?.examTotal ?? 24} sujets · mélange de tous les chapitres ·{' '}
+            {data?.requiredSize ?? 20} questions · note /20 · moyenne {data?.passScore ?? 14}/20
           </Text>
 
           {loading ? <ActivityIndicator color={dark.green} /> : null}
@@ -189,7 +189,7 @@ export function ExamensTestScreen() {
                       ]}
                     >
                       <View style={{ flex: 1 }}>
-                        <Text style={styles.examTitle}>Examen {exam.examNumber}</Text>
+                        <Text style={styles.examTitle}>Sujet {exam.examNumber}</Text>
                         <Text style={styles.examMeta}>
                           {exam.questionCount} questions
                           {exam.score

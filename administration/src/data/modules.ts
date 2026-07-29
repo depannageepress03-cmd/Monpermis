@@ -32,7 +32,7 @@ export const codeModules: ModuleItem[] = [
   {
     id: 'examens-test',
     label: 'Examens test',
-    subtitle: 'Auto-évaluation guidée',
+    subtitle: '24 sujets · mélange par chapitres',
     path: '/code/examens-test',
     icon: HelpCircle,
     tone: 'gold',
