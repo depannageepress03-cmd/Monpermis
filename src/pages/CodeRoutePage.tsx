@@ -110,8 +110,8 @@ export function CodeRoutePage() {
         ) : !accessMe?.access.code ? (
           <div className="auth-card learner-card learner-empty subscription-locked-state">
             <Lock size={32} aria-hidden="true" />
-            <h2>Souscrire au Code de la route</h2>
-            <p>Forfait mensuel pour débloquer la révision, les examens test et vos notes.</p>
+            <h2>Souscrire au Code</h2>
+            <p>Forfait mensuel pour débloquer la révision, les sujets test et l’examen blanc.</p>
             <div className="offer-pick-list">
               <div className="offer-pick is-selected">
                 <h3>Code de la route</h3>

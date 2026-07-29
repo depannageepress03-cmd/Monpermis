@@ -236,7 +236,7 @@ export function HomePage() {
                 <small>
                   {codeLocked ? (
                     <>
-                      <Lock size={12} /> Abonnement requis
+                      <Lock size={12} /> Accès requis
                     </>
                   ) : (
                     'Cours, quiz & examens'
@@ -263,7 +263,7 @@ export function HomePage() {
                 <small>
                   {conduiteLocked ? (
                     <>
-                      <Lock size={12} /> Abonnement requis
+                      <Lock size={12} /> Accès requis
                     </>
                   ) : (
                     'Leçons & réservations'

@@ -157,7 +157,7 @@ export function ConduitePage() {
         ) : !conduiteUnlocked ? (
           <div className="auth-card learner-card learner-empty subscription-locked-state">
             <BookOpen size={32} aria-hidden="true" />
-            <h2>Choisir vos accès conduite</h2>
+            <h2>Choisir tes accès conduite</h2>
             <p>
               Les cours vidéo sont gratuits. Les heures avec moniteur restent payantes.
             </p>

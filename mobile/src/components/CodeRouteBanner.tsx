@@ -76,7 +76,7 @@ export function CodeRouteBanner() {
       <View style={styles.caption} pointerEvents="none">
         <Text style={styles.title}>Code de la route</Text>
         <Text style={styles.text}>
-          Révision, examens test et examen blanc — avancez à votre rythme.
+          Révision, sujets test et examen blanc — avance à ton rythme.
         </Text>
       </View>
       <View style={styles.dots} pointerEvents="none">

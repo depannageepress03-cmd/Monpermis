@@ -141,7 +141,11 @@ export function AbonnementPage() {
         <PageNavbar title="Mes accès" icon={<CreditCard size={25} />} onBack={() => navigate('/accueil')} />
 
         <header className="auth-header learner-header">
-          <p>Choisissez Code et/ou Chat IA, puis payez par Mobile Money (MTN, Moov, Celtiis).</p>
+          <p>
+            Achète l’accès Code par Mobile Money (MTN, Moov, Celtiis). Les cours vidéo de
+            conduite sont gratuits dans l’espace Conduite ; les heures moniteur s’achètent
+            aussi là-bas.
+          </p>
         </header>
 
         <button

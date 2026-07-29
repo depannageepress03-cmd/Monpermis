@@ -580,8 +580,8 @@
   align-items: center;
   justify-content: center;
   gap: 6px;
-  min-width: 28px;
-  font-size: 13px;
+  min-width: 58px;
+  font-size: 12px;
   font-weight: 700;
   color: var(--navy-muted);
 }
@@ -2313,4 +2313,219 @@
   justify-content: space-between;
   gap: 0.75rem;
   font-size: 0.9rem;
+}
+
+/* —— Réservations admin (refonte disposition) —— */
+.reserv-tabs {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--white);
+  width: fit-content;
+  max-width: 100%;
+}
+
+.reserv-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: none;
+  background: transparent;
+  color: var(--navy-muted);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  padding: 8px 14px;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+}
+
+.reserv-tab.is-active {
+  background: var(--green-light);
+  color: var(--navy);
+}
+
+.reserv-tab-count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: rgba(0, 16, 48, 0.08);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.reserv-tab.is-active .reserv-tab-count {
+  background: rgba(0, 176, 80, 0.18);
+}
+
+.reserv-filters {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.reserv-filters label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--navy-muted);
+}
+
+.reserv-filters select {
+  height: var(--control-h);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: #fafbfc;
+  color: var(--navy);
+  font: inherit;
+  font-size: 16px;
+  padding: 0 10px;
+}
+
+.reserv-card-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.reserv-card {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px 16px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--white);
+}
+
+.reserv-card-main {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-width: 0;
+  flex: 1;
+}
+
+.reserv-card-thumb {
+  width: 56px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: var(--r-xs);
+  flex-shrink: 0;
+  background: #eef1f4;
+}
+
+.reserv-card-thumb.is-empty {
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--navy-muted);
+  border: 1px dashed var(--border);
+}
+
+.reserv-card-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.reserv-card-text strong {
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--navy);
+}
+
+.reserv-card-line {
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--navy-muted);
+}
+
+.reserv-card-aside {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.reserv-create-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.reserv-create-grid input {
+  min-width: 0;
+  height: var(--control-h);
+  padding: 0 11px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: #fafbfc;
+  color: var(--navy);
+  font: inherit;
+  font-size: 16px;
+}
+
+.reserv-create-grid input:focus {
+  outline: none;
+  border-color: var(--green);
+  box-shadow: 0 0 0 3px rgba(0, 176, 80, 0.12);
+  background: var(--white);
+}
+
+.reserv-create-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.reserv-create-previews {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 20px;
+}
+
+.moniteur-edit-layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
+.moniteur-edit-col {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+@media (min-width: 900px) {
+  .moniteur-edit-layout {
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+    align-items: start;
+  }
+}
+
+@media (max-width: 720px) {
+  .reserv-filters,
+  .reserv-create-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .reserv-card-aside {
+    width: 100%;
+    justify-content: flex-start;
+  }
 }

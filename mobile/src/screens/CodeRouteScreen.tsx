@@ -153,7 +153,8 @@ export function CodeRouteScreen() {
             </View>
             <Text style={styles.accessStateTitle}>Souscrire au Code</Text>
             <Text style={styles.accessStateCopy}>
-              Forfait {formatPrice(codePrice)} / mois pour débloquer la révision et les examens.
+              Forfait {formatPrice(codePrice)} / mois pour débloquer la révision, les sujets
+              test et l’examen blanc.
             </Text>
             <Bouncy scaleTo={0.97} onPress={() => setCheckoutOpen(true)}>
               <View style={styles.accessButton}>

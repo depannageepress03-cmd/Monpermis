@@ -1,5 +1,5 @@
-import { FormEvent, useCallback, useEffect, useState } from 'react'
-import { ImagePlus, Pencil, Plus, Trash2, X } from 'lucide-react'
+import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
+import { ImagePlus, Pencil, Plus, RefreshCw, Trash2, X } from 'lucide-react'
 import {
   createMoniteur,
   deleteAdminReservation,
@@ -28,14 +28,12 @@ const WEEK_DAYS = [
   { dayOfWeek: 0, label: 'Dimanche' },
 ] as const
 
+type TabKey = 'reservations' | 'moniteurs'
+
 function mediaSrc(url: string) {
   return resolveMediaUrl(url)
 }
 
-/**
- * Une séance payée en Mobile Money a heuresDebitees = 0 : sans ce badge, rien
- * n'indiquerait à l'admin que l'élève a bien réglé.
- */
 function paymentBadge(reservation: ReservationAdmin) {
   if (reservation.heuresDebitees > 0) {
     return { label: 'Payé (solde d’heures)', tone: 'is-success' }
@@ -49,6 +47,31 @@ function paymentBadge(reservation: ReservationAdmin) {
       return { label: 'Remboursé', tone: '' }
     default:
       return { label: 'Non payé', tone: 'is-danger' }
+  }
+}
+
+function statusLabel(status: string) {
+  switch (String(status || '').toLowerCase()) {
+    case 'confirmed':
+    case 'confirmee':
+    case 'confirmée':
+      return 'Confirmée'
+    case 'pending':
+    case 'en_attente':
+      return 'En attente'
+    case 'cancelled':
+    case 'canceled':
+    case 'annulee':
+    case 'annulée':
+      return 'Annulée'
+    case 'completed':
+    case 'terminee':
+    case 'terminée':
+      return 'Terminée'
+    case 'no_show':
+      return 'Absent'
+    default:
+      return status || '—'
   }
 }
 
@@ -116,11 +139,13 @@ function intervalInvalid(interval: TimeInterval) {
   return !interval.start || !interval.end || interval.end <= interval.start
 }
 
-
 export function ReservationsPage() {
+  const [tab, setTab] = useState<TabKey>('reservations')
   const [moniteurs, setMoniteurs] = useState<Moniteur[]>([])
   const [reservations, setReservations] = useState<ReservationAdmin[]>([])
-  const [moniteurId, setMoniteurId] = useState('')
+  const [filterMoniteur, setFilterMoniteur] = useState('')
+  const [filterStatus, setFilterStatus] = useState('')
+  const [filterPayment, setFilterPayment] = useState('')
   const [editDayHours, setEditDayHours] = useState<EditDayHours[]>(() => toEditDayHours([]))
   const [loading, setLoading] = useState(true)
   const [savingMoniteur, setSavingMoniteur] = useState(false)
@@ -166,12 +191,6 @@ export function ReservationsPage() {
       ])
       setMoniteurs(moniteursData.moniteurs)
       setReservations(reservationsData.reservations || [])
-      setMoniteurId((current) => {
-        if (current && moniteursData.moniteurs.some((item) => item.id === current)) {
-          return current
-        }
-        return moniteursData.moniteurs[0]?.id || ''
-      })
     } catch (err) {
       setError(isAuthError(err) ? err.message : 'Chargement impossible')
     } finally {
@@ -189,6 +208,32 @@ export function ReservationsPage() {
     }, 8000)
     return () => window.clearInterval(timer)
   }, [load])
+
+  const filteredReservations = useMemo(() => {
+    return reservations.filter((reservation) => {
+      if (filterMoniteur && reservation.moniteur?.id !== filterMoniteur) return false
+      if (filterStatus) {
+        const raw = String(reservation.status || '').toLowerCase()
+        const normalized = statusLabel(reservation.status).toLowerCase()
+        const wanted = filterStatus.toLowerCase()
+        const aliases: Record<string, string[]> = {
+          confirmed: ['confirmed', 'confirmée', 'confirmee'],
+          pending: ['pending', 'en attente', 'en_attente'],
+          cancelled: ['cancelled', 'canceled', 'annulée', 'annulee'],
+          completed: ['completed', 'terminée', 'terminee'],
+        }
+        const accepted = aliases[wanted] || [wanted]
+        if (!accepted.some((item) => raw === item || normalized === item)) return false
+      }
+      if (filterPayment) {
+        const badge = paymentBadge(reservation)
+        if (filterPayment === 'paid' && !badge.tone.includes('success')) return false
+        if (filterPayment === 'pending' && badge.tone !== 'is-warning') return false
+        if (filterPayment === 'unpaid' && badge.tone !== 'is-danger') return false
+      }
+      return true
+    })
+  }, [reservations, filterMoniteur, filterStatus, filterPayment])
 
   const handlePhotoUpload = async (file: File | null) => {
     if (!file) return
@@ -258,7 +303,7 @@ export function ReservationsPage() {
       setCity('')
       setSuccess(`Moniteur « ${moniteur.fullName} » ajouté.`)
       await load()
-      setMoniteurId(moniteur.id)
+      openEdit(moniteur)
     } catch (err) {
       setError(isAuthError(err) ? err.message : 'Création impossible')
     } finally {
@@ -279,7 +324,7 @@ export function ReservationsPage() {
     try {
       await deleteMoniteur(token, item.id)
       setSuccess(`Moniteur « ${item.fullName} » supprimé.`)
-      if (moniteurId === item.id) setMoniteurId('')
+      if (editingMoniteur?.id === item.id) setEditingMoniteur(null)
       await load()
     } catch (err) {
       setError(isAuthError(err) ? err.message : 'Suppression impossible')
@@ -289,8 +334,8 @@ export function ReservationsPage() {
   }
 
   const openEdit = (item: Moniteur) => {
+    setTab('moniteurs')
     setEditingMoniteur(item)
-    setMoniteurId(item.id)
     setEditBio(item.bio || '')
     setEditPhone(item.phone || '')
     setEditSpecialties((item.specialties || []).join(', '))
@@ -464,510 +509,617 @@ export function ReservationsPage() {
   }
 
   return (
-    <div className="admin-page">
+    <div className="admin-page reserv-page">
       <AdminSectionHeader
         backTo="/conduite"
         backLabel="Conduite"
         kicker="Gestion"
         title="Réservations & moniteurs"
-        subtitle="Ajoutez les moniteurs, puis modifiez profil et horaires via le crayon."
+        subtitle="Suivez les séances élèves, puis gérez les moniteurs et leurs horaires."
       />
+
+      <div className="reserv-tabs" role="tablist" aria-label="Sections réservations">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === 'reservations'}
+          className={`reserv-tab${tab === 'reservations' ? ' is-active' : ''}`}
+          onClick={() => setTab('reservations')}
+        >
+          Réservations
+          <span className="reserv-tab-count">{reservations.length}</span>
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === 'moniteurs'}
+          className={`reserv-tab${tab === 'moniteurs' ? ' is-active' : ''}`}
+          onClick={() => setTab('moniteurs')}
+        >
+          Moniteurs
+          <span className="reserv-tab-count">{moniteurs.length}</span>
+        </button>
+      </div>
 
       {error ? <p className="form-error">{error}</p> : null}
       {success ? <p className="form-success">{success}</p> : null}
 
-      <section className="admin-section">
-        <div className="admin-section-head">
-          <h3 className="admin-section-label">1. Moniteur & véhicule</h3>
-        </div>
-        <form onSubmit={handleCreateMoniteur} className="admin-section-body">
-          <div className="admin-toolbar">
-            <input
-              value={moniteurName}
-              onChange={(e) => setMoniteurName(e.target.value)}
-              placeholder="Nom du moniteur"
-              required
-              minLength={2}
-            />
-            <input
-              value={vehicleBrand}
-              onChange={(e) => setVehicleBrand(e.target.value)}
-              placeholder="Marque (ex. Toyota Corolla)"
-            />
-            <input
-              value={formVehicleType}
-              onChange={(e) => setFormVehicleType(e.target.value)}
-              placeholder="Type (ex. Voiture, Moto…)"
-              required
-              minLength={2}
-              aria-label="Type de véhicule"
-            />
-            <input
-              value={city}
-              onChange={(e) => setCity(e.target.value)}
-              placeholder="Ville / zone (ex. Cotonou, Calavi…)"
-              aria-label="Ville du moniteur"
-            />
-            <label className="btn-outline btn-file">
-              <ImagePlus size={15} />
-              {uploadingMoniteurPhoto ? 'Import…' : 'Photo moniteur'}
-              <input
-                type="file"
-                accept="image/*"
-                hidden
-                onChange={(e) => void handleMoniteurPhotoUpload(e.target.files?.[0] ?? null)}
-              />
-            </label>
-            <label className="btn-outline btn-file">
-              <ImagePlus size={15} />
-              {uploadingPhoto ? 'Import…' : 'Photo véhicule'}
-              <input
-                type="file"
-                accept="image/*"
-                hidden
-                onChange={(e) => void handlePhotoUpload(e.target.files?.[0] ?? null)}
-              />
-            </label>
+      {tab === 'reservations' ? (
+        <section className="admin-section">
+          <div className="admin-section-head">
+            <h3 className="admin-section-label">Séances élèves</h3>
             <button
-              type="submit"
-              className="btn-primary btn-primary-inline"
-              disabled={savingMoniteur || uploadingPhoto || uploadingMoniteurPhoto}
+              type="button"
+              className="btn-outline-sm"
+              onClick={() => void load()}
+              disabled={loading}
             >
-              <Plus size={16} />
-              {savingMoniteur ? 'Ajout…' : 'Enregistrer'}
+              <RefreshCw size={14} />
+              {loading ? 'Actualisation…' : 'Actualiser'}
             </button>
           </div>
-
-          {photoUrl ? (
-            <div className="moniteur-vehicle-preview">
-              <img src={mediaSrc(photoUrl)} alt="Moniteur" />
-              <div>
-                <p className="admin-muted">Aperçu photo moniteur</p>
-                <button type="button" className="btn-text-danger" onClick={() => setPhotoUrl('')}>
-                  <Trash2 size={14} />
-                  Retirer
-                </button>
-              </div>
-            </div>
-          ) : null}
-
-          {vehiclePhotoUrl ? (
-            <div className="moniteur-vehicle-preview">
-              <img src={mediaSrc(vehiclePhotoUrl)} alt="Véhicule" />
-              <div>
-                <p className="admin-muted">Aperçu photo véhicule</p>
-                <button
-                  type="button"
-                  className="btn-text-danger"
-                  onClick={() => setVehiclePhotoUrl('')}
+          <div className="admin-section-body">
+            <div className="reserv-filters">
+              <label>
+                Moniteur
+                <select
+                  value={filterMoniteur}
+                  onChange={(e) => setFilterMoniteur(e.target.value)}
                 >
-                  <Trash2 size={14} />
-                  Retirer
-                </button>
-              </div>
+                  <option value="">Tous</option>
+                  {moniteurs.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.fullName}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Statut
+                <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
+                  <option value="">Tous</option>
+                  <option value="confirmed">Confirmée</option>
+                  <option value="pending">En attente</option>
+                  <option value="cancelled">Annulée</option>
+                  <option value="completed">Terminée</option>
+                </select>
+              </label>
+              <label>
+                Paiement
+                <select value={filterPayment} onChange={(e) => setFilterPayment(e.target.value)}>
+                  <option value="">Tous</option>
+                  <option value="paid">Payé</option>
+                  <option value="pending">En attente</option>
+                  <option value="unpaid">Non payé</option>
+                </select>
+              </label>
             </div>
-          ) : null}
-        </form>
-      </section>
 
-      <section className="admin-section">
-        <div className="admin-section-head">
-          <h3 className="admin-section-label">2. Moniteurs & disponibilité</h3>
-          <p className="admin-section-hint">
-            Touchez le crayon pour modifier le profil et les horaires (jusqu’à 2 plages par jour).
-            Après enregistrement, le formulaire se masque.
-          </p>
-        </div>
-        <div className="admin-section-body">
-          {moniteurs.length === 0 ? (
-            <p className="admin-empty">Créez d’abord un moniteur ci-dessus.</p>
-          ) : (
-            <div className="moniteur-pick-grid">
-              {moniteurs.map((item) => {
-                const active = item.id === moniteurId
-                const hasSchedule = (item.weeklyAvailability || []).length > 0
+            {loading && reservations.length === 0 ? <p className="admin-empty">Chargement…</p> : null}
+            {!loading && filteredReservations.length === 0 ? (
+              <p className="admin-empty">
+                {reservations.length === 0
+                  ? 'Aucune réservation pour le moment. Dès qu’un élève confirme une séance, elle apparaît ici.'
+                  : 'Aucune réservation ne correspond aux filtres.'}
+              </p>
+            ) : null}
+
+            <div className="reserv-card-list">
+              {filteredReservations.map((reservation) => {
+                const badge = paymentBadge(reservation)
+                const learner = reservation.user
+                  ? `${reservation.user.firstName} ${reservation.user.lastName}`
+                  : 'Élève'
+                const when = reservation.creneau
+                  ? `${reservation.creneau.date} · ${reservation.creneau.startTime}${
+                      reservation.creneau.endTime ? `–${reservation.creneau.endTime}` : ''
+                    }`
+                  : 'Créneau —'
+                const priceLine =
+                  reservation.heuresDebitees > 0
+                    ? `${reservation.heuresDebitees} h débitée${reservation.heuresDebitees > 1 ? 's' : ''}`
+                    : `${(reservation.priceFcfa || 0).toLocaleString('fr-FR')} FCFA`
+
                 return (
-                  <div
-                    key={item.id}
-                    className={`moniteur-pick-card${active ? ' is-active' : ''}`}
-                  >
-                    <div className="moniteur-pick-top">
-                      <button
-                        type="button"
-                        className="moniteur-pick-main"
-                        onClick={() => setMoniteurId(item.id)}
-                      >
-                        {item.vehiclePhotoUrl ? (
-                          <img src={mediaSrc(item.vehiclePhotoUrl)} alt="" />
-                        ) : (
-                          <div className="moniteur-vehicle-placeholder">Véhicule</div>
-                        )}
-                        <div className="moniteur-pick-meta">
-                          <strong>{item.fullName}</strong>
-                          <span>{item.vehicleBrand || 'Marque non renseignée'}</span>
-                          <span className="moniteur-pick-type">
-                            {item.vehicleTypes?.[0] || 'Véhicule'}
-                            {item.city ? ` · ${item.city}` : ''}
-                            {hasSchedule ? ' · Dispo OK' : ' · Dispo à définir'}
+                  <article key={String(reservation.id)} className="reserv-card">
+                    <div className="reserv-card-main">
+                      {reservation.moniteur?.vehiclePhotoUrl ? (
+                        <img
+                          className="reserv-card-thumb"
+                          src={mediaSrc(reservation.moniteur.vehiclePhotoUrl)}
+                          alt=""
+                        />
+                      ) : (
+                        <div className="reserv-card-thumb is-empty">Séance</div>
+                      )}
+                      <div className="reserv-card-text">
+                        <strong>{learner}</strong>
+                        <span className="reserv-card-line">{when}</span>
+                        <span className="reserv-card-line">
+                          {reservation.moniteur?.fullName || 'Moniteur'}
+                          {reservation.moniteur?.vehicleBrand
+                            ? ` · ${reservation.moniteur.vehicleBrand}`
+                            : ''}
+                          {reservation.vehicleType ? ` · ${reservation.vehicleType}` : ''}
+                        </span>
+                        <span className="reserv-card-line">{priceLine}</span>
+                        {reservation.paymentRef ? (
+                          <span className="admin-muted">Réf. {reservation.paymentRef}</span>
+                        ) : null}
+                        {reservation.cancellationReason ? (
+                          <span className="admin-muted">
+                            Motif d’annulation
+                            {reservation.cancelledBy === 'learner'
+                              ? ' (élève)'
+                              : reservation.cancelledBy === 'admin'
+                                ? ' (admin)'
+                                : ''}
+                            : {reservation.cancellationReason}
                           </span>
-                        </div>
-                      </button>
+                        ) : null}
+                      </div>
+                    </div>
+                    <div className="reserv-card-aside">
+                      <span className="admin-chip">{statusLabel(reservation.status)}</span>
+                      <span className={`admin-chip ${badge.tone}`.trim()}>{badge.label}</span>
                       <button
                         type="button"
-                        className="btn-icon moniteur-pick-edit"
-                        title="Modifier profil et disponibilité"
-                        onClick={() => openEdit(item)}
-                      >
-                        <Pencil size={15} />
-                      </button>
-                      <button
-                        type="button"
-                        className="btn-icon-danger moniteur-pick-delete"
-                        title="Supprimer le moniteur"
-                        disabled={deletingId === item.id}
-                        onClick={() => void handleDeleteMoniteur(item)}
+                        className="btn-outline-sm btn-danger-sm"
+                        disabled={deletingReservationId === reservation.id}
+                        onClick={() => void handleDeleteReservation(reservation)}
+                        title="Supprimer la réservation"
                       >
                         <Trash2 size={15} />
+                        {deletingReservationId === reservation.id ? '…' : 'Supprimer'}
                       </button>
                     </div>
-                  </div>
+                  </article>
                 )
               })}
             </div>
-          )}
+          </div>
+        </section>
+      ) : null}
 
-          {editingMoniteur ? (
-            <div className="moniteur-edit-panel">
-              <div className="moniteur-edit-head">
-                <h4>Modifier {editingMoniteur.fullName}</h4>
-                <button type="button" className="btn-icon" title="Fermer" onClick={closeEdit}>
-                  <X size={16} />
+      {tab === 'moniteurs' ? (
+        <>
+          <section className="admin-section">
+            <div className="admin-section-head">
+              <h3 className="admin-section-label">Nouveau moniteur</h3>
+            </div>
+            <form onSubmit={handleCreateMoniteur} className="admin-section-body">
+              <div className="reserv-create-grid">
+                <input
+                  value={moniteurName}
+                  onChange={(e) => setMoniteurName(e.target.value)}
+                  placeholder="Nom du moniteur"
+                  required
+                  minLength={2}
+                />
+                <input
+                  value={vehicleBrand}
+                  onChange={(e) => setVehicleBrand(e.target.value)}
+                  placeholder="Marque (ex. Toyota Corolla)"
+                />
+                <input
+                  value={formVehicleType}
+                  onChange={(e) => setFormVehicleType(e.target.value)}
+                  placeholder="Type (ex. Voiture, Moto…)"
+                  required
+                  minLength={2}
+                  aria-label="Type de véhicule"
+                />
+                <input
+                  value={city}
+                  onChange={(e) => setCity(e.target.value)}
+                  placeholder="Ville / zone (ex. Cotonou, Calavi…)"
+                  aria-label="Ville du moniteur"
+                />
+              </div>
+              <div className="reserv-create-actions">
+                <label className="btn-outline btn-file">
+                  <ImagePlus size={15} />
+                  {uploadingMoniteurPhoto ? 'Import…' : 'Photo moniteur'}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    hidden
+                    onChange={(e) => void handleMoniteurPhotoUpload(e.target.files?.[0] ?? null)}
+                  />
+                </label>
+                <label className="btn-outline btn-file">
+                  <ImagePlus size={15} />
+                  {uploadingPhoto ? 'Import…' : 'Photo véhicule'}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    hidden
+                    onChange={(e) => void handlePhotoUpload(e.target.files?.[0] ?? null)}
+                  />
+                </label>
+                <button
+                  type="submit"
+                  className="btn-primary btn-primary-inline"
+                  disabled={savingMoniteur || uploadingPhoto || uploadingMoniteurPhoto}
+                >
+                  <Plus size={16} />
+                  {savingMoniteur ? 'Ajout…' : 'Enregistrer'}
                 </button>
               </div>
 
-              <div className="admin-toolbar">
-                <input
-                  value={editPhone}
-                  onChange={(e) => setEditPhone(e.target.value)}
-                  placeholder="Téléphone"
-                />
-                <input
-                  value={editSpecialties}
-                  onChange={(e) => setEditSpecialties(e.target.value)}
-                  placeholder="Spécialités (séparées par des virgules)"
-                />
-                <input
-                  value={editVehicleBrand}
-                  onChange={(e) => setEditVehicleBrand(e.target.value)}
-                  placeholder="Marque du véhicule"
-                />
-                <input
-                  value={editCity}
-                  onChange={(e) => setEditCity(e.target.value)}
-                  placeholder="Ville / zone"
-                />
-              </div>
-
-              <label className="moniteur-edit-label">
-                Présentation
-                <textarea
-                  value={editBio}
-                  onChange={(e) => setEditBio(e.target.value)}
-                  placeholder="Présentez ce moniteur aux élèves (expérience, pédagogie…)"
-                  rows={3}
-                />
-              </label>
-
-              <div className="moniteur-edit-label">
-                Photo du moniteur
-                <div className="moniteur-vehicle-preview">
-                  {editPhotoUrl ? (
-                    <img src={mediaSrc(editPhotoUrl)} alt="Moniteur" />
-                  ) : (
-                    <div className="moniteur-vehicle-placeholder">Moniteur</div>
-                  )}
-                  <label className="btn-outline btn-file">
-                    <ImagePlus size={15} />
-                    {uploadingEditMoniteurPhoto ? 'Import…' : 'Changer'}
-                    <input
-                      type="file"
-                      accept="image/*"
-                      hidden
-                      onChange={(e) => void handleEditMoniteurPhotoUpload(e.target.files?.[0] ?? null)}
-                    />
-                  </label>
-                </div>
-              </div>
-
-              <div className="moniteur-edit-label">
-                Photo du véhicule
-                <div className="moniteur-vehicle-preview">
-                  {editVehiclePhotoUrl ? (
-                    <img src={mediaSrc(editVehiclePhotoUrl)} alt="Véhicule" />
-                  ) : (
-                    <div className="moniteur-vehicle-placeholder">Véhicule</div>
-                  )}
-                  <label className="btn-outline btn-file">
-                    <ImagePlus size={15} />
-                    {uploadingEditVehiclePhoto ? 'Import…' : 'Changer'}
-                    <input
-                      type="file"
-                      accept="image/*"
-                      hidden
-                      onChange={(e) => void handleEditVehiclePhotoUpload(e.target.files?.[0] ?? null)}
-                    />
-                  </label>
-                </div>
-              </div>
-
-              <div className="moniteur-edit-label">
-                Galerie de photos
-                <div className="moniteur-photo-gallery">
-                  {editPhotos.map((url) => (
-                    <div key={url} className="moniteur-photo-item">
-                      <img src={mediaSrc(url)} alt="" />
-                      <button type="button" onClick={() => removeEditPhoto(url)} title="Retirer">
-                        <X size={13} />
-                      </button>
+              {(photoUrl || vehiclePhotoUrl) && (
+                <div className="reserv-create-previews">
+                  {photoUrl ? (
+                    <div className="moniteur-vehicle-preview">
+                      <img src={mediaSrc(photoUrl)} alt="Moniteur" />
+                      <div>
+                        <p className="admin-muted">Photo moniteur</p>
+                        <button
+                          type="button"
+                          className="btn-text-danger"
+                          onClick={() => setPhotoUrl('')}
+                        >
+                          <Trash2 size={14} />
+                          Retirer
+                        </button>
+                      </div>
                     </div>
-                  ))}
-                  <label className="btn-outline btn-file moniteur-photo-add">
-                    <ImagePlus size={15} />
-                    {uploadingEditPhoto ? 'Import…' : 'Ajouter'}
-                    <input
-                      type="file"
-                      accept="image/*"
-                      hidden
-                      onChange={(e) => void handleEditGalleryUpload(e.target.files?.[0] ?? null)}
-                    />
-                  </label>
-                </div>
-              </div>
-
-              <div className="moniteur-edit-label">
-                Vidéos de présentation (liens)
-                <div className="moniteur-video-list">
-                  {editVideos.map((url) => (
-                    <div key={url} className="moniteur-video-item">
-                      <span>{url}</span>
-                      <button type="button" onClick={() => removeEditVideo(url)} title="Retirer">
-                        <X size={13} />
-                      </button>
+                  ) : null}
+                  {vehiclePhotoUrl ? (
+                    <div className="moniteur-vehicle-preview">
+                      <img src={mediaSrc(vehiclePhotoUrl)} alt="Véhicule" />
+                      <div>
+                        <p className="admin-muted">Photo véhicule</p>
+                        <button
+                          type="button"
+                          className="btn-text-danger"
+                          onClick={() => setVehiclePhotoUrl('')}
+                        >
+                          <Trash2 size={14} />
+                          Retirer
+                        </button>
+                      </div>
                     </div>
-                  ))}
-                  <div className="moniteur-video-add">
-                    <input
-                      value={editNewVideoUrl}
-                      onChange={(e) => setEditNewVideoUrl(e.target.value)}
-                      placeholder="https://…"
-                    />
-                    <button type="button" className="btn-outline-sm" onClick={addEditVideo}>
-                      <Plus size={14} />
-                      Ajouter
-                    </button>
-                  </div>
+                  ) : null}
                 </div>
-              </div>
+              )}
+            </form>
+          </section>
 
-              <div className="moniteur-edit-label">
-                Disponibilité (jours & horaires)
-                <p className="admin-muted" style={{ margin: '0.35rem 0 0.6rem' }}>
-                  Cochez les jours libres. Jusqu’à 2 plages par jour (ex. matin et après-midi).
-                </p>
-                <div className="moniteur-hours-grid">
-                  {editDayHours.map((day) => {
-                    const label =
-                      WEEK_DAYS.find((item) => item.dayOfWeek === day.dayOfWeek)?.label || 'Jour'
+          <section className="admin-section">
+            <div className="admin-section-head">
+              <h3 className="admin-section-label">Équipe & disponibilité</h3>
+              <p className="admin-section-hint">
+                Ouvrez le crayon pour modifier le profil et les horaires (matin / après-midi).
+              </p>
+            </div>
+            <div className="admin-section-body">
+              {moniteurs.length === 0 ? (
+                <p className="admin-empty">Créez d’abord un moniteur ci-dessus.</p>
+              ) : (
+                <div className="moniteur-pick-grid">
+                  {moniteurs.map((item) => {
+                    const active = editingMoniteur?.id === item.id
+                    const hasSchedule = (item.weeklyAvailability || []).length > 0
                     return (
-                      <div key={day.dayOfWeek} className="moniteur-hours-day-block">
-                        <label className="moniteur-hours-day">
-                          <input
-                            type="checkbox"
-                            checked={day.enabled}
-                            onChange={(e) =>
-                              updateEditDay(day.dayOfWeek, {
-                                enabled: e.target.checked,
-                                ...(e.target.checked ? {} : { afternoonEnabled: false }),
-                              })
-                            }
-                          />
-                          <span>{label}</span>
-                        </label>
-                        <div className="moniteur-hours-intervals">
-                          <div className="moniteur-hours-row">
-                            <span className="moniteur-hours-slot-label">1</span>
-                            <input
-                              type="time"
-                              value={day.morning.start}
-                              disabled={!day.enabled}
-                              onChange={(e) =>
-                                updateEditInterval(day.dayOfWeek, 'morning', {
-                                  start: e.target.value,
-                                })
-                              }
-                              aria-label={`${label} plage 1 début`}
-                            />
-                            <span className="admin-muted">à</span>
-                            <input
-                              type="time"
-                              value={day.morning.end}
-                              disabled={!day.enabled}
-                              onChange={(e) =>
-                                updateEditInterval(day.dayOfWeek, 'morning', {
-                                  end: e.target.value,
-                                })
-                              }
-                              aria-label={`${label} plage 1 fin`}
-                            />
-                          </div>
-                          <div className="moniteur-hours-row">
-                            <label className="moniteur-hours-slot-toggle">
-                              <input
-                                type="checkbox"
-                                checked={day.afternoonEnabled}
-                                disabled={!day.enabled}
-                                onChange={(e) =>
-                                  updateEditDay(day.dayOfWeek, {
-                                    afternoonEnabled: e.target.checked,
-                                  })
-                                }
-                              />
-                              <span>2</span>
-                            </label>
-                            <input
-                              type="time"
-                              value={day.afternoon.start}
-                              disabled={!day.enabled || !day.afternoonEnabled}
-                              onChange={(e) =>
-                                updateEditInterval(day.dayOfWeek, 'afternoon', {
-                                  start: e.target.value,
-                                })
-                              }
-                              aria-label={`${label} plage 2 début`}
-                            />
-                            <span className="admin-muted">à</span>
-                            <input
-                              type="time"
-                              value={day.afternoon.end}
-                              disabled={!day.enabled || !day.afternoonEnabled}
-                              onChange={(e) =>
-                                updateEditInterval(day.dayOfWeek, 'afternoon', {
-                                  end: e.target.value,
-                                })
-                              }
-                              aria-label={`${label} plage 2 fin`}
-                            />
-                          </div>
+                      <div
+                        key={item.id}
+                        className={`moniteur-pick-card${active ? ' is-active' : ''}`}
+                      >
+                        <div className="moniteur-pick-top">
+                          <button
+                            type="button"
+                            className="moniteur-pick-main"
+                            onClick={() => openEdit(item)}
+                          >
+                            {item.vehiclePhotoUrl ? (
+                              <img src={mediaSrc(item.vehiclePhotoUrl)} alt="" />
+                            ) : (
+                              <div className="moniteur-vehicle-placeholder">Véhicule</div>
+                            )}
+                            <div className="moniteur-pick-meta">
+                              <strong>{item.fullName}</strong>
+                              <span>{item.vehicleBrand || 'Marque non renseignée'}</span>
+                              <span className="moniteur-pick-type">
+                                {item.vehicleTypes?.[0] || 'Véhicule'}
+                                {item.city ? ` · ${item.city}` : ''}
+                                {hasSchedule ? ' · Dispo OK' : ' · Dispo à définir'}
+                              </span>
+                            </div>
+                          </button>
+                          <button
+                            type="button"
+                            className="btn-icon moniteur-pick-edit"
+                            title="Modifier profil et disponibilité"
+                            onClick={() => openEdit(item)}
+                          >
+                            <Pencil size={15} />
+                          </button>
+                          <button
+                            type="button"
+                            className="btn-icon-danger moniteur-pick-delete"
+                            title="Supprimer le moniteur"
+                            disabled={deletingId === item.id}
+                            onClick={() => void handleDeleteMoniteur(item)}
+                          >
+                            <Trash2 size={15} />
+                          </button>
                         </div>
                       </div>
                     )
                   })}
                 </div>
-              </div>
+              )}
 
-              <div className="moniteur-edit-actions">
-                <button type="button" className="btn-outline" onClick={closeEdit}>
-                  Annuler
-                </button>
-                <button
-                  type="button"
-                  className="btn-primary"
-                  disabled={savingEdit}
-                  onClick={() => void handleSaveEdit()}
-                >
-                  {savingEdit ? 'Enregistrement…' : 'Enregistrer'}
-                </button>
-              </div>
-            </div>
-          ) : null}
-        </div>
-      </section>
+              {editingMoniteur ? (
+                <div className="moniteur-edit-panel">
+                  <div className="moniteur-edit-head">
+                    <h4>Modifier {editingMoniteur.fullName}</h4>
+                    <button type="button" className="btn-icon" title="Fermer" onClick={closeEdit}>
+                      <X size={16} />
+                    </button>
+                  </div>
 
-      <section className="admin-section">
-        <div className="admin-section-head">
-          <h3 className="admin-section-label">3. Réservations élèves</h3>
-          <button type="button" className="btn-outline-sm" onClick={() => void load()} disabled={loading}>
-            {loading ? 'Actualisation…' : 'Actualiser'}
-          </button>
-        </div>
-        <div className="admin-section-body">
-          {loading && reservations.length === 0 ? <p className="admin-empty">Chargement…</p> : null}
-          {!loading && reservations.length === 0 ? (
-            <p className="admin-empty">
-              Aucune réservation pour le moment. Dès qu’un élève confirme une séance, elle
-              apparaît ici automatiquement.
-            </p>
-          ) : null}
-          <div className="admin-list">
-            {reservations.map((reservation) => (
-              <div key={String(reservation.id)} className="admin-list-item">
-                <div className="admin-list-main">
-                  {reservation.moniteur?.vehiclePhotoUrl ? (
-                    <img
-                      className="admin-list-thumb"
-                      src={mediaSrc(reservation.moniteur.vehiclePhotoUrl)}
-                      alt=""
-                    />
-                  ) : null}
-                  <div className="admin-list-text">
-                    <strong>
-                      {reservation.user
-                        ? `${reservation.user.firstName} ${reservation.user.lastName}`
-                        : 'Élève'}
-                    </strong>
-                    <span>
-                      {reservation.creneau
-                        ? `${reservation.creneau.date} · ${reservation.creneau.startTime}`
-                        : '—'}{' '}
-                      · {reservation.moniteur?.fullName || 'Moniteur'}
-                      {reservation.moniteur?.vehicleBrand
-                        ? ` · ${reservation.moniteur.vehicleBrand}`
-                        : ''}{' '}
-                      · {reservation.vehicleType} ·{' '}
-                      {reservation.heuresDebitees > 0
-                        ? `${reservation.heuresDebitees} h débitée${reservation.heuresDebitees > 1 ? 's' : ''}`
-                        : `${(reservation.priceFcfa || 0).toLocaleString('fr-FR')} FCFA`}
-                    </span>
-                    {reservation.paymentRef ? (
-                      <span className="admin-muted">Réf. paiement : {reservation.paymentRef}</span>
-                    ) : null}
-                    {reservation.cancellationReason ? (
-                      <span className="admin-muted">
-                        Motif d’annulation
-                        {reservation.cancelledBy === 'learner'
-                          ? ' (élève)'
-                          : reservation.cancelledBy === 'admin'
-                            ? ' (admin)'
-                            : ''}
-                        : {reservation.cancellationReason}
-                      </span>
-                    ) : null}
+                  <div className="moniteur-edit-layout">
+                    <div className="moniteur-edit-col">
+                      <div className="reserv-create-grid">
+                        <input
+                          value={editPhone}
+                          onChange={(e) => setEditPhone(e.target.value)}
+                          placeholder="Téléphone"
+                        />
+                        <input
+                          value={editSpecialties}
+                          onChange={(e) => setEditSpecialties(e.target.value)}
+                          placeholder="Spécialités (séparées par des virgules)"
+                        />
+                        <input
+                          value={editVehicleBrand}
+                          onChange={(e) => setEditVehicleBrand(e.target.value)}
+                          placeholder="Marque du véhicule"
+                        />
+                        <input
+                          value={editCity}
+                          onChange={(e) => setEditCity(e.target.value)}
+                          placeholder="Ville / zone"
+                        />
+                      </div>
+
+                      <label className="moniteur-edit-label">
+                        Présentation
+                        <textarea
+                          value={editBio}
+                          onChange={(e) => setEditBio(e.target.value)}
+                          placeholder="Présentez ce moniteur aux élèves (expérience, pédagogie…)"
+                          rows={3}
+                        />
+                      </label>
+
+                      <div className="moniteur-edit-label">
+                        Disponibilité (jours & horaires)
+                        <p className="admin-muted" style={{ margin: '0.35rem 0 0.6rem' }}>
+                          Cochez les jours libres. Jusqu’à 2 plages par jour (matin et après-midi).
+                        </p>
+                        <div className="moniteur-hours-grid">
+                          {editDayHours.map((day) => {
+                            const label =
+                              WEEK_DAYS.find((item) => item.dayOfWeek === day.dayOfWeek)?.label ||
+                              'Jour'
+                            return (
+                              <div key={day.dayOfWeek} className="moniteur-hours-day-block">
+                                <label className="moniteur-hours-day">
+                                  <input
+                                    type="checkbox"
+                                    checked={day.enabled}
+                                    onChange={(e) =>
+                                      updateEditDay(day.dayOfWeek, {
+                                        enabled: e.target.checked,
+                                        ...(e.target.checked ? {} : { afternoonEnabled: false }),
+                                      })
+                                    }
+                                  />
+                                  <span>{label}</span>
+                                </label>
+                                <div className="moniteur-hours-intervals">
+                                  <div className="moniteur-hours-row">
+                                    <span className="moniteur-hours-slot-label">Matin</span>
+                                    <input
+                                      type="time"
+                                      value={day.morning.start}
+                                      disabled={!day.enabled}
+                                      onChange={(e) =>
+                                        updateEditInterval(day.dayOfWeek, 'morning', {
+                                          start: e.target.value,
+                                        })
+                                      }
+                                      aria-label={`${label} matin début`}
+                                    />
+                                    <span className="admin-muted">à</span>
+                                    <input
+                                      type="time"
+                                      value={day.morning.end}
+                                      disabled={!day.enabled}
+                                      onChange={(e) =>
+                                        updateEditInterval(day.dayOfWeek, 'morning', {
+                                          end: e.target.value,
+                                        })
+                                      }
+                                      aria-label={`${label} matin fin`}
+                                    />
+                                  </div>
+                                  <div className="moniteur-hours-row">
+                                    <label className="moniteur-hours-slot-toggle">
+                                      <input
+                                        type="checkbox"
+                                        checked={day.afternoonEnabled}
+                                        disabled={!day.enabled}
+                                        onChange={(e) =>
+                                          updateEditDay(day.dayOfWeek, {
+                                            afternoonEnabled: e.target.checked,
+                                          })
+                                        }
+                                      />
+                                      <span>A-midi</span>
+                                    </label>
+                                    <input
+                                      type="time"
+                                      value={day.afternoon.start}
+                                      disabled={!day.enabled || !day.afternoonEnabled}
+                                      onChange={(e) =>
+                                        updateEditInterval(day.dayOfWeek, 'afternoon', {
+                                          start: e.target.value,
+                                        })
+                                      }
+                                      aria-label={`${label} après-midi début`}
+                                    />
+                                    <span className="admin-muted">à</span>
+                                    <input
+                                      type="time"
+                                      value={day.afternoon.end}
+                                      disabled={!day.enabled || !day.afternoonEnabled}
+                                      onChange={(e) =>
+                                        updateEditInterval(day.dayOfWeek, 'afternoon', {
+                                          end: e.target.value,
+                                        })
+                                      }
+                                      aria-label={`${label} après-midi fin`}
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="moniteur-edit-col">
+                      <div className="moniteur-edit-label">
+                        Photo du moniteur
+                        <div className="moniteur-vehicle-preview">
+                          {editPhotoUrl ? (
+                            <img src={mediaSrc(editPhotoUrl)} alt="Moniteur" />
+                          ) : (
+                            <div className="moniteur-vehicle-placeholder">Moniteur</div>
+                          )}
+                          <label className="btn-outline btn-file">
+                            <ImagePlus size={15} />
+                            {uploadingEditMoniteurPhoto ? 'Import…' : 'Changer'}
+                            <input
+                              type="file"
+                              accept="image/*"
+                              hidden
+                              onChange={(e) =>
+                                void handleEditMoniteurPhotoUpload(e.target.files?.[0] ?? null)
+                              }
+                            />
+                          </label>
+                        </div>
+                      </div>
+
+                      <div className="moniteur-edit-label">
+                        Photo du véhicule
+                        <div className="moniteur-vehicle-preview">
+                          {editVehiclePhotoUrl ? (
+                            <img src={mediaSrc(editVehiclePhotoUrl)} alt="Véhicule" />
+                          ) : (
+                            <div className="moniteur-vehicle-placeholder">Véhicule</div>
+                          )}
+                          <label className="btn-outline btn-file">
+                            <ImagePlus size={15} />
+                            {uploadingEditVehiclePhoto ? 'Import…' : 'Changer'}
+                            <input
+                              type="file"
+                              accept="image/*"
+                              hidden
+                              onChange={(e) =>
+                                void handleEditVehiclePhotoUpload(e.target.files?.[0] ?? null)
+                              }
+                            />
+                          </label>
+                        </div>
+                      </div>
+
+                      <div className="moniteur-edit-label">
+                        Galerie de photos
+                        <div className="moniteur-photo-gallery">
+                          {editPhotos.map((url) => (
+                            <div key={url} className="moniteur-photo-item">
+                              <img src={mediaSrc(url)} alt="" />
+                              <button
+                                type="button"
+                                onClick={() => removeEditPhoto(url)}
+                                title="Retirer"
+                              >
+                                <X size={13} />
+                              </button>
+                            </div>
+                          ))}
+                          <label className="btn-outline btn-file moniteur-photo-add">
+                            <ImagePlus size={15} />
+                            {uploadingEditPhoto ? 'Import…' : 'Ajouter'}
+                            <input
+                              type="file"
+                              accept="image/*"
+                              hidden
+                              onChange={(e) =>
+                                void handleEditGalleryUpload(e.target.files?.[0] ?? null)
+                              }
+                            />
+                          </label>
+                        </div>
+                      </div>
+
+                      <div className="moniteur-edit-label">
+                        Vidéos de présentation (liens)
+                        <div className="moniteur-video-list">
+                          {editVideos.map((url) => (
+                            <div key={url} className="moniteur-video-item">
+                              <span>{url}</span>
+                              <button
+                                type="button"
+                                onClick={() => removeEditVideo(url)}
+                                title="Retirer"
+                              >
+                                <X size={13} />
+                              </button>
+                            </div>
+                          ))}
+                          <div className="moniteur-video-add">
+                            <input
+                              value={editNewVideoUrl}
+                              onChange={(e) => setEditNewVideoUrl(e.target.value)}
+                              placeholder="https://…"
+                            />
+                            <button type="button" className="btn-outline-sm" onClick={addEditVideo}>
+                              <Plus size={14} />
+                              Ajouter
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="moniteur-edit-actions">
+                    <button type="button" className="btn-outline" onClick={closeEdit}>
+                      Annuler
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-primary"
+                      disabled={savingEdit}
+                      onClick={() => void handleSaveEdit()}
+                    >
+                      {savingEdit ? 'Enregistrement…' : 'Enregistrer'}
+                    </button>
                   </div>
                 </div>
-                <div className="admin-list-actions">
-                  <span className="admin-chip">{reservation.status}</span>
-                  {(() => {
-                    const badge = paymentBadge(reservation)
-                    return (
-                      <span className={`admin-chip ${badge.tone}`.trim()}>{badge.label}</span>
-                    )
-                  })()}
-                  <button
-                    type="button"
-                    className="btn-outline-sm btn-danger-sm"
-                    disabled={deletingReservationId === reservation.id}
-                    onClick={() => void handleDeleteReservation(reservation)}
-                    title="Supprimer la réservation"
-                  >
-                    <Trash2 size={15} />
-                    {deletingReservationId === reservation.id ? '…' : 'Supprimer'}
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+              ) : null}
+            </div>
+          </section>
+        </>
+      ) : null}
     </div>
   )
 }

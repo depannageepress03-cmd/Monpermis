@@ -28,7 +28,7 @@ const SLIDES = [
   {
     key: 'code',
     title: 'Code de la route',
-    body: 'Révise les chapitres, entraîne-toi aux QCM et passe des examens blancs à ton rythme.',
+    body: 'Révise les chapitres, entraîne-toi aux QCM, puis passe des sujets test et examens blancs.',
     icon: BookOpen,
     accent: dark.green,
   },
@@ -41,8 +41,8 @@ const SLIDES = [
   },
   {
     key: 'abo',
-    title: 'Abonnement simple',
-    body: 'Paie en Mobile Money (MTN, Moov, Celtiis) et suis l’historique de tes accès.',
+    title: 'Accès & paiement',
+    body: 'Souscris à l’accès Code en Mobile Money (MTN, Moov, Celtiis). Les cours vidéo restent gratuits ; les heures moniteur se réservent dans Conduite.',
     icon: CreditCard,
     accent: '#F0B429',
   },

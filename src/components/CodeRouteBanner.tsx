@@ -52,7 +52,7 @@ export function CodeRouteBanner() {
       <div className="code-route-banner-caption">
         <p className="code-route-banner-title">Code de la route</p>
         <p className="code-route-banner-text">
-          Révision, examens test et examen blanc — avancez à votre rythme.
+          Révision, sujets test et examen blanc — avance à ton rythme.
         </p>
       </div>
       <div className="code-route-banner-dots" aria-hidden="true">
