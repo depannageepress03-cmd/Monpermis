@@ -31,6 +31,8 @@ import { PrivacyPolicyPage } from './pages/PrivacyPolicyPage'
 import { MentionsLegalesPage } from './pages/MentionsLegalesPage'
 import { ProfilePage } from './pages/ProfilePage'
 import { NotificationsPage } from './pages/NotificationsPage'
+import { ActualitesPage } from './pages/ActualitesPage'
+import { ActualiteDetailPage } from './pages/ActualiteDetailPage'
 
 export default function App() {
   return (
@@ -47,6 +49,8 @@ export default function App() {
       <Route path="/accueil" element={<HomePage />} />
       <Route path="/profil" element={<ProfilePage />} />
       <Route path="/notifications" element={<NotificationsPage />} />
+      <Route path="/actualites" element={<ActualitesPage />} />
+      <Route path="/actualites/:id" element={<ActualiteDetailPage />} />
       <Route path="/abonnement" element={<AbonnementPage />} />
       <Route path="/abonnement/historique" element={<PaymentHistoryPage />} />
       <Route path="/code-de-la-route" element={<CodeRoutePage />} />

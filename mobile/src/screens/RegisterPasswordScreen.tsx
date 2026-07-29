@@ -35,7 +35,7 @@ interface FormErrors {
 export function RegisterPasswordScreen() {
   const navigation = useNavigation<Nav>()
   const route = useRoute<Route>()
-  const { firstName, lastName, email, phone } = route.params
+  const { firstName, lastName, phone } = route.params
 
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -49,9 +49,9 @@ export function RegisterPasswordScreen() {
   const handleSubmit = async () => {
     const passwordError = validatePassword(password)
     const confirmPasswordError = !confirmPassword
-      ? 'Confirmez votre mot de passe'
+      ? 'Confirme ton code'
       : confirmPassword !== password
-        ? 'Les mots de passe ne correspondent pas'
+        ? 'Les codes ne correspondent pas'
         : undefined
 
     if (passwordError || confirmPasswordError) {
@@ -66,7 +66,6 @@ export function RegisterPasswordScreen() {
       const { message } = await registerUser({
         firstName,
         lastName,
-        email,
         phone,
         password,
       })
@@ -77,7 +76,7 @@ export function RegisterPasswordScreen() {
             name: 'Login',
             params: {
               message:
-                message || 'Compte créé. Vérifie ton email puis connecte-toi.',
+                message || 'Compte créé. Connecte-toi avec ton téléphone et ton code.',
             },
           },
         ],
@@ -117,16 +116,16 @@ export function RegisterPasswordScreen() {
                 resizeMode="contain"
               />
               <BrandName size={22} style={styles.brand} mainColor={dark.textPrimary} />
-              <Text style={styles.title}>Ton mot de passe</Text>
+              <Text style={styles.title}>Ton code</Text>
               <Text style={styles.subtitle}>
-                Choisis un mot de passe sécurisé pour finaliser ton inscription.
+                Choisis un code secret (mot de passe) pour finaliser ton inscription.
               </Text>
             </View>
 
             <View style={styles.fields}>
               <AuthInput
-                label="Mot de passe"
-                placeholder="Mot de passe"
+                label="Code"
+                placeholder="Ton code secret"
                 secureTextEntry
                 autoComplete="new-password"
                 value={password}
@@ -134,8 +133,8 @@ export function RegisterPasswordScreen() {
                 error={errors.password}
               />
               <AuthInput
-                label="Confirmer le mot de passe"
-                placeholder="Confirmer le mot de passe"
+                label="Confirmer le code"
+                placeholder="Confirmer le code"
                 secureTextEntry
                 autoComplete="new-password"
                 value={confirmPassword}
@@ -144,7 +143,9 @@ export function RegisterPasswordScreen() {
               />
             </View>
 
-            <Text style={styles.hint}>Minimum 8 caractères</Text>
+            <Text style={styles.hint}>
+              Min. 8 caractères, avec majuscule, minuscule et chiffre.
+            </Text>
 
             <Bouncy onPress={handleSubmit} disabled={loading} scaleTo={0.97} style={loading && styles.disabled}>
               <LinearGradient

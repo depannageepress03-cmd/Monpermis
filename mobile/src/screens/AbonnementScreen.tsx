@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from 'react'
-import { useNavigation } from '@react-navigation/native'
+import { useCallback, useState } from 'react'
+import { useFocusEffect, useNavigation } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { Check, Clock, CreditCard, History, Lock } from 'lucide-react-native'
 import {
@@ -47,6 +47,7 @@ function formatPrice(price: number, currency = 'XOF') {
 
 const unitSuffix: Record<AccessModule['unit'], string> = {
   flat: '',
+  day: ' / jour',
   month: ' / mois',
   hour: ' / heure',
   week: ' / semaine',
@@ -91,9 +92,11 @@ export function AbonnementScreen() {
     }
   }, [])
 
-  useEffect(() => {
-    if (user) void load()
-  }, [user, load])
+  useFocusEffect(
+    useCallback(() => {
+      if (user) void load()
+    }, [user, load]),
+  )
 
   if (authLoading || !user) return <ScreenLoader />
 

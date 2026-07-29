@@ -12,23 +12,30 @@ export interface Announcement {
   title: string
   body: string
   kind: 'info' | 'promo' | 'alerte'
+  audience?: 'all' | 'active' | 'code' | 'conduite'
+  ctaUrl?: string
+  imageUrl?: string
   createdAt: string
+  expiresAt?: string | null
 }
 
 function getToken() {
   return getStoredToken()
 }
 
-export async function fetchAnnouncements(): Promise<Announcement[]> {
+export async function fetchAnnouncements(limit = 20): Promise<Announcement[]> {
   const token = getToken()
   if (!token) return []
   try {
-    const response = await fetch(`${getApiBase()}/content/announcements`, {
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
+    const response = await fetch(
+      `${getApiBase()}/content/announcements?limit=${Math.min(limit, 50)}`,
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
       },
-    })
+    )
     const body = (await response.json().catch(() => ({}))) as ApiResponse<{
       announcements: Announcement[]
     }>
@@ -40,4 +47,62 @@ export async function fetchAnnouncements(): Promise<Announcement[]> {
   } catch {
     return []
   }
+}
+
+export async function fetchAnnouncement(id: string): Promise<Announcement | null> {
+  const token = getToken()
+  if (!token || !id) return null
+  try {
+    const response = await fetch(`${getApiBase()}/content/announcements/${encodeURIComponent(id)}`, {
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+    })
+    const body = (await response.json().catch(() => ({}))) as ApiResponse<{
+      announcement: Announcement
+    }>
+    if (!response.ok || !body.success || !body.data) {
+      invalidateSessionIfUnauthorized(response.status)
+      return null
+    }
+    return body.data.announcement
+  } catch {
+    return null
+  }
+}
+
+export async function recordAnnouncementView(id: string): Promise<void> {
+  const token = getToken()
+  if (!token || !id) return
+  try {
+    await fetch(`${getApiBase()}/content/announcements/${encodeURIComponent(id)}/view`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+    })
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Détecte du HTML TipTap / legacy. */
+export function announcementLooksLikeHtml(value?: string | null): boolean {
+  return /<\/?[a-z][\s\S]*>/i.test(String(value ?? ''))
+}
+
+export function stripAnnouncementHtml(html: string): string {
+  return html
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n')
+    .replace(/<\/li>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
 }

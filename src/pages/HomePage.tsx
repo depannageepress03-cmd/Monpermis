@@ -5,6 +5,7 @@ import { clearSession } from '../api/auth'
 import { fetchAnnouncements, type Announcement } from '../api/announcements'
 import { fetchUnreadCount } from '../api/notifications'
 import { fetchAccessMe, type AccessMe } from '../api/accessRequests'
+import { AnnouncementCard } from '../components/AnnouncementCard'
 import { BrandName } from '../components/BrandName'
 import { HomeBottomAnimation } from '../components/HomeBottomAnimation'
 import { LegalFooter } from '../components/LegalFooter'
@@ -28,11 +29,24 @@ export function HomePage() {
 
   useEffect(() => {
     if (!user) return
-    void fetchAccessMe().then(setAccessMe).catch(() => setAccessMe(null))
+    const refreshAccess = () => {
+      void fetchAccessMe().then(setAccessMe).catch(() => setAccessMe(null))
+    }
+    refreshAccess()
     void fetchAnnouncements().then(setAnnouncements).catch(() => setAnnouncements([]))
     void fetchUnreadCount()
       .then(({ unreadCount: count }) => setUnreadCount(count))
       .catch(() => setUnreadCount(0))
+
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') refreshAccess()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    window.addEventListener('focus', refreshAccess)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('focus', refreshAccess)
+    }
   }, [user])
 
   const handleLogout = () => {
@@ -178,13 +192,25 @@ export function HomePage() {
 
         {announcements.length > 0 ? (
           <section className="home-app-news">
-            <p className="home-app-section-label">Actualités</p>
+            <div className="home-app-news-head">
+              <p className="home-app-section-label">Actualités</p>
+              <button
+                type="button"
+                className="home-app-news-all"
+                onClick={() => navigate('/actualites')}
+              >
+                Voir toutes les actualités
+                <ChevronRight size={14} />
+              </button>
+            </div>
             <div className="home-app-news-list">
               {announcements.slice(0, 4).map((item) => (
-                <article key={item.id} className={`home-app-news-card home-news-card--${item.kind}`}>
-                  <strong>{item.title}</strong>
-                  {item.body ? <p>{item.body}</p> : null}
-                </article>
+                <AnnouncementCard
+                  key={item.id}
+                  item={item}
+                  compact
+                  onOpen={() => navigate(`/actualites/${item.id}`)}
+                />
               ))}
             </div>
           </section>

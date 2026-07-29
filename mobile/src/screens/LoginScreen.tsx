@@ -15,7 +15,7 @@ import {
   Alert,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { getAuthErrorDetails, loginUser, loginWithGoogle, resendVerificationEmail } from '../api/auth'
+import { loginUser, loginWithGoogle } from '../api/auth'
 import { AuthInput } from '../components/AuthInput'
 import { Bouncy } from '../components/Bouncy'
 import { LegalFooter } from '../components/LegalFooter'
@@ -25,7 +25,12 @@ import { useAuth } from '../context/AuthContext'
 import { useGoogleSignIn } from '../hooks/useGoogleSignIn'
 import type { RootStackParamList } from '../navigation/types'
 import { dark, fonts, gradients } from '../theme'
-import { validateEmail, validatePassword } from '../utils/validation'
+import {
+  normalizePhone,
+  PHONE_PLACEHOLDER,
+  validateLoginIdentifier,
+  validatePassword,
+} from '../utils/validation'
 import { showAuthError } from '../utils/showAuthError'
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'Login'>
@@ -35,7 +40,7 @@ export function LoginScreen() {
   const navigation = useNavigation<Nav>()
   const route = useRoute<Route>()
   const { signIn } = useAuth()
-  const [email, setEmail] = useState('')
+  const [identifier, setIdentifier] = useState('')
   const [password, setPassword] = useState('')
   const [errors, setErrors] = useState<{ email?: string; password?: string; info?: string }>({})
   const [loading, setLoading] = useState(false)
@@ -111,52 +116,26 @@ export function LoginScreen() {
     }
   }, [googleError])
 
-  const offerResendVerification = (targetEmail: string) => {
-    Alert.alert(
-      'Email non vérifié',
-      'Vérifie ta boîte de réception, ou renvoie un nouveau lien.',
-      [
-        { text: 'OK', style: 'cancel' },
-        {
-          text: 'Renvoyer le lien',
-          onPress: () => {
-            void resendVerificationEmail(targetEmail)
-              .then(() => {
-                Alert.alert(
-                  'Email envoyé',
-                  'Si un compte non vérifié existe, un nouveau lien a été envoyé.',
-                )
-              })
-              .catch((err) => showAuthError(err, 'Envoi impossible'))
-          },
-        },
-      ],
-    )
-  }
-
   const handleSubmit = async () => {
-    const emailError = validateEmail(email)
+    const identifierError = validateLoginIdentifier(identifier)
     const passwordError = validatePassword(password)
 
-    if (emailError || passwordError) {
-      setErrors({ email: emailError, password: passwordError })
+    if (identifierError || passwordError) {
+      setErrors({ email: identifierError, password: passwordError })
       return
     }
 
     setErrors({})
     setLoading(true)
 
+    const trimmed = identifier.trim()
+    const loginValue = trimmed.includes('@') ? trimmed : normalizePhone(trimmed)
+
     try {
-      const { user, token } = await loginUser({ email: email.trim(), password })
+      const { user, token } = await loginUser({ identifier: loginValue, password })
       await finishAuth(token, user)
     } catch (error) {
-      const { code, email: errEmail, message } = getAuthErrorDetails(error)
-      if (code === 'EMAIL_NOT_VERIFIED') {
-        setErrors({ info: message })
-        offerResendVerification(errEmail || email)
-      } else {
-        showAuthError(error)
-      }
+      showAuthError(error)
     } finally {
       setLoading(false)
     }
@@ -200,17 +179,24 @@ export function LoginScreen() {
 
               <View style={styles.fields}>
                 <AuthInput
-                  label="Adresse email"
-                  placeholder="Adresse email"
-                  keyboardType="email-address"
-                  autoComplete="email"
-                  value={email}
-                  onChangeText={setEmail}
+                  label="Téléphone ou email"
+                  placeholder={`${PHONE_PLACEHOLDER} ou email`}
+                  keyboardType="default"
+                  autoComplete="username"
+                  autoCapitalize="none"
+                  value={identifier}
+                  onChangeText={(value) => {
+                    if (value.includes('@') || /[a-zA-Z]/.test(value)) {
+                      setIdentifier(value)
+                    } else {
+                      setIdentifier(normalizePhone(value))
+                    }
+                  }}
                   error={errors.email}
                 />
                 <AuthInput
-                  label="Mot de passe"
-                  placeholder="Mot de passe"
+                  label="Code"
+                  placeholder="Ton code"
                   secureTextEntry
                   autoComplete="password"
                   value={password}
@@ -220,7 +206,7 @@ export function LoginScreen() {
               </View>
 
               <Pressable style={styles.forgotHit} onPress={() => navigation.navigate('ForgotPassword')}>
-                <Text style={styles.forgot}>Mot de passe oublié ?</Text>
+                <Text style={styles.forgot}>Code oublié ?</Text>
               </Pressable>
 
               <Bouncy onPress={handleSubmit} disabled={loading} scaleTo={0.97} style={loading && styles.disabled}>

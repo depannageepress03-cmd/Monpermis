@@ -43,6 +43,7 @@ const linkToRoute: Record<string, keyof RootStackParamList> = {
   conduite: 'Conduite',
   notifications: 'Notifications',
   profil: 'Profile',
+  actualites: 'Actualites',
 }
 
 function timeAgo(iso: string) {
@@ -89,7 +90,21 @@ export function NotificationsScreen() {
       )
       void markNotificationRead(notification.id).catch(() => undefined)
     }
-    const route = linkToRoute[notification.link]
+    const link = notification.link || ''
+    if (link.startsWith('actualites/')) {
+      const id = link.slice('actualites/'.length)
+      if (id) {
+        navigation.navigate('ActualiteDetail', { id })
+        return
+      }
+      navigation.navigate('Actualites')
+      return
+    }
+    if (link === 'actualites') {
+      navigation.navigate('Actualites')
+      return
+    }
+    const route = linkToRoute[link]
     if (route && route !== 'Notifications') {
       navigation.navigate(route as never)
     }

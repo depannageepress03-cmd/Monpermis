@@ -34,10 +34,12 @@ import adminPromoCodesRoutes from './routes/adminPromoCodes.js'
 import { fedapayKeyFingerprint, isFedaPayConfigured } from './services/fedapay.js'
 import { sendMediaAsset } from './middleware/upload.js'
 import { ensureReservationIndexes } from './models/Reservation.js'
+import { ensureUserIndexes } from './models/User.js'
 import { ensureAccessModulePricing, expireDueAccessRequests, warnExpiringAccessRequests } from './utils/accessRequests.js'
 import { expireStalePendingReservations } from './utils/reservationPayments.js'
 import { runReservationReminders } from './utils/reservationReminders.js'
 import { completePastConfirmedReservations } from './utils/reservationLifecycle.js'
+import { runAnnouncementJobs } from './services/announcements.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const app = express()
@@ -296,6 +298,7 @@ async function connectMongo() {
     serverSelectionTimeoutMS: 8000,
   })
   logger.info('Connecté à MongoDB Atlas')
+  await ensureUserIndexes()
   await ensureReservationIndexes()
   try {
     const pricingSeed = await ensureAccessModulePricing()
@@ -307,10 +310,21 @@ async function connectMongo() {
     await expireStalePendingReservations()
     await completePastConfirmedReservations()
     await runReservationReminders()
+    try {
+      const ann = await runAnnouncementJobs()
+      if (ann.activated || ann.deactivated) {
+        logger.info('Jobs annonces au démarrage', ann)
+      }
+    } catch (e) {
+      logger.error('Erreur jobs annonces au démarrage', { error: e.message })
+    }
 
     setInterval(async () => {
       try {
-        await expireDueAccessRequests()
+        const { expired } = await expireDueAccessRequests()
+        if (expired > 0) {
+          logger.info('Abonnements expirés', { expired })
+        }
       } catch (e) {
         logger.error('Erreur vérification expirations', { error: e.message })
       }
@@ -339,6 +353,14 @@ async function connectMongo() {
         }
       } catch (e) {
         logger.error('Erreur rappels WhatsApp', { error: e.message })
+      }
+      try {
+        const ann = await runAnnouncementJobs()
+        if (ann.activated || ann.deactivated || ann.notified) {
+          logger.info('Jobs annonces', ann)
+        }
+      } catch (e) {
+        logger.error('Erreur jobs annonces', { error: e.message })
       }
     }, 15 * 60 * 1000)
   } catch (err) {

@@ -6,7 +6,6 @@ import { BrandName } from '../components/BrandName'
 import { GoogleSignInButton } from '../components/GoogleSignInButton'
 import { LegalFooter } from '../components/LegalFooter'
 import {
-  validateEmail,
   validateName,
   validatePassword,
   validatePhone,
@@ -18,10 +17,8 @@ import '../styles/login.css'
 interface FormErrors {
   firstName?: string
   lastName?: string
-  email?: string
   phone?: string
   password?: string
-  confirmPassword?: string
   terms?: string
   form?: string
 }
@@ -30,10 +27,8 @@ export function RegisterPage() {
   const navigate = useNavigate()
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
-  const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
   const [password, setPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
   const [acceptTerms, setAcceptTerms] = useState(false)
   const [errors, setErrors] = useState<FormErrors>({})
   const [loading, setLoading] = useState(false)
@@ -71,14 +66,8 @@ export function RegisterPage() {
     const newErrors: FormErrors = {
       firstName: validateName(firstName, 'Le prénom'),
       lastName: validateName(lastName, 'Le nom'),
-      email: validateEmail(email),
       phone: validatePhone(phone),
       password: validatePassword(password),
-      confirmPassword: !confirmPassword
-        ? 'Confirmez votre mot de passe'
-        : confirmPassword !== password
-          ? 'Les mots de passe ne correspondent pas'
-          : undefined,
       terms: !acceptTerms ? 'Vous devez accepter les conditions' : undefined,
     }
 
@@ -93,15 +82,16 @@ export function RegisterPage() {
 
     try {
       const { message } = await registerUser({
-        firstName,
-        lastName,
-        email: email.trim(),
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
         phone: normalizePhone(phone),
         password,
       })
       navigate('/', {
         replace: true,
-        state: { message: message || 'Compte créé. Vérifiez votre email puis connectez-vous.' },
+        state: {
+          message: message || 'Compte créé. Connecte-toi avec ton téléphone et ton code.',
+        },
       })
     } catch (error) {
       setErrors({ form: error instanceof Error ? error.message : 'Inscription impossible' })
@@ -148,20 +138,6 @@ export function RegisterPage() {
 
           <div className="signin-fields">
             <AuthInput
-              label="Adresse email"
-              name="email"
-              type="text"
-              placeholder="Adresse email"
-              autoComplete="email"
-              inputMode="email"
-              autoCapitalize="none"
-              autoCorrect="off"
-              spellCheck={false}
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              error={errors.email}
-            />
-            <AuthInput
               label="Téléphone"
               name="phone"
               type="tel"
@@ -173,25 +149,18 @@ export function RegisterPage() {
               error={errors.phone}
             />
             <AuthInput
-              label="Mot de passe"
+              label="Code"
               name="password"
               type="password"
-              placeholder="Mot de passe"
+              placeholder="Ton code secret"
               autoComplete="new-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               error={errors.password}
             />
-            <AuthInput
-              label="Confirmer le mot de passe"
-              name="confirmPassword"
-              type="password"
-              placeholder="Confirmer le mot de passe"
-              autoComplete="new-password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              error={errors.confirmPassword}
-            />
+            <p className="signin-field-hint">
+              Mot de passe du compte · min. 8 caractères, majuscule, minuscule et chiffre.
+            </p>
           </div>
 
           <div className="signin-terms-block signin-terms-block--app">

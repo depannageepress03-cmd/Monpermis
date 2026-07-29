@@ -18,9 +18,20 @@ export function validateEmail(email: string): string | undefined {
 }
 
 export function validatePassword(password: string): string | undefined {
-  if (!password) return 'Le mot de passe est requis'
+  if (!password) return 'Le code est requis'
   if (password.length < 8) return 'Minimum 8 caractères'
   return undefined
+}
+
+/** Identifiant de connexion : téléphone Bénin (10 chiffres) ou email. */
+export function validateLoginIdentifier(value: string): string | undefined {
+  const trimmed = value.trim()
+  if (!trimmed) return 'Téléphone ou email requis'
+  if (trimmed.includes('@')) {
+    if (!isValidEmailFormat(trimmed)) return 'Email invalide'
+    return undefined
+  }
+  return validatePhone(trimmed)
 }
 
 /** Format attendu : 0147880143 */

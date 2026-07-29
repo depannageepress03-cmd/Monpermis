@@ -65,16 +65,28 @@ export function CodeRoutePage() {
 
   useEffect(() => {
     if (!user) return
-    void Promise.all([fetchAccessMe(), fetchAccessModules()])
-      .then(([me, catalog]) => {
-        setAccessMe(me)
-        setModules(catalog)
-      })
-      .catch(() => {
-        setAccessMe(null)
-        setModules([])
-      })
-      .finally(() => setAccessLoading(false))
+    const refresh = () => {
+      void Promise.all([fetchAccessMe(), fetchAccessModules()])
+        .then(([me, catalog]) => {
+          setAccessMe(me)
+          setModules(catalog)
+        })
+        .catch(() => {
+          setAccessMe(null)
+          setModules([])
+        })
+        .finally(() => setAccessLoading(false))
+    }
+    refresh()
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') refresh()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    window.addEventListener('focus', refresh)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('focus', refresh)
+    }
   }, [user])
 
   if (loading || !user) return null

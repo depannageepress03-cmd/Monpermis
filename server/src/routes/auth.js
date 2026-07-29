@@ -39,25 +39,33 @@ async function assertPhoneAvailable(normalizedPhone, excludeUserId = null) {
 
 router.post('/register', async (req, res) => {
   try {
-    const { firstName, lastName, email, phone, password } = req.body
+    const { firstName, lastName, phone, password } = req.body
+    const rawEmail = String(req.body?.email || '').trim()
 
-    if (!firstName || !lastName || !email || !phone || !password) {
-      return res.status(400).json({ success: false, error: 'Tous les champs sont requis' })
+    if (!firstName || !lastName || !phone || !password) {
+      return res.status(400).json({
+        success: false,
+        error: 'Prénom, nom, téléphone et code sont requis',
+      })
     }
 
     if (password.length < 8) {
-      return res.status(400).json({ success: false, error: 'Mot de passe : minimum 8 caract\u00e8res' })
+      return res.status(400).json({ success: false, error: 'Code : minimum 8 caractères' })
     }
 
     if (!/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/\d/.test(password)) {
       return res.status(400).json({
         success: false,
-        error: 'Mot de passe : doit contenir majuscule, minuscule et chiffre',
+        error: 'Code : doit contenir majuscule, minuscule et chiffre',
       })
     }
 
-    if (firstName.length > 100 || lastName.length > 100 || email.length > 254 || phone.length > 30) {
+    if (firstName.length > 100 || lastName.length > 100 || phone.length > 30) {
       return res.status(400).json({ success: false, error: 'Un ou plusieurs champs sont trop longs' })
+    }
+
+    if (rawEmail && rawEmail.length > 254) {
+      return res.status(400).json({ success: false, error: 'Email trop long' })
     }
 
     const normalizedPhone = normalizeLearnerPhone(phone)
@@ -66,20 +74,6 @@ router.post('/register', async (req, res) => {
         success: false,
         error: 'Numéro de téléphone invalide. Exemple : 0147880143',
       })
-    }
-
-    const normalizedEmail = email.toLowerCase()
-    const existing = await User.findOne({ email: normalizedEmail })
-
-    if (existing) {
-      if (existing.googleId) {
-        return res.status(409).json({
-          success: false,
-          error: 'Cet email est lié à Google. Connectez-vous avec Google.',
-          code: 'USE_GOOGLE',
-        })
-      }
-      return res.status(409).json({ success: false, error: 'Cet email est déjà utilisé' })
     }
 
     try {
@@ -91,50 +85,103 @@ router.post('/register', async (req, res) => {
       })
     }
 
-    const verificationToken = generateVerificationToken()
-    const user = await User.create({
-      firstName,
-      lastName,
-      email: normalizedEmail,
+    const normalizedEmail = rawEmail ? rawEmail.toLowerCase() : ''
+    if (normalizedEmail) {
+      const existing = await User.findOne({ email: normalizedEmail })
+      if (existing) {
+        if (existing.googleId) {
+          return res.status(409).json({
+            success: false,
+            error: 'Cet email est lié à Google. Connectez-vous avec Google.',
+            code: 'USE_GOOGLE',
+          })
+        }
+        return res.status(409).json({ success: false, error: 'Cet email est déjà utilisé' })
+      }
+    }
+
+    const hasEmail = Boolean(normalizedEmail)
+    const verificationToken = hasEmail ? generateVerificationToken() : undefined
+    const userPayload = {
+      firstName: String(firstName).trim(),
+      lastName: String(lastName).trim(),
       phone: normalizedPhone,
       password,
       authProvider: 'local',
-      isEmailVerified: false,
-      emailVerificationToken: verificationToken,
-      emailVerificationExpires: getVerificationExpiry(),
-    })
+      isEmailVerified: !hasEmail,
+    }
+    if (hasEmail) {
+      userPayload.email = normalizedEmail
+      userPayload.emailVerificationToken = verificationToken
+      userPayload.emailVerificationExpires = getVerificationExpiry()
+    }
 
-    sendVerificationEmail(user, verificationToken).catch((err) => {
-      console.error('Email de vérification non envoyé:', err.message)
-    })
+    const user = await User.create(userPayload)
 
-    // Pas de session tant que l’email n’est pas vérifié (connexion locale bloquée aussi).
+    if (hasEmail && verificationToken) {
+      sendVerificationEmail(user, verificationToken).catch((err) => {
+        console.error('Email de vérification non envoyé:', err.message)
+      })
+    }
+
     res.status(201).json({
       success: true,
       data: {
-        message:
-          'Compte créé. Vérifiez votre email pour activer votre compte, puis connectez-vous.',
-        email: user.email,
+        message: hasEmail
+          ? 'Compte créé. Vérifiez votre email pour activer votre compte, puis connectez-vous.'
+          : 'Compte créé. Connectez-vous avec votre téléphone et votre code.',
+        email: user.email || '',
+        phone: user.phone,
       },
     })
   } catch (error) {
     console.error('Erreur inscription:', error)
+    if (error?.code === 11000) {
+      const field = error?.keyPattern?.phone
+        ? 'Ce numéro de téléphone est déjà utilisé'
+        : error?.keyPattern?.email
+          ? 'Cet email est déjà utilisé'
+          : 'Ce compte existe déjà'
+      return res.status(409).json({ success: false, error: field })
+    }
     res.status(500).json({ success: false, error: 'Erreur lors de la création du compte' })
   }
 })
 
 router.post('/login', async (req, res) => {
   try {
-    const { email, password } = req.body
+    const password = req.body?.password
+    const identifier = String(
+      req.body?.identifier || req.body?.email || req.body?.phone || '',
+    ).trim()
 
-    if (!email || !password) {
-      return res.status(400).json({ success: false, error: 'Email et mot de passe requis' })
+    if (!identifier || !password) {
+      return res.status(400).json({
+        success: false,
+        error: 'Téléphone (ou email) et code requis',
+      })
     }
 
-    const user = await User.findOne({ email: email.toLowerCase() }).select('+password')
+    const looksLikeEmail = identifier.includes('@')
+    const normalizedPhone = looksLikeEmail ? '' : normalizeLearnerPhone(identifier)
+
+    let user = null
+    if (normalizedPhone) {
+      user = await User.findOne({ phone: normalizedPhone }).select('+password')
+    }
+    if (!user && looksLikeEmail) {
+      user = await User.findOne({ email: identifier.toLowerCase() }).select('+password')
+    }
+    // Fallback : identifiant saisi comme email sans @ improbable, ou phone mal normalisé
+    if (!user && !normalizedPhone) {
+      user = await User.findOne({ email: identifier.toLowerCase() }).select('+password')
+    }
 
     if (!user) {
-      return res.status(401).json({ success: false, error: 'Email ou mot de passe incorrect' })
+      return res.status(401).json({
+        success: false,
+        error: 'Identifiant ou code incorrect',
+      })
     }
 
     if (user.isActive === false) {
@@ -153,11 +200,25 @@ router.post('/login', async (req, res) => {
     }
 
     if (!(await user.comparePassword(password))) {
-      return res.status(401).json({ success: false, error: 'Email ou mot de passe incorrect' })
+      return res.status(401).json({
+        success: false,
+        error: 'Identifiant ou code incorrect',
+      })
     }
 
-    // Comptes Google déjà isEmailVerified=true — seuls les local non vérifiés sont bloqués.
-    if (user.authProvider !== 'google' && !user.isEmailVerified) {
+    const clientHeader = String(req.get('X-Client') || '').toLowerCase()
+    const clientBody = String(req.body?.client || '').toLowerCase()
+    const isMobileClient = clientHeader === 'mobile' || clientBody === 'mobile'
+
+    // Comptes Google / téléphone sans email : déjà vérifiés.
+    // Seuls les locaux avec email non vérifié sont bloqués (web).
+    const hasEmail = Boolean(String(user.email || '').trim())
+    if (
+      !isMobileClient &&
+      user.authProvider !== 'google' &&
+      hasEmail &&
+      !user.isEmailVerified
+    ) {
       return res.status(403).json({
         success: false,
         error: 'Vérifiez votre email avant de vous connecter. Consultez votre boîte de réception.',

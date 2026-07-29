@@ -28,6 +28,7 @@ function formatPrice(price: number, currency = 'XOF') {
 
 const unitSuffix: Record<AccessModule['unit'], string> = {
   flat: '',
+  day: ' / jour',
   month: ' / mois',
   hour: ' / heure',
   week: ' / semaine',
@@ -67,7 +68,20 @@ export function AbonnementPage() {
   }, [])
 
   useEffect(() => {
-    if (user) void load()
+    if (!user) return
+    const refresh = () => {
+      void load()
+    }
+    refresh()
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') refresh()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    window.addEventListener('focus', refresh)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('focus', refresh)
+    }
   }, [user, load])
 
   if (authLoading || !user) return null

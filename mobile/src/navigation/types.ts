@@ -1,7 +1,6 @@
 export type RegisterProfileParams = {
   firstName: string
   lastName: string
-  email: string
   phone: string
 }
 
@@ -20,6 +19,8 @@ export type RootStackParamList = {
   Home: undefined
   Profile: undefined
   Notifications: undefined
+  Actualites: undefined
+  ActualiteDetail: { id: string }
   Abonnement: undefined
   HistoriquePaiements: undefined
   CodeRoute: undefined

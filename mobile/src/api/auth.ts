@@ -57,8 +57,12 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 
   try {
     response = await fetch(`${getApiBase()}${path}`, {
-      headers: { 'Content-Type': 'application/json', ...options?.headers },
       ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Client': 'mobile',
+        ...options?.headers,
+      },
     })
   } catch {
     throw new AuthError(
@@ -83,20 +87,26 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 export function registerUser(data: {
   firstName: string
   lastName: string
-  email: string
   phone: string
   password: string
+  email?: string
 }) {
-  return request<{ message: string; email: string }>('/auth/register', {
+  return request<{ message: string; email?: string; phone?: string }>('/auth/register', {
     method: 'POST',
     body: JSON.stringify(data),
   })
 }
 
-export function loginUser(data: { email: string; password: string }) {
+export function loginUser(data: { email?: string; phone?: string; identifier?: string; password: string }) {
+  const identifier = (data.identifier || data.email || data.phone || '').trim()
   return request<AuthData>('/auth/login', {
     method: 'POST',
-    body: JSON.stringify(data),
+    body: JSON.stringify({
+      identifier,
+      email: identifier,
+      password: data.password,
+      client: 'mobile',
+    }),
   })
 }
 
@@ -152,6 +162,7 @@ async function authedRequest<T>(path: string, options?: RequestInit): Promise<T>
       ...options,
       headers: {
         'Content-Type': 'application/json',
+        'X-Client': 'mobile',
         Authorization: `Bearer ${token}`,
         ...options?.headers,
       },

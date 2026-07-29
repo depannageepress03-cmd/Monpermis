@@ -71,6 +71,7 @@ function getMobileResetUrl(token) {
 }
 
 export async function sendVerificationEmail(user, token) {
+  if (!user?.email) return null
   const verifyUrl = getVerifyUrl(token)
   const mobileUrl = getMobileVerifyUrl(token)
   const safeName = escapeHtml(user.firstName)
@@ -115,6 +116,7 @@ L'équipe Monpermis.bj`
 }
 
 export async function sendPasswordResetEmail(user, token) {
+  if (!user?.email) return null
   const resetUrl = getResetUrl(token)
   const mobileUrl = getMobileResetUrl(token)
   const safeName = escapeHtml(user.firstName)
@@ -160,6 +162,7 @@ L'équipe Monpermis.bj`
 }
 
 export async function sendSubscriptionExpiryEmail(user, subscription) {
+  if (!user?.email) return null
   const safeName = escapeHtml(user.firstName)
   const expiryDate = subscription.endAt
     ? new Date(subscription.endAt).toLocaleDateString('fr-FR', {
@@ -199,6 +202,7 @@ L'équipe Monpermis.bj`
 }
 
 export async function sendWelcomeEmail(user) {
+  if (!user?.email) return null
   const loginUrl = `${process.env.CLIENT_URL}/`
   const safeName = escapeHtml(user.firstName)
 

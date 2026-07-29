@@ -2,7 +2,7 @@ import { apiFetch } from './client'
 import { getApiOrigin } from '../utils/mediaUrl'
 
 export type AccessModuleKey = 'code' | 'conduite_heures' | 'conduite_videos' | 'ecodepermis' | 'aiChat'
-export type AccessModuleUnit = 'flat' | 'month' | 'hour' | 'week'
+export type AccessModuleUnit = 'flat' | 'day' | 'month' | 'hour' | 'week'
 export type AccessRequestStatus =
   | 'en_attente'
   | 'paiement_declare'
@@ -122,6 +122,7 @@ export function paymentChannelLabel(payment: Pick<AccessPayment, 'method' | 'pay
 
 export function unitLabel(unit: AccessModuleUnit) {
   if (unit === 'hour') return 'par heure'
+  if (unit === 'day') return 'par jour'
   if (unit === 'week') return 'par semaine (legacy)'
   if (unit === 'month') return 'par mois'
   return 'unique'

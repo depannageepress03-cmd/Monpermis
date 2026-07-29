@@ -55,11 +55,24 @@ function isTimeBased(module) {
   return TIME_BASED_MODULES.includes(module)
 }
 
-function durationMsForRequest(request) {
+/** Durée d’accès temporel à partir de quantity + unit (figés à l’achat / promo). */
+export function durationMsForRequest(request) {
   const qty = Math.max(1, Number(request.quantity) || 1)
-  if (request.unit === 'week') return qty * 7 * 24 * 60 * 60 * 1000
-  if (request.unit === 'month') return qty * 30 * 24 * 60 * 60 * 1000
-  return qty * 24 * 60 * 60 * 1000 // 'flat' — traité comme 1 jour par défaut si jamais utilisé en temporel
+  const dayMs = 24 * 60 * 60 * 1000
+  if (request.unit === 'week') return qty * 7 * dayMs
+  if (request.unit === 'month') return qty * 30 * dayMs
+  // 'day', 'flat', ou unité inattendue : 1 jour × quantity (jamais 0).
+  return qty * dayMs
+}
+
+/**
+ * Accès temporel encore valide : statut actif ET now < endAt.
+ * La date prime sur le statut (coupure immédiate même si le job n’a pas encore tourné).
+ */
+export function isTimeBasedAccessLive(request, now = new Date()) {
+  if (!request || request.status !== 'actif') return false
+  if (!request.endAt) return true
+  return new Date(request.endAt).getTime() > now.getTime()
 }
 
 /** Notifie le dashboard admin en direct (réutilise le diffuseur SSE existant du dashboard Paiements). */
@@ -182,22 +195,25 @@ export async function transitionAccessRequest(request, toStatus, { actor, actorL
   return request
 }
 
-/** Sweep périodique : expire les accès temporels dont la période est dépassée. */
+/** Sweep périodique : expire les accès temporels dès que now >= endAt (pas de grâce). */
 export async function expireDueAccessRequests(userId = null) {
+  const now = new Date()
   const filter = {
     status: 'actif',
-    endAt: { $ne: null, $lt: new Date() },
+    endAt: { $ne: null, $lte: now },
   }
   if (userId) filter.userId = userId
   const due = await AccessRequest.find(filter)
+  let expired = 0
   for (const request of due) {
     try {
       await transitionAccessRequest(request, 'expire', { actor: 'system', actorLabel: 'Expiration automatique' })
+      expired += 1
     } catch (error) {
       logger.error('Erreur expiration accessRequest', { error: error.message, id: String(request._id) })
     }
   }
-  return { expired: due.length }
+  return { expired }
 }
 
 const MODULE_NOTIFY_LABELS = {
@@ -276,6 +292,7 @@ export async function warnExpiringAccessRequests(daysBefore = 3) {
 export async function getUserModuleAccess(userId) {
   await expireDueAccessRequests(userId)
   const requests = await AccessRequest.find({ userId }).sort({ createdAt: -1 }).limit(50)
+  const now = new Date()
 
   const access = {}
   for (const key of ['code', 'conduite_heures', 'conduite_videos', 'ecodepermis', 'aiChat']) {
@@ -285,7 +302,8 @@ export async function getUserModuleAccess(userId) {
       requests.some((r) => {
         if (r.module !== key) return false
         if (QUANTITY_BASED_MODULES.includes(key)) return r.status === 'valide'
-        return r.status === 'actif'
+        // Source de vérité = dates : refuse dès now >= endAt, même si status encore « actif ».
+        return isTimeBasedAccessLive(r, now)
       })
   }
   // E-Codepermis est désormais inclus dans l'abonnement Code de la route (plus d'achat séparé).
@@ -949,8 +967,11 @@ export function remainingForAccessRequest(request, now = new Date()) {
         : `${request.quantity} h`,
     }
   }
-  if (!request.endAt || request.status !== 'actif') {
+  if (request.status !== 'actif') {
     return { remainingMs: 0, remainingLabel: 'Expiré' }
+  }
+  if (!request.endAt) {
+    return { remainingMs: null, remainingLabel: 'Actif' }
   }
   const remainingMs = Math.max(0, new Date(request.endAt).getTime() - now.getTime())
   if (remainingMs <= 0) return { remainingMs: 0, remainingLabel: 'Expiré' }

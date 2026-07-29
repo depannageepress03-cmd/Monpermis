@@ -7,7 +7,8 @@ const userSchema = new mongoose.Schema(
   {
     firstName: { type: String, required: true, trim: true },
     lastName: { type: String, required: true, trim: true },
-    email: { type: String, required: true, unique: true, lowercase: true, trim: true },
+    /** Optionnel pour les comptes locaux créés par téléphone ; requis pour Google. */
+    email: { type: String, unique: true, sparse: true, lowercase: true, trim: true },
     phone: { type: String, trim: true, default: '' },
     password: { type: String, minlength: 8, select: false },
     googleId: { type: String, unique: true, sparse: true },
@@ -129,8 +130,8 @@ userSchema.methods.toPublicJSON = function toPublicJSON() {
     id: this._id,
     firstName: this.firstName,
     lastName: this.lastName,
-    email: this.email,
-    phone: this.phone,
+    email: this.email || '',
+    phone: this.phone || '',
     authProvider: this.authProvider,
     isEmailVerified: this.isEmailVerified,
     isActive: this.isActive !== false,
@@ -145,6 +146,26 @@ userSchema.methods.toAdminJSON = function toAdminJSON() {
   return {
     ...this.toPublicJSON(),
     updatedAt: this.updatedAt,
+  }
+}
+
+/** Passe l’index email en unique sparse (comptes téléphone sans email). */
+export async function ensureUserIndexes() {
+  try {
+    const indexes = await User.collection.indexes()
+    const emailIdx = indexes.find((idx) => idx.name === 'email_1')
+    if (emailIdx && !emailIdx.sparse) {
+      await User.collection.dropIndex('email_1')
+    }
+  } catch (error) {
+    if (error?.code !== 27 && error?.codeName !== 'IndexNotFound') {
+      console.warn('Index users email (drop legacy):', error.message)
+    }
+  }
+  try {
+    await User.syncIndexes()
+  } catch (error) {
+    console.warn('Index users (sync):', error.message)
   }
 }
 

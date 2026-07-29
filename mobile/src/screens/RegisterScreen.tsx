@@ -26,7 +26,6 @@ import { dark, fonts, gradients } from '../theme'
 import {
   normalizePhone,
   PHONE_PLACEHOLDER,
-  validateEmail,
   validateName,
   validatePhone,
 } from '../utils/validation'
@@ -37,7 +36,6 @@ type Nav = NativeStackNavigationProp<RootStackParamList, 'Register'>
 interface FormErrors {
   firstName?: string
   lastName?: string
-  email?: string
   phone?: string
   terms?: string
 }
@@ -47,7 +45,6 @@ export function RegisterScreen() {
   const { signIn } = useAuth()
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
-  const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
   const [acceptTerms, setAcceptTerms] = useState(false)
   const [errors, setErrors] = useState<FormErrors>({})
@@ -98,7 +95,6 @@ export function RegisterScreen() {
     const newErrors: FormErrors = {
       firstName: validateName(firstName, 'Le prénom'),
       lastName: validateName(lastName, 'Le nom'),
-      email: validateEmail(email),
       phone: validatePhone(phone),
       terms: !acceptTerms ? "Veuillez accepter les conditions d'utilisation" : undefined,
     }
@@ -112,7 +108,6 @@ export function RegisterScreen() {
     navigation.navigate('RegisterPassword', {
       firstName: firstName.trim(),
       lastName: lastName.trim(),
-      email: email.trim(),
       phone: normalizePhone(phone),
     })
   }
@@ -166,15 +161,6 @@ export function RegisterScreen() {
             </View>
 
             <View style={styles.fields}>
-              <AuthInput
-                label="Adresse email"
-                placeholder="Adresse email"
-                keyboardType="email-address"
-                autoComplete="email"
-                value={email}
-                onChangeText={setEmail}
-                error={errors.email}
-              />
               <AuthInput
                 label="Téléphone"
                 placeholder={PHONE_PLACEHOLDER}

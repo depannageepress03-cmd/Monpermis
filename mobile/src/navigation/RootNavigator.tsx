@@ -21,6 +21,8 @@ import { PrivacyPolicyScreen } from '../screens/PrivacyPolicyScreen'
 import { MentionsLegalesScreen } from '../screens/MentionsLegalesScreen'
 import { ProfileScreen } from '../screens/ProfileScreen'
 import { NotificationsScreen } from '../screens/NotificationsScreen'
+import { ActualitesScreen } from '../screens/ActualitesScreen'
+import { ActualiteDetailScreen } from '../screens/ActualiteDetailScreen'
 import { AbonnementScreen } from '../screens/AbonnementScreen'
 import { PaymentHistoryScreen } from '../screens/PaymentHistoryScreen'
 import { CodeRouteScreen } from '../screens/CodeRouteScreen'
@@ -60,6 +62,8 @@ const linking: LinkingOptions<RootStackParamList> = {
       Home: 'accueil',
       Profile: 'profil',
       Notifications: 'notifications',
+      Actualites: 'actualites',
+      ActualiteDetail: 'actualites/:id',
       Abonnement: 'abonnement',
       HistoriquePaiements: 'abonnement/historique',
       CodeRoute: 'code-de-la-route',
@@ -146,6 +150,14 @@ function AppNavigator() {
       <Stack.Screen
         name="Notifications"
         component={NotificationsScreen}
+      />
+      <Stack.Screen
+        name="Actualites"
+        component={ActualitesScreen}
+      />
+      <Stack.Screen
+        name="ActualiteDetail"
+        component={ActualiteDetailScreen}
       />
       <Stack.Screen
         name="Abonnement"

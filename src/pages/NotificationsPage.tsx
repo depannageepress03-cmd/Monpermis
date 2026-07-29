@@ -38,6 +38,18 @@ const linkToPath: Record<string, string> = {
   conduite: '/conduite',
   profil: '/profil',
   notifications: '/notifications',
+  actualites: '/actualites',
+}
+
+function resolveNotificationPath(link: string): string | null {
+  if (!link) return null
+  if (linkToPath[link]) return linkToPath[link]
+  if (link.startsWith('actualites/')) {
+    const id = link.slice('actualites/'.length)
+    return id ? `/actualites/${id}` : '/actualites'
+  }
+  if (link.startsWith('/')) return link
+  return null
 }
 
 function timeAgo(iso: string) {
@@ -81,7 +93,7 @@ export function NotificationsPage() {
       )
       void markNotificationRead(notification.id).catch(() => undefined)
     }
-    const path = linkToPath[notification.link]
+    const path = resolveNotificationPath(notification.link)
     if (path && path !== '/notifications') navigate(path)
   }
 

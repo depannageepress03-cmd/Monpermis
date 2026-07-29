@@ -2,7 +2,7 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { setStatusBarStyle } from 'expo-status-bar'
 import { ChevronLeft, Lock } from 'lucide-react-native'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
 import {
   Image,
   Pressable,
@@ -97,13 +97,10 @@ export function CodeRouteScreen() {
   useFocusEffect(
     useCallback(() => {
       setStatusBarStyle('dark')
+      void loadAccess(true)
       return () => setStatusBarStyle('dark')
-    }, []),
+    }, [loadAccess]),
   )
-
-  useEffect(() => {
-    void loadAccess()
-  }, [loadAccess])
 
   if (loading || !user) return <ScreenLoader />
 

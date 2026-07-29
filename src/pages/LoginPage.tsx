@@ -11,14 +11,20 @@ import { AuthInput } from '../components/AuthInput'
 import { GoogleSignInButton } from '../components/GoogleSignInButton'
 import { BrandName } from '../components/BrandName'
 import { LegalFooter } from '../components/LegalFooter'
-import { validateEmail, validatePassword } from '../utils/validation'
+import {
+  normalizePhone,
+  PHONE_PLACEHOLDER,
+  validateEmail,
+  validateLoginIdentifier,
+  validatePassword,
+} from '../utils/validation'
 import '../styles/login.css'
 
 export function LoginPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const flashMessage = (location.state as { message?: string } | null)?.message
-  const [email, setEmail] = useState('')
+  const [identifier, setIdentifier] = useState('')
   const [password, setPassword] = useState('')
   const [errors, setErrors] = useState<{
     email?: string
@@ -71,7 +77,7 @@ export function LoginPage() {
   }, [flashMessage, location.pathname, navigate])
 
   const handleResend = async () => {
-    const target = (resendEmail || email).trim()
+    const target = (resendEmail || identifier).trim()
     const emailError = validateEmail(target)
     if (emailError) {
       setErrors((prev) => ({ ...prev, form: emailError }))
@@ -94,11 +100,11 @@ export function LoginPage() {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
 
-    const emailError = validateEmail(email)
+    const identifierError = validateLoginIdentifier(identifier)
     const passwordError = validatePassword(password)
 
-    if (emailError || passwordError) {
-      setErrors({ email: emailError, password: passwordError })
+    if (identifierError || passwordError) {
+      setErrors({ email: identifierError, password: passwordError })
       return
     }
 
@@ -106,14 +112,17 @@ export function LoginPage() {
     setResendMsg('')
     setLoading(true)
 
+    const trimmed = identifier.trim()
+    const loginValue = trimmed.includes('@') ? trimmed : normalizePhone(trimmed)
+
     try {
-      const { user, token } = await loginUser({ email: email.trim(), password })
+      const { user, token } = await loginUser({ identifier: loginValue, password })
       finishAuth(user, token)
     } catch (error) {
       const { message, code, email: errEmail } = getAuthErrorDetails(error)
       setErrors({ form: message })
       if (code === 'EMAIL_NOT_VERIFIED') {
-        setResendEmail(errEmail || email)
+        setResendEmail(errEmail || (trimmed.includes('@') ? trimmed : ''))
       }
     } finally {
       setLoading(false)
@@ -151,24 +160,31 @@ export function LoginPage() {
 
           <div className="signin-fields">
             <AuthInput
-              label="Adresse email"
-              name="email"
+              label="Téléphone ou email"
+              name="identifier"
               type="text"
-              placeholder="Adresse email"
-              autoComplete="email"
-              inputMode="email"
+              placeholder={`${PHONE_PLACEHOLDER} ou email`}
+              autoComplete="username"
+              inputMode="text"
               autoCapitalize="none"
               autoCorrect="off"
               spellCheck={false}
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              value={identifier}
+              onChange={(e) => {
+                const next = e.target.value
+                if (next.includes('@') || /[a-zA-Z]/.test(next)) {
+                  setIdentifier(next)
+                } else {
+                  setIdentifier(normalizePhone(next))
+                }
+              }}
               error={errors.email}
             />
             <AuthInput
-              label="Mot de passe"
+              label="Code"
               name="password"
               type="password"
-              placeholder="Mot de passe"
+              placeholder="Ton code"
               autoComplete="current-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -177,7 +193,7 @@ export function LoginPage() {
           </div>
 
           <p className="signin-forgot">
-            <Link to="/mot-de-passe-oublie">Mot de passe oublié ?</Link>
+            <Link to="/mot-de-passe-oublie">Code oublié ?</Link>
           </p>
 
           <button

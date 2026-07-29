@@ -14,7 +14,12 @@ import {
   View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { fetchAnnouncements, type Announcement } from '../api/announcements'
+import {
+  fetchAnnouncements,
+  stripAnnouncementHtml,
+  announcementLooksLikeHtml,
+  type Announcement,
+} from '../api/announcements'
 import { fetchAccessMe, type AccessMe } from '../api/accessRequests'
 import { Bouncy } from '../components/Bouncy'
 import { LegalFooter } from '../components/LegalFooter'
@@ -28,7 +33,7 @@ import { useRequireAuth } from '../hooks/useRequireAuth'
 import { useUnreadNotifications } from '../hooks/useUnreadNotifications'
 import type { RootStackParamList } from '../navigation/types'
 import { colors, dark, fonts } from '../theme'
-import { cacheGetThenFetch } from '../utils/contentCache'
+import { cacheGetThenFetch, cacheSet } from '../utils/contentCache'
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'Home'>
 
@@ -55,11 +60,12 @@ export function HomeScreen() {
     if (!silent) setBootstrapping(true)
     try {
       await Promise.all([
+        // Accès : toujours revalider (coupure d’abonnement) — cache seulement pour affichage immédiat.
         cacheGetThenFetch(
           `access:me:${user.id}`,
           () => fetchAccessMe(),
           {
-            maxAgeMs: 2 * 60 * 1000,
+            maxAgeMs: 0,
             onData: (data) => {
               setAccessMe(data)
               setBootstrapping(false)
@@ -88,8 +94,16 @@ export function HomeScreen() {
   useFocusEffect(
     useCallback(() => {
       setStatusBarStyle('dark')
+      if (user) {
+        void fetchAccessMe()
+          .then(async (data) => {
+            setAccessMe(data)
+            await cacheSet(`access:me:${user.id}`, data)
+          })
+          .catch(() => {})
+      }
       return () => setStatusBarStyle('dark')
-    }, []),
+    }, [user]),
   )
 
   const handleLogout = async () => {
@@ -219,30 +233,51 @@ export function HomeScreen() {
           {/* Actualités */}
           {announcements.length > 0 ? (
             <>
-              <Text style={[styles.sectionLabel, styles.pathSectionLabel]}>Actualités</Text>
+              <View style={styles.newsHead}>
+                <Text style={[styles.sectionLabel, styles.pathSectionLabel, styles.newsHeadLabel]}>
+                  Actualités
+                </Text>
+                <Pressable
+                  onPress={() => navigation.navigate('Actualites')}
+                  hitSlop={8}
+                  style={styles.newsAllBtn}
+                >
+                  <Text style={styles.newsAllText}>Voir toutes</Text>
+                  <ChevronRight size={14} color={dark.green} />
+                </Pressable>
+              </View>
               <View style={styles.newsList}>
-                {announcements.slice(0, 3).map((item) => (
-                  <View key={item.id} style={styles.newsCard}>
-                    <View
-                      style={[
-                        styles.newsAccent,
-                        item.kind === 'alerte'
-                          ? styles.newsAccentAlert
-                          : item.kind === 'promo'
-                            ? styles.newsAccentPromo
-                            : styles.newsAccentInfo,
-                      ]}
-                    />
-                    <View style={styles.newsBody}>
-                      <Text style={styles.newsTitle}>{item.title}</Text>
-                      {item.body ? (
-                        <Text style={styles.newsText} numberOfLines={3}>
-                          {item.body}
-                        </Text>
-                      ) : null}
-                    </View>
-                  </View>
-                ))}
+                {announcements.slice(0, 3).map((item) => {
+                  const plain = announcementLooksLikeHtml(item.body)
+                    ? stripAnnouncementHtml(item.body)
+                    : item.body
+                  return (
+                    <Pressable
+                      key={item.id}
+                      style={styles.newsCard}
+                      onPress={() => navigation.navigate('ActualiteDetail', { id: item.id })}
+                    >
+                      <View
+                        style={[
+                          styles.newsAccent,
+                          item.kind === 'alerte'
+                            ? styles.newsAccentAlert
+                            : item.kind === 'promo'
+                              ? styles.newsAccentPromo
+                              : styles.newsAccentInfo,
+                        ]}
+                      />
+                      <View style={styles.newsBody}>
+                        <Text style={styles.newsTitle}>{item.title}</Text>
+                        {plain ? (
+                          <Text style={styles.newsText} numberOfLines={3}>
+                            {plain}
+                          </Text>
+                        ) : null}
+                      </View>
+                    </Pressable>
+                  )
+                })}
               </View>
             </>
           ) : null}
@@ -454,6 +489,25 @@ const styles = StyleSheet.create({
   },
 
   /* Actualités */
+  newsHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 2,
+  },
+  newsHeadLabel: {
+    marginBottom: 0,
+  },
+  newsAllBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+  },
+  newsAllText: {
+    fontFamily: fonts.bodyBold,
+    fontSize: 12,
+    color: dark.green,
+  },
   newsList: {
     gap: 10,
     marginBottom: 4,

@@ -21,6 +21,7 @@ router.use(requireAdminAuth)
 function durationLabel(quantity, unit) {
   const qty = Math.max(1, Number(quantity) || 1)
   if (unit === 'hour') return `${qty} heure${qty > 1 ? 's' : ''}`
+  if (unit === 'day') return `${qty} jour${qty > 1 ? 's' : ''}`
   if (unit === 'week') return `${qty} semaine${qty > 1 ? 's' : ''}`
   if (unit === 'month') return `${qty} mois`
   return 'Accès unique'
