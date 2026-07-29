@@ -54,6 +54,9 @@ const grantModules: AccessModuleKey[] = [
   'ecodepermis',
 ]
 
+/** Modules masqués de l’onglet Tarifs (prix non éditables / inclus ailleurs). */
+const HIDDEN_PRICING_MODULES: AccessModuleKey[] = ['aiChat', 'conduite_videos', 'ecodepermis']
+
 function moduleLabel(module: AccessModuleKey) {
   if (module === 'aiChat') return 'Chat IA tuteur (retiré)'
   return moduleOptions.find((option) => option.value === module)?.label ?? module
@@ -179,10 +182,9 @@ export function AbonnementsPage() {
     const token = getAdminToken()
     if (!token) return
     const { modules } = await fetchAccessModulePricing(token)
-    setPricing(modules.filter((m) => m.key !== 'aiChat'))
-    setPricingDrafts(
-      Object.fromEntries(modules.filter((m) => m.key !== 'aiChat').map((m) => [m.key, String(m.price)])),
-    )
+    const editable = modules.filter((m) => !HIDDEN_PRICING_MODULES.includes(m.key))
+    setPricing(editable)
+    setPricingDrafts(Object.fromEntries(editable.map((m) => [m.key, String(m.price)])))
   }, [])
 
   const loadStats = useCallback(async () => {
