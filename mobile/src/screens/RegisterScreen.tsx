@@ -2,7 +2,7 @@ import { useNavigation } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { LinearGradient } from 'expo-linear-gradient'
 import { setStatusBarStyle } from 'expo-status-bar'
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   Image,
   KeyboardAvoidingView,
@@ -13,14 +13,10 @@ import {
   View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { loginWithGoogle } from '../api/auth'
 import { AuthInput } from '../components/AuthInput'
 import { Bouncy } from '../components/Bouncy'
 import { LegalFooter } from '../components/LegalFooter'
 import { BrandName } from '../components/BrandName'
-import { GoogleSignInButton } from '../components/GoogleSignInButton'
-import { useAuth } from '../context/AuthContext'
-import { useGoogleSignIn } from '../hooks/useGoogleSignIn'
 import type { RootStackParamList } from '../navigation/types'
 import { dark, fonts, gradients } from '../theme'
 import {
@@ -29,7 +25,6 @@ import {
   validateName,
   validatePhone,
 } from '../utils/validation'
-import { showAuthError } from '../utils/showAuthError'
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'Register'>
 
@@ -42,7 +37,6 @@ interface FormErrors {
 
 export function RegisterScreen() {
   const navigation = useNavigation<Nav>()
-  const { signIn } = useAuth()
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
   const [phone, setPhone] = useState('')
@@ -52,44 +46,6 @@ export function RegisterScreen() {
   useEffect(() => {
     setStatusBarStyle('dark')
   }, [])
-
-  const handleGoogleSuccess = useCallback(
-    async (idToken: string) => {
-      try {
-        const { user, token, needsPhone } = await loginWithGoogle(idToken)
-        await signIn(token, user)
-        if (needsPhone || !String(user.phone || '').trim()) {
-          navigation.reset({ index: 0, routes: [{ name: 'Profile' }] })
-          return
-        }
-        navigation.reset({ index: 0, routes: [{ name: 'Home' }] })
-      } catch (error) {
-        showAuthError(error)
-      }
-    },
-    [navigation, signIn],
-  )
-
-  const {
-    signInWithGoogle,
-    loading: googleLoading,
-    disabled: googleDisabled,
-    error: googleError,
-  } = useGoogleSignIn(handleGoogleSuccess)
-
-  useEffect(() => {
-    if (googleError) {
-      showAuthError(new Error(googleError))
-    }
-  }, [googleError])
-
-  const handleGooglePress = () => {
-    if (!acceptTerms) {
-      setErrors({ terms: "Veuillez accepter les conditions d'utilisation" })
-      return
-    }
-    void signInWithGoogle()
-  }
 
   const handleContinue = () => {
     const newErrors: FormErrors = {
@@ -202,18 +158,6 @@ export function RegisterScreen() {
                 <Text style={styles.submitText}>Continuer</Text>
               </LinearGradient>
             </Bouncy>
-
-            <View style={styles.dividerRow}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>ou</Text>
-              <View style={styles.dividerLine} />
-            </View>
-
-            <GoogleSignInButton
-              onPress={handleGooglePress}
-              loading={googleLoading}
-              disabled={googleDisabled}
-            />
 
             <Text style={styles.footer}>
               Déjà inscrit ?{' '}
@@ -343,24 +287,6 @@ const styles = StyleSheet.create({
     color: '#0B0F1A',
     fontFamily: fonts.bodyBold,
     fontSize: 15,
-  },
-  dividerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 24,
-    gap: 12,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: dark.border,
-  },
-  dividerText: {
-    fontFamily: fonts.bodySemiBold,
-    fontSize: 12,
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
-    color: dark.textMuted,
   },
   footer: {
     marginTop: 32,

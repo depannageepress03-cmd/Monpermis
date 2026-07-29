@@ -41,16 +41,6 @@ jobs:
       - name: Install JS dependencies
         run: npm ci
 
-      - name: Verify Google OAuth secrets
-        env:
-          EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID: ${{ secrets.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID }}
-          EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID: ${{ secrets.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID }}
-        run: |
-          if [ -z "$EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID" ] || [ -z "$EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID" ]; then
-            echo "Secrets EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID et EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID requis."
-            exit 1
-          fi
-
       - name: Decode release keystore
         working-directory: ${{ github.workspace }}
         run: |
@@ -67,9 +57,6 @@ jobs:
       - name: Build release APK
         env:
           EXPO_PUBLIC_API_URL: https://monpermis-api.onrender.com
-          EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID: ${{ secrets.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID }}
-          EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID: ${{ secrets.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID }}
-          EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID: ${{ secrets.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID }}
           MYAPP_UPLOAD_STORE_FILE: ${{ github.workspace }}/mobile/credentials/monpermis-release.keystore
           MYAPP_UPLOAD_STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           MYAPP_UPLOAD_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}

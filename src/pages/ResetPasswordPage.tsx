@@ -61,7 +61,7 @@ export function ResetPasswordPage() {
             <p className="signin-subtitle">Ce lien est invalide ou a expiré.</p>
           </header>
           <p className="signin-register-link" style={{ textAlign: 'center' }}>
-            <Link to="/mot-de-passe-oublie">Demander un nouveau lien</Link>
+            <Link to="/mot-de-passe-oublie">Contacter le support</Link>
           </p>
           <LegalFooter />
         </div>

@@ -68,7 +68,7 @@ export function ResetPasswordScreen() {
           <View style={styles.center}>
             <Text style={styles.err}>Lien invalide ou expiré.</Text>
             <Pressable onPress={() => navigation.navigate('ForgotPassword')}>
-              <Text style={styles.link}>Demander un nouveau lien</Text>
+              <Text style={styles.link}>Contacter le support</Text>
             </Pressable>
           </View>
         </SafeAreaView>

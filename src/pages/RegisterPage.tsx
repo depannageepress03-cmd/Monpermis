@@ -1,9 +1,8 @@
 import { Link, useNavigate } from 'react-router-dom'
 import { type FormEvent, useState } from 'react'
-import { registerUser, loginWithGoogle, saveSession, getAuthErrorDetails } from '../api/auth'
+import { registerUser, getAuthErrorDetails } from '../api/auth'
 import { AuthInput } from '../components/AuthInput'
 import { BrandName } from '../components/BrandName'
-import { GoogleSignInButton } from '../components/GoogleSignInButton'
 import { LegalFooter } from '../components/LegalFooter'
 import {
   validateName,
@@ -32,33 +31,6 @@ export function RegisterPage() {
   const [acceptTerms, setAcceptTerms] = useState(false)
   const [errors, setErrors] = useState<FormErrors>({})
   const [loading, setLoading] = useState(false)
-  const [googleLoading, setGoogleLoading] = useState(false)
-
-  const handleGoogleSuccess = async (idToken: string) => {
-    setGoogleLoading(true)
-    setErrors({})
-
-    try {
-      const { user, token, needsPhone } = await loginWithGoogle(idToken)
-      saveSession(token, user, true)
-      if (needsPhone || !String(user.phone || '').trim()) {
-        navigate('/profil', {
-          replace: true,
-          state: {
-            phoneRequired:
-              'Ajoute ton numéro de téléphone pour payer en Mobile Money et recevoir les rappels.',
-          },
-        })
-        return
-      }
-      navigate('/accueil', { replace: true })
-    } catch (error) {
-      const { message } = getAuthErrorDetails(error)
-      setErrors({ form: message })
-    } finally {
-      setGoogleLoading(false)
-    }
-  }
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
@@ -94,7 +66,8 @@ export function RegisterPage() {
         },
       })
     } catch (error) {
-      setErrors({ form: error instanceof Error ? error.message : 'Inscription impossible' })
+      const { message } = getAuthErrorDetails(error)
+      setErrors({ form: message || 'Inscription impossible' })
     } finally {
       setLoading(false)
     }
@@ -159,7 +132,7 @@ export function RegisterPage() {
               error={errors.password}
             />
             <p className="signin-field-hint">
-              Mot de passe du compte · min. 8 caractères, majuscule, minuscule et chiffre.
+              Code du compte · min. 8 caractères, majuscule, minuscule et chiffre.
             </p>
           </div>
 
@@ -185,22 +158,10 @@ export function RegisterPage() {
           <button
             type="submit"
             className="signin-btn-continue signin-btn-continue--app"
-            disabled={loading || googleLoading}
+            disabled={loading}
           >
             {loading ? 'Création…' : 'Créer mon compte'}
           </button>
-
-          <div className="signin-divider-row" aria-hidden="true">
-            <span className="signin-divider-line" />
-            <span className="signin-divider-text">ou</span>
-            <span className="signin-divider-line" />
-          </div>
-
-          <GoogleSignInButton
-            onSuccess={handleGoogleSuccess}
-            onError={() => setErrors({ form: 'Connexion Google échouée' })}
-            disabled={loading || googleLoading || !import.meta.env.VITE_GOOGLE_CLIENT_ID}
-          />
 
           <p className="signin-register-link">
             Déjà inscrit ? <Link to="/">Se connecter</Link>

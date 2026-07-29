@@ -1,6 +1,6 @@
 import { useNavigation } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
-import { Lock, Mail, Trash2, User } from 'lucide-react-native'
+import { Trash2, User } from 'lucide-react-native'
 import { useState } from 'react'
 import {
   Alert,
@@ -55,8 +55,6 @@ export function ProfileScreen() {
   const [deletePassword, setDeletePassword] = useState('')
   const [deleting, setDeleting] = useState(false)
 
-  const isGoogle = user?.authProvider === 'google'
-
   const handleSaveProfile = async () => {
     const errs = {
       firstName: validateName(firstName, 'Le prénom'),
@@ -95,14 +93,14 @@ export function ProfileScreen() {
           text: 'Supprimer',
           style: 'destructive',
           onPress: () => {
-            if (!isGoogle && !deletePassword) {
-              Alert.alert('Mot de passe requis', 'Saisis ton mot de passe pour confirmer.')
+            if (!deletePassword) {
+              Alert.alert('Code requis', 'Saisis ton code pour confirmer.')
               return
             }
             setDeleting(true)
             void deleteAccount({
               confirm: true,
-              password: isGoogle ? undefined : deletePassword,
+              password: deletePassword,
             })
               .then(async () => {
                 await signOut()
@@ -120,11 +118,11 @@ export function ProfileScreen() {
 
   const handleChangePassword = async () => {
     const errs: typeof pwErrors = {}
-    if (!currentPassword) errs.currentPassword = 'Mot de passe actuel requis'
+    if (!currentPassword) errs.currentPassword = 'Code actuel requis'
     if (newPassword.length < 8) errs.newPassword = 'Minimum 8 caractères'
     else if (!/[A-Z]/.test(newPassword) || !/[a-z]/.test(newPassword) || !/\d/.test(newPassword))
       errs.newPassword = 'Majuscule, minuscule et chiffre requis'
-    if (confirmPassword !== newPassword) errs.confirmPassword = 'Les mots de passe ne correspondent pas'
+    if (confirmPassword !== newPassword) errs.confirmPassword = 'Les codes ne correspondent pas'
     if (Object.values(errs).some(Boolean)) {
       setPwErrors(errs)
       return
@@ -134,7 +132,7 @@ export function ProfileScreen() {
     setSavingPw(true)
     try {
       await changePassword({ currentPassword, newPassword })
-      setPwMsg('Mot de passe modifié ✓')
+      setPwMsg('Code modifié ✓')
       setCurrentPassword('')
       setNewPassword('')
       setConfirmPassword('')
@@ -157,16 +155,6 @@ export function ProfileScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <View style={styles.emailCard}>
-            <Mail size={18} color={dark.textMuted} />
-            <View style={styles.flexShrink}>
-              <Text style={styles.emailLabel}>Adresse email</Text>
-              <Text style={styles.emailValue} numberOfLines={1}>
-                {user?.email}
-              </Text>
-            </View>
-          </View>
-
           <Text style={styles.sectionTitle}>Mes informations</Text>
           {!String(phone || '').trim() ? (
             <Text style={styles.phoneHint}>
@@ -212,65 +200,50 @@ export function ProfileScreen() {
             </Bouncy>
           </View>
 
-          {isGoogle ? (
-            <View style={styles.card}>
-              <View style={styles.googleRow}>
-                <Lock size={16} color={dark.textMuted} />
-                <Text style={styles.googleText}>
-                  Ton compte est connecté via Google. Le mot de passe est géré par Google.
+          <Text style={styles.sectionTitle}>Changer de code</Text>
+          <View style={styles.card}>
+            <AuthInput
+              label="Code actuel"
+              value={currentPassword}
+              onChangeText={setCurrentPassword}
+              secureTextEntry
+              error={pwErrors.currentPassword}
+            />
+            <AuthInput
+              label="Nouveau code"
+              value={newPassword}
+              onChangeText={setNewPassword}
+              secureTextEntry
+              error={pwErrors.newPassword}
+            />
+            <AuthInput
+              label="Confirmer le code"
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+              secureTextEntry
+              error={pwErrors.confirmPassword}
+            />
+            {pwMsg ? <Text style={styles.successMsg}>{pwMsg}</Text> : null}
+            <Bouncy onPress={handleChangePassword} disabled={savingPw} scaleTo={0.97}>
+              <View style={[styles.primaryBtn, savingPw && styles.disabled]}>
+                <Text style={styles.primaryBtnText}>
+                  {savingPw ? 'Modification…' : 'Modifier le code'}
                 </Text>
               </View>
-            </View>
-          ) : (
-            <>
-              <Text style={styles.sectionTitle}>Changer de mot de passe</Text>
-              <View style={styles.card}>
-                <AuthInput
-                  label="Mot de passe actuel"
-                  value={currentPassword}
-                  onChangeText={setCurrentPassword}
-                  secureTextEntry
-                  error={pwErrors.currentPassword}
-                />
-                <AuthInput
-                  label="Nouveau mot de passe"
-                  value={newPassword}
-                  onChangeText={setNewPassword}
-                  secureTextEntry
-                  error={pwErrors.newPassword}
-                />
-                <AuthInput
-                  label="Confirmer le mot de passe"
-                  value={confirmPassword}
-                  onChangeText={setConfirmPassword}
-                  secureTextEntry
-                  error={pwErrors.confirmPassword}
-                />
-                {pwMsg ? <Text style={styles.successMsg}>{pwMsg}</Text> : null}
-                <Bouncy onPress={handleChangePassword} disabled={savingPw} scaleTo={0.97}>
-                  <View style={[styles.primaryBtn, savingPw && styles.disabled]}>
-                    <Text style={styles.primaryBtnText}>
-                      {savingPw ? 'Modification…' : 'Modifier le mot de passe'}
-                    </Text>
-                  </View>
-                </Bouncy>
-              </View>
-            </>
-          )}
+            </Bouncy>
+          </View>
 
           <Text style={styles.sectionTitle}>Zone sensible</Text>
           <View style={[styles.card, styles.dangerCard]}>
             <Text style={styles.dangerText}>
               La suppression du compte est définitive (profil, abonnements liés, notifications).
             </Text>
-            {!isGoogle ? (
-              <AuthInput
-                label="Mot de passe pour confirmer"
-                value={deletePassword}
-                onChangeText={setDeletePassword}
-                secureTextEntry
-              />
-            ) : null}
+            <AuthInput
+              label="Code pour confirmer"
+              value={deletePassword}
+              onChangeText={setDeletePassword}
+              secureTextEntry
+            />
             <Bouncy onPress={handleDeleteAccount} disabled={deleting} scaleTo={0.97}>
               <View style={[styles.dangerBtn, deleting && styles.disabled]}>
                 <Trash2 size={16} color="#fff" />
@@ -288,35 +261,11 @@ export function ProfileScreen() {
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  flexShrink: { flex: 1 },
   scroll: {
     paddingHorizontal: 22,
     paddingTop: 8,
     paddingBottom: 28,
     gap: 8,
-  },
-  emailCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    backgroundColor: dark.surface,
-    borderWidth: 1,
-    borderColor: dark.border,
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    marginBottom: 8,
-  },
-  emailLabel: {
-    fontFamily: fonts.bodySemiBold,
-    fontSize: 12,
-    color: dark.textMuted,
-  },
-  emailValue: {
-    fontFamily: fonts.bodyBold,
-    fontSize: 15,
-    color: dark.textPrimary,
-    marginTop: 2,
   },
   sectionTitle: {
     fontFamily: fonts.displayBold,
@@ -365,18 +314,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: dark.green,
     textAlign: 'center',
-  },
-  googleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  googleText: {
-    flex: 1,
-    fontFamily: fonts.body,
-    fontSize: 13,
-    lineHeight: 19,
-    color: dark.textMuted,
   },
   dangerCard: {
     borderColor: 'rgba(239, 68, 68, 0.35)',

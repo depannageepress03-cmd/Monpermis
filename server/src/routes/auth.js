@@ -11,7 +11,6 @@ import { generateVerificationToken, getVerificationExpiry } from '../utils/token
 import { requireUserAuth } from '../middleware/userAuth.js'
 import { AccountDeleteBlockedError, deleteUserAccount } from '../utils/deleteUserAccount.js'
 import { logger } from '../utils/logger.js'
-import { verifyGoogleIdToken } from '../utils/googleAuth.js'
 
 const router = Router()
 
@@ -92,8 +91,7 @@ router.post('/register', async (req, res) => {
         if (existing.googleId) {
           return res.status(409).json({
             success: false,
-            error: 'Cet email est lié à Google. Connectez-vous avec Google.',
-            code: 'USE_GOOGLE',
+            error: 'Cet email est déjà associé à un compte. Utilise ton téléphone pour te connecter, ou contacte le support.',
           })
         }
         return res.status(409).json({ success: false, error: 'Cet email est déjà utilisé' })
@@ -158,29 +156,32 @@ router.post('/login', async (req, res) => {
     if (!identifier || !password) {
       return res.status(400).json({
         success: false,
-        error: 'Téléphone (ou email) et code requis',
+        error: 'Téléphone et code requis',
       })
     }
 
-    const looksLikeEmail = identifier.includes('@')
-    const normalizedPhone = looksLikeEmail ? '' : normalizeLearnerPhone(identifier)
+    if (identifier.includes('@')) {
+      return res.status(400).json({
+        success: false,
+        error: 'Connecte-toi avec ton numéro de téléphone et ton code',
+      })
+    }
 
-    let user = null
-    if (normalizedPhone) {
-      user = await User.findOne({ phone: normalizedPhone }).select('+password')
+    const normalizedPhone = normalizeLearnerPhone(identifier)
+
+    if (!normalizedPhone) {
+      return res.status(400).json({
+        success: false,
+        error: 'Numéro de téléphone invalide. Exemple : 0147880143',
+      })
     }
-    if (!user && looksLikeEmail) {
-      user = await User.findOne({ email: identifier.toLowerCase() }).select('+password')
-    }
-    // Fallback : identifiant saisi comme email sans @ improbable, ou phone mal normalisé
-    if (!user && !normalizedPhone) {
-      user = await User.findOne({ email: identifier.toLowerCase() }).select('+password')
-    }
+
+    const user = await User.findOne({ phone: normalizedPhone }).select('+password')
 
     if (!user) {
       return res.status(401).json({
         success: false,
-        error: 'Identifiant ou code incorrect',
+        error: 'Téléphone ou code incorrect',
       })
     }
 
@@ -194,15 +195,16 @@ router.post('/login', async (req, res) => {
     if (!user.password) {
       return res.status(401).json({
         success: false,
-        error: 'Ce compte utilise Google. Connectez-vous avec Google.',
-        code: 'USE_GOOGLE',
+        error:
+          'Ce compte n’a pas encore de code. Contacte le support Monpermis pour en définir un.',
+        code: 'NO_PASSWORD',
       })
     }
 
     if (!(await user.comparePassword(password))) {
       return res.status(401).json({
         success: false,
-        error: 'Identifiant ou code incorrect',
+        error: 'Téléphone ou code incorrect',
       })
     }
 
@@ -210,8 +212,8 @@ router.post('/login', async (req, res) => {
     const clientBody = String(req.body?.client || '').toLowerCase()
     const isMobileClient = clientHeader === 'mobile' || clientBody === 'mobile'
 
-    // Comptes Google / téléphone sans email : déjà vérifiés.
-    // Seuls les locaux avec email non vérifié sont bloqués (web).
+    // Comptes téléphone sans email : déjà vérifiés.
+    // Seuls les locaux avec email non vérifié sont bloqués (web, legacy).
     const hasEmail = Boolean(String(user.email || '').trim())
     if (
       !isMobileClient &&
@@ -475,13 +477,11 @@ router.delete('/account', requireUserAuth, async (req, res) => {
       return res.status(404).json({ success: false, error: 'Compte introuvable' })
     }
 
-    if (user.authProvider !== 'google') {
-      if (!password) {
-        return res.status(400).json({ success: false, error: 'Mot de passe requis' })
-      }
-      if (!(await user.comparePassword(password))) {
-        return res.status(401).json({ success: false, error: 'Mot de passe incorrect' })
-      }
+    if (!password) {
+      return res.status(400).json({ success: false, error: 'Code requis' })
+    }
+    if (!(await user.comparePassword(password))) {
+      return res.status(401).json({ success: false, error: 'Code incorrect' })
     }
 
     await deleteUserAccount(user._id, { cancelledBy: 'learner' })
@@ -496,96 +496,12 @@ router.delete('/account', requireUserAuth, async (req, res) => {
   }
 })
 
-router.post('/google', async (req, res) => {
-  try {
-    const { idToken } = req.body
-
-    if (!idToken) {
-      return res.status(400).json({ success: false, error: 'Token Google requis' })
-    }
-
-    let payload
-    try {
-      payload = await verifyGoogleIdToken(idToken)
-    } catch (verifyError) {
-      console.error('Erreur vérification Google:', verifyError?.message || verifyError)
-      if (verifyError?.status === 500) {
-        return res.status(503).json({
-          success: false,
-          error: 'Connexion Google non configurée sur le serveur',
-        })
-      }
-      return res.status(401).json({
-        success: false,
-        error: 'Token Google invalide ou expiré',
-      })
-    }
-
-    if (!payload?.email || !payload.sub) {
-      return res.status(400).json({ success: false, error: 'Token Google invalide' })
-    }
-
-    if (!payload.email_verified) {
-      return res.status(400).json({ success: false, error: 'Email Google non vérifié' })
-    }
-
-    const normalizedEmail = payload.email.toLowerCase()
-    let user = await User.findOne({
-      $or: [{ googleId: payload.sub }, { email: normalizedEmail }],
-    })
-
-    if (!user) {
-      user = await User.create({
-        firstName: (payload.given_name || '').trim() || 'Utilisateur',
-        // required: true refuse '' — certains comptes Google n’ont pas de family_name
-        lastName: (payload.family_name || '').trim() || 'Google',
-        email: normalizedEmail,
-        phone: '',
-        googleId: payload.sub,
-        authProvider: 'google',
-        isEmailVerified: true,
-      })
-      await sendWelcomeEmail(user).catch((err) => {
-        console.error('Email de bienvenue non envoyé:', err.message)
-      })
-    } else {
-      if (!user.googleId) {
-        user.googleId = payload.sub
-        user.isEmailVerified = true
-        if (user.authProvider !== 'google') {
-          user.authProvider = user.password ? user.authProvider : 'google'
-        }
-        await user.save()
-      }
-    }
-
-    if (user.isActive === false) {
-      return res.status(403).json({
-        success: false,
-        error: 'Compte suspendu. Contactez l’administration.',
-      })
-    }
-
-    const token = createToken(user._id)
-
-    res.json({
-      success: true,
-      data: {
-        user: user.toPublicJSON(),
-        token,
-        needsPhone: !String(user.phone || '').trim(),
-      },
-    })
-  } catch (error) {
-    console.error('Erreur connexion Google:', error)
-    if (error?.name === 'ValidationError') {
-      return res.status(400).json({
-        success: false,
-        error: 'Impossible de créer le compte Google',
-      })
-    }
-    res.status(500).json({ success: false, error: 'Connexion Google échouée' })
-  }
+router.post('/google', (_req, res) => {
+  res.status(410).json({
+    success: false,
+    error: 'La connexion Google n’est plus disponible. Utilise ton téléphone et ton code.',
+    code: 'GOOGLE_DISABLED',
+  })
 })
 
 export default router

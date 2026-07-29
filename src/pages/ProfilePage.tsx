@@ -1,6 +1,6 @@
 import { type FormEvent, useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { Lock, Trash2, User } from 'lucide-react'
+import { Trash2, User } from 'lucide-react'
 import {
   changePassword,
   deleteAccount,
@@ -60,7 +60,6 @@ export function ProfilePage() {
 
   if (loading || !user) return null
 
-  const isGoogle = user.authProvider === 'google'
   const phoneMissing = !String(phone || '').trim()
 
   const handleSaveProfile = async (e: FormEvent) => {
@@ -103,13 +102,13 @@ export function ProfilePage() {
       return
     }
     if (newPassword !== confirmPassword) {
-      setPwError('Les mots de passe ne correspondent pas')
+      setPwError('Les codes ne correspondent pas')
       return
     }
     setSavingPw(true)
     try {
       await changePassword(currentPassword, newPassword)
-      setPwMsg('Mot de passe modifié')
+      setPwMsg('Code modifié')
       setCurrentPassword('')
       setNewPassword('')
       setConfirmPassword('')
@@ -130,7 +129,7 @@ export function ProfilePage() {
     try {
       await deleteAccount({
         confirm: true,
-        password: isGoogle ? undefined : deletePassword,
+        password: deletePassword,
       })
       clearSession()
       navigate('/', { replace: true })
@@ -145,11 +144,6 @@ export function ProfilePage() {
     <div className="auth-page">
       <div className="auth-container learner-container">
         <PageNavbar title="Mon profil" icon={<User size={20} />} onBack={() => navigate('/accueil')} />
-
-        <div className="auth-card learner-card" style={{ marginBottom: 12 }}>
-          <p style={{ color: '#6b7280', fontSize: 13, margin: 0 }}>Adresse email</p>
-          <strong>{user.email}</strong>
-        </div>
 
         <form className="auth-card learner-card" onSubmit={handleSaveProfile} style={{ marginBottom: 12 }}>
           <h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 12 }}>Mes informations</h2>
@@ -187,46 +181,37 @@ export function ProfilePage() {
           </button>
         </form>
 
-        {isGoogle ? (
-          <div className="auth-card learner-card" style={{ marginBottom: 12 }}>
-            <p style={{ display: 'flex', gap: 8, alignItems: 'center', margin: 0, color: '#6b7280' }}>
-              <Lock size={16} />
-              Compte Google : le mot de passe est géré par Google.
-            </p>
+        <form className="auth-card learner-card" onSubmit={handleChangePassword} style={{ marginBottom: 12 }}>
+          <h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 12 }}>Changer de code</h2>
+          {pwError ? <p className="signin-form-error">{pwError}</p> : null}
+          {pwMsg ? <p style={{ color: '#16a34a', fontWeight: 600 }}>{pwMsg}</p> : null}
+          <div className="signin-fields">
+            <input
+              type="password"
+              className="auth-input"
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              placeholder="Code actuel"
+            />
+            <input
+              type="password"
+              className="auth-input"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              placeholder="Nouveau code"
+            />
+            <input
+              type="password"
+              className="auth-input"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              placeholder="Confirmer le code"
+            />
           </div>
-        ) : (
-          <form className="auth-card learner-card" onSubmit={handleChangePassword} style={{ marginBottom: 12 }}>
-            <h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 12 }}>Changer de mot de passe</h2>
-            {pwError ? <p className="signin-form-error">{pwError}</p> : null}
-            {pwMsg ? <p style={{ color: '#16a34a', fontWeight: 600 }}>{pwMsg}</p> : null}
-            <div className="signin-fields">
-              <input
-                type="password"
-                className="auth-input"
-                value={currentPassword}
-                onChange={(e) => setCurrentPassword(e.target.value)}
-                placeholder="Mot de passe actuel"
-              />
-              <input
-                type="password"
-                className="auth-input"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="Nouveau mot de passe"
-              />
-              <input
-                type="password"
-                className="auth-input"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Confirmer le mot de passe"
-              />
-            </div>
-            <button type="submit" className="btn-primary" disabled={savingPw} style={{ marginTop: 14 }}>
-              {savingPw ? 'Modification…' : 'Modifier le mot de passe'}
-            </button>
-          </form>
-        )}
+          <button type="submit" className="btn-primary" disabled={savingPw} style={{ marginTop: 14 }}>
+            {savingPw ? 'Modification…' : 'Modifier le code'}
+          </button>
+        </form>
 
         <div className="auth-card learner-card" style={{ borderColor: '#fecaca' }}>
           <h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 8, color: '#b91c1c' }}>
@@ -236,13 +221,13 @@ export function ProfilePage() {
             La suppression du compte est définitive (profil, abonnements liés, notifications).
           </p>
           {deleteError ? <p className="signin-form-error">{deleteError}</p> : null}
-          {confirmDelete && !isGoogle ? (
+          {confirmDelete ? (
             <input
               type="password"
               className="auth-input"
               value={deletePassword}
               onChange={(e) => setDeletePassword(e.target.value)}
-              placeholder="Mot de passe pour confirmer"
+              placeholder="Code pour confirmer"
               style={{ marginBottom: 12 }}
             />
           ) : null}

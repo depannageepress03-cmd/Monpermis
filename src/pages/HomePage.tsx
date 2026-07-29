@@ -306,16 +306,12 @@ export function HomePage() {
             <h2 className="home-profile-name">{fullName}</h2>
             <dl className="home-profile-rows">
               <div>
-                <dt>E-mail</dt>
-                <dd>{user.email || '—'}</dd>
-              </div>
-              <div>
                 <dt>Téléphone</dt>
                 <dd>{user.phone || '—'}</dd>
               </div>
               <div>
                 <dt>Compte</dt>
-                <dd>{user.authProvider === 'google' ? 'Google' : 'E-mail / mot de passe'}</dd>
+                <dd>Téléphone / code</dd>
               </div>
             </dl>
             <button

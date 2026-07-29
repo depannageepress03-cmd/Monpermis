@@ -15,21 +15,19 @@ import {
   Alert,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { loginUser, loginWithGoogle } from '../api/auth'
+import { loginUser } from '../api/auth'
 import { AuthInput } from '../components/AuthInput'
 import { Bouncy } from '../components/Bouncy'
 import { LegalFooter } from '../components/LegalFooter'
-import { GoogleSignInButton } from '../components/GoogleSignInButton'
 import { BrandName } from '../components/BrandName'
 import { useAuth } from '../context/AuthContext'
-import { useGoogleSignIn } from '../hooks/useGoogleSignIn'
 import type { RootStackParamList } from '../navigation/types'
 import { dark, fonts, gradients } from '../theme'
 import {
   normalizePhone,
   PHONE_PLACEHOLDER,
-  validateLoginIdentifier,
   validatePassword,
+  validatePhone,
 } from '../utils/validation'
 import { showAuthError } from '../utils/showAuthError'
 
@@ -40,9 +38,9 @@ export function LoginScreen() {
   const navigation = useNavigation<Nav>()
   const route = useRoute<Route>()
   const { signIn } = useAuth()
-  const [identifier, setIdentifier] = useState('')
+  const [phone, setPhone] = useState('')
   const [password, setPassword] = useState('')
-  const [errors, setErrors] = useState<{ email?: string; password?: string; info?: string }>({})
+  const [errors, setErrors] = useState<{ phone?: string; password?: string; info?: string }>({})
   const [loading, setLoading] = useState(false)
   const contentOpacity = useRef(new Animated.Value(0)).current
   const contentTranslate = useRef(new Animated.Value(12)).current
@@ -72,13 +70,9 @@ export function LoginScreen() {
   }, [route.params?.message, navigation])
 
   const finishAuth = useCallback(
-    async (
-      token: string,
-      user: Awaited<ReturnType<typeof loginUser>>['user'],
-      needsPhone?: boolean,
-    ) => {
+    async (token: string, user: Awaited<ReturnType<typeof loginUser>>['user']) => {
       await signIn(token, user)
-      if (needsPhone || !String(user.phone || '').trim()) {
+      if (!String(user.phone || '').trim()) {
         navigation.reset({ index: 0, routes: [{ name: 'Profile' }] })
         Alert.alert(
           'Téléphone requis',
@@ -91,48 +85,23 @@ export function LoginScreen() {
     [navigation, signIn],
   )
 
-  const handleGoogleSuccess = useCallback(
-    async (idToken: string) => {
-      try {
-        const { user, token, needsPhone } = await loginWithGoogle(idToken)
-        await finishAuth(token, user, needsPhone)
-      } catch (error) {
-        showAuthError(error)
-      }
-    },
-    [finishAuth],
-  )
-
-  const {
-    signInWithGoogle,
-    loading: googleLoading,
-    disabled: googleDisabled,
-    error: googleError,
-  } = useGoogleSignIn(handleGoogleSuccess)
-
-  useEffect(() => {
-    if (googleError) {
-      showAuthError(new Error(googleError))
-    }
-  }, [googleError])
-
   const handleSubmit = async () => {
-    const identifierError = validateLoginIdentifier(identifier)
+    const phoneError = validatePhone(phone)
     const passwordError = validatePassword(password)
 
-    if (identifierError || passwordError) {
-      setErrors({ email: identifierError, password: passwordError })
+    if (phoneError || passwordError) {
+      setErrors({ phone: phoneError, password: passwordError })
       return
     }
 
     setErrors({})
     setLoading(true)
 
-    const trimmed = identifier.trim()
-    const loginValue = trimmed.includes('@') ? trimmed : normalizePhone(trimmed)
-
     try {
-      const { user, token } = await loginUser({ identifier: loginValue, password })
+      const { user, token } = await loginUser({
+        phone: normalizePhone(phone),
+        password,
+      })
       await finishAuth(token, user)
     } catch (error) {
       showAuthError(error)
@@ -179,20 +148,13 @@ export function LoginScreen() {
 
               <View style={styles.fields}>
                 <AuthInput
-                  label="Téléphone ou email"
-                  placeholder={`${PHONE_PLACEHOLDER} ou email`}
-                  keyboardType="default"
-                  autoComplete="username"
-                  autoCapitalize="none"
-                  value={identifier}
-                  onChangeText={(value) => {
-                    if (value.includes('@') || /[a-zA-Z]/.test(value)) {
-                      setIdentifier(value)
-                    } else {
-                      setIdentifier(normalizePhone(value))
-                    }
-                  }}
-                  error={errors.email}
+                  label="Téléphone"
+                  placeholder={PHONE_PLACEHOLDER}
+                  keyboardType="phone-pad"
+                  autoComplete="tel"
+                  value={phone}
+                  onChangeText={(value) => setPhone(normalizePhone(value))}
+                  error={errors.phone}
                 />
                 <AuthInput
                   label="Code"
@@ -221,18 +183,6 @@ export function LoginScreen() {
                   </Text>
                 </LinearGradient>
               </Bouncy>
-
-              <View style={styles.dividerRow}>
-                <View style={styles.dividerLine} />
-                <Text style={styles.dividerText}>ou</Text>
-                <View style={styles.dividerLine} />
-              </View>
-
-              <GoogleSignInButton
-                onPress={signInWithGoogle}
-                loading={googleLoading}
-                disabled={googleDisabled || loading}
-              />
 
               <Text style={styles.footer}>
                 Pas encore de compte ?{' '}
@@ -335,24 +285,6 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bodyBold,
     fontSize: 15,
     color: '#0B0F1A',
-  },
-  dividerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 24,
-    gap: 12,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: dark.border,
-  },
-  dividerText: {
-    fontFamily: fonts.bodySemiBold,
-    fontSize: 12,
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
-    color: dark.textMuted,
   },
   footer: {
     marginTop: 32,

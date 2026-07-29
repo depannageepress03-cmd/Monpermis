@@ -35,7 +35,6 @@
       "expo-video",
       "expo-audio",
       "expo-font",
-      "@react-native-google-signin/google-signin",
       "expo-asset",
       [
         "expo-build-properties",

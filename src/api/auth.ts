@@ -12,7 +12,7 @@ export interface AuthUser {
   id: string
   firstName: string
   lastName: string
-  email: string
+  email?: string
   phone: string
   authProvider?: 'local' | 'google'
   isEmailVerified?: boolean
@@ -83,22 +83,15 @@ export function registerUser(data: {
   })
 }
 
-export function loginUser(data: { email?: string; phone?: string; identifier?: string; password: string }) {
-  const identifier = (data.identifier || data.email || data.phone || '').trim()
+export function loginUser(data: { phone?: string; identifier?: string; password: string }) {
+  const phone = (data.phone || data.identifier || '').trim()
   return request<AuthData>('/auth/login', {
     method: 'POST',
     body: JSON.stringify({
-      identifier,
-      email: identifier,
+      phone,
+      identifier: phone,
       password: data.password,
     }),
-  })
-}
-
-export function loginWithGoogle(idToken: string) {
-  return request<AuthData>('/auth/google', {
-    method: 'POST',
-    body: JSON.stringify({ idToken }),
   })
 }
 

@@ -32,7 +32,7 @@ const SECTIONS = [
   {
     title: '2. Données collectées',
     paragraphs: [
-      'Nous collectons les données nécessaires au compte : identité, e-mail, téléphone, identifiants de connexion (ou compte Google), progression pédagogique, abonnements et réservations.',
+      'Nous collectons les données nécessaires au compte : identité (prénom, nom), téléphone, code de connexion, progression pédagogique, abonnements et réservations.',
       'Les paiements sont traités via FedaPay ; nous ne stockons pas les données complètes de carte bancaire.',
     ],
   },
@@ -50,7 +50,7 @@ const SECTIONS = [
   {
     title: '4. Base légale et durée',
     paragraphs: [
-      'Le traitement repose sur l’exécution du contrat (compte / abonnement) et, le cas échéant, sur votre consentement (ex. connexion Google).',
+      'Le traitement repose sur l’exécution du contrat (compte / abonnement) et, le cas échéant, sur votre consentement.',
       'Les données sont conservées pendant la durée du compte, puis archivées ou supprimées selon les obligations légales applicables.',
     ],
   },

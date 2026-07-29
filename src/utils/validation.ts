@@ -1,8 +1,4 @@
-/**
- * Permissive email format: local@domain with at least one dot in the domain.
- * Allows +, _, digits, hyphens, subdomains, and long/new gTLDs.
- * Rejects spaces and missing @ / domain.
- */
+/** Conservé pour les flux legacy (vérification email / liens anciens). */
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 export function isValidEmailFormat(email: string): boolean {
@@ -23,15 +19,9 @@ export function validatePassword(password: string): string | undefined {
   return undefined
 }
 
-/** Identifiant de connexion : téléphone Bénin (10 chiffres) ou email. */
+/** Identifiant de connexion : téléphone Bénin (10 chiffres). */
 export function validateLoginIdentifier(value: string): string | undefined {
-  const trimmed = value.trim()
-  if (!trimmed) return 'Téléphone ou email requis'
-  if (trimmed.includes('@')) {
-    if (!isValidEmailFormat(trimmed)) return 'Email invalide'
-    return undefined
-  }
-  return validatePhone(trimmed)
+  return validatePhone(value)
 }
 
 /** Format attendu : 0147880143 */

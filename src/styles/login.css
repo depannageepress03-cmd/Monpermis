@@ -292,17 +292,6 @@
   background: var(--color-border);
 }
 
-.google-signin-wrapper {
-  display: flex;
-  justify-content: center;
-  width: 100%;
-}
-
-.google-signin-wrapper--disabled {
-  opacity: 0.6;
-  pointer-events: none;
-}
-
 .signin-btn-secondary {
   width: 100%;
   padding: 0.95rem 1rem;

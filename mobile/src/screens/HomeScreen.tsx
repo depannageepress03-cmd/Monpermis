@@ -370,18 +370,12 @@ export function HomeScreen() {
 
             <View style={styles.modalRows}>
               <View style={styles.modalRow}>
-                <Text style={styles.modalRowLabel}>E-mail</Text>
-                <Text style={styles.modalRowValue}>{user.email || '—'}</Text>
-              </View>
-              <View style={styles.modalRow}>
                 <Text style={styles.modalRowLabel}>Téléphone</Text>
                 <Text style={styles.modalRowValue}>{user.phone || '—'}</Text>
               </View>
               <View style={styles.modalRow}>
                 <Text style={styles.modalRowLabel}>Compte</Text>
-                <Text style={styles.modalRowValue}>
-                  {user.authProvider === 'google' ? 'Google' : 'E-mail / mot de passe'}
-                </Text>
+                <Text style={styles.modalRowValue}>Téléphone / code</Text>
               </View>
             </View>
 
