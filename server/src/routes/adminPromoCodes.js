@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import { requireAdminAuth } from '../middleware/adminAuth.js'
+import { audit } from '../middleware/audit.js'
 import { PromoCode, PROMO_CREATABLE_MODULES, PROMO_DURATION_UNITS } from '../models/PromoCode.js'
 import { logger } from '../utils/logger.js'
 
@@ -21,7 +22,7 @@ router.get('/', async (_req, res) => {
   }
 })
 
-router.post('/', async (req, res) => {
+router.post('/', audit('create', 'promo_code'), async (req, res) => {
   try {
     const code = String(req.body.code || '').trim().toUpperCase()
     const modules = parseModules(req.body.modules)
@@ -66,7 +67,7 @@ router.post('/', async (req, res) => {
   }
 })
 
-router.patch('/:id', async (req, res) => {
+router.patch('/:id', audit('update', 'promo_code'), async (req, res) => {
   try {
     const promo = await PromoCode.findById(req.params.id)
     if (!promo) {
@@ -105,7 +106,7 @@ router.patch('/:id', async (req, res) => {
   }
 })
 
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', audit('delete', 'promo_code'), async (req, res) => {
   try {
     const promo = await PromoCode.findByIdAndDelete(req.params.id)
     if (!promo) {

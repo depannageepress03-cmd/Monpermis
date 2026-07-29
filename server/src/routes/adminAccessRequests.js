@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import { requireAdminAuth } from '../middleware/adminAuth.js'
+import { audit } from '../middleware/audit.js'
 import { AccessModulePricing, ACCESS_MODULES } from '../models/AccessModulePricing.js'
 import { AccessRequest, ACCESS_REQUEST_STATUSES } from '../models/AccessRequest.js'
 import { AccessAuditLog } from '../models/AccessAuditLog.js'
@@ -111,7 +112,7 @@ router.get('/subscribers', async (req, res) => {
 })
 
 /** Attribution manuelle exceptionnelle d’un abonnement. */
-router.post('/grant', async (req, res) => {
+router.post('/grant', audit('grant', 'access'), async (req, res) => {
   try {
     const { userId, module, quantity, note } = req.body ?? {}
     if (!userId) {
@@ -215,7 +216,7 @@ router.get('/payments', async (req, res) => {
 })
 
 /** Marque un paiement needsRefund comme traité (remboursement manuel hors plateforme). */
-router.patch('/payments/:id/resolve-refund', async (req, res) => {
+router.patch('/payments/:id/resolve-refund', audit('resolve_refund', 'payment'), async (req, res) => {
   try {
     const payment = await Payment.findById(req.params.id)
     if (!payment) {
@@ -298,7 +299,7 @@ router.get('/modules', async (_req, res) => {
   }
 })
 
-router.patch('/modules/:key', async (req, res) => {
+router.patch('/modules/:key', audit('update', 'pricing'), async (req, res) => {
   try {
     if (!ACCESS_MODULES.includes(req.params.key)) {
       return res.status(404).json({ success: false, error: 'Module inconnu' })
@@ -404,7 +405,7 @@ router.get('/:id', async (req, res) => {
   }
 })
 
-router.post('/:id/validate', async (req, res) => {
+router.post('/:id/validate', audit('validate', 'access_request'), async (req, res) => {
   try {
     const request = await AccessRequest.findById(req.params.id)
     if (!request) {

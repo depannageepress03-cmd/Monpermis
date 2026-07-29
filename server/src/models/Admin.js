@@ -51,6 +51,8 @@ adminSchema.methods.toPublicJSON = function toPublicJSON() {
     id: this._id,
     fullName: this.fullName,
     phone: this.phone,
+    role: 'admin',
+    isActive: Boolean(this.isActive),
     lastLoginAt: this.lastLoginAt,
     createdAt: this.createdAt,
   }

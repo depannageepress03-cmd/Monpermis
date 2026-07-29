@@ -58,7 +58,7 @@ router.get('/moniteurs', async (_req, res) => {
   }
 })
 
-router.post('/moniteurs', async (req, res) => {
+router.post('/moniteurs', audit('create', 'moniteur'), async (req, res) => {
   try {
     let firstName = String(req.body.firstName || '').trim()
     let lastName = String(req.body.lastName || '').trim()
@@ -115,7 +115,7 @@ router.post('/moniteurs', async (req, res) => {
   }
 })
 
-router.patch('/moniteurs/:id', async (req, res) => {
+router.patch('/moniteurs/:id', audit('update', 'moniteur'), async (req, res) => {
   try {
     const moniteur = await Moniteur.findById(req.params.id)
     if (!moniteur) {
@@ -180,7 +180,7 @@ router.patch('/moniteurs/:id', async (req, res) => {
   }
 })
 
-router.delete('/moniteurs/:id', async (req, res) => {
+router.delete('/moniteurs/:id', audit('delete', 'moniteur'), async (req, res) => {
   try {
     const moniteur = await Moniteur.findByIdAndDelete(req.params.id)
     if (!moniteur) {
@@ -195,7 +195,7 @@ router.delete('/moniteurs/:id', async (req, res) => {
 })
 
 /** Génère des créneaux horaires pour une plage de dates. */
-router.post('/creneaux/generate', async (req, res) => {
+router.post('/creneaux/generate', audit('generate', 'creneau'), async (req, res) => {
   try {
     const moniteurId = req.body.moniteurId
     const fromDate = String(req.body.fromDate || '').trim()
@@ -280,7 +280,7 @@ router.post('/creneaux/generate', async (req, res) => {
 })
 
 /** Crée un créneau unique avec horaires saisis par l’admin. */
-router.post('/creneaux', async (req, res) => {
+router.post('/creneaux', audit('create', 'creneau'), async (req, res) => {
   try {
     const moniteurId = req.body.moniteurId
     const date = String(req.body.date || '').trim().slice(0, 10)
@@ -372,7 +372,7 @@ router.get('/creneaux', async (req, res) => {
   }
 })
 
-router.patch('/creneaux/:id', async (req, res) => {
+router.patch('/creneaux/:id', audit('update', 'creneau'), async (req, res) => {
   try {
     const creneau = await Creneau.findById(req.params.id)
     if (!creneau) {
@@ -431,7 +431,7 @@ router.patch('/creneaux/:id', async (req, res) => {
   }
 })
 
-router.delete('/creneaux/:id', async (req, res) => {
+router.delete('/creneaux/:id', audit('delete', 'creneau'), async (req, res) => {
   try {
     const creneau = await Creneau.findById(req.params.id)
     if (!creneau) {
@@ -510,7 +510,7 @@ router.get('/reservations', async (req, res) => {
 })
 
 /** Supprime une réservation, libère le créneau et recrédite les heures si non effectuée. */
-router.delete('/reservations/:id', async (req, res) => {
+router.delete('/reservations/:id', audit('delete', 'reservation'), async (req, res) => {
   try {
     const reservation = await Reservation.findById(req.params.id)
     if (!reservation) {
@@ -538,7 +538,7 @@ router.delete('/reservations/:id', async (req, res) => {
   }
 })
 
-router.patch('/reservations/:id', async (req, res) => {
+router.patch('/reservations/:id', audit('update', 'reservation'), async (req, res) => {
   try {
     const reservation = await Reservation.findById(req.params.id)
     if (!reservation) {
@@ -569,7 +569,7 @@ router.patch('/reservations/:id', async (req, res) => {
 })
 
 /** Annule une réservation (conserve l’historique) et libère le créneau. */
-router.post('/reservations/:id/cancel', async (req, res) => {
+router.post('/reservations/:id/cancel', audit('cancel', 'reservation'), async (req, res) => {
   try {
     const reason = String(req.body.reason || req.body.cancellationReason || '').trim()
     const reservation = await Reservation.findById(req.params.id).populate('creneauId')
@@ -616,7 +616,7 @@ router.post('/reservations/:id/cancel', async (req, res) => {
   }
 })
 
-router.patch('/users/:userId/heures', async (req, res) => {
+router.patch('/users/:userId/heures', audit('update', 'solde_heures'), async (req, res) => {
   try {
     const user = await User.findById(req.params.userId)
     if (!user) {

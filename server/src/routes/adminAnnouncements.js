@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { Announcement } from '../models/Announcement.js'
 import { requireAdminAuth } from '../middleware/adminAuth.js'
+import { audit } from '../middleware/audit.js'
 import { imageUpload } from '../middleware/upload.js'
 import { uploadImageBuffer } from '../services/cloudinary.js'
 import {
@@ -72,7 +73,7 @@ router.get('/', async (req, res) => {
 })
 
 /** Création (brouillon par défaut si active non fourni / false). */
-router.post('/', async (req, res) => {
+router.post('/', audit('create', 'announcement'), async (req, res) => {
   try {
     const parsed = parseAnnouncementInput(req.body, { active: false })
     if (parsed.error) return res.status(400).json({ success: false, error: parsed.error })
@@ -139,7 +140,7 @@ router.post('/upload-image', (req, res) => {
 })
 
 /** Publier (active + optionnellement notifier). */
-router.post('/:id/publish', async (req, res) => {
+router.post('/:id/publish', audit('publish', 'announcement'), async (req, res) => {
   try {
     const announcement = await Announcement.findById(req.params.id)
     if (!announcement) return res.status(404).json({ success: false, error: 'Annonce introuvable' })
@@ -181,7 +182,7 @@ router.post('/:id/publish', async (req, res) => {
 })
 
 /** Re-notifier sans modifier le contenu. */
-router.post('/:id/notify', async (req, res) => {
+router.post('/:id/notify', audit('notify', 'announcement'), async (req, res) => {
   try {
     const announcement = await Announcement.findById(req.params.id)
     if (!announcement) return res.status(404).json({ success: false, error: 'Annonce introuvable' })
@@ -203,7 +204,7 @@ router.post('/:id/notify', async (req, res) => {
   }
 })
 
-router.patch('/:id', async (req, res) => {
+router.patch('/:id', audit('update', 'announcement'), async (req, res) => {
   try {
     const announcement = await Announcement.findById(req.params.id)
     if (!announcement) return res.status(404).json({ success: false, error: 'Annonce introuvable' })
@@ -230,7 +231,7 @@ router.patch('/:id', async (req, res) => {
   }
 })
 
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', audit('delete', 'announcement'), async (req, res) => {
   try {
     const deleted = await Announcement.findByIdAndDelete(req.params.id)
     if (!deleted) return res.status(404).json({ success: false, error: 'Annonce introuvable' })

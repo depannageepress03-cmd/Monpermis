@@ -4,6 +4,7 @@ import { PracticeExamAttempt } from '../models/PracticeExamAttempt.js'
 import { Question } from '../models/Question.js'
 import { User } from '../models/User.js'
 import { requireAdminAuth } from '../middleware/adminAuth.js'
+import { audit } from '../middleware/audit.js'
 import {
   PRACTICE_EXAM_COUNT,
   PRACTICE_EXAM_PASS_SCORE,
@@ -71,7 +72,7 @@ router.get('/practice-exams', async (_req, res) => {
   }
 })
 
-router.post('/practice-exams/generate', async (_req, res) => {
+router.post('/practice-exams/generate', audit('generate', 'practice_exam'), async (_req, res) => {
   try {
     const result = await generatePracticeExamSheets()
     if (result.error) {
@@ -118,7 +119,7 @@ router.get('/practice-exams/:examId', async (req, res) => {
   }
 })
 
-router.patch('/practice-exams/:examId', async (req, res) => {
+router.patch('/practice-exams/:examId', audit('update', 'practice_exam'), async (req, res) => {
   try {
     const exam = await PracticeExam.findById(req.params.examId)
     if (!exam) {
@@ -139,7 +140,7 @@ router.patch('/practice-exams/:examId', async (req, res) => {
   }
 })
 
-router.post('/practice-exams/ensure', async (_req, res) => {
+router.post('/practice-exams/ensure', audit('ensure', 'practice_exam'), async (_req, res) => {
   try {
     const result = await ensurePracticeExamSheets()
     if (result.error) {

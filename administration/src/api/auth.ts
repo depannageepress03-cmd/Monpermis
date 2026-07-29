@@ -4,6 +4,8 @@ export interface AdminUser {
   id: string
   fullName: string
   phone: string
+  role?: string
+  isActive?: boolean
   lastLoginAt?: string
   createdAt: string
 }

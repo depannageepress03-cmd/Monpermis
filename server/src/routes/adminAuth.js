@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken'
 import mongoose from 'mongoose'
 import { Admin } from '../models/Admin.js'
 import { requireAdminAuth } from '../middleware/adminAuth.js'
+import { audit, logAdminAction } from '../middleware/audit.js'
 import { logger } from '../utils/logger.js'
 
 const router = Router()
@@ -34,7 +35,7 @@ router.get('/registration-status', requireAdminAuth, (req, res) => {
   res.json({ success: true, data: { allowed: isRegistrationAllowed() } })
 })
 
-router.post('/register', requireAdminAuth, async (req, res) => {
+router.post('/register', requireAdminAuth, audit('create', 'admin'), async (req, res) => {
   try {
     if (!isRegistrationAllowed()) {
       return res.status(403).json({ success: false, error: 'Création d\'administrateur désactivée' })
@@ -123,6 +124,14 @@ router.post('/login', async (req, res) => {
 
     await admin.resetFailedLogins()
     const token = createAdminToken(admin._id)
+
+    logAdminAction(req, {
+      action: 'login',
+      resource: 'admin',
+      resourceId: String(admin._id),
+      admin,
+      metadata: { phone: admin.phone },
+    })
 
     res.json({
       success: true,

@@ -7,6 +7,7 @@ import {
   computeChapterTestSubjectCount,
 } from '../utils/chapterTestSubjects.js'
 import { requireAdminAuth } from '../middleware/adminAuth.js'
+import { audit } from '../middleware/audit.js'
 import { audioUpload } from '../middleware/upload.js'
 import { destroyAudioByPublicId, uploadAudioBuffer } from '../services/cloudinary.js'
 import { logger } from '../utils/logger.js'
@@ -112,7 +113,7 @@ router.get('/chapters/:chapterId/questions', async (req, res) => {
   }
 })
 
-router.post('/chapters/:chapterId/questions', async (req, res) => {
+router.post('/chapters/:chapterId/questions', audit('create', 'question'), async (req, res) => {
   try {
     const chapter = await ensureChapter(req.params.chapterId)
     if (!chapter) {
@@ -148,7 +149,7 @@ router.post('/chapters/:chapterId/questions', async (req, res) => {
   }
 })
 
-router.patch('/chapters/:chapterId/questions/:questionId', async (req, res) => {
+router.patch('/chapters/:chapterId/questions/:questionId', audit('update', 'question'), async (req, res) => {
   try {
     const question = await Question.findOne({
       _id: req.params.questionId,
@@ -195,7 +196,7 @@ router.patch('/chapters/:chapterId/questions/:questionId', async (req, res) => {
   }
 })
 
-router.delete('/chapters/:chapterId/questions/:questionId', async (req, res) => {
+router.delete('/chapters/:chapterId/questions/:questionId', audit('delete', 'question'), async (req, res) => {
   try {
     const question = await Question.findOneAndDelete({
       _id: req.params.questionId,
@@ -246,7 +247,7 @@ router.get('/chapters/:chapterId/test-subjects/current', async (req, res) => {
   }
 })
 
-router.post('/chapters/:chapterId/test-subjects/generate', async (req, res) => {
+router.post('/chapters/:chapterId/test-subjects/generate', audit('generate', 'test_subject'), async (req, res) => {
   try {
     const chapter = await ensureChapter(req.params.chapterId)
     if (!chapter) {
@@ -282,7 +283,7 @@ router.post('/chapters/:chapterId/test-subjects/generate', async (req, res) => {
   }
 })
 
-router.patch('/chapters/:chapterId/test-subjects/:subjectId', async (req, res) => {
+router.patch('/chapters/:chapterId/test-subjects/:subjectId', audit('update', 'test_subject'), async (req, res) => {
   try {
     const subject = await TestSubject.findOne({
       _id: req.params.subjectId,
@@ -317,7 +318,7 @@ router.patch('/chapters/:chapterId/test-subjects/:subjectId', async (req, res) =
   }
 })
 
-router.delete('/chapters/:chapterId/test-subjects/:subjectId', async (req, res) => {
+router.delete('/chapters/:chapterId/test-subjects/:subjectId', audit('delete', 'test_subject'), async (req, res) => {
   try {
     const subject = await TestSubject.findOneAndDelete({
       _id: req.params.subjectId,

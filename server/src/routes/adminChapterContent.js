@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import { requireAdminAuth } from '../middleware/adminAuth.js'
+import { audit } from '../middleware/audit.js'
 import { imageUpload, videoUpload } from '../middleware/upload.js'
 import {
   resolveCodeMediaFolder,
@@ -85,7 +86,7 @@ export function createAdminChapterRouter(Model, options = {}) {
     }
   })
 
-  router.post('/chapters', async (req, res) => {
+  router.post('/chapters', audit('create', 'chapter'), async (req, res) => {
     try {
       const name = req.body.name?.trim()
       if (!name || name.length < 2) {
@@ -101,7 +102,7 @@ export function createAdminChapterRouter(Model, options = {}) {
     }
   })
 
-  router.patch('/chapters/:chapterId', async (req, res) => {
+  router.patch('/chapters/:chapterId', audit('update', 'chapter'), async (req, res) => {
     try {
       const chapter = await Model.findById(req.params.chapterId)
       if (!chapter) {
@@ -133,7 +134,7 @@ export function createAdminChapterRouter(Model, options = {}) {
     }
   })
 
-  router.post('/chapters/reorder', async (req, res) => {
+  router.post('/chapters/reorder', audit('reorder', 'chapter'), async (req, res) => {
     try {
       const orderedIds = req.body.orderedIds
       if (!Array.isArray(orderedIds) || orderedIds.length === 0) {
@@ -169,7 +170,7 @@ export function createAdminChapterRouter(Model, options = {}) {
     }
   })
 
-  router.post('/chapters/:chapterId/duplicate', async (req, res) => {
+  router.post('/chapters/:chapterId/duplicate', audit('duplicate', 'chapter'), async (req, res) => {
     try {
       const source = await Model.findById(req.params.chapterId)
       if (!source) {
@@ -198,7 +199,7 @@ export function createAdminChapterRouter(Model, options = {}) {
     }
   })
 
-  router.delete('/chapters/:chapterId', async (req, res) => {
+  router.delete('/chapters/:chapterId', audit('delete', 'chapter'), async (req, res) => {
     try {
       const chapter = await Model.findByIdAndDelete(req.params.chapterId)
       if (!chapter) {
@@ -211,7 +212,7 @@ export function createAdminChapterRouter(Model, options = {}) {
     }
   })
 
-  router.post('/chapters/:chapterId/courses', async (req, res) => {
+  router.post('/chapters/:chapterId/courses', audit('create', 'course'), async (req, res) => {
     try {
       const title = req.body.title?.trim()
       if (!title || title.length < 2) {
@@ -249,7 +250,7 @@ export function createAdminChapterRouter(Model, options = {}) {
     }
   })
 
-  router.patch('/chapters/:chapterId/courses/:courseId', async (req, res) => {
+  router.patch('/chapters/:chapterId/courses/:courseId', audit('update', 'course'), async (req, res) => {
     try {
       const chapter = await Model.findById(req.params.chapterId)
       if (!chapter) {
@@ -304,7 +305,7 @@ export function createAdminChapterRouter(Model, options = {}) {
     }
   })
 
-  router.post('/chapters/:chapterId/courses/reorder', async (req, res) => {
+  router.post('/chapters/:chapterId/courses/reorder', audit('reorder', 'course'), async (req, res) => {
     try {
       const orderedIds = req.body.orderedIds
       if (!Array.isArray(orderedIds)) {
@@ -328,7 +329,7 @@ export function createAdminChapterRouter(Model, options = {}) {
     }
   })
 
-  router.delete('/chapters/:chapterId/courses/:courseId', async (req, res) => {
+  router.delete('/chapters/:chapterId/courses/:courseId', audit('delete', 'course'), async (req, res) => {
     try {
       const chapter = await Model.findById(req.params.chapterId)
       if (!chapter) {
@@ -349,7 +350,7 @@ export function createAdminChapterRouter(Model, options = {}) {
     }
   })
 
-  router.post('/chapters/:chapterId/courses/:courseId/modules', async (req, res) => {
+  router.post('/chapters/:chapterId/courses/:courseId/modules', audit('create', 'module'), async (req, res) => {
     try {
       const chapter = await Model.findById(req.params.chapterId)
       if (!chapter) {
@@ -397,7 +398,7 @@ export function createAdminChapterRouter(Model, options = {}) {
     }
   })
 
-  router.post('/chapters/:chapterId/courses/:courseId/modules/:moduleId/duplicate', async (req, res) => {
+  router.post('/chapters/:chapterId/courses/:courseId/modules/:moduleId/duplicate', audit('duplicate', 'module'), async (req, res) => {
     try {
       const chapter = await Model.findById(req.params.chapterId)
       if (!chapter) {
@@ -449,7 +450,7 @@ export function createAdminChapterRouter(Model, options = {}) {
     }
   })
 
-  router.post('/chapters/:chapterId/courses/:courseId/modules/reorder', async (req, res) => {
+  router.post('/chapters/:chapterId/courses/:courseId/modules/reorder', audit('reorder', 'module'), async (req, res) => {
     try {
       const orderedIds = req.body.orderedIds
       if (!Array.isArray(orderedIds)) {
@@ -478,7 +479,7 @@ export function createAdminChapterRouter(Model, options = {}) {
     }
   })
 
-  router.patch('/chapters/:chapterId/courses/:courseId/modules/:moduleId', async (req, res) => {
+  router.patch('/chapters/:chapterId/courses/:courseId/modules/:moduleId', audit('update', 'module'), async (req, res) => {
     try {
       const chapter = await Model.findById(req.params.chapterId)
       if (!chapter) {
@@ -538,7 +539,7 @@ export function createAdminChapterRouter(Model, options = {}) {
     }
   })
 
-  router.delete('/chapters/:chapterId/courses/:courseId/modules/:moduleId', async (req, res) => {
+  router.delete('/chapters/:chapterId/courses/:courseId/modules/:moduleId', audit('delete', 'module'), async (req, res) => {
     try {
       const chapter = await Model.findById(req.params.chapterId)
       if (!chapter) {

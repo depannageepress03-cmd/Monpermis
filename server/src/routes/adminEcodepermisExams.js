@@ -4,6 +4,7 @@ import { ECodePermisExamAttempt } from '../models/ECodePermisExamAttempt.js'
 import { Question } from '../models/Question.js'
 import { User } from '../models/User.js'
 import { requireAdminAuth } from '../middleware/adminAuth.js'
+import { audit } from '../middleware/audit.js'
 import {
   ECODEPERMIS_EXAM_COUNT,
   ECODEPERMIS_EXAM_PASS_SCORE,
@@ -94,7 +95,7 @@ router.get('/exams', async (_req, res) => {
   }
 })
 
-router.post('/exams/generate', async (_req, res) => {
+router.post('/exams/generate', audit('generate', 'ecodepermis_exam'), async (_req, res) => {
   try {
     const result = await generateECodePermisExamSheets()
     if (result.error) {
@@ -141,7 +142,7 @@ router.get('/exams/:examId', async (req, res) => {
   }
 })
 
-router.patch('/exams/:examId', async (req, res) => {
+router.patch('/exams/:examId', audit('update', 'ecodepermis_exam'), async (req, res) => {
   try {
     const exam = await ECodePermisExam.findById(req.params.examId)
     if (!exam) {
@@ -162,7 +163,7 @@ router.patch('/exams/:examId', async (req, res) => {
   }
 })
 
-router.post('/exams/ensure', async (_req, res) => {
+router.post('/exams/ensure', audit('ensure', 'ecodepermis_exam'), async (_req, res) => {
   try {
     const result = await ensureECodePermisExamSheets()
     if (result.error) {

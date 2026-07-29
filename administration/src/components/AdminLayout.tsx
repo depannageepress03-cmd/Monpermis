@@ -10,7 +10,9 @@ import {
   Megaphone,
   Menu,
   Plus,
+  ScrollText,
   Search,
+  Shield,
   UserPlus,
   Users,
   Wallet,
@@ -62,6 +64,8 @@ const navItems: NavItem[] = [
   { to: '/abonnements', label: 'Abonnés', icon: Wallet },
   { to: '/codes-promo', label: 'Codes promo', icon: Gift },
   { to: '/annonces', label: 'Annonces', icon: Megaphone },
+  { to: '/administrateurs', label: 'Administrateurs', icon: Shield },
+  { to: '/journal-audit', label: 'Journal d’audit', icon: ScrollText },
   { to: '/creer-admin', label: 'Créer un admin', icon: UserPlus },
 ]
 
@@ -72,6 +76,8 @@ function pageLabel(pathname: string) {
     return 'Abonnés'
   }
   if (pathname.startsWith('/codes-promo')) return 'Codes promo'
+  if (pathname.startsWith('/administrateurs')) return 'Administrateurs'
+  if (pathname.startsWith('/journal-audit')) return 'Journal d’audit'
   if (pathname.startsWith('/creer-admin')) return 'Créer un admin'
   if (pathname.includes('/questions')) return 'Questions'
   if (pathname.startsWith('/code/revision-chapitres')) return 'Révision par chapitres'
