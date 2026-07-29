@@ -22,7 +22,6 @@ import contentConduiteRoutes from './routes/contentConduite.js'
 import reservationsRoutes from './routes/reservations.js'
 import adminPracticeExamsRoutes from './routes/adminPracticeExams.js'
 import adminEcodepermisExamsRoutes from './routes/adminEcodepermisExams.js'
-import aiTutorRoutes from './routes/aiTutor.js'
 import notificationsRoutes from './routes/notifications.js'
 import announcementsRoutes from './routes/announcements.js'
 import adminAnnouncementsRoutes from './routes/adminAnnouncements.js'
@@ -180,7 +179,6 @@ app.use('/api/access-requests', accessRequestsRoutes)
 app.use('/api/payments', paymentsRoutes)
 app.use('/api/admin/promo-codes', adminPromoCodesRoutes)
 app.use('/api/promo-codes', promoCodesRoutes)
-app.use('/api/ai', aiTutorRoutes)
 app.use('/api/content/revision', contentRoutes)
 app.use('/api/content/revision', practiceExamsRoutes)
 app.use('/api/content/ecodepermis', ecodepermisExamsRoutes)

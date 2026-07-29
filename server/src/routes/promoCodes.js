@@ -53,6 +53,7 @@ router.post('/redeem', async (req, res) => {
     const unlockedModules = []
     try {
       for (const module of claimed.modules) {
+        if (module === 'aiChat') continue
         if (module === 'conduite_heures') {
           if (claimed.heuresBonus > 0) {
             await User.findByIdAndUpdate(req.user._id, { $inc: { soldeHeures: claimed.heuresBonus } })

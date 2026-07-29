@@ -80,7 +80,7 @@ export function AbonnementScreen() {
         fetchAccessMe(),
         loadPendingCheckoutCart(),
       ])
-      setModules(moduleCatalog)
+      setModules(moduleCatalog.filter((m) => m.key !== 'aiChat'))
       setMe(meResult)
       setPendingCart(savedCart?.source === 'abonnement' ? savedCart : null)
     } catch (err) {

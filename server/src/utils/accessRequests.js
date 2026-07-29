@@ -249,8 +249,10 @@ const DEFAULT_MODULE_PRICING = [
   { key: 'conduite_heures', label: 'Heures de conduite', unit: 'hour', price: 5000 },
   { key: 'conduite_videos', label: 'Vidéos pédagogiques conduite', unit: 'month', price: 0 },
   { key: 'ecodepermis', label: 'E-Codepermis', unit: 'month', price: 1000 },
-  { key: 'aiChat', label: 'Chat IA tuteur', unit: 'month', price: 1000 },
 ]
+
+/** Modules retirés de la vente (conservés en base pour l’historique). */
+export const RETIRED_ACCESS_MODULES = ['aiChat']
 
 /** Montant figé pour un module (réduction −1000 FCFA si N≥2 heures de conduite). */
 export function computeModuleAmount(pricingOrKey, quantity = 1, unitPrice = null) {
@@ -285,6 +287,13 @@ export async function ensureAccessModulePricing() {
     await videos.save()
     migrated += 1
   }
+
+  // Chat IA retiré de la vente — garder l’entrée pour l’historique admin.
+  const retired = await AccessModulePricing.updateMany(
+    { key: { $in: RETIRED_ACCESS_MODULES }, active: { $ne: false } },
+    { $set: { active: false } },
+  )
+  if (retired.modifiedCount) migrated += retired.modifiedCount
 
   return { created, migrated }
 }
@@ -875,7 +884,7 @@ export function remainingForAccessRequest(request, now = new Date()) {
  * (sans paiement). Active immédiatement l’accès.
  */
 export async function adminGrantModuleAccess({ userId, module, quantity = 1, note = '', admin }) {
-  if (!ACCESS_MODULES.includes(module)) {
+  if (!ACCESS_MODULES.includes(module) || RETIRED_ACCESS_MODULES.includes(module)) {
     const error = new Error('Module inconnu')
     error.status = 400
     throw error

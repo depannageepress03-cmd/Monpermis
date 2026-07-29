@@ -16,7 +16,6 @@ const MODULE_OPTIONS: { value: PromoModuleKey; label: string }[] = [
   { value: 'code', label: 'Code de la route' },
   { value: 'conduite_heures', label: 'Heures de conduite' },
   { value: 'ecodepermis', label: 'E-Codepermis' },
-  { value: 'aiChat', label: 'Chat IA tuteur' },
 ]
 
 const ALL_MODULES = MODULE_OPTIONS.map((item) => item.value)
@@ -28,6 +27,7 @@ const DURATION_UNIT_OPTIONS: { value: PromoDurationUnit; label: string }[] = [
 ]
 
 function moduleLabel(key: PromoModuleKey) {
+  if (key === 'aiChat') return 'Chat IA tuteur (retiré)'
   return MODULE_OPTIONS.find((item) => item.value === key)?.label || key
 }
 

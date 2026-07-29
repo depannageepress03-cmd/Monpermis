@@ -27,7 +27,6 @@ import { CodeRouteScreen } from '../screens/CodeRouteScreen'
 import { RevisionChapitresScreen } from '../screens/code-route/RevisionChapitresScreen'
 import { ChapterCoursesScreen } from '../screens/code-route/ChapterCoursesScreen'
 import { CourseDetailScreen } from '../screens/code-route/CourseDetailScreen'
-import { CourseAiChatScreen } from '../screens/code-route/CourseAiChatScreen'
 import { ChapterQuestionsListScreen, ChapterTestSubjectScreen } from '../screens/code-route/ChapterSectionScreens'
 import { ChapterQuestionsScreen } from '../screens/code-route/ChapterQuestionsScreen'
 import { ExamensTestScreen, ExamensTestTakeScreen } from '../screens/code-route/ExamensTestScreen'
@@ -67,7 +66,6 @@ const linking: LinkingOptions<RootStackParamList> = {
       RevisionChapitres: 'code-de-la-route/revision-chapitres',
       ChapterCourses: 'code-de-la-route/revision-chapitres/cours',
       CourseDetail: 'code-de-la-route/revision-chapitres/cours/detail',
-      CourseAiChat: 'code-de-la-route/revision-chapitres/cours/chat',
       ChapterQuestionsList: 'code-de-la-route/revision-chapitres/questions-liste',
       ChapterTestSubject: 'code-de-la-route/revision-chapitres/sujet-test',
       ChapterQuestions: 'code-de-la-route/revision-chapitres/questions',
@@ -172,10 +170,6 @@ function AppNavigator() {
       <Stack.Screen
         name="CourseDetail"
         component={CourseDetailScreen}
-      />
-      <Stack.Screen
-        name="CourseAiChat"
-        component={CourseAiChatScreen}
       />
       <Stack.Screen
         name="ChapterQuestionsList"

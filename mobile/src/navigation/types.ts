@@ -77,11 +77,6 @@ export type RootStackParamList = {
       }[]
     }[]
   }
-  CourseAiChat: {
-    chapterId: string
-    courseId: string
-    courseTitle: string
-  }
   ChapterQuestions: {
     chapterId: string
     chapterName: string

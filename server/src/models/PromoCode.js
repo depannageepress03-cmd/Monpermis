@@ -1,6 +1,8 @@
 import mongoose from 'mongoose'
 
 export const PROMO_ELIGIBLE_MODULES = ['code', 'conduite_heures', 'ecodepermis', 'aiChat']
+/** Modules encore proposés dans les nouveaux codes promo. */
+export const PROMO_CREATABLE_MODULES = ['code', 'conduite_heures', 'ecodepermis']
 export const PROMO_DURATION_UNITS = ['day', 'week', 'month']
 
 const promoCodeSchema = new mongoose.Schema(

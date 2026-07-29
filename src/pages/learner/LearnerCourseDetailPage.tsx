@@ -16,7 +16,6 @@ import {
   type LearnerModule,
 } from '../../api/content'
 import { useAuth } from '../../hooks/useAuth'
-import { CourseAiChatButton } from '../../components/CourseAiChat'
 import { PageNavbar } from '../../components/PageNavbar'
 import { formatChapterHeading, formatCourseHeading } from '../../utils/chapterLabel'
 import { resolveVideoEmbed } from '../../utils/mediaEmbed'
@@ -217,14 +216,6 @@ export function LearnerCourseDetailPage({
         <div className="auth-card learner-card">
           {loading ? <p className="subtitle">Chargement…</p> : null}
           {error ? <p className="form-error">{error}</p> : null}
-
-          {track === 'revision' && course ? (
-            <CourseAiChatButton
-              chapterId={chapterId}
-              courseId={course.id}
-              courseTitle={course.title}
-            />
-          ) : null}
 
           {course?.modules.map((module: LearnerModule) => {
             const hasVideoLink = module.mediaType === 'video' && Boolean(module.videoUrl?.trim())

@@ -43,7 +43,6 @@ const moduleOptions: { value: AccessModuleKey | ''; label: string }[] = [
   { value: 'conduite_heures', label: 'Heures de conduite' },
   { value: 'conduite_videos', label: 'Vidéos conduite' },
   { value: 'ecodepermis', label: 'E-Codepermis' },
-  { value: 'aiChat', label: 'Chat IA tuteur' },
 ]
 
 const grantModules: AccessModuleKey[] = [
@@ -51,10 +50,10 @@ const grantModules: AccessModuleKey[] = [
   'conduite_videos',
   'conduite_heures',
   'ecodepermis',
-  'aiChat',
 ]
 
 function moduleLabel(module: AccessModuleKey) {
+  if (module === 'aiChat') return 'Chat IA tuteur (retiré)'
   return moduleOptions.find((option) => option.value === module)?.label ?? module
 }
 
@@ -166,8 +165,10 @@ export function AbonnementsPage() {
     const token = getAdminToken()
     if (!token) return
     const { modules } = await fetchAccessModulePricing(token)
-    setPricing(modules)
-    setPricingDrafts(Object.fromEntries(modules.map((m) => [m.key, String(m.price)])))
+    setPricing(modules.filter((m) => m.key !== 'aiChat'))
+    setPricingDrafts(
+      Object.fromEntries(modules.filter((m) => m.key !== 'aiChat').map((m) => [m.key, String(m.price)])),
+    )
   }, [])
 
   const loadStats = useCallback(async () => {

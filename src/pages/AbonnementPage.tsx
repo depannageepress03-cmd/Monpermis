@@ -56,7 +56,7 @@ export function AbonnementPage() {
     setError(null)
     try {
       const [moduleCatalog, meResult] = await Promise.all([fetchAccessModules(), fetchAccessMe()])
-      setModules(moduleCatalog)
+      setModules(moduleCatalog.filter((m) => m.key !== 'aiChat'))
       setMe(meResult)
     } catch (err) {
       setError(err instanceof AccessRequestError ? err.message : 'Chargement impossible')

@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import { requireAdminAuth } from '../middleware/adminAuth.js'
-import { PromoCode, PROMO_ELIGIBLE_MODULES, PROMO_DURATION_UNITS } from '../models/PromoCode.js'
+import { PromoCode, PROMO_CREATABLE_MODULES, PROMO_DURATION_UNITS } from '../models/PromoCode.js'
 import { logger } from '../utils/logger.js'
 
 const router = Router()
@@ -8,7 +8,7 @@ router.use(requireAdminAuth)
 
 function parseModules(raw) {
   if (!Array.isArray(raw)) return []
-  return [...new Set(raw.filter((item) => PROMO_ELIGIBLE_MODULES.includes(item)))]
+  return [...new Set(raw.filter((item) => PROMO_CREATABLE_MODULES.includes(item)))]
 }
 
 router.get('/', async (_req, res) => {

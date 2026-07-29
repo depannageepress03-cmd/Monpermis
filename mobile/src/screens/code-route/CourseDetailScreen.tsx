@@ -1,6 +1,6 @@
 import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
-import { BookOpen, Check, ChevronRight, ClipboardList, Lock, MessageCircle } from 'lucide-react-native'
+import { BookOpen, Check, ChevronRight, ClipboardList, Lock } from 'lucide-react-native'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import {
@@ -8,7 +8,6 @@ import {
   markCourseCompleted,
   startCourseSession,
 } from '../../api/revision'
-import { fetchAccessMe } from '../../api/accessRequests'
 import { MediaContent } from '../../components/MediaContent'
 import { DarkScreen } from '../../components/DarkScreen'
 import { PageNavbar } from '../../components/PageNavbar'
@@ -36,7 +35,6 @@ export function CourseDetailScreen() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [accessBlocked, setAccessBlocked] = useState(false)
-  const [accessAiChat, setAccessAiChat] = useState(false)
 
   const courseIndex = useMemo(
     () => courses.findIndex((item) => item.id === course.id),
@@ -83,13 +81,6 @@ export function CourseDetailScreen() {
   useEffect(() => {
     if (user) void loadProgress()
   }, [user, loadProgress])
-
-  useEffect(() => {
-    if (!user) return
-    void fetchAccessMe()
-      .then((access) => setAccessAiChat(Boolean(access.access.aiChat)))
-      .catch(() => setAccessAiChat(false))
-  }, [user])
 
   useEffect(() => {
     if (isCompleted || progressLoading || accessBlocked) return
@@ -153,38 +144,6 @@ export function CourseDetailScreen() {
           <View style={styles.header}>
             <Text style={styles.kicker}>{formatChapterHeading(chapterName)}</Text>
           </View>
-
-          <Pressable
-            style={[styles.chatBtn, !accessAiChat && styles.chatBtnLocked]}
-            onPress={() => {
-              if (accessAiChat) {
-                navigation.navigate('CourseAiChat', {
-                  chapterId,
-                  courseId: course.id,
-                  courseTitle: course.title,
-                })
-              } else {
-                navigation.navigate('Abonnement')
-              }
-            }}
-          >
-            {accessAiChat ? (
-              <MessageCircle size={18} color={dark.green} />
-            ) : (
-              <Lock size={18} color={dark.textMuted} />
-            )}
-            <View style={styles.chatCopy}>
-              <Text style={styles.chatTitle}>
-                {accessAiChat ? 'Discuter du cours avec l’IA' : 'Chat IA verrouillé'}
-              </Text>
-              <Text style={styles.chatSubtitle}>
-                {accessAiChat
-                  ? 'Pose tes questions sur ce cours'
-                  : 'Achète l’accès Chat IA — voir les offres'}
-              </Text>
-            </View>
-            <ChevronRight size={18} color={accessAiChat ? dark.green : dark.textMuted} />
-          </Pressable>
 
           {course.modules.length === 0 ? (
             <View style={styles.centerBox}>
@@ -323,37 +282,6 @@ const styles = StyleSheet.create({
     letterSpacing: -0.4,
     color: dark.textPrimary,
     lineHeight: 30,
-  },
-  chatBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginBottom: 16,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(34,214,115,0.32)',
-    backgroundColor: dark.greenSoft,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-  },
-  chatBtnLocked: {
-    borderColor: dark.border,
-    backgroundColor: dark.surface,
-  },
-  chatCopy: {
-    flex: 1,
-    minWidth: 0,
-  },
-  chatTitle: {
-    fontFamily: fonts.bodySemiBold,
-    fontSize: 15,
-    color: dark.textPrimary,
-  },
-  chatSubtitle: {
-    marginTop: 2,
-    fontFamily: fonts.body,
-    fontSize: 12,
-    color: dark.textMuted,
   },
   moduleCard: {
     borderRadius: 18,
