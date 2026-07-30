@@ -105,14 +105,17 @@ android {
             keyPassword 'android'
         }
         release {
-            // Alimenté par env / CI — jamais de mots de passe en clair ici.
-            // Les valeurs manquantes font échouer assembleRelease (voir whenReady ci-dessous).
-            def releaseStoreFile = System.getenv("MYAPP_UPLOAD_STORE_FILE")
+            // CI GitHub : MYAPP_UPLOAD_* — EAS Build : ANDROID_KEYSTORE_* (credentials Expo).
+            def releaseStoreFile =
+                System.getenv("MYAPP_UPLOAD_STORE_FILE") ?: System.getenv("ANDROID_KEYSTORE_PATH")
             if (releaseStoreFile) {
                 storeFile file(releaseStoreFile)
                 storePassword System.getenv("MYAPP_UPLOAD_STORE_PASSWORD")
+                    ?: System.getenv("ANDROID_KEYSTORE_PASSWORD")
                 keyAlias System.getenv("MYAPP_UPLOAD_KEY_ALIAS")
+                    ?: System.getenv("ANDROID_KEY_ALIAS")
                 keyPassword System.getenv("MYAPP_UPLOAD_KEY_PASSWORD")
+                    ?: System.getenv("ANDROID_KEY_PASSWORD")
             }
         }
     }
@@ -192,8 +195,11 @@ dependencies {
 }
 
 // Échec explicite des tâches release si le keystore upload n’est pas configuré
-// (évite de signer en debug « par accident »).
+// (évite de signer en debug « par accident »). Sur EAS, la signature est injectée
+// par le serveur (credentials Expo) — ne pas exiger MYAPP_UPLOAD_*.
 gradle.taskGraph.whenReady { graph ->
+    if (System.getenv('EAS_BUILD')?.trim()) return
+
     def needsReleaseSigning = graph.allTasks.any { task ->
         def n = task.name.toLowerCase()
         n.contains('release') && (
