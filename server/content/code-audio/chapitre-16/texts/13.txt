@@ -1,0 +1,6 @@
+La lettre de voiture est :
+
+A. Facultative
+B. Obligatoire uniquement en ville
+C. Obligatoire pour le transport de marchandises
+D. Réservée aux véhicules légers

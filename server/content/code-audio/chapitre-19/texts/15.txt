@@ -1,0 +1,6 @@
+Le feu de route éclaire jusqu'à :
+
+A. Plus de 100 mètres
+B. 100 mètres environ
+C. 50 mètres environ
+D. 30 mètres environ

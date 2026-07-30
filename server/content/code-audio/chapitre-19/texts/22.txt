@@ -1,0 +1,5 @@
+À quoi sert l'intervalle de sécurité ?
+
+A. Maintenir une distance pour éviter une collision
+B. Diminuer l'écart latéral
+C. Ne pas tenir compte de cet écart

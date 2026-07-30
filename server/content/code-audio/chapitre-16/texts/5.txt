@@ -1,0 +1,4 @@
+Plus mon véhicule est chargé, plus ma consommation d'essence augmente.
+
+A. Oui
+B. Non

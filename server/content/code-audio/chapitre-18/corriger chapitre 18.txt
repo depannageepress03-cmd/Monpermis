@@ -1,0 +1,79 @@
+Corriger chapitre 18
+
+1. Je peux utiliser la borne d'appel :
+   Correcte : A, B
+
+2. L'ABS (anti-blocage des roues) permet, en cas d'urgence, de diminuer fortement la distance de freinage :
+   Correcte : B
+
+3. Le freinage de type ABS :
+   Correcte : B
+
+4. Les indicateurs d'usure des pneus peuvent être repérés par les initiales TWI :
+   Correcte : A
+
+5. Le niveau du liquide de frein est abaissé :
+   Correcte : C
+
+6. Quelle est la couleur normale de l'huile moteur ?
+   Correcte : B
+
+7. Combien de rétroviseurs sont obligatoires sur le véhicule ?
+   Correcte : A
+
+8. Qu'est-ce qui peut détruire une batterie ?
+   Correcte : A, B, D
+
+9. Que dois-je faire si le véhicule derrière moi m'éblouit ?
+   Correcte : A
+
+10. Par fortes pluies, pour voir et être vu, j'allume :
+    Correcte : B
+
+11. Quand utilise-t-on les feux de détresse ?
+    Correcte : A, C, D
+
+12. Le tuyau d'échappement sert à :
+    Correcte : A, B
+
+13. Par fortes pluies, la visibilité diminue, j'allume :
+    Correcte : C
+
+14. La consommation de carburant augmente :
+    Correcte : A, B, C, D
+
+15. Le feu de route éclaire jusqu'à :
+    Correcte : A
+
+16. Les feux obligatoires à l'avant d'un véhicule sont :
+    Correcte : D
+
+17. Pour remplacer une roue, je dois :
+    Correcte : A, B, C, D
+
+18. Le niveau d'huile moteur doit être :
+    Correcte : C
+
+19. Les véhicules prioritaires sont équipés de feux :
+    Correcte : C
+
+20. L'utilisation de la climatisation influence :
+    Correcte : A, C
+
+21. Pour transporter les bagages dans un véhicule de transport en commun :
+    Correcte : A, C, D
+
+22. À quoi sert l'intervalle de sécurité ?
+    Correcte : A
+
+23. L'usage de l'avertisseur sonore est interdit :
+    Correcte : A, B
+
+24. Quels équipements permettent de lutter contre un début d'incendie ?
+    Correcte : A, B, C, D
+
+25. La profondeur minimale des rainures d'un pneumatique est de :
+    Correcte : A
+
+26. Quel est le rôle de l'appui-tête ?
+    Correcte : C

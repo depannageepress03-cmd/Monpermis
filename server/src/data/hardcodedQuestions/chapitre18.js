@@ -1,8 +1,6 @@
 /**
  * Banque questions en dur — Chapitre 18.
  * Audio : /content/code-audio/chapitre-18/{n}.mp3
- * Images : /content/code-images/chapitre-18/{n}.png (n = numéro de question)
- * Corrections réponses fournies 2026-07-30.
  */
 
 export const CHAPITRE_18_KEY = 'chapitre-18'
@@ -19,13 +17,6 @@ export function matchesChapitre18(chapter) {
 function audioUrl(n) {
   return `/content/code-audio/chapitre-18/${n}.mp3`
 }
-
-function imageUrl(n) {
-  return `/content/code-images/chapitre-18/${n}.png`
-}
-
-/** Images disponibles (N.png = question N). */
-const QUESTIONS_WITH_IMAGES = new Set([1])
 
 function answers(questionIndex, letters, correctLetters) {
   const correct = new Set(correctLetters.map((l) => l.toUpperCase()))
@@ -52,13 +43,13 @@ function question(order, letterOptions, correctLetters) {
       text: '',
       audioUrl: audioUrl(order),
       audioPublicId: '',
-      imageUrls: QUESTIONS_WITH_IMAGES.has(order) ? [imageUrl(order)] : [],
+      imageUrls: [],
     },
     answers: answers(order, letterOptions, correctLetters),
   }
 }
 
-/** 26 questions — énoncé audio + image si disponible. */
+/** 26 questions — énoncé audio uniquement ; réponses A/B/C/D. */
 export const CHAPITRE_18_QUESTIONS = [
   question(1, ['A', 'B', 'C'], ['A', 'B']),
   question(2, ['A', 'B'], ['B']),

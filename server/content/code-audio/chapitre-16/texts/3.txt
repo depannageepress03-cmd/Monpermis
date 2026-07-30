@@ -1,0 +1,4 @@
+Pour stationner à cet emplacement, je dois être titulaire d'une autorisation.
+
+A. Oui
+B. Non

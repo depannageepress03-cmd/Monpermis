@@ -1,0 +1,4 @@
+Le conducteur à qui j'ai prêté ma voiture a commis un excès de vitesse. Pour éviter une sanction, je dois communiquer l'identité du conducteur.
+
+A. Oui
+B. Non

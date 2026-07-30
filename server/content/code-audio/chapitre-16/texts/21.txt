@@ -1,0 +1,6 @@
+Les différentes parties d'une rue en ville sont :
+
+A. Chaussée, accotement
+B. Chaussée, terre-plein central, accotement
+C. Chaussée, trottoir
+D. Terre-plein central, chaussée, trottoir

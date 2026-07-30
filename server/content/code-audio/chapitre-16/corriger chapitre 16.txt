@@ -1,0 +1,83 @@
+Corriger chapitre 16
+
+Sources principales : banque de questions code de la route Bénin (réponses officielles type CNSR), réglementation lettre de voiture (ANaTT / OHADA), taux légal d’alcoolémie Bénin (0,5 g/L).
+
+1. Si je chevauche la ligne situé à ma gauche, j'encoure :
+   Correcte : A
+
+2. Mon véhicule a cinq ans. Lors d'un contrôle routier :
+   Correcte : A, C, D
+
+3. Pour stationner à cet emplacement, je dois être titulaire d'une autorisation.
+   Correcte : A
+   (Question liée à une image / panneau d’autorisation — réponse typique Oui.)
+
+4. Je peux être condamné pour délit de fuite si je ne m'arrête pas après avoir occasionné :
+   Correcte : A, B, C, D
+   (Accident matériel et corporel — les options sont en double dans l’énoncé.)
+
+5. Plus mon véhicule est chargé, plus ma consommation d'essence augmente.
+   Correcte : A
+
+6. Le conducteur à qui j'ai prêté ma voiture a commis un excès de vitesse. Pour éviter une sanction, je dois communiquer l'identité du conducteur.
+   Correcte : A
+
+7. À partir de quel taux d'alcoolémie je commets un délit ?
+   Correcte : À CONFIRMER
+   (Aucune option ne correspond au seuil délictuel classique 0,8 g/L de sang.
+    Options fournies : A 0,6 / B 0,4 / C 1 g/L — à vérifier sur ton corrigé papier.)
+
+8. En conduisant avec un taux d'alcoolémie de 0,60 g/L de sang, je risque :
+   Correcte : B, D
+   (0,60 g/L > seuil légal Bénin 0,5 g/L → amende + immobilisation possible.
+    L’annulation n’est pas la sanction automatique à ce taux.
+    Le « retrait de points » n’existe pas comme en France au Bénin.)
+
+9. Pourquoi la lettre de voiture est-elle importante ?
+   Correcte : B
+
+10. Que commet un conducteur qui refuse de s'arrêter lorsque les forces de l'ordre lui donnent l'ordre de s'arrêter ?
+    Correcte : A
+    (Ce n’est pas un délit de fuite — le délit de fuite concerne un accident.)
+
+11. Que signifie une lettre de voiture dans le transport routier ?
+    Correcte : B
+
+12. Quel est le rôle principal de la lettre de voiture ?
+    Correcte : B
+
+13. La lettre de voiture est :
+    Correcte : C
+
+14. Je serai en infraction si :
+    Correcte : B, C, D
+    (Stationnement abusif / dangereux / gênant.)
+
+15. L'organisation des actions de sécurité routière est assurée par :
+    Correcte : D
+
+16. Le responsable du maintien de la régie :
+    Correcte : C
+    (Énoncé probablement mal recopié ; seule l’option alcoolémie positive est clairement juste.)
+
+17. Un agent m'ordonne de m'arrêter et je repars sans m'arrêter. Je commets :
+    Correcte : C
+    (Pas un délit de fuite selon la banque Bénin — refus d’arrêt / infraction.)
+
+18. Quand est-il dangereux de faire un demi-tour ?
+    Correcte : A, B, C
+
+19. Pour transporter un enfant de 0 à 9 mois dans un véhicule, je dois :
+    Correcte : B
+
+20. Pour signaler un lieu d'accident, je place ordinairement le triangle de signalisation à :
+    Correcte : C
+
+21. Les différentes parties d'une rue en ville sont :
+    Correcte : C, D
+
+22. Que dois-je faire lorsqu'un piéton s'apprête à traverser la rue ?
+    Correcte : B
+
+23. Que dois-je faire lorsqu'un usager s'apprête à traverser la rue avec la main blanche levée ?
+    Correcte : B
