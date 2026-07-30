@@ -11,6 +11,8 @@ import { IntroScreen } from '../screens/IntroScreen'
 import { OnboardingScreen } from '../screens/OnboardingScreen'
 import { LoginScreen } from '../screens/LoginScreen'
 import { ForgotPasswordScreen } from '../screens/ForgotPasswordScreen'
+import { ResetPasswordScreen } from '../screens/ResetPasswordScreen'
+import { VerifyEmailScreen } from '../screens/VerifyEmailScreen'
 import { HomeScreen } from '../screens/HomeScreen'
 import { RegisterScreen } from '../screens/RegisterScreen'
 import { RegisterPasswordScreen } from '../screens/RegisterPasswordScreen'
@@ -51,6 +53,8 @@ const linking: LinkingOptions<RootStackParamList> = {
       Onboarding: 'bienvenue',
       Login: 'connexion',
       ForgotPassword: 'mot-de-passe-oublie',
+      ResetPassword: 'reinitialiser-mot-de-passe',
+      VerifyEmail: 'verifier-email',
       Register: 'inscription',
       RegisterPassword: 'inscription/mot-de-passe',
       TermsOfUse: 'conditions-utilisation',
@@ -106,6 +110,14 @@ function AppNavigator() {
       <Stack.Screen
         name="ForgotPassword"
         component={ForgotPasswordScreen}
+      />
+      <Stack.Screen
+        name="ResetPassword"
+        component={ResetPasswordScreen}
+      />
+      <Stack.Screen
+        name="VerifyEmail"
+        component={VerifyEmailScreen}
       />
       <Stack.Screen
         name="Home"

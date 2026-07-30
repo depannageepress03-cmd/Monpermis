@@ -3,7 +3,7 @@
     "name": "Monpermis.bj",
     "slug": "monpermis",
     "scheme": "monpermis",
-    "version": "1.0.50",
+    "version": "1.0.51",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -14,7 +14,7 @@
     },
     "ios": {
       "bundleIdentifier": "com.monpermis.app",
-      "buildNumber": "50",
+      "buildNumber": "51",
       "supportsTablet": true,
       "icon": "./assets/icon.png",
       "config": {
@@ -34,7 +34,7 @@
     },
     "android": {
       "package": "com.monpermis.app",
-      "versionCode": 50,
+      "versionCode": 51,
       "adaptiveIcon": {
         "backgroundColor": "#FFFFFF",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -65,7 +65,13 @@
     "plugins": [
       "expo-web-browser",
       "expo-video",
-      "expo-audio",
+      [
+        "expo-audio",
+        {
+          "microphonePermission": false,
+          "recordAudioAndroid": false
+        }
+      ],
       "expo-font",
       "expo-asset",
       "expo-secure-store",

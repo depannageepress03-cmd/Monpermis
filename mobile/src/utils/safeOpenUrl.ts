@@ -52,12 +52,19 @@ export async function safeOpenUrl(raw?: string | null): Promise<boolean> {
   }
 
   try {
-    const can = await Linking.canOpenURL(parsed.toString())
+    // canOpenURL est peu fiable sur iOS (schémas non déclarés) et Android 11+.
+    // Pour https/http on tente directement ; pour les schémas custom on vérifie d’abord.
+    const href = parsed.toString()
+    if (scheme === 'https:' || scheme === 'http:') {
+      await Linking.openURL(href)
+      return true
+    }
+    const can = await Linking.canOpenURL(href)
     if (!can) {
       Alert.alert('Impossible d’ouvrir', 'Aucune application ne peut ouvrir ce lien.')
       return false
     }
-    await Linking.openURL(parsed.toString())
+    await Linking.openURL(href)
     return true
   } catch {
     Alert.alert('Erreur', 'Ouverture du lien impossible.')

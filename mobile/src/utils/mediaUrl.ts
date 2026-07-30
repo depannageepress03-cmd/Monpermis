@@ -17,6 +17,8 @@ function isAllowedAbsoluteMediaUrl(url: URL): boolean {
 export function resolveMediaUrl(path?: string | null): string | undefined {
   if (!path?.trim()) return undefined
   const value = path.trim()
+  // Chemins locaux embarqués (banks) — gérés ailleurs, jamais via l’API.
+  if (/^(local|asset|file):\/\//i.test(value)) return undefined
   if (/^https?:\/\//i.test(value)) {
     try {
       const parsed = new URL(value)

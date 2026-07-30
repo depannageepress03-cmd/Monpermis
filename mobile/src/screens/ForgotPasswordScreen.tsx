@@ -14,8 +14,6 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { LegalFooter } from '../components/LegalFooter'
 import { BrandName } from '../components/BrandName'
-import { Bouncy } from '../components/Bouncy'
-import { buildPasswordHelpWhatsAppUrl } from '../config/support'
 import type { RootStackParamList } from '../navigation/types'
 import { dark, fonts } from '../theme'
 import { supportWhatsAppUrl } from '../utils/support'
