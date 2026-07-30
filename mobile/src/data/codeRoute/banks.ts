@@ -41,6 +41,7 @@ function question(
   order: number,
   letterOptions: string[],
   correctLetters: string[],
+  imageIndexes: number[] = [],
 ): LocalQuestion {
   const id = `hc-ch${chapterOrder}-q${String(order).padStart(2, '0')}`
   return {
@@ -52,7 +53,9 @@ function question(
     prompt: {
       text: '',
       audioUrl: `local://code-audio/${chapterOrder}/${order}.mp3`,
-      imageUrls: [],
+      imageUrls: imageIndexes.map(
+        (n) => `local://code-image/${chapterOrder}/${n}.png`,
+      ),
     },
     answers: answers(chapterOrder, order, letterOptions, correctLetters),
   }
@@ -103,6 +106,37 @@ const CHAPITRE_7: LocalQuestion[] = [
   question(7, 9, ['A', 'B', 'C'], ['C']),
 ]
 
+const CHAPITRE_16: LocalQuestion[] = [
+  question(16, 1, ['A', 'B', 'C'], ['A'], [1]),
+  question(16, 2, ['A', 'B', 'C', 'D'], ['A', 'C', 'D'], [2]),
+  question(16, 3, ['A', 'B'], ['A'], [3]),
+  question(16, 4, ['A', 'B', 'C', 'D'], ['A', 'C']),
+  question(16, 5, ['A', 'B'], ['A']),
+  question(16, 6, ['A', 'B'], ['A']),
+  question(16, 7, ['A', 'B', 'C'], ['C']),
+  question(16, 8, ['A', 'B', 'C', 'D'], ['B', 'C', 'D'], [8]),
+  question(16, 9, ['A', 'B', 'C', 'D'], ['B']),
+  question(16, 10, ['A', 'B', 'C', 'D'], ['B']),
+  question(16, 11, ['A', 'B', 'C', 'D'], ['B']),
+  question(16, 12, ['A', 'B', 'C', 'D'], ['B']),
+  question(16, 13, ['A', 'B', 'C', 'D'], ['C']),
+  question(16, 14, ['A', 'B', 'C', 'D'], ['B', 'C', 'D']),
+  question(16, 15, ['A', 'B', 'C', 'D'], ['D']),
+  question(16, 16, ['A', 'B', 'C', 'D'], ['C']),
+  question(16, 17, ['A', 'B', 'C', 'D'], ['A']),
+  question(16, 18, ['A', 'B', 'C'], ['A', 'B', 'C']),
+  question(16, 19, ['A', 'B', 'C'], ['B']),
+  question(16, 20, ['A', 'B', 'C', 'D'], ['C']),
+  question(16, 21, ['A', 'B', 'C', 'D'], ['C']),
+  question(16, 22, ['A', 'B', 'C'], ['B']),
+  question(16, 23, ['A', 'B', 'C'], ['B']),
+  question(16, 24, ['A', 'B', 'C', 'D'], ['B']),
+  question(16, 25, ['A', 'B', 'C', 'D'], ['B']),
+  question(16, 26, ['A', 'B', 'C', 'D'], ['B']),
+  question(16, 27, ['A', 'B', 'C', 'D'], ['B']),
+  question(16, 28, ['A', 'B', 'C', 'D'], ['C']),
+]
+
 const CHAPITRE_17: LocalQuestion[] = [
   question(17, 1, ['A', 'B', 'C', 'D'], ['A', 'C']),
   question(17, 2, ['A', 'B', 'C'], ['C']),
@@ -122,7 +156,7 @@ const CHAPITRE_17: LocalQuestion[] = [
 ]
 
 const CHAPITRE_18: LocalQuestion[] = [
-  question(18, 1, ['A', 'B', 'C'], ['A', 'B']),
+  question(18, 1, ['A', 'B', 'C'], ['A', 'B'], [1]),
   question(18, 2, ['A', 'B'], ['B']),
   question(18, 3, ['A', 'B'], ['B']),
   question(18, 4, ['A', 'B'], ['A']),
@@ -174,6 +208,7 @@ const CHAPITRE_20: LocalQuestion[] = [
 const BANKS_BY_ORDER: Record<number, LocalQuestion[]> = {
   6: CHAPITRE_6,
   7: CHAPITRE_7,
+  16: CHAPITRE_16,
   17: CHAPITRE_17,
   18: CHAPITRE_18,
   19: CHAPITRE_19,

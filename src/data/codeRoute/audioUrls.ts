@@ -1,4 +1,58 @@
 /** URLs Vite des MP3 embarqués (hors ligne après premier chargement navigateur). */
+import a16_1 from '../../assets/code-audio/chapitre-16/1.mp3?url'
+import a16_2 from '../../assets/code-audio/chapitre-16/2.mp3?url'
+import a16_3 from '../../assets/code-audio/chapitre-16/3.mp3?url'
+import a16_4 from '../../assets/code-audio/chapitre-16/4.mp3?url'
+import a16_5 from '../../assets/code-audio/chapitre-16/5.mp3?url'
+import a16_6 from '../../assets/code-audio/chapitre-16/6.mp3?url'
+import a16_7 from '../../assets/code-audio/chapitre-16/7.mp3?url'
+import a16_8 from '../../assets/code-audio/chapitre-16/8.mp3?url'
+import a16_9 from '../../assets/code-audio/chapitre-16/9.mp3?url'
+import a16_10 from '../../assets/code-audio/chapitre-16/10.mp3?url'
+import a16_11 from '../../assets/code-audio/chapitre-16/11.mp3?url'
+import a16_12 from '../../assets/code-audio/chapitre-16/12.mp3?url'
+import a16_13 from '../../assets/code-audio/chapitre-16/13.mp3?url'
+import a16_14 from '../../assets/code-audio/chapitre-16/14.mp3?url'
+import a16_15 from '../../assets/code-audio/chapitre-16/15.mp3?url'
+import a16_16 from '../../assets/code-audio/chapitre-16/16.mp3?url'
+import a16_17 from '../../assets/code-audio/chapitre-16/17.mp3?url'
+import a16_18 from '../../assets/code-audio/chapitre-16/18.mp3?url'
+import a16_19 from '../../assets/code-audio/chapitre-16/19.mp3?url'
+import a16_20 from '../../assets/code-audio/chapitre-16/20.mp3?url'
+import a16_21 from '../../assets/code-audio/chapitre-16/21.mp3?url'
+import a16_22 from '../../assets/code-audio/chapitre-16/22.mp3?url'
+import a16_23 from '../../assets/code-audio/chapitre-16/23.mp3?url'
+import a16_24 from '../../assets/code-audio/chapitre-16/24.mp3?url'
+import a16_25 from '../../assets/code-audio/chapitre-16/25.mp3?url'
+import a16_26 from '../../assets/code-audio/chapitre-16/26.mp3?url'
+import a16_27 from '../../assets/code-audio/chapitre-16/27.mp3?url'
+import a16_28 from '../../assets/code-audio/chapitre-16/28.mp3?url'
+import a18_1 from '../../assets/code-audio/chapitre-18/1.mp3?url'
+import a18_2 from '../../assets/code-audio/chapitre-18/2.mp3?url'
+import a18_3 from '../../assets/code-audio/chapitre-18/3.mp3?url'
+import a18_4 from '../../assets/code-audio/chapitre-18/4.mp3?url'
+import a18_5 from '../../assets/code-audio/chapitre-18/5.mp3?url'
+import a18_6 from '../../assets/code-audio/chapitre-18/6.mp3?url'
+import a18_7 from '../../assets/code-audio/chapitre-18/7.mp3?url'
+import a18_8 from '../../assets/code-audio/chapitre-18/8.mp3?url'
+import a18_9 from '../../assets/code-audio/chapitre-18/9.mp3?url'
+import a18_10 from '../../assets/code-audio/chapitre-18/10.mp3?url'
+import a18_11 from '../../assets/code-audio/chapitre-18/11.mp3?url'
+import a18_12 from '../../assets/code-audio/chapitre-18/12.mp3?url'
+import a18_13 from '../../assets/code-audio/chapitre-18/13.mp3?url'
+import a18_14 from '../../assets/code-audio/chapitre-18/14.mp3?url'
+import a18_15 from '../../assets/code-audio/chapitre-18/15.mp3?url'
+import a18_16 from '../../assets/code-audio/chapitre-18/16.mp3?url'
+import a18_17 from '../../assets/code-audio/chapitre-18/17.mp3?url'
+import a18_18 from '../../assets/code-audio/chapitre-18/18.mp3?url'
+import a18_19 from '../../assets/code-audio/chapitre-18/19.mp3?url'
+import a18_20 from '../../assets/code-audio/chapitre-18/20.mp3?url'
+import a18_21 from '../../assets/code-audio/chapitre-18/21.mp3?url'
+import a18_22 from '../../assets/code-audio/chapitre-18/22.mp3?url'
+import a18_23 from '../../assets/code-audio/chapitre-18/23.mp3?url'
+import a18_24 from '../../assets/code-audio/chapitre-18/24.mp3?url'
+import a18_25 from '../../assets/code-audio/chapitre-18/25.mp3?url'
+import a18_26 from '../../assets/code-audio/chapitre-18/26.mp3?url'
 import a6_1 from '../../assets/code-audio/chapitre-6/1.mp3?url'
 import a6_2 from '../../assets/code-audio/chapitre-6/2.mp3?url'
 import a6_3 from '../../assets/code-audio/chapitre-6/3.mp3?url'
@@ -70,6 +124,36 @@ import a20_9 from '../../assets/code-audio/chapitre-20/9.mp3?url'
 import a20_10 from '../../assets/code-audio/chapitre-20/10.mp3?url'
 
 const MAP: Record<number, Record<number, string>> = {
+  16: {
+    1: a16_1,
+    2: a16_2,
+    3: a16_3,
+    4: a16_4,
+    5: a16_5,
+    6: a16_6,
+    7: a16_7,
+    8: a16_8,
+    9: a16_9,
+    10: a16_10,
+    11: a16_11,
+    12: a16_12,
+    13: a16_13,
+    14: a16_14,
+    15: a16_15,
+    16: a16_16,
+    17: a16_17,
+    18: a16_18,
+    19: a16_19,
+    20: a16_20,
+    21: a16_21,
+    22: a16_22,
+    23: a16_23,
+    24: a16_24,
+    25: a16_25,
+    26: a16_26,
+    27: a16_27,
+    28: a16_28,
+  },
   6: {
     1: a6_1,
     2: a6_2,
@@ -129,6 +213,34 @@ const MAP: Record<number, Record<number, string>> = {
     13: a17_13,
     14: a17_14,
     15: a17_15,
+  },
+  18: {
+    1: a18_1,
+    2: a18_2,
+    3: a18_3,
+    4: a18_4,
+    5: a18_5,
+    6: a18_6,
+    7: a18_7,
+    8: a18_8,
+    9: a18_9,
+    10: a18_10,
+    11: a18_11,
+    12: a18_12,
+    13: a18_13,
+    14: a18_14,
+    15: a18_15,
+    16: a18_16,
+    17: a18_17,
+    18: a18_18,
+    19: a18_19,
+    20: a18_20,
+    21: a18_21,
+    22: a18_22,
+    23: a18_23,
+    24: a18_24,
+    25: a18_25,
+    26: a18_26,
   },
   19: { 1: a19_1, 2: a19_2, 3: a19_3, 4: a19_4, 5: a19_5 },
   20: {

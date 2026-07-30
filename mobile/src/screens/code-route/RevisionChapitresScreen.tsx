@@ -357,7 +357,7 @@ const styles = StyleSheet.create({
   pressed: {
     opacity: 0.85,
   },
-  cardLockedUnused: {
+  cardLocked: {
     opacity: 0.55,
     borderColor: dark.border,
   },

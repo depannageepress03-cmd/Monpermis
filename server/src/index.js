@@ -140,10 +140,17 @@ app.use(express.json())
 // Disque local d’abord, puis MongoDB (Render n’a pas de disque persistant).
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')))
 app.get('/uploads/:kind/:filename', sendMediaAsset)
-// Audios questions en dur (chapitre 20, …)
+// Audios / images questions en dur (chapitre 17, …)
 app.use(
   '/content/code-audio',
   express.static(path.join(__dirname, '../content/code-audio'), {
+    maxAge: '7d',
+    fallthrough: false,
+  }),
+)
+app.use(
+  '/content/code-images',
+  express.static(path.join(__dirname, '../content/code-images'), {
     maxAge: '7d',
     fallthrough: false,
   }),

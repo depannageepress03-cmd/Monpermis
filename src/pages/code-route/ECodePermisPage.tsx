@@ -19,6 +19,7 @@ import { useFocusRefresh } from '../../hooks/useFocusRefresh'
 import { useLeaveGuard } from '../../hooks/useLeaveGuard'
 import { playFailSound, playSuccessSound, stopAllQuizAudio } from '../../utils/quizSounds'
 import { resolveMediaUrl } from '../../utils/mediaUrl'
+import { resolveCodeImageUrl } from '../../utils/codeImageUrl'
 import '../../styles/auth.css'
 import '../../styles/learner.css'
 
@@ -515,7 +516,7 @@ export function ECodePermisTakePage() {
               {question.prompt?.imageUrls?.length ? (
                 <div className="learner-quiz-images">
                   {question.prompt.imageUrls.map((url) => (
-                    <img key={url} src={resolveMediaUrl(url)} alt="" />
+                    <img key={url} src={resolveCodeImageUrl(url)} alt="" />
                   ))}
                 </div>
               ) : null}

@@ -6,6 +6,10 @@ Structure :
 code-audio/
   chapitre-6/
     1.mp3 … 30.mp3
+  chapitre-16/
+    1.mp3 … 28.mp3
+  __PLACEHOLDER__/
+    1.mp3 … 30.mp3
   chapitre-7/
     1.mp3 … 9.mp3
   chapitre-17/

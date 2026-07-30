@@ -36,6 +36,7 @@ import { hapticError, hapticSelect, hapticSuccess } from '../../utils/haptics'
 import { playFailSound, playSuccessSound, stopAllQuizAudio } from '../../utils/quizSounds'
 import { rememberChapterOrder } from '../../data/codeRoute/chapterIndex'
 import { resolveMediaUrl } from '../../utils/mediaUrl'
+import { resolveQuestionImageUri } from '../../utils/questionImages'
 
 function wait(ms: number) {
   return new Promise<void>((resolve) => {
@@ -175,6 +176,27 @@ export function ChapterQuestionsScreen() {
   }, [selectedIds, finished, result, checking])
 
   const question = questions[index]
+  const [resolvedImages, setResolvedImages] = useState<{ key: string; uri: string }[]>([])
+
+  useEffect(() => {
+    let cancelled = false
+    const urls = question?.prompt?.imageUrls || []
+    if (!question || urls.length === 0) {
+      setResolvedImages([])
+      return
+    }
+    ;(async () => {
+      const next: { key: string; uri: string }[] = []
+      for (const url of urls) {
+        const uri = await resolveQuestionImageUri(question.id, url)
+        if (uri) next.push({ key: url, uri })
+      }
+      if (!cancelled) setResolvedImages(next)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [question?.id, question?.prompt?.imageUrls])
 
   const finishOrAdvance = useCallback(
     async (nextScore: { correct: number; total: number }) => {
@@ -505,20 +527,16 @@ export function ChapterQuestionsScreen() {
                     <Text style={styles.secondaryBtnText}>Reprendre l’audio</Text>
                   </Pressable>
                 ) : null}
-                {question.prompt.imageUrls.length > 0 ? (
+                {resolvedImages.length > 0 ? (
                   <View style={styles.images}>
-                    {question.prompt.imageUrls.map((url) => {
-                      const src = resolveMediaUrl(url)
-                      if (!src) return null
-                      return (
-                        <Image
-                          key={url}
-                          source={{ uri: src }}
-                          style={styles.image}
-                          resizeMode="contain"
-                        />
-                      )
-                    })}
+                    {resolvedImages.map((img) => (
+                      <Image
+                        key={img.key}
+                        source={{ uri: img.uri }}
+                        style={styles.image}
+                        resizeMode="contain"
+                      />
+                    ))}
                   </View>
                 ) : null}
               </View>
