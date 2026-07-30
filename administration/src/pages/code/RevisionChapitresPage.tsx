@@ -988,7 +988,7 @@ export function RevisionChapitresPage() {
           backLabel="Code de la route"
           kicker="Formation"
           title="Révision par chapitres"
-          subtitle="21 chapitres standards. Éditez uniquement les cours ; les questions viennent des fichiers."
+          subtitle="20 chapitres standards. Éditez uniquement les cours ; les questions viennent des fichiers."
         />
       </header>
 
@@ -1002,7 +1002,7 @@ export function RevisionChapitresPage() {
       {!loading && chapters.length === 0 ? (
         <EmptyState
           title="Chapitres en cours de synchronisation"
-          description="Les 21 chapitres standards seront créés automatiquement au prochain chargement."
+          description="Les 20 chapitres standards seront créés automatiquement au prochain chargement."
         />
       ) : null}
 

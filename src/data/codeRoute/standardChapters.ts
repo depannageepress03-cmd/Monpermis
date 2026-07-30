@@ -1,4 +1,4 @@
-export const STANDARD_REVISION_CHAPTER_COUNT = 21
+export const STANDARD_REVISION_CHAPTER_COUNT = 20
 
 export function standardChapterName(order: number) {
   return `Chapitre ${order}`

@@ -40,7 +40,7 @@ export function mergeWithStandardChapters<T extends ChapterLike>(apiChapters: T[
   const byOrder = new Map<number, T>()
   for (const chapter of apiChapters) {
     const order = Number(chapter.order)
-    if (order >= 1 && order <= 21) byOrder.set(order, chapter)
+    if (order >= 1 && order <= 20) byOrder.set(order, chapter)
   }
 
   const merged = listStandardChapterShells().map((shell) => {

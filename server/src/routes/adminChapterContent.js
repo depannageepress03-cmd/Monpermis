@@ -84,13 +84,13 @@ export function createAdminChapterRouter(Model, options = {}) {
     res.status(400).json({
       success: false,
       error:
-        'Les 21 chapitres de révision sont standards et figés. Seuls les cours / modules restent éditables.',
+        'Les 20 chapitres de révision sont standards et figés. Seuls les cours / modules restent éditables.',
     })
 
   router.get('/chapters', async (_req, res) => {
     try {
       if (ensureChapters) await ensureChapters()
-      const filter = lockChapterStructure ? { order: { $gte: 1, $lte: 21 } } : {}
+      const filter = lockChapterStructure ? { order: { $gte: 1, $lte: 20 } } : {}
       const chapters = await Model.find(filter).sort({ order: 1, createdAt: 1 })
       res.json({
         success: true,

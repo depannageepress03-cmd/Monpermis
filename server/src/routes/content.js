@@ -34,7 +34,7 @@ async function loadChapterQuestionBank(chapter) {
 router.get('/chapters', ...withCodeAccess, async (_req, res) => {
   try {
     await ensureStandardRevisionChapters()
-    const chapters = await Chapter.find({ order: { $gte: 1, $lte: 21 } }).sort({
+    const chapters = await Chapter.find({ order: { $gte: 1, $lte: 20 } }).sort({
       order: 1,
       createdAt: 1,
     })

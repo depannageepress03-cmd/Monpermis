@@ -105,7 +105,7 @@ export async function fetchRevisionChapters(): Promise<RevisionChapter[]> {
       return withStandardChapters(data.chapters)
     })
   } catch {
-    // Hors ligne : catalogue local 21 chapitres.
+    // Hors ligne : catalogue local 20 chapitres.
     return withStandardChapters(listStandardChapterShells() as RevisionChapter[])
   }
 }

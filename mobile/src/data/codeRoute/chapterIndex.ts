@@ -31,12 +31,12 @@ export function rememberChapterOrder(chapterId: string, order?: number | null, n
   })
 }
 
-/** Fusionne l’API avec le catalogue 1…21 (toujours 21 entrées). */
+/** Fusionne l’API avec le catalogue 1…20 (toujours 20 entrées). */
 export function mergeWithStandardChapters(apiChapters: RevisionChapter[]): RevisionChapter[] {
   const byOrder = new Map<number, RevisionChapter>()
   for (const chapter of apiChapters) {
     const order = Number(chapter.order)
-    if (order >= 1 && order <= 21) byOrder.set(order, chapter)
+    if (order >= 1 && order <= 20) byOrder.set(order, chapter)
   }
 
   const merged = listStandardChapterShells().map((shell) => {

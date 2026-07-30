@@ -25,7 +25,7 @@ export async function loadPublishedExamQuestionBank() {
     }).select('_id chapterId')
   }
 
-  // Injecte / remplace par les banques en dur (ex. chapitre 21).
+  // Injecte / remplace par les banques en dur (ex. chapitre 20).
   for (const chapter of chapters) {
     const hardcoded = hardcodedAsQuestionDocs(chapter)
     if (!hardcoded?.length) continue
