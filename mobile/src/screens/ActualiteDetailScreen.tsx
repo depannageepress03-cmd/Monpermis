@@ -25,6 +25,7 @@ import type { RootStackParamList } from '../navigation/types'
 import { dark, fonts } from '../theme'
 import { resolveMediaUrl } from '../utils/mediaUrl'
 import { safeHtmlTagsStyles, sanitizeCmsHtml } from '../utils/safeHtml'
+import { safeOpenUrl } from '../utils/safeOpenUrl'
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ActualiteDetail'>
 type Nav = NativeStackNavigationProp<RootStackParamList, 'ActualiteDetail'>

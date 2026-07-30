@@ -8,6 +8,9 @@
       "developmentClient": true,
       "distribution": "internal",
       "environment": "development",
+      "ios": {
+        "simulator": true
+      },
       "env": {
         "EXPO_PUBLIC_API_URL": "https://monpermis-api.onrender.com"
       }
@@ -18,8 +21,18 @@
       "android": {
         "buildType": "apk"
       },
+      "ios": {
+        "simulator": false,
+        "resourceClass": "m-medium"
+      },
       "env": {
         "EXPO_PUBLIC_API_URL": "https://monpermis-api.onrender.com"
+      }
+    },
+    "preview-simulator": {
+      "extends": "preview",
+      "ios": {
+        "simulator": true
       }
     },
     "preview-local": {
@@ -27,6 +40,9 @@
       "environment": "preview",
       "android": {
         "buildType": "apk"
+      },
+      "ios": {
+        "simulator": true
       },
       "env": {
         "EXPO_PUBLIC_API_URL": "http://127.0.0.1:5001"
@@ -36,6 +52,9 @@
       "environment": "production",
       "android": {
         "buildType": "app-bundle"
+      },
+      "ios": {
+        "resourceClass": "m-medium"
       },
       "env": {
         "EXPO_PUBLIC_API_URL": "https://monpermis-api.onrender.com"
