@@ -1,11 +1,4 @@
-import { getStoredToken, invalidateSessionIfUnauthorized } from './auth'
-import { getApiBase } from './config'
-
-interface ApiResponse<T> {
-  success: boolean
-  data?: T
-  error?: string
-}
+import { apiAuthed, ApiError } from './client'
 
 export interface AppNotification {
   id: string
@@ -18,29 +11,12 @@ export interface AppNotification {
 }
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const token = await getStoredToken()
-  if (!token) throw new Error('Authentification requise')
-
-  let response: Response
   try {
-    response = await fetch(`${getApiBase()}${path}`, {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-        ...options?.headers,
-      },
-    })
-  } catch {
-    throw new Error('Impossible de joindre le serveur')
+    return await apiAuthed<T>(path, options)
+  } catch (error) {
+    if (error instanceof ApiError) throw new Error(error.message)
+    throw error
   }
-
-  const body = (await response.json().catch(() => ({}))) as ApiResponse<T>
-  if (!response.ok || !body.success || body.data === undefined) {
-    await invalidateSessionIfUnauthorized(response.status)
-    throw new Error(body.error ?? 'Action impossible')
-  }
-  return body.data
 }
 
 export function fetchNotifications() {

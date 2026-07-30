@@ -72,6 +72,8 @@ const paymentSchema = new mongoose.Schema(
      * or when approved but no access/reservation could be delivered — admin must refund.
      */
     needsRefund: { type: Boolean, default: false, index: true },
+    /** Date à laquelle un admin a marqué le remboursement hors plateforme comme traité. */
+    refundResolvedAt: { type: Date, default: null, index: true },
   },
   { timestamps: true },
 )
@@ -101,6 +103,7 @@ paymentSchema.methods.toPublicJSON = function toPublicJSON() {
     errorMessage: this.errorMessage || '',
     activatedAt: this.activatedAt,
     needsRefund: Boolean(this.needsRefund),
+    refundResolvedAt: this.refundResolvedAt || null,
     createdAt: this.createdAt,
     updatedAt: this.updatedAt,
   }
@@ -126,6 +129,10 @@ paymentSchema.methods.toAdminJSON = function toAdminJSON(user, verifierAdmin) {
     verifiedAt: this.verifiedAt,
     adminNote: this.adminNote || '',
     needsRefund: Boolean(this.needsRefund),
+    refundResolvedAt: this.refundResolvedAt || null,
+    fedapayTransactionId: this.fedapayTransactionId || '',
+    lastEventName: this.lastEventName || '',
+    processedEventIds: Array.isArray(this.processedEventIds) ? this.processedEventIds : [],
   }
 }
 

@@ -18,6 +18,7 @@ import { BrandName } from '../components/BrandName'
 import { LegalFooter } from '../components/LegalFooter'
 import type { RootStackParamList } from '../navigation/types'
 import { dark, fonts, gradients } from '../theme'
+import { validatePassword } from '../utils/validation'
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'ResetPassword'>
 type Route = RouteProp<RootStackParamList, 'ResetPassword'>
@@ -37,12 +38,9 @@ export function ResetPasswordScreen() {
       setError('Lien invalide ou expiré')
       return
     }
-    if (password.length < 8) {
-      setError('Minimum 8 caractères')
-      return
-    }
-    if (!/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/\d/.test(password)) {
-      setError('Majuscule, minuscule et chiffre requis')
+    const passwordError = validatePassword(password)
+    if (passwordError) {
+      setError(passwordError)
       return
     }
     if (password !== confirmPassword) {

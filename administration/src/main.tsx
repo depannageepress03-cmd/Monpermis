@@ -10,6 +10,7 @@ import './styles/admin-users.css'
 import './styles/admin-questions.css'
 import './styles/admin-subscriptions.css'
 import './styles/admin-access-requests.css'
+import './styles/admin-finances.css'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

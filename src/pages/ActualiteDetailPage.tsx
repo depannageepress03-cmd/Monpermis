@@ -6,7 +6,10 @@ import {
   fetchAnnouncement,
   type Announcement,
 } from '../api/announcements'
+import { EmptyState } from '../components/EmptyState'
 import { PageNavbar } from '../components/PageNavbar'
+import { PageLoader } from '../components/PageLoader'
+import { PageSkeleton } from '../components/PageSkeleton'
 import { useAuth } from '../hooks/useAuth'
 import { resolveMediaUrl } from '../utils/mediaUrl'
 import '../styles/auth.css'
@@ -27,7 +30,7 @@ export function ActualiteDetailPage() {
       .finally(() => setFetching(false))
   }, [user, id])
 
-  if (loading || !user) return null
+  if (loading || !user) return <PageLoader />
 
   const isHtml = item ? announcementLooksLikeHtml(item.body) : false
   const image = item ? resolveMediaUrl(item.imageUrl) : ''
@@ -42,13 +45,13 @@ export function ActualiteDetailPage() {
         />
 
         {fetching ? (
-          <p className="home-news-empty">Chargement…</p>
+          <PageSkeleton variant="detail" />
         ) : !item ? (
-          <div className="auth-card learner-card home-news-empty-card">
-            <Megaphone size={28} />
-            <strong>Annonce introuvable</strong>
-            <p>Elle a peut-être été retirée ou n’est plus disponible pour ton compte.</p>
-          </div>
+          <EmptyState
+            icon={<Megaphone size={28} />}
+            title="Annonce introuvable"
+            message="Elle a peut-être été retirée ou n’est plus disponible pour ton compte."
+          />
         ) : (
           <article className={`home-news-detail home-news-card--${item.kind}`}>
             <span className={`home-news-kind home-news-kind--${item.kind}`}>

@@ -137,6 +137,18 @@ export function updateUser(token: string, userId: string, payload: UpdateUserPay
   )
 }
 
+/** Réinitialise le code de connexion apprenant (téléphone + code). */
+export function resetUserCode(token: string, userId: string, password: string) {
+  return apiFetch<{ user: AppUser }>(
+    `/api/admin/users/${userId}/reset-code`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ password }),
+    },
+    token,
+  )
+}
+
 export function deleteUser(token: string, userId: string) {
   return apiFetch<{ deleted: boolean; id: string }>(
     `/api/admin/users/${userId}`,

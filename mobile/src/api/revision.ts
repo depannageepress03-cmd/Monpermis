@@ -1,5 +1,4 @@
-import { getStoredToken, invalidateSessionIfUnauthorized } from './auth'
-import { getApiBase } from './config'
+import { apiAuthed, ApiError } from './client'
 import { cacheGetThenFetch } from '../utils/contentCache'
 
 export interface RevisionModule {
@@ -64,12 +63,6 @@ export interface CourseSessionStart {
   alreadyCompleted: boolean
 }
 
-interface ApiResponse<T> {
-  success: boolean
-  data?: T
-  error?: string
-}
-
 export class ContentError extends Error {
   constructor(message: string) {
     super(message)
@@ -77,36 +70,17 @@ export class ContentError extends Error {
   }
 }
 
-async function request<T>(path: string, options?: RequestInit & { auth?: boolean }): Promise<T> {
-  const { auth, headers, ...rest } = options ?? {}
-  const requestHeaders: Record<string, string> = {
-    'Content-Type': 'application/json',
-    ...(headers as Record<string, string> | undefined),
-  }
-
-  if (auth) {
-    const token = await getStoredToken()
-    if (!token) throw new ContentError('Authentification requise')
-    requestHeaders.Authorization = `Bearer ${token}`
-  }
-
-  let response: Response
+async function request<T>(
+  path: string,
+  options?: RequestInit & { auth?: boolean },
+): Promise<T> {
+  const { auth: _auth, ...rest } = options ?? {}
   try {
-    response = await fetch(`${getApiBase()}${path}`, {
-      ...rest,
-      headers: requestHeaders,
-    })
-  } catch {
-    throw new ContentError('Impossible de joindre le serveur')
+    return await apiAuthed<T>(path, rest)
+  } catch (error) {
+    if (error instanceof ApiError) throw new ContentError(error.message)
+    throw new ContentError('Contenu indisponible')
   }
-
-  const body = (await response.json().catch(() => ({}))) as ApiResponse<T>
-  if (!response.ok || !body.success || !body.data) {
-    if (auth) await invalidateSessionIfUnauthorized(response.status)
-    throw new ContentError(body.error ?? 'Contenu indisponible')
-  }
-
-  return body.data
 }
 
 export async function fetchRevisionChapters(): Promise<RevisionChapter[]> {

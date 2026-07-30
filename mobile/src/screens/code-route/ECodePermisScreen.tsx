@@ -26,6 +26,7 @@ import { AnimatedCheckmark } from '../../components/AnimatedCheckmark'
 import { ConfettiBurst } from '../../components/ConfettiBurst'
 import { PageNavbar } from '../../components/PageNavbar'
 import { QuestionAudioSequence } from '../../components/QuestionAudioSequence'
+import { QuestionPromptHtml } from '../../components/QuestionPromptHtml'
 import { ScreenLoader } from '../../components/ScreenLoader'
 import { useRequireAuth } from '../../hooks/useRequireAuth'
 import type { RootStackParamList } from '../../navigation/types'
@@ -490,7 +491,7 @@ export function ECodePermisTakeScreen() {
                 {progressLabel} · Score live {liveCorrect}/{answeredCount || '—'}
               </Text>
               {question.prompt?.text ? (
-                <Text style={styles.prompt}>{question.prompt.text}</Text>
+                <QuestionPromptHtml text={question.prompt.text} style={styles.prompt} />
               ) : null}
               {sequenceLive && !result && question.prompt?.audioUrl ? (
                 <QuestionAudioSequence

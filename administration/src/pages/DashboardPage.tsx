@@ -41,7 +41,7 @@ const emptySummary: DashboardSummary = {
   admins: { total: 0 },
   revenue: { currency: 'XOF', total: 0, month: 0, transactions: 0 },
   accessRequests: { active: 0, pending: 0, expired: 0 },
-  payments: { pending: 0, recent: [] },
+  payments: { pending: 0, needsRefund: 0, recent: [] },
 }
 
 const moduleLabels: Record<AccessModuleKey, string> = {

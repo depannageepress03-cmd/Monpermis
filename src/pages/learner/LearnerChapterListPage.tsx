@@ -145,6 +145,9 @@ export function LearnerChapterListPage({
                 )
                 const testDone = completedTestIds.has(chapter.id)
 
+                const prevChapter = index > 0 ? chapters[index - 1] : null
+                const prevName = prevChapter ? `${index}. ${prevChapter.name}` : null
+
                 if (showSectionIcons) {
                   return (
                     <div
@@ -168,6 +171,22 @@ export function LearnerChapterListPage({
                           </small>
                         </span>
                       </div>
+                      {!chapterUnlocked && prevChapter && testSubjectPath ? (
+                        <>
+                          <ul className="learner-lock-checklist">
+                            <li>
+                              Validez le sujet test de « {prevName} » pour débloquer ce chapitre.
+                            </li>
+                          </ul>
+                          <Link
+                            to={testSubjectPath(prevChapter.id)}
+                            state={{ chapterName: prevName }}
+                            className="btn-primary learner-lock-cta"
+                          >
+                            Aller au sujet test à valider
+                          </Link>
+                        </>
+                      ) : null}
                       <div className="learner-chapter-actions">
                         {chapterUnlocked ? (
                           <Link
@@ -239,7 +258,27 @@ export function LearnerChapterListPage({
                       </span>
                       <span className="learner-item-body">
                         <strong>{numberedName}</strong>
-                        <small>Terminez le chapitre précédent pour débloquer</small>
+                        <small>
+                          {prevName
+                            ? `Terminez tous les cours de « ${prevName} » pour débloquer`
+                            : 'Terminez le chapitre précédent pour débloquer'}
+                        </small>
+                        {prevChapter ? (
+                          <>
+                            <ul className="learner-lock-checklist">
+                              <li>Parcourez et validez les cours du chapitre précédent.</li>
+                            </ul>
+                            <Link
+                              to={coursesPath(prevChapter.id)}
+                              state={{
+                                chapter: { ...prevChapter, name: prevName || prevChapter.name },
+                              }}
+                              className="btn-primary learner-lock-cta"
+                            >
+                              Ouvrir le chapitre précédent
+                            </Link>
+                          </>
+                        ) : null}
                       </span>
                     </div>
                   )

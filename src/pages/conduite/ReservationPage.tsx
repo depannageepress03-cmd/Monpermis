@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { CalendarPlus, Check } from 'lucide-react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useHoldTimer } from '../../hooks/useHoldTimer'
 import {
   computeDrivingAmount,
   createReservation,
@@ -17,6 +18,7 @@ import {
 } from '../../api/reservations'
 import { fetchAccessMe } from '../../api/accessRequests'
 import { PageNavbar } from '../../components/PageNavbar'
+import { PageLoader } from '../../components/PageLoader'
 import { ReservationMobileMoneyCheckout } from '../../components/ReservationMobileMoneyCheckout'
 import { useAuth } from '../../hooks/useAuth'
 import { resolveMediaUrl } from '../../utils/mediaUrl'
@@ -68,6 +70,7 @@ export function ReservationPage() {
   const [endTime, setEndTime] = useState('')
   const [selected, setSelected] = useState<ReservationSlot | null>(null)
   const [selectedAmount, setSelectedAmount] = useState(0)
+  const [slotLockedUntil, setSlotLockedUntil] = useState<string | null>(null)
   const [hoursDiscount, setHoursDiscount] = useState(HOURS_DISCOUNT_FCFA)
   const [hoursDiscountMin, setHoursDiscountMin] = useState(HOURS_DISCOUNT_MIN_HOURS)
   const [soldeHeures, setSoldeHeures] = useState<number | null>(null)
@@ -228,14 +231,29 @@ export function ReservationPage() {
       })
       setSelected(data.creneau)
       setSelectedAmount(data.amountFcfa ?? data.creneau.priceFcfa)
+      setSlotLockedUntil(data.lockedUntil || null)
       setStep('payment')
     } catch (err) {
       setError(err instanceof ReservationError ? err.message : 'Plage indisponible')
+      setSlotLockedUntil(null)
       void loadAvailability()
     } finally {
       setBusy(false)
     }
   }
+
+  const onHoldExpired = useCallback(() => {
+    setShowMobileMoney(false)
+    setSelected(null)
+    setSlotLockedUntil(null)
+    setStep('calendar')
+    setError(
+      'Créneau libéré — le délai de réservation est écoulé. Choisissez un autre horaire.',
+    )
+    void loadAvailability()
+  }, [loadAvailability])
+
+  const hold = useHoldTimer(step === 'payment' ? slotLockedUntil : null, onHoldExpired)
 
   const buildCalendarUrl = (slot: ReservationSlot) => {
     const start = `${slot.date.replace(/-/g, '')}T${slot.startTime.replace(':', '')}00`
@@ -267,7 +285,7 @@ export function ReservationPage() {
     }
   }
 
-  if (loading || !user) return null
+  if (loading || !user) return <PageLoader />
 
   return (
     <div className="auth-page">
@@ -511,6 +529,19 @@ export function ReservationPage() {
                 <p>Vérifiez le récapitulatif ci-dessous, puis réglez cette séance pour la confirmer.</p>
               </div>
 
+              {hold.expired ? (
+                <div className="slot-hold-banner is-expired" role="alert">
+                  Créneau libéré — choisissez un autre horaire.
+                </div>
+              ) : hold.label ? (
+                <div
+                  className={`slot-hold-banner${(hold.remainingMs ?? 0) <= 60_000 ? ' is-urgent' : ''}`}
+                >
+                  <span>Créneau réservé pour vous</span>
+                  <strong>{hold.label}</strong>
+                </div>
+              ) : null}
+
               <h3 className="section-title">3. Récapitulatif</h3>
               <div className="recap-card">
                 {selectedMoniteur && moniteurPhoto(selectedMoniteur) ? (
@@ -568,7 +599,15 @@ export function ReservationPage() {
                 </button>
               </div>
 
-              <button type="button" className="btn-outline" onClick={() => setStep('calendar')}>
+              <button
+                type="button"
+                className="btn-outline"
+                onClick={() => {
+                  setSlotLockedUntil(null)
+                  setSelected(null)
+                  setStep('calendar')
+                }}
+              >
                 Changer d’horaire
               </button>
             </div>

@@ -70,3 +70,20 @@ export function fetchAdminDetail(token: string, adminId: string, limit = 40) {
 export function fetchAuditLogs(token: string, query: AuditLogsQuery = {}) {
   return apiFetch<AuditLogsResult>(`/api/admin/audit-logs${toQuery(query)}`, {}, token)
 }
+
+export interface UpdateAdminPayload {
+  isActive?: boolean
+  role?: 'admin' | 'superadmin'
+  password?: string
+}
+
+export function updateAdmin(token: string, adminId: string, payload: UpdateAdminPayload) {
+  return apiFetch<{ admin: AdminAccount }>(
+    `/api/admin/admins/${adminId}`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    },
+    token,
+  )
+}

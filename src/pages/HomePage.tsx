@@ -9,7 +9,11 @@ import { AnnouncementCard } from '../components/AnnouncementCard'
 import { BrandName } from '../components/BrandName'
 import { HomeBottomAnimation } from '../components/HomeBottomAnimation'
 import { LegalFooter } from '../components/LegalFooter'
+import { PageLoader } from '../components/PageLoader'
+import { PageSkeleton } from '../components/PageSkeleton'
 import { useAuth } from '../hooks/useAuth'
+import { useFocusRefresh } from '../hooks/useFocusRefresh'
+import { getActiveSubscriptions } from '../utils/subscriptionSummary'
 import '../styles/auth.css'
 
 function greetingWord() {
@@ -24,37 +28,45 @@ export function HomePage() {
   const { user, loading } = useAuth()
   const [profileOpen, setProfileOpen] = useState(false)
   const [accessMe, setAccessMe] = useState<AccessMe | null>(null)
+  const [accessReady, setAccessReady] = useState(false)
   const [announcements, setAnnouncements] = useState<Announcement[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
 
   useEffect(() => {
     if (!user) return
-    const refreshAccess = () => {
-      void fetchAccessMe().then(setAccessMe).catch(() => setAccessMe(null))
-    }
-    refreshAccess()
+    setAccessReady(false)
+    void fetchAccessMe()
+      .then(setAccessMe)
+      .catch(() => setAccessMe(null))
+      .finally(() => setAccessReady(true))
     void fetchAnnouncements().then(setAnnouncements).catch(() => setAnnouncements([]))
     void fetchUnreadCount()
       .then(({ unreadCount: count }) => setUnreadCount(count))
       .catch(() => setUnreadCount(0))
-
-    const onVisible = () => {
-      if (document.visibilityState === 'visible') refreshAccess()
-    }
-    document.addEventListener('visibilitychange', onVisible)
-    window.addEventListener('focus', refreshAccess)
-    return () => {
-      document.removeEventListener('visibilitychange', onVisible)
-      window.removeEventListener('focus', refreshAccess)
-    }
   }, [user])
+
+  useFocusRefresh(Boolean(user), () => {
+    void fetchAccessMe().then(setAccessMe).catch(() => setAccessMe(null))
+  })
 
   const handleLogout = () => {
     clearSession()
     navigate('/intro', { replace: true })
   }
 
-  if (loading || !user) return null
+  if (loading || !user) return <PageLoader />
+  if (!accessReady) {
+    return (
+      <div className="home-app" data-home-layout="fullbleed-v3">
+        <div className="home-app-inner">
+          <PageSkeleton variant="home" />
+        </div>
+      </div>
+    )
+  }
+
+  const activeSubscriptions = getActiveSubscriptions(accessMe)
+  const nearestSub = activeSubscriptions[0]
 
   const fullName = `${user.firstName} ${user.lastName}`.trim()
   const needsPhone = !String(user.phone || '').trim()
@@ -73,10 +85,14 @@ export function HomePage() {
         <>
           <div>
             <strong>Accès actifs</strong>
-            <span>Parcours accessibles</span>
+            <span>
+              {nearestSub
+                ? `${nearestSub.label} · ${nearestSub.daysLeft} j restant${nearestSub.daysLeft > 1 ? 's' : ''}`
+                : 'Parcours accessibles'}
+            </span>
           </div>
           <button type="button" onClick={() => navigate('/abonnement')}>
-            Gérer
+            {nearestSub && nearestSub.daysLeft <= 7 ? 'Renouveler' : 'Gérer'}
           </button>
         </>
       ) : (

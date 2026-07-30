@@ -11,8 +11,10 @@ import {
   type LearnerQuestion,
 } from '../../api/content'
 import { QuestionAudioSequence } from '../../components/QuestionAudioSequence'
+import { PageLoader } from '../../components/PageLoader'
 import { PageNavbar } from '../../components/PageNavbar'
 import { useAuth } from '../../hooks/useAuth'
+import { useLeaveGuard } from '../../hooks/useLeaveGuard'
 import { playFailSound, playSuccessSound, stopAllQuizAudio } from '../../utils/quizSounds'
 import { resolveMediaUrl } from '../../utils/mediaUrl'
 import '../../styles/auth.css'
@@ -252,7 +254,9 @@ export function LearnerChapterQuizPage({
     stopAllQuizAudio()
     void resolveSelection(ids)
   }
-  if (authLoading || !user) return null
+  const { confirmLeave } = useLeaveGuard(!finished && !loading && questions.length > 0)
+
+  if (authLoading || !user) return <PageLoader />
 
   return (
     <div className="auth-page">
@@ -260,7 +264,10 @@ export function LearnerChapterQuizPage({
         <PageNavbar
           title={mode === 'test' ? subjectLabel || 'Sujet test' : 'Questions'}
           icon={mode === 'test' ? <ClipboardList size={22} /> : <HelpCircle size={22} />}
-          onBack={() => navigate(backTo(chapterId))}
+          onBack={() => {
+            if (!confirmLeave()) return
+            navigate(backTo(chapterId))
+          }}
         />
 
         <header className="auth-header learner-header">

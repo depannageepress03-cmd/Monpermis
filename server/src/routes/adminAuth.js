@@ -1,8 +1,13 @@
 import { Router } from 'express'
 import jwt from 'jsonwebtoken'
 import mongoose from 'mongoose'
-import { Admin } from '../models/Admin.js'
-import { requireAdminAuth } from '../middleware/adminAuth.js'
+import { Admin, ADMIN_ROLES } from '../models/Admin.js'
+import {
+  hasActiveSuperAdmin,
+  invalidateSuperAdminCache,
+  requireAdminAuth,
+  requireSuperAdmin,
+} from '../middleware/adminAuth.js'
 import { audit, logAdminAction } from '../middleware/audit.js'
 import { logger } from '../utils/logger.js'
 
@@ -27,72 +32,117 @@ function createAdminToken(adminId) {
 }
 
 function isRegistrationAllowed() {
-  if (process.env.ALLOW_ADMIN_REGISTRATION === 'true') return true
-  return false
+  return process.env.ALLOW_ADMIN_REGISTRATION === 'true'
 }
 
-router.get('/registration-status', requireAdminAuth, (req, res) => {
-  res.json({ success: true, data: { allowed: isRegistrationAllowed() } })
-})
-
-router.post('/register', requireAdminAuth, audit('create', 'admin'), async (req, res) => {
+router.get('/registration-status', requireAdminAuth, requireSuperAdmin, async (req, res) => {
   try {
-    if (!isRegistrationAllowed()) {
-      return res.status(403).json({ success: false, error: 'Création d\'administrateur désactivée' })
-    }
-
-    const { fullName, phone, password, confirmPassword } = req.body
-
-    if (!fullName?.trim() || !phone || !password) {
-      return res.status(400).json({ success: false, error: 'Nom, téléphone et mot de passe requis' })
-    }
-
-    if (fullName.trim().length < 2) {
-      return res.status(400).json({ success: false, error: 'Nom trop court' })
-    }
-
-    const normalizedPhone = normalizePhone(phone)
-    if (!PHONE_PATTERN.test(normalizedPhone)) {
-      return res.status(400).json({ success: false, error: 'Numéro invalide. Exemple : 0147880143' })
-    }
-
-    if (password.length < 8) {
-      return res.status(400).json({ success: false, error: 'Mot de passe : minimum 8 caractères' })
-    }
-
-    if (!/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/\d/.test(password)) {
-      return res.status(400).json({
-        success: false,
-        error: 'Mot de passe : doit contenir majuscule, minuscule et chiffre',
-      })
-    }
-
-    if (password !== confirmPassword) {
-      return res.status(400).json({ success: false, error: 'Les mots de passe ne correspondent pas' })
-    }
-
-    const existing = await Admin.findOne({ phone: normalizedPhone })
-    if (existing) {
-      return res.status(409).json({ success: false, error: 'Ce numéro est déjà utilisé' })
-    }
-
-    const admin = await Admin.create({
-      fullName: fullName.trim(),
-      phone: normalizedPhone,
-      password,
-    })
-
-    res.status(201).json({
-      success: true,
-      data: {
-        admin: admin.toPublicJSON(),
-      },
-    })
-  } catch (error) {
-    logger.error('Erreur création admin:', error)
-    res.status(500).json({ success: false, error: 'Création impossible' })
+    const gated = await hasActiveSuperAdmin()
+    // Superadmin : toujours autorisé à créer. Sinon (migration) : env.
+    const allowed = gated ? req.admin.role === 'superadmin' : isRegistrationAllowed()
+    res.json({ success: true, data: { allowed } })
+  } catch {
+    res.json({ success: true, data: { allowed: isRegistrationAllowed() } })
   }
 })
+
+router.post(
+  '/register',
+  requireAdminAuth,
+  requireSuperAdmin,
+  audit('create', 'admin'),
+  async (req, res) => {
+    try {
+      const gated = await hasActiveSuperAdmin()
+      if (gated) {
+        if (req.admin.role !== 'superadmin') {
+          return res.status(403).json({
+            success: false,
+            error: 'Accès réservé aux super-administrateurs',
+          })
+        }
+      } else if (!isRegistrationAllowed()) {
+        return res.status(403).json({
+          success: false,
+          error: "Création d'administrateur désactivée",
+        })
+      }
+
+      const { fullName, phone, password, confirmPassword, role } = req.body
+
+      if (!fullName?.trim() || !phone || !password) {
+        return res.status(400).json({ success: false, error: 'Nom, téléphone et mot de passe requis' })
+      }
+
+      if (fullName.trim().length < 2) {
+        return res.status(400).json({ success: false, error: 'Nom trop court' })
+      }
+
+      const normalizedPhone = normalizePhone(phone)
+      if (!PHONE_PATTERN.test(normalizedPhone)) {
+        return res.status(400).json({ success: false, error: 'Numéro invalide. Exemple : 0147880143' })
+      }
+
+      if (password.length < 8) {
+        return res.status(400).json({ success: false, error: 'Mot de passe : minimum 8 caractères' })
+      }
+
+      if (!/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/\d/.test(password)) {
+        return res.status(400).json({
+          success: false,
+          error: 'Mot de passe : doit contenir majuscule, minuscule et chiffre',
+        })
+      }
+
+      if (password !== confirmPassword) {
+        return res.status(400).json({ success: false, error: 'Les mots de passe ne correspondent pas' })
+      }
+
+      let assignedRole = 'admin'
+      if (role !== undefined && role !== null && role !== '') {
+        if (!ADMIN_ROLES.includes(role)) {
+          return res.status(400).json({
+            success: false,
+            error: 'Rôle invalide (admin ou superadmin)',
+          })
+        }
+        if (role === 'superadmin' && req.admin.role !== 'superadmin') {
+          return res.status(403).json({
+            success: false,
+            error: 'Seul un super-administrateur peut promouvoir ce rôle',
+          })
+        }
+        assignedRole = role
+      }
+
+      const existing = await Admin.findOne({ phone: normalizedPhone })
+      if (existing) {
+        return res.status(409).json({ success: false, error: 'Ce numéro est déjà utilisé' })
+      }
+
+      const admin = await Admin.create({
+        fullName: fullName.trim(),
+        phone: normalizedPhone,
+        password,
+        role: assignedRole,
+      })
+
+      if (assignedRole === 'superadmin') {
+        invalidateSuperAdminCache()
+      }
+
+      res.status(201).json({
+        success: true,
+        data: {
+          admin: admin.toPublicJSON(),
+        },
+      })
+    } catch (error) {
+      logger.error('Erreur création admin:', error)
+      res.status(500).json({ success: false, error: 'Création impossible' })
+    }
+  },
+)
 
 router.post('/login', async (req, res) => {
   try {
@@ -156,8 +206,29 @@ router.post('/login', async (req, res) => {
   }
 })
 
-router.get('/me', requireAdminAuth, (req, res) => {
-  res.json({ success: true, data: { admin: req.admin.toPublicJSON() } })
+router.get('/me', requireAdminAuth, async (req, res) => {
+  try {
+    const gated = await hasActiveSuperAdmin()
+    const manageAdmins = !gated || req.admin.role === 'superadmin'
+    res.json({
+      success: true,
+      data: {
+        admin: req.admin.toPublicJSON(),
+        capabilities: {
+          /** Gestion admins, journal d’audit, finances */
+          manageAdmins,
+        },
+      },
+    })
+  } catch {
+    res.json({
+      success: true,
+      data: {
+        admin: req.admin.toPublicJSON(),
+        capabilities: { manageAdmins: req.admin.role === 'superadmin' },
+      },
+    })
+  }
 })
 
 export default router

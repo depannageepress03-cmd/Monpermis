@@ -19,6 +19,7 @@ import { RegisterPasswordScreen } from '../screens/RegisterPasswordScreen'
 import { TermsOfUseScreen } from '../screens/TermsOfUseScreen'
 import { PrivacyPolicyScreen } from '../screens/PrivacyPolicyScreen'
 import { MentionsLegalesScreen } from '../screens/MentionsLegalesScreen'
+import { withRequireAuth } from '../components/RequireAuth'
 import { ProfileScreen } from '../screens/ProfileScreen'
 import { NotificationsScreen } from '../screens/NotificationsScreen'
 import { ActualitesScreen } from '../screens/ActualitesScreen'
@@ -145,7 +146,7 @@ function AppNavigator() {
       />
       <Stack.Screen
         name="Profile"
-        component={ProfileScreen}
+        component={withRequireAuth(ProfileScreen)}
       />
       <Stack.Screen
         name="Notifications"

@@ -5,6 +5,7 @@ import {
   Car,
   ChevronRight,
   Gift,
+  Landmark,
   LayoutDashboard,
   LogOut,
   Megaphone,
@@ -23,6 +24,7 @@ import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-do
 import logoUrl from '../assets/logo.png'
 import { fetchDashboardSummary } from '../api/dashboard'
 import { useAdminAuth } from '../context/AdminAuthContext'
+import { getApiOrigin } from '../utils/mediaUrl'
 import { SITE_NAME } from '../theme/brand'
 import { BrandName } from './BrandName'
 
@@ -34,6 +36,15 @@ type NavItem = {
   end?: boolean
   icon: typeof LayoutDashboard
   match?: (pathname: string) => boolean
+  /** Visible uniquement pour les superadmins (Administrateurs, audit, finances…). */
+  superadminOnly?: boolean
+  badgeKey?: 'reservations' | 'access' | 'refunds'
+}
+
+type OpsBadges = {
+  reservations: number
+  access: number
+  refunds: number
 }
 
 const navItems: NavItem[] = [
@@ -59,14 +70,16 @@ const navItems: NavItem[] = [
     icon: CalendarDays,
     match: (pathname) =>
       pathname.startsWith('/conduite/reservations') || pathname.startsWith('/conduite/moniteurs'),
+    badgeKey: 'reservations',
   },
   { to: '/utilisateurs', label: 'Utilisateurs', icon: Users },
-  { to: '/abonnements', label: 'Abonnés', icon: Wallet },
+  { to: '/abonnements', label: 'Abonnés', icon: Wallet, badgeKey: 'access' },
+  { to: '/finances', label: 'Finances', icon: Landmark, superadminOnly: true, badgeKey: 'refunds' },
   { to: '/codes-promo', label: 'Codes promo', icon: Gift },
   { to: '/annonces', label: 'Annonces', icon: Megaphone },
-  { to: '/administrateurs', label: 'Administrateurs', icon: Shield },
-  { to: '/journal-audit', label: 'Journal d’audit', icon: ScrollText },
-  { to: '/creer-admin', label: 'Créer un admin', icon: UserPlus },
+  { to: '/administrateurs', label: 'Administrateurs', icon: Shield, superadminOnly: true },
+  { to: '/journal-audit', label: 'Journal d’audit', icon: ScrollText, superadminOnly: true },
+  { to: '/creer-admin', label: 'Créer un admin', icon: UserPlus, superadminOnly: true },
 ]
 
 function pageLabel(pathname: string) {
@@ -79,6 +92,7 @@ function pageLabel(pathname: string) {
   if (pathname.startsWith('/administrateurs')) return 'Administrateurs'
   if (pathname.startsWith('/journal-audit')) return 'Journal d’audit'
   if (pathname.startsWith('/creer-admin')) return 'Créer un admin'
+  if (pathname.startsWith('/finances')) return 'Finances'
   if (pathname.includes('/questions')) return 'Questions'
   if (pathname.startsWith('/code/revision-chapitres')) return 'Révision par chapitres'
   if (pathname.startsWith('/code/examens-test')) return 'Examens test'
@@ -101,14 +115,28 @@ function adminInitials(fullName?: string) {
   return parts[0].slice(0, 2).toUpperCase()
 }
 
+function formatBadge(count: number) {
+  if (count <= 0) return undefined
+  return count > 99 ? '99+' : String(count)
+}
+
+type HealthSnapshot = {
+  db: string
+  fedapay: string
+  fedapayEnvironment: string
+  fedapayWebhookSecret: string
+}
+
 export function AdminLayout() {
-  const { admin, signOut } = useAdminAuth()
+  const { admin, signOut, canManageAdmins } = useAdminAuth()
   const location = useLocation()
   const navigate = useNavigate()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [searchFocused, setSearchFocused] = useState(false)
-  const [notifCount, setNotifCount] = useState(0)
+  const [badges, setBadges] = useState<OpsBadges>({ reservations: 0, access: 0, refunds: 0 })
+  const [health, setHealth] = useState<HealthSnapshot | null>(null)
+  const [healthDismissed, setHealthDismissed] = useState(false)
   const [width, setWidth] = useState(() =>
     typeof window !== 'undefined' ? window.innerWidth : 1440,
   )
@@ -122,22 +150,57 @@ export function AdminLayout() {
   useEffect(() => {
     const token = localStorage.getItem(ADMIN_TOKEN_KEY)
     if (!token) {
-      setNotifCount(0)
+      setBadges({ reservations: 0, access: 0, refunds: 0 })
       return
     }
     let cancelled = false
     fetchDashboardSummary(token)
       .then(({ summary }) => {
         if (cancelled) return
-        setNotifCount(summary.conduite?.reservationsPending ?? 0)
+        setBadges({
+          reservations: summary.conduite?.reservationsPending ?? 0,
+          access: summary.accessRequests?.pending ?? 0,
+          refunds: summary.payments?.needsRefund ?? 0,
+        })
       })
       .catch(() => {
-        if (!cancelled) setNotifCount(0)
+        if (!cancelled) setBadges({ reservations: 0, access: 0, refunds: 0 })
       })
     return () => {
       cancelled = true
     }
   }, [location.pathname])
+
+  useEffect(() => {
+    if (!canManageAdmins || healthDismissed) return
+    let cancelled = false
+    const origin = getApiOrigin()
+    const url = origin ? `${origin}/api/health` : '/api/health'
+    fetch(url)
+      .then(async (res) => {
+        const json = (await res.json()) as HealthSnapshot & { success?: boolean }
+        if (cancelled) return
+        setHealth({
+          db: json.db || 'unknown',
+          fedapay: json.fedapay || 'unknown',
+          fedapayEnvironment: json.fedapayEnvironment || '—',
+          fedapayWebhookSecret: json.fedapayWebhookSecret || 'unknown',
+        })
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setHealth({
+            db: 'unreachable',
+            fedapay: 'unknown',
+            fedapayEnvironment: '—',
+            fedapayWebhookSecret: 'unknown',
+          })
+        }
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [canManageAdmins, healthDismissed])
 
   const isMobile = width < 640
   const isTablet = width >= 640 && width < 1080
@@ -151,6 +214,28 @@ export function AdminLayout() {
   }
 
   const initials = adminInitials(admin?.fullName)
+  const visibleNavItems = navItems.filter((item) => !item.superadminOnly || canManageAdmins)
+  const refundBadge = canManageAdmins ? badges.refunds : 0
+  const notifCount = badges.reservations + badges.access + refundBadge
+
+  const openOpsQueue = () => {
+    if (canManageAdmins && badges.refunds > 0) {
+      navigate('/finances?tab=refunds')
+      return
+    }
+    if (badges.access > 0) {
+      navigate('/abonnements')
+      return
+    }
+    navigate('/conduite/reservations')
+  }
+
+  const healthOk =
+    health &&
+    health.db === 'connected' &&
+    health.fedapay === 'configured' &&
+    health.fedapayWebhookSecret === 'configured'
+  const showHealthStrip = Boolean(canManageAdmins && health && !healthDismissed && !healthOk)
 
   return (
     <div
@@ -199,22 +284,41 @@ export function AdminLayout() {
 
         <nav className="sidebar-nav">
           <ul className="sidebar-list">
-            {navItems.map((item) => {
+            {visibleNavItems.map((item) => {
               const Icon = item.icon
+              const badgeCount =
+                item.badgeKey === 'reservations'
+                  ? badges.reservations
+                  : item.badgeKey === 'access'
+                    ? badges.access
+                    : item.badgeKey === 'refunds'
+                      ? refundBadge
+                      : 0
+              const badgeLabel = formatBadge(badgeCount)
               return (
                 <li key={item.to}>
                   <NavLink
-                    to={item.to}
+                    to={
+                      item.badgeKey === 'refunds' && badgeCount > 0
+                        ? '/finances?tab=refunds'
+                        : item.to
+                    }
                     end={item.end}
                     onClick={closeMobile}
                     title={item.label}
                     className={({ isActive }) => {
                       const active = item.match ? item.match(location.pathname) : isActive
-                      return `sidebar-link${active ? ' active' : ''}`
+                      return `sidebar-link${active ? ' active' : ''}${badgeLabel ? ' has-badge' : ''}`
                     }}
+                    data-count={badgeLabel}
                   >
                     <Icon size={16} strokeWidth={2} />
                     <span className="sidebar-link-label">{item.label}</span>
+                    {badgeLabel ? (
+                      <span className="sidebar-link-badge" aria-label={`${badgeCount} en attente`}>
+                        {badgeLabel}
+                      </span>
+                    ) : null}
                   </NavLink>
                 </li>
               )
@@ -228,7 +332,10 @@ export function AdminLayout() {
           </div>
           <div className="sidebar-profile-meta">
             <p className="sidebar-profile-name">{admin?.fullName || 'Administrateur'}</p>
-            <p className="sidebar-profile-email">{admin?.phone || SITE_NAME}</p>
+            <p className="sidebar-profile-email">
+              {admin?.role === 'superadmin' ? 'Superadmin' : 'Admin'}
+              {admin?.phone ? ` · ${admin.phone}` : ''}
+            </p>
           </div>
           <button
             type="button"
@@ -243,6 +350,24 @@ export function AdminLayout() {
       </aside>
 
       <div className="admin-stage">
+        {showHealthStrip && health ? (
+          <div className="admin-health-strip" role="status">
+            <span>
+              Santé API · DB {health.db === 'connected' ? 'OK' : health.db} · FedaPay{' '}
+              {health.fedapay === 'configured' ? health.fedapayEnvironment : 'manquant'} · Webhook{' '}
+              {health.fedapayWebhookSecret === 'configured' ? 'OK' : 'manquant'}
+            </span>
+            <button
+              type="button"
+              className="admin-health-dismiss"
+              onClick={() => setHealthDismissed(true)}
+              aria-label="Fermer l’alerte santé"
+            >
+              <X size={12} />
+            </button>
+          </div>
+        ) : null}
+
         <header className="admin-global-topbar">
           {isMobile ? (
             <button
@@ -292,9 +417,15 @@ export function AdminLayout() {
                 ? `${notifCount} éléments en attente`
                 : 'Aucun élément en attente'
             }
-            data-count={notifCount > 0 ? notifCount : undefined}
-            onClick={() => navigate('/conduite/reservations')}
-            title="Réservations en attente"
+            data-count={formatBadge(notifCount)}
+            onClick={openOpsQueue}
+            title={[
+              badges.reservations > 0 ? `${badges.reservations} réservation(s)` : null,
+              badges.access > 0 ? `${badges.access} abonnement(s)` : null,
+              refundBadge > 0 ? `${refundBadge} remboursement(s)` : null,
+            ]
+              .filter(Boolean)
+              .join(' · ') || 'File opérationnelle'}
           >
             <Bell size={16} strokeWidth={1.8} />
           </button>

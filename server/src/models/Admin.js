@@ -1,11 +1,20 @@
 import mongoose from 'mongoose'
 import bcrypt from 'bcryptjs'
 
+export const ADMIN_ROLES = ['admin', 'superadmin']
+
 const adminSchema = new mongoose.Schema(
   {
     fullName: { type: String, required: true, trim: true },
     phone: { type: String, required: true, unique: true, trim: true },
     password: { type: String, required: true, minlength: 8, select: false },
+    /** `superadmin` = gestion des admins, journal d’audit, finances ; `admin` = opérations courantes. */
+    role: {
+      type: String,
+      enum: ADMIN_ROLES,
+      default: 'admin',
+      index: true,
+    },
     isActive: { type: Boolean, default: true },
     lastLoginAt: { type: Date },
     failedLoginAttempts: { type: Number, default: 0 },
@@ -51,11 +60,15 @@ adminSchema.methods.toPublicJSON = function toPublicJSON() {
     id: this._id,
     fullName: this.fullName,
     phone: this.phone,
-    role: 'admin',
+    role: this.role === 'superadmin' ? 'superadmin' : 'admin',
     isActive: Boolean(this.isActive),
     lastLoginAt: this.lastLoginAt,
     createdAt: this.createdAt,
   }
+}
+
+adminSchema.methods.isSuperAdmin = function isSuperAdmin() {
+  return this.role === 'superadmin'
 }
 
 export const Admin = mongoose.model('Admin', adminSchema)

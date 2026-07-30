@@ -47,6 +47,7 @@ import {
   applyApprovedReservationPayment,
   syncReservationPaymentFromProvider,
 } from '../utils/reservationPayments.js'
+import { recordPaymentCreated } from '../utils/paymentLedger.js'
 import { logger } from '../utils/logger.js'
 
 const router = Router()
@@ -971,6 +972,9 @@ router.post('/reservations', ...withConduiteAccess, async (req, res) => {
       reservationGroupId: bookingGroupId,
       paymentMethod: mode,
     })
+    void recordPaymentCreated(payment, {
+      note: `Mobile Money (${mode}) — réservation conduite`,
+    })
 
     try {
       configureFedaPay()
@@ -1067,15 +1071,29 @@ router.get('/checkout/:groupId/sync', ...withConduiteAccess, async (req, res) =>
     }
 
     await syncReservationPaymentFromProvider(payment)
-    const refreshedPayment = await Payment.findById(payment._id)
+    let refreshedPayment = await Payment.findById(payment._id)
+
+    // Si FedaPay a encaissé : re-garantir confirmation + exclusivité des créneaux
+    // (webhook raté, race expire, ou sync partiel).
+    if (refreshedPayment?.status === 'approved') {
+      await applyApprovedReservationPayment(refreshedPayment, {
+        eventName: 'client.sync.guarantee',
+        eventId: `client-sync:${refreshedPayment._id}`,
+      })
+      refreshedPayment = await Payment.findById(payment._id)
+    }
+
     const refreshedReservations = await Reservation.find({ bookingGroupId: groupId })
     const hydrated = await hydrateReservationGroup(refreshedReservations)
+    const allConfirmed =
+      hydrated.length > 0 && hydrated.every((item) => item.status === 'confirmed')
 
     res.json({
       success: true,
       data: {
         payment: refreshedPayment.toPublicJSON(),
         reservations: hydrated,
+        confirmed: Boolean(refreshedPayment?.status === 'approved' && allConfirmed),
       },
     })
   } catch (error) {

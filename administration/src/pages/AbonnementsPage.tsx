@@ -1,5 +1,5 @@
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import {
   AlertTriangle,
   Bot,
@@ -734,7 +734,8 @@ export function AbonnementsPage() {
         <div className="admin-data-table-wrap">
           <p className="admin-module-subtitle" style={{ marginBottom: 12 }}>
             Paiements encaissés sans livraison d’accès (orphelins / conflit). Rembourse côté
-            FedaPay / opérateur, puis marque comme résolu avec une note.
+            FedaPay / opérateur, puis marque comme résolu avec une note. Vue complète dans{' '}
+            <Link to="/finances?tab=refunds">Finances → À rembourser</Link>.
           </p>
           <table className="admin-data-table">
             <thead>

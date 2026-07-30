@@ -1,11 +1,4 @@
-import { getStoredToken, invalidateSessionIfUnauthorized } from './auth'
-import { getApiBase } from './config'
-
-interface ApiResponse<T> {
-  success: boolean
-  data?: T
-  error?: string
-}
+import { apiAuthed } from './client'
 
 export interface Announcement {
   id: string
@@ -20,49 +13,23 @@ export interface Announcement {
 }
 
 export async function fetchAnnouncements(limit = 20): Promise<Announcement[]> {
-  const token = await getStoredToken()
-  if (!token) return []
   try {
-    const response = await fetch(
-      `${getApiBase()}/content/announcements?limit=${Math.min(limit, 50)}`,
-      {
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-      },
+    const data = await apiAuthed<{ announcements: Announcement[] }>(
+      `/content/announcements?limit=${Math.min(limit, 50)}`,
     )
-    const body = (await response.json().catch(() => ({}))) as ApiResponse<{
-      announcements: Announcement[]
-    }>
-    if (!response.ok || !body.success || !body.data) {
-      await invalidateSessionIfUnauthorized(response.status)
-      return []
-    }
-    return body.data.announcements
+    return data.announcements
   } catch {
     return []
   }
 }
 
 export async function fetchAnnouncement(id: string): Promise<Announcement | null> {
-  const token = await getStoredToken()
-  if (!token || !id) return null
+  if (!id) return null
   try {
-    const response = await fetch(`${getApiBase()}/content/announcements/${encodeURIComponent(id)}`, {
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-    })
-    const body = (await response.json().catch(() => ({}))) as ApiResponse<{
-      announcement: Announcement
-    }>
-    if (!response.ok || !body.success || !body.data) {
-      await invalidateSessionIfUnauthorized(response.status)
-      return null
-    }
-    return body.data.announcement
+    const data = await apiAuthed<{ announcement: Announcement }>(
+      `/content/announcements/${encodeURIComponent(id)}`,
+    )
+    return data.announcement
   } catch {
     return null
   }

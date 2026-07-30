@@ -79,7 +79,7 @@ export function IntroScreen() {
         <IntroLogoMark onRevealComplete={markRevealDone} />
       ) : (
         <WebView
-          originWhitelist={['*']}
+          originWhitelist={['about:blank', 'file://*']}
           source={{
             html: MONPERMIS_INTRO_HTML,
             baseUrl: Platform.OS === 'android' ? 'file:///android_asset/' : undefined,

@@ -11,8 +11,10 @@ import {
   type PracticeExamsOverview,
 } from '../../api/content'
 import { QuestionAudioSequence } from '../../components/QuestionAudioSequence'
+import { PageLoader } from '../../components/PageLoader'
 import { PageNavbar } from '../../components/PageNavbar'
 import { useAuth } from '../../hooks/useAuth'
+import { useLeaveGuard } from '../../hooks/useLeaveGuard'
 import { playFailSound, playSuccessSound, stopAllQuizAudio } from '../../utils/quizSounds'
 import { resolveMediaUrl } from '../../utils/mediaUrl'
 import '../../styles/auth.css'
@@ -75,13 +77,13 @@ export function ExamensTestPage() {
     }
   }
 
-  if (authLoading || !user) return null
+  if (authLoading || !user) return <PageLoader />
 
   return (
     <div className="auth-page">
       <div className="auth-container learner-container">
         <PageNavbar
-      title="Examens test"
+          title="Examens test"
           icon={<HelpCircle size={22} />}
           onBack={() => navigate('/code-de-la-route')}
         />
@@ -401,7 +403,9 @@ export function ExamensTestTakePage() {
     void resolveSelection(ids)
   }
 
-  if (authLoading || !user) return null
+  const { confirmLeave } = useLeaveGuard(Boolean(attempt) && !finished && !loading)
+
+  if (authLoading || !user) return <PageLoader />
 
   return (
     <div className="auth-page">
@@ -409,7 +413,10 @@ export function ExamensTestTakePage() {
         <PageNavbar
           title={`Examen ${number}`}
           icon={<ClipboardList size={22} />}
-          onBack={() => navigate('/code-de-la-route/examens-test')}
+          onBack={() => {
+            if (!confirmLeave()) return
+            navigate('/code-de-la-route/examens-test')
+          }}
         />
 
         <header className="auth-header learner-header">

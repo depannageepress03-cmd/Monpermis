@@ -208,6 +208,41 @@ router.patch('/:userId', audit('update', 'user'), async (req, res) => {
   }
 })
 
+/** Réinitialise le code de connexion apprenant (téléphone + code). */
+router.post('/:userId/reset-code', audit('update', 'user_code'), async (req, res) => {
+  try {
+    const user = await User.findById(req.params.userId)
+    if (!user) {
+      return res.status(404).json({ success: false, error: 'Utilisateur introuvable' })
+    }
+
+    const password = String(req.body?.password || '').trim()
+    if (
+      password.length < 8 ||
+      !/[A-Z]/.test(password) ||
+      !/[a-z]/.test(password) ||
+      !/\d/.test(password)
+    ) {
+      return res.status(400).json({
+        success: false,
+        error: 'Code : minimum 8 caractères, avec majuscule, minuscule et chiffre',
+      })
+    }
+
+    user.password = password
+    user.authProvider = user.authProvider || 'local'
+    await user.save()
+
+    res.json({
+      success: true,
+      data: { user: user.toAdminJSON() },
+    })
+  } catch (error) {
+    logger.error('Erreur reset code apprenant', { error: error.message })
+    res.status(500).json({ success: false, error: 'Réinitialisation impossible' })
+  }
+})
+
 router.delete('/:userId', audit('delete', 'user'), async (req, res) => {
   try {
     const user = await User.findById(req.params.userId)

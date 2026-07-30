@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { AdminLayout } from './components/AdminLayout'
 import { ProtectedRoute } from './components/ProtectedRoute'
+import { SuperAdminRoute } from './components/SuperAdminRoute'
 import { CodeRouteHubPage } from './pages/code/CodeRouteHubPage'
 import { ChapterQuestionsPage } from './pages/code/ChapterQuestionsPage'
 import { ExamensTestAdminPage } from './pages/code/ExamensTestAdminPage'
@@ -17,6 +18,7 @@ import { CreateAdminPage } from './pages/CreateAdminPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { LoginPage } from './pages/LoginPage'
 import { AbonnementsPage } from './pages/AbonnementsPage'
+import { FinancesPage } from './pages/FinancesPage'
 import { PromoCodesPage } from './pages/PromoCodesPage'
 import { UsersPage } from './pages/UsersPage'
 import { LearnerProgressDetailPage, LearnerProgressListPage } from './pages/code/LearnerProgressPage'
@@ -34,10 +36,13 @@ export default function App() {
           <Route path="/demandes-acces" element={<Navigate to="/abonnements" replace />} />
           <Route path="/codes-promo" element={<PromoCodesPage />} />
           <Route path="/annonces" element={<AnnouncementsPage />} />
-          <Route path="/administrateurs" element={<AdminsPage />} />
-          <Route path="/administrateurs/:adminId" element={<AdminDetailPage />} />
-          <Route path="/journal-audit" element={<AuditLogPage />} />
-          <Route path="/creer-admin" element={<CreateAdminPage />} />
+          <Route element={<SuperAdminRoute />}>
+            <Route path="/finances" element={<FinancesPage />} />
+            <Route path="/administrateurs" element={<AdminsPage />} />
+            <Route path="/administrateurs/:adminId" element={<AdminDetailPage />} />
+            <Route path="/journal-audit" element={<AuditLogPage />} />
+            <Route path="/creer-admin" element={<CreateAdminPage />} />
+          </Route>
           <Route path="/parcours" element={<Navigate to="/code/revision-chapitres" replace />} />
           <Route path="/code" element={<CodeRouteHubPage />} />
           <Route path="/code/revision-chapitres" element={<RevisionChapitresPage />} />

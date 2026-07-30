@@ -28,22 +28,19 @@ import { PageNavbar } from '../components/PageNavbar'
 import { ScreenLoader } from '../components/ScreenLoader'
 import { useRequireAuth } from '../hooks/useRequireAuth'
 import type { RootStackParamList } from '../navigation/types'
+import {
+  formatSubscriptionEndDate,
+  getActiveSubscriptions,
+} from '../utils/subscriptionSummary'
 import { dark, fonts } from '../theme'
 import {
   clearPendingCheckoutCart,
   loadPendingCheckoutCart,
   type PendingCheckoutCart,
 } from '../utils/checkoutCart'
+import { formatPrice } from '../utils/money'
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'Abonnement'>
-
-function formatPrice(price: number, currency = 'XOF') {
-  return new Intl.NumberFormat('fr-FR', {
-    style: 'currency',
-    currency,
-    maximumFractionDigits: 0,
-  }).format(price)
-}
 
 const unitSuffix: Record<AccessModule['unit'], string> = {
   flat: '',
@@ -145,6 +142,8 @@ export function AbonnementScreen() {
     return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi)
   })
 
+  const activeSubscriptions = getActiveSubscriptions(me)
+
   return (
     <DarkScreen>
       <PageNavbar title="Mes accès" icon={CreditCard} onBack={() => navigation.navigate('Home')} />
@@ -214,6 +213,22 @@ export function AbonnementScreen() {
                   <Clock size={13} color={dark.green} /> Solde heures de conduite
                 </Text>
                 <Text style={styles.statusTitle}>{me.user.soldeHeures} h</Text>
+                {activeSubscriptions.map((sub) => (
+                  <View key={sub.module} style={styles.subRow}>
+                    <Text style={styles.statusCopy}>
+                      {sub.label} — expire le {formatSubscriptionEndDate(sub.endAt)} (
+                      {sub.remainingLabel})
+                    </Text>
+                    {sub.daysLeft <= 7 ? (
+                      <Pressable
+                        style={styles.renewBtn}
+                        onPress={() => setSelected({ [sub.module]: true })}
+                      >
+                        <Text style={styles.renewBtnText}>Renouveler</Text>
+                      </Pressable>
+                    ) : null}
+                  </View>
+                ))}
                 {me.pendingRequest ? (
                   <Text style={styles.statusCopy}>
                     Paiement en confirmation… Valide la demande sur ton téléphone puis reviens ici.
@@ -409,6 +424,19 @@ const styles = StyleSheet.create({
   },
   statusTitle: { fontFamily: fonts.displayExtraBold, fontSize: 22, color: dark.textPrimary, marginTop: 4 },
   statusCopy: { fontFamily: fonts.body, fontSize: 15, lineHeight: 22, color: dark.textMuted },
+  subRow: { gap: 8, marginTop: 6 },
+  renewBtn: {
+    alignSelf: 'flex-start',
+    backgroundColor: dark.green,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  renewBtnText: {
+    fontFamily: fonts.bodyBold,
+    fontSize: 13,
+    color: '#0B0F1A',
+  },
   catalogTitle: { fontFamily: fonts.displayExtraBold, fontSize: 22, color: dark.textPrimary, marginBottom: 14 },
   planList: { gap: 14 },
   plan: {

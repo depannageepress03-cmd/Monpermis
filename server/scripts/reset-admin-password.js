@@ -10,7 +10,7 @@ async function reset() {
   const hashed = await bcrypt.hash('Admin1234', 12)
   const result = await admins.updateOne(
     { phone: '0147880143' },
-    { $set: { password: hashed, failedLoginAttempts: 0, lockUntil: null } }
+    { $set: { password: hashed, failedLoginAttempts: 0, lockUntil: null, role: 'superadmin', isActive: true } }
   )
 
   if (result.matchedCount === 0) {
@@ -19,6 +19,7 @@ async function reset() {
       fullName: 'Super Admin',
       phone: '0147880143',
       password: hashed,
+      role: 'superadmin',
       isActive: true,
       failedLoginAttempts: 0,
       createdAt: new Date(),

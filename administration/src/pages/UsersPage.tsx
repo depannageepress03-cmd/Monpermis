@@ -1,10 +1,11 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
-import { Download, Filter, MoreHorizontal, RefreshCw, Search, Trash2, UserPlus } from 'lucide-react'
+import { Download, Filter, KeyRound, RefreshCw, Search, Trash2, UserPlus, X } from 'lucide-react'
 import { useSearchParams } from 'react-router-dom'
 import {
   createUser,
   deleteUser,
   fetchUsers,
+  resetUserCode,
   updateUser,
   type AppUser,
 } from '../api/users'
@@ -45,6 +46,10 @@ export function UsersPage() {
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
   const [password, setPassword] = useState('')
+  const [resetTarget, setResetTarget] = useState<AppUser | null>(null)
+  const [resetCode, setResetCode] = useState('')
+  const [resetConfirm, setResetConfirm] = useState('')
+  const [resetBusy, setResetBusy] = useState(false)
 
   useEffect(() => {
     const q = searchParams.get('q')
@@ -160,6 +165,42 @@ export function UsersPage() {
       setError(isAuthError(err) ? err.message : 'Mise à jour impossible')
     } finally {
       setBusyId(null)
+    }
+  }
+
+  const handleResetCode = async (e: FormEvent) => {
+    e.preventDefault()
+    if (!resetTarget) return
+    const pwdError = validatePassword(resetCode)
+    if (pwdError) {
+      setError(pwdError)
+      return
+    }
+    if (resetCode !== resetConfirm) {
+      setError('Les codes ne correspondent pas')
+      return
+    }
+
+    const token = getAdminToken()
+    if (!token) {
+      setError('Session expirée. Reconnectez-vous.')
+      return
+    }
+
+    setResetBusy(true)
+    setError(null)
+    setSuccess(null)
+    try {
+      const { user: updated } = await resetUserCode(token, resetTarget.id, resetCode)
+      setUsers((current) => current.map((item) => (item.id === updated.id ? updated : item)))
+      setSuccess(`Code réinitialisé pour ${updated.firstName} ${updated.lastName}.`)
+      setResetTarget(null)
+      setResetCode('')
+      setResetConfirm('')
+    } catch (err) {
+      setError(isAuthError(err) ? err.message : 'Réinitialisation impossible')
+    } finally {
+      setResetBusy(false)
     }
   }
 
@@ -397,6 +438,22 @@ export function UsersPage() {
                           <div style={{ display: 'flex', gap: 4 }}>
                             <button
                               type="button"
+                              className="dash-filter-btn"
+                              style={{ border: 0, padding: '4px 6px' }}
+                              disabled={busy}
+                              onClick={() => {
+                                setResetTarget(user)
+                                setResetCode('')
+                                setResetConfirm('')
+                                setError(null)
+                              }}
+                              aria-label="Réinitialiser le code"
+                              title="Réinitialiser le code"
+                            >
+                              <KeyRound size={12} strokeWidth={2} />
+                            </button>
+                            <button
+                              type="button"
                               className="btn-text-danger"
                               disabled={busy}
                               onClick={() => void handleDelete(user)}
@@ -404,14 +461,6 @@ export function UsersPage() {
                               style={{ padding: '4px 6px' }}
                             >
                               <Trash2 size={12} strokeWidth={2} />
-                            </button>
-                            <button
-                              type="button"
-                              className="dash-filter-btn"
-                              style={{ border: 0, padding: '4px 6px' }}
-                              aria-label="Plus"
-                            >
-                              <MoreHorizontal size={14} strokeWidth={2} />
                             </button>
                           </div>
                         </td>
@@ -437,6 +486,66 @@ export function UsersPage() {
           </div>
         </div>
       </div>
+
+      {resetTarget ? (
+        <div
+          className="admin-modal-backdrop"
+          role="presentation"
+          onClick={() => !resetBusy && setResetTarget(null)}
+        >
+          <div
+            className="admin-modal"
+            role="dialog"
+            aria-labelledby="reset-code-title"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="admin-modal-head">
+              <h3 id="reset-code-title">Réinitialiser le code</h3>
+              <button
+                type="button"
+                className="sidebar-close"
+                onClick={() => setResetTarget(null)}
+                disabled={resetBusy}
+                aria-label="Fermer"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <p className="muted" style={{ marginBottom: 12 }}>
+              Nouveau code pour {resetTarget.firstName} {resetTarget.lastName} ({resetTarget.phone || '—'})
+            </p>
+            <form onSubmit={(e) => void handleResetCode(e)} className="admin-form">
+              <div>
+                <label htmlFor="reset-code">Nouveau code</label>
+                <input
+                  id="reset-code"
+                  type="password"
+                  minLength={8}
+                  required
+                  value={resetCode}
+                  onChange={(e) => setResetCode(e.target.value)}
+                  autoComplete="new-password"
+                />
+              </div>
+              <div>
+                <label htmlFor="reset-code-confirm">Confirmer</label>
+                <input
+                  id="reset-code-confirm"
+                  type="password"
+                  minLength={8}
+                  required
+                  value={resetConfirm}
+                  onChange={(e) => setResetConfirm(e.target.value)}
+                  autoComplete="new-password"
+                />
+              </div>
+              <button type="submit" className="users-create-submit" disabled={resetBusy}>
+                {resetBusy ? 'Enregistrement…' : 'Réinitialiser le code'}
+              </button>
+            </form>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }

@@ -48,6 +48,7 @@ router.get('/summary', async (_req, res) => {
       accessPending,
       accessExpired,
       paymentsPending,
+      paymentsNeedsRefund,
       recentPayments,
     ] = await Promise.all([
       Payment.aggregate([
@@ -64,6 +65,7 @@ router.get('/summary', async (_req, res) => {
       }),
       AccessRequest.countDocuments({ status: 'expire' }),
       Payment.countDocuments({ status: 'pending' }),
+      Payment.countDocuments({ needsRefund: true }),
       Payment.find().sort({ updatedAt: -1 }).limit(20),
     ])
 
@@ -156,6 +158,7 @@ router.get('/summary', async (_req, res) => {
           },
           payments: {
             pending: paymentsPending,
+            needsRefund: paymentsNeedsRefund,
             recent: recentPayments.map((payment) => {
               const linkedIds =
                 typeof payment.linkedRequestIds === 'function'

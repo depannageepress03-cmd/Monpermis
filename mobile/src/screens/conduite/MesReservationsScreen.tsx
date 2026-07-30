@@ -4,13 +4,16 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { CalendarCheck, Check } from 'lucide-react-native'
 import {
   ActivityIndicator,
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native'
 import {
+  cancelReservation,
   fetchMyReservations,
   ReservationError,
   type ReservationItem,
@@ -55,6 +58,9 @@ export function MesReservationsScreen() {
   const [items, setItems] = useState<ReservationItem[]>([])
   const [busy, setBusy] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [cancelTarget, setCancelTarget] = useState<ReservationItem | null>(null)
+  const [cancelReason, setCancelReason] = useState('')
+  const [cancelling, setCancelling] = useState(false)
 
   const load = useCallback(async () => {
     setBusy(true)
@@ -74,6 +80,27 @@ export function MesReservationsScreen() {
       void load()
     }, [load]),
   )
+
+  const submitCancel = async () => {
+    if (!cancelTarget) return
+    const reason = cancelReason.trim()
+    if (reason.length < 5) {
+      setError('Indiquez une justification d’au moins 5 caractères')
+      return
+    }
+    setCancelling(true)
+    setError(null)
+    try {
+      await cancelReservation(String(cancelTarget.id), reason)
+      setCancelTarget(null)
+      setCancelReason('')
+      await load()
+    } catch (err) {
+      setError(err instanceof ReservationError ? err.message : 'Annulation impossible')
+    } finally {
+      setCancelling(false)
+    }
+  }
 
   if (loading || !user) return <ScreenLoader />
 
@@ -120,42 +147,54 @@ export function MesReservationsScreen() {
                   ? estimateHours(item.creneau.startTime, item.creneau.endTime)
                   : 0
               return (
-                <Pressable
-                  key={item.id}
-                  style={styles.card}
-                  onPress={() =>
-                    navigation.navigate('ReservationConfirm', {
-                      reservationId: item.id,
-                      moniteurName: item.moniteur?.fullName || 'Moniteur',
-                      vehicleBrand: item.moniteur?.vehicleBrand || '',
-                      date: item.creneau?.date || '',
-                      startTime: item.creneau?.startTime || '',
-                      endTime: item.creneau?.endTime || '',
-                      hours,
-                      priceFcfa: item.priceFcfa || item.creneau?.priceFcfa || 0,
-                      paymentMethod: 'solde',
-                      fromList: true,
-                    })
-                  }
-                >
-                  <View style={styles.badge}>
-                    <Check size={14} color="#0B0F1A" />
-                    <Text style={styles.badgeText}>{statusLabel(item)}</Text>
-                  </View>
-                  <Text style={styles.cardTitle}>
-                    {item.creneau ? formatDateLabel(item.creneau.date) : 'Séance'}
-                  </Text>
-                  <Text style={styles.cardLine}>
-                    {item.creneau
-                      ? `${item.creneau.startTime} – ${item.creneau.endTime}`
-                      : '—'}
-                    {hours > 0 ? ` · ${hours} h` : ''}
-                  </Text>
-                  <Text style={styles.cardMeta}>
-                    {item.moniteur?.fullName || 'Moniteur'}
-                    {item.moniteur?.vehicleBrand ? ` · ${item.moniteur.vehicleBrand}` : ''}
-                  </Text>
-                </Pressable>
+                <View key={item.id} style={styles.card}>
+                  <Pressable
+                    onPress={() =>
+                      navigation.navigate('ReservationConfirm', {
+                        reservationId: item.id,
+                        moniteurName: item.moniteur?.fullName || 'Moniteur',
+                        vehicleBrand: item.moniteur?.vehicleBrand || '',
+                        date: item.creneau?.date || '',
+                        startTime: item.creneau?.startTime || '',
+                        endTime: item.creneau?.endTime || '',
+                        hours,
+                        priceFcfa: item.priceFcfa || item.creneau?.priceFcfa || 0,
+                        paymentMethod: 'solde',
+                        fromList: true,
+                      })
+                    }
+                  >
+                    <View style={styles.badge}>
+                      <Check size={14} color="#0B0F1A" />
+                      <Text style={styles.badgeText}>{statusLabel(item)}</Text>
+                    </View>
+                    <Text style={styles.cardTitle}>
+                      {item.creneau ? formatDateLabel(item.creneau.date) : 'Séance'}
+                    </Text>
+                    <Text style={styles.cardLine}>
+                      {item.creneau
+                        ? `${item.creneau.startTime} – ${item.creneau.endTime}`
+                        : '—'}
+                      {hours > 0 ? ` · ${hours} h` : ''}
+                    </Text>
+                    <Text style={styles.cardMeta}>
+                      {item.moniteur?.fullName || 'Moniteur'}
+                      {item.moniteur?.vehicleBrand ? ` · ${item.moniteur.vehicleBrand}` : ''}
+                    </Text>
+                  </Pressable>
+                  {item.canCancel ? (
+                    <Pressable
+                      style={styles.cancelLink}
+                      onPress={() => {
+                        setError(null)
+                        setCancelReason('')
+                        setCancelTarget(item)
+                      }}
+                    >
+                      <Text style={styles.cancelLinkText}>Annuler</Text>
+                    </Pressable>
+                  ) : null}
+                </View>
               )
             })}
           </View>
@@ -177,11 +216,74 @@ export function MesReservationsScreen() {
                 <Text style={styles.cardMeta}>
                   {item.moniteur?.fullName || 'Moniteur'} · {statusLabel(item)}
                 </Text>
+                {item.canCancel ? (
+                  <Pressable
+                    style={styles.cancelLink}
+                    onPress={() => {
+                      setError(null)
+                      setCancelReason('')
+                      setCancelTarget(item)
+                    }}
+                  >
+                    <Text style={styles.cancelLinkText}>Annuler</Text>
+                  </Pressable>
+                ) : null}
               </View>
             ))}
           </View>
         ) : null}
       </ScrollView>
+
+      <Modal
+        visible={Boolean(cancelTarget)}
+        transparent
+        animationType="fade"
+        onRequestClose={() => !cancelling && setCancelTarget(null)}
+      >
+        <Pressable style={styles.modalBackdrop} onPress={() => !cancelling && setCancelTarget(null)}>
+          <Pressable style={styles.modalCard} onPress={(e) => e.stopPropagation()}>
+            <Text style={styles.modalTitle}>Annuler la séance</Text>
+            <Text style={styles.modalMeta}>
+              {cancelTarget?.creneau
+                ? `${cancelTarget.creneau.date} · ${cancelTarget.creneau.startTime}`
+                : 'Séance'}{' '}
+              — {cancelTarget?.moniteur?.fullName || 'Moniteur'}
+            </Text>
+            <Text style={styles.modalLabel}>Justification (obligatoire)</Text>
+            <TextInput
+              style={styles.modalInput}
+              value={cancelReason}
+              onChangeText={setCancelReason}
+              placeholder="Ex. Empêchement, maladie, transport…"
+              placeholderTextColor={dark.textMuted}
+              multiline
+              maxLength={500}
+              editable={!cancelling}
+            />
+            <View style={styles.modalActions}>
+              <Pressable
+                style={styles.modalSecondary}
+                disabled={cancelling}
+                onPress={() => setCancelTarget(null)}
+              >
+                <Text style={styles.modalSecondaryText}>Fermer</Text>
+              </Pressable>
+              <Pressable
+                style={[
+                  styles.modalPrimary,
+                  (cancelling || cancelReason.trim().length < 5) && styles.disabled,
+                ]}
+                disabled={cancelling || cancelReason.trim().length < 5}
+                onPress={() => void submitCancel()}
+              >
+                <Text style={styles.modalPrimaryText}>
+                  {cancelling ? 'Annulation…' : 'Confirmer'}
+                </Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </DarkScreen>
   )
 }
@@ -240,6 +342,16 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: dark.textMuted,
   },
+  cancelLink: {
+    alignSelf: 'flex-start',
+    marginTop: 8,
+    paddingVertical: 4,
+  },
+  cancelLinkText: {
+    fontFamily: fonts.bodyBold,
+    fontSize: 13,
+    color: dark.coral,
+  },
   empty: { alignItems: 'center', paddingTop: 40, gap: 10 },
   emptyTitle: {
     fontFamily: fonts.displayExtraBold,
@@ -270,4 +382,76 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bodySemiBold,
     marginBottom: 8,
   },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    justifyContent: 'center',
+    padding: 22,
+  },
+  modalCard: {
+    backgroundColor: dark.surface,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: dark.border,
+    padding: 18,
+    gap: 8,
+  },
+  modalTitle: {
+    fontFamily: fonts.displayBold,
+    fontSize: 18,
+    color: dark.textPrimary,
+  },
+  modalMeta: {
+    fontFamily: fonts.body,
+    fontSize: 13,
+    color: dark.textMuted,
+    marginBottom: 4,
+  },
+  modalLabel: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 13,
+    color: dark.textPrimary,
+    marginTop: 4,
+  },
+  modalInput: {
+    minHeight: 90,
+    borderWidth: 1,
+    borderColor: dark.border,
+    borderRadius: 12,
+    padding: 12,
+    color: dark.textPrimary,
+    fontFamily: fonts.body,
+    fontSize: 14,
+    textAlignVertical: 'top',
+  },
+  modalActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 10,
+    marginTop: 10,
+  },
+  modalSecondary: {
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: dark.border,
+  },
+  modalSecondaryText: {
+    fontFamily: fonts.bodyBold,
+    fontSize: 14,
+    color: dark.textPrimary,
+  },
+  modalPrimary: {
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    backgroundColor: dark.green,
+  },
+  modalPrimaryText: {
+    fontFamily: fonts.bodyBold,
+    fontSize: 14,
+    color: '#0B0F1A',
+  },
+  disabled: { opacity: 0.5 },
 })

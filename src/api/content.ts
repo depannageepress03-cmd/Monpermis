@@ -135,6 +135,8 @@ export interface LearnerQuestion {
   id: string
   chapterId: string
   order: number
+  /** Nombre de bonnes réponses (sans révéler lesquelles). */
+  correctCount?: number
   prompt: {
     text?: string
     audioUrl?: string

@@ -143,6 +143,15 @@ export function earliestBookableTime(date: string, now = new Date()) {
 export const fetchDrivingDashboard = () =>
   request<{ progress: DrivingProgress; upcoming: ReservationItem[] }>('/reservations/dashboard')
 
+export async function fetchMyReservations() {
+  try {
+    return await request<{ reservations: ReservationItem[] }>('/reservations/mine')
+  } catch {
+    const dash = await fetchDrivingDashboard()
+    return { reservations: dash.upcoming }
+  }
+}
+
 export const fetchPublicMoniteurs = (vehicleType?: string) => {
   const query = vehicleType
     ? `?vehicleType=${encodeURIComponent(vehicleType)}`
@@ -235,6 +244,7 @@ export const syncReservationPayment = (bookingGroupId: string) =>
   request<{
     payment: { status: string; errorMessage?: string }
     reservations: ReservationItem[]
+    confirmed?: boolean
   }>(`/reservations/checkout/${bookingGroupId}/sync`)
 
 export const cancelReservation = (id: string, reason: string) =>

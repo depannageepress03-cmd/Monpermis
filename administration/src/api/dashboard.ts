@@ -48,6 +48,7 @@ export interface DashboardSummary {
   }
   payments: {
     pending: number
+    needsRefund: number
     recent: DashboardPayment[]
   }
 }

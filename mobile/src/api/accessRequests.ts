@@ -1,12 +1,4 @@
-import { getStoredToken, invalidateSessionIfUnauthorized } from './auth'
-import { getApiBase } from './config'
-
-interface ApiResponse<T> {
-  success: boolean
-  data?: T
-  error?: string
-  code?: string
-}
+import { apiAuthedRetry, ApiError } from './client'
 
 export class AccessRequestError extends Error {
   code?: string
@@ -18,41 +10,21 @@ export class AccessRequestError extends Error {
   }
 }
 
+function toAccessError(error: unknown): AccessRequestError {
+  if (error instanceof AccessRequestError) return error
+  if (error instanceof ApiError) {
+    return new AccessRequestError(error.message, error.code)
+  }
+  if (error instanceof Error) return new AccessRequestError(error.message)
+  return new AccessRequestError('Action impossible')
+}
+
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const token = await getStoredToken()
-  if (!token) throw new AccessRequestError('Authentification requise')
-
-  const url = `${getApiBase()}${path}`
-  const headers = {
-    'Content-Type': 'application/json',
-    Authorization: `Bearer ${token}`,
-    ...options?.headers,
+  try {
+    return await apiAuthedRetry<T>(path, options)
+  } catch (error) {
+    throw toAccessError(error)
   }
-
-  let response: Response | null = null
-  for (let attempt = 0; attempt < 3; attempt++) {
-    try {
-      response = await fetch(url, { ...options, headers })
-      break
-    } catch {
-      if (attempt < 2) {
-        await new Promise((r) => setTimeout(r, 1500 * (attempt + 1)))
-      }
-    }
-  }
-
-  if (!response) {
-    throw new AccessRequestError(
-      'Impossible de joindre le serveur. Vérifiez votre connexion ou réessayez dans quelques secondes.',
-    )
-  }
-
-  const body = (await response.json().catch(() => ({}))) as ApiResponse<T>
-  if (!response.ok || !body.success || body.data === undefined) {
-    await invalidateSessionIfUnauthorized(response.status)
-    throw new AccessRequestError(body.error ?? 'Action impossible', body.code)
-  }
-  return body.data
 }
 
 export type AccessModuleKey = 'code' | 'conduite_heures' | 'conduite_videos' | 'ecodepermis' | 'aiChat'
@@ -144,12 +116,7 @@ export interface CheckoutResult {
   access?: AccessMe
 }
 
-export function computeModuleAmount(module: AccessModuleKey, unitPrice: number, quantity = 1) {
-  const qty = Math.max(1, Number(quantity) || 1)
-  let amount = Math.round(Number(unitPrice) || 0) * qty
-  if (module === 'conduite_heures' && qty >= 2) amount = Math.max(0, amount - 1000)
-  return amount
-}
+export { computeModuleAmount } from '../utils/pricing'
 
 export const fetchAccessModules = () =>
   request<{ modules: AccessModule[] }>('/access-requests/modules').then((data) => data.modules)

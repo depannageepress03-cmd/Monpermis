@@ -32,6 +32,10 @@ import { useAuth } from '../context/AuthContext'
 import { useRequireAuth } from '../hooks/useRequireAuth'
 import { useUnreadNotifications } from '../hooks/useUnreadNotifications'
 import type { RootStackParamList } from '../navigation/types'
+import {
+  formatSubscriptionEndDate,
+  getActiveSubscriptions,
+} from '../utils/subscriptionSummary'
 import { colors, dark, fonts } from '../theme'
 import { cacheGetThenFetch, cacheSet } from '../utils/contentCache'
 
@@ -122,6 +126,8 @@ export function HomeScreen() {
   const hasActiveAccess =
     Boolean(accessMe) &&
     (Object.values(accessMe!.access).some(Boolean) || accessMe!.user.soldeHeures > 0)
+  const activeSubscriptions = getActiveSubscriptions(accessMe)
+  const nearestSub = activeSubscriptions[0]
   const pendingRequest = accessMe?.pendingRequest
 
   return (
@@ -211,15 +217,21 @@ export function HomeScreen() {
                 hasActiveAccess ? styles.statusDotActive : styles.statusDotOff,
               ]}
             />
-            <Text style={styles.statusText} numberOfLines={1}>
+            <Text style={styles.statusText} numberOfLines={2}>
               {hasActiveAccess
-                ? 'Accès actifs'
+                ? nearestSub
+                  ? `${nearestSub.label} · ${nearestSub.daysLeft} j restants`
+                  : 'Accès actifs'
                 : pendingRequest
                   ? 'Paiement en cours de validation'
                   : 'Aucun accès actif'}
             </Text>
             <Text style={styles.statusAction}>
-              {hasActiveAccess ? 'Gérer' : 'Voir les offres'}
+              {hasActiveAccess
+                ? nearestSub && nearestSub.daysLeft <= 7
+                  ? 'Renouveler'
+                  : 'Gérer'
+                : 'Voir les offres'}
             </Text>
             <ChevronRight size={16} color={dark.textMuted} />
           </Pressable>

@@ -9,6 +9,7 @@ import {
 } from '../services/fedapay.js'
 import { broadcastPaymentEvent } from '../services/paymentEvents.js'
 import { logger } from './logger.js'
+import { recordPaymentOutcome } from './paymentLedger.js'
 
 function sanitizeHttpUrl(value) {
   const raw = String(value || '')
@@ -99,12 +100,31 @@ async function releaseReservationSlot(reservation, { reason, cancelledBy = 'admi
 }
 
 /**
+ * Force un créneau en `reserve` (indisponible) — jamais libre après paiement réussi.
+ * Atomique : écrase aussi un éventuel statut `libre` / verrou résiduel.
+ */
+async function guaranteeCreneauReserved(creneauId) {
+  if (!creneauId) return null
+  return Creneau.findByIdAndUpdate(
+    creneauId,
+    {
+      $set: {
+        status: 'reserve',
+        lockedUntil: null,
+        lockedBy: null,
+      },
+    },
+    { new: true },
+  )
+}
+
+/**
  * Confirme atomiquement les réservations pending_payment d’un paiement approved
  * et garantit que les créneaux restent `reserve` (indisponibles aux autres).
  */
 async function confirmReservationsForApprovedPayment(payment) {
   if (!payment?.reservationGroupId) {
-    return { reservations: [], unlocked: 0 }
+    return { reservations: [], unlocked: 0, guaranteed: 0 }
   }
 
   const paymentRef = payment.fedapayReference || payment.fedapayTransactionId || ''
@@ -128,25 +148,35 @@ async function confirmReservationsForApprovedPayment(payment) {
     )
     if (!updated) continue
     unlocked += 1
-    await Creneau.findByIdAndUpdate(updated.creneauId, {
-      status: 'reserve',
-      lockedUntil: null,
-      lockedBy: null,
-    })
+    await guaranteeCreneauReserved(updated.creneauId)
   }
 
-  // Défensif : même si déjà confirmed, le créneau ne doit jamais rester libre après paiement.
+  // Défensif : toute réservation confirmée (ou encore livrable) garde le créneau exclusif.
   const reservations = await Reservation.find({ bookingGroupId: payment.reservationGroupId })
+  let guaranteed = 0
   for (const reservation of reservations) {
-    if (reservation.status !== 'confirmed') continue
-    await Creneau.findByIdAndUpdate(reservation.creneauId, {
-      status: 'reserve',
-      lockedUntil: null,
-      lockedBy: null,
-    })
+    if (reservation.status !== 'confirmed' && reservation.status !== 'pending_payment') continue
+    // pending_payment orphelin après claim concurrent : si Payment est approved, on force confirmed.
+    if (reservation.status === 'pending_payment') {
+      const forced = await Reservation.findOneAndUpdate(
+        { _id: reservation._id, status: 'pending_payment' },
+        {
+          $set: {
+            status: 'confirmed',
+            paymentStatus: 'paid',
+            paymentRef,
+          },
+        },
+        { new: true },
+      )
+      if (forced) unlocked += 1
+    }
+    const slot = await guaranteeCreneauReserved(reservation.creneauId)
+    if (slot?.status === 'reserve') guaranteed += 1
   }
 
-  return { reservations, unlocked }
+  const fresh = await Reservation.find({ bookingGroupId: payment.reservationGroupId })
+  return { reservations: fresh, unlocked, guaranteed }
 }
 
 /**
@@ -268,6 +298,15 @@ export async function applyApprovedReservationPayment(
   payment,
   { eventName = '', eventId = '', raw = null } = {},
 ) {
+  const previous = {
+    status: payment.status,
+    needsRefund: Boolean(payment.needsRefund),
+  }
+  const track = (result) => {
+    void recordPaymentOutcome(previous, result, { eventName, eventId })
+    return result
+  }
+
   if (eventId && (payment.processedEventIds || []).includes(String(eventId))) {
     // Même événement rejoué : tout de même garantir confirmation + créneaux réservés.
     const { reservations, unlocked } = await confirmReservationsForApprovedPayment(payment)
@@ -301,6 +340,14 @@ export async function applyApprovedReservationPayment(
         await fresh.save()
         logger.warn('Paiement réservation orphelin — needsRefund (retry approved)', {
           paymentId: String(fresh._id),
+        })
+        void track({
+          payment: fresh,
+          alreadyProcessed: true,
+          needsRefund: true,
+          orphan: true,
+          reservations,
+          unlocked,
         })
       }
       void broadcastReservationPaymentUpdate(fresh, reservations)
@@ -342,7 +389,13 @@ export async function applyApprovedReservationPayment(
       ? await Reservation.find({ bookingGroupId: flagged.reservationGroupId })
       : []
     void broadcastReservationPaymentUpdate(flagged, reservations)
-    return { payment: flagged, alreadyProcessed: true, needsRefund: true, orphan: true, reservations }
+    return track({
+      payment: flagged,
+      alreadyProcessed: true,
+      needsRefund: true,
+      orphan: true,
+      reservations,
+    })
   }
 
   const update = {
@@ -378,7 +431,13 @@ export async function applyApprovedReservationPayment(
         },
         { new: true },
       )
-      return { payment: flagged, alreadyProcessed: true, needsRefund: true, orphan: true, reservations: [] }
+      return track({
+        payment: flagged,
+        alreadyProcessed: true,
+        needsRefund: true,
+        orphan: true,
+        reservations: [],
+      })
     }
     return { payment: fresh || payment, alreadyProcessed: true, reservations: [] }
   }
@@ -391,8 +450,13 @@ export async function applyApprovedReservationPayment(
     logger.warn('Paiement réservation orphelin — needsRefund (pas de groupe)', {
       paymentId: String(claimed._id),
     })
-    // Ne pas throw : le webhook FedaPay doit recevoir 2xx (état déjà persisté).
-    return { payment: claimed, alreadyProcessed: false, needsRefund: true, orphan: true, reservations: [] }
+    return track({
+      payment: claimed,
+      alreadyProcessed: false,
+      needsRefund: true,
+      orphan: true,
+      reservations: [],
+    })
   }
 
   const { reservations, unlocked } = await confirmReservationsForApprovedPayment(claimed)
@@ -406,7 +470,13 @@ export async function applyApprovedReservationPayment(
     logger.warn('Paiement réservation orphelin — needsRefund (aucune réservation)', {
       paymentId: String(claimed._id),
     })
-    return { payment: claimed, alreadyProcessed: false, needsRefund: true, orphan: true, reservations: [] }
+    return track({
+      payment: claimed,
+      alreadyProcessed: false,
+      needsRefund: true,
+      orphan: true,
+      reservations: [],
+    })
   }
 
   // Approved mais aucune réservation confirmable (annulée/expirée) → orphelin.
@@ -420,7 +490,14 @@ export async function applyApprovedReservationPayment(
     logger.warn('Paiement réservation orphelin — needsRefund', { paymentId: String(claimed._id) })
   }
 
-  return { payment: claimed, reservations, alreadyProcessed: false, unlocked }
+  return track({
+    payment: claimed,
+    reservations,
+    alreadyProcessed: false,
+    unlocked,
+    needsRefund: Boolean(claimed.needsRefund),
+    orphan: unlocked === 0 && !reservations.some((r) => r.status === 'confirmed'),
+  })
 }
 
 export async function applyFailedReservationPayment(
@@ -428,6 +505,7 @@ export async function applyFailedReservationPayment(
   status,
   { eventName = '', eventId = '', raw = null, message = '' } = {},
 ) {
+  const previous = { status: payment.status, needsRefund: Boolean(payment.needsRefund) }
   if (eventId && (payment.processedEventIds || []).includes(String(eventId))) {
     return { payment, alreadyProcessed: true, reservations: [] }
   }
@@ -488,7 +566,14 @@ export async function applyFailedReservationPayment(
   const reservations = effective?.reservationGroupId
     ? await Reservation.find({ bookingGroupId: effective.reservationGroupId })
     : []
-  if (claimed) void broadcastReservationPaymentUpdate(claimed, reservations)
+  if (claimed) {
+    void broadcastReservationPaymentUpdate(claimed, reservations)
+    void recordPaymentOutcome(
+      previous,
+      { payment: effective, alreadyProcessed: false },
+      { eventName, eventId, note: message || '' },
+    )
+  }
 
   return { payment: effective, reservations, alreadyProcessed: !claimed }
 }

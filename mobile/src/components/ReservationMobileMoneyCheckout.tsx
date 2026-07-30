@@ -24,41 +24,12 @@ import {
   redeemPromoCode,
 } from '../api/accessRequests'
 import { dark, fonts } from '../theme'
+import { guessOperator } from '../utils/guessOperator'
+import { formatPrice } from '../utils/money'
 import { PAYMENT_OPERATORS, paymentOperatorLabel } from '../utils/paymentOperators'
-
-function guessOperator(phone: string): MobileMoneyOperator | null {
-  const digits = phone.replace(/\D/g, '')
-  let local = digits
-  if (local.startsWith('229')) local = local.slice(3)
-  if (local.length >= 10) local = local.slice(-10)
-  const ezab = local.slice(0, 4)
-  const mtn = new Set([
-    '0142', '0146', '0150', '0151', '0152', '0153', '0154', '0156', '0157', '0159',
-    '0161', '0162', '0166', '0167', '0169', '0190', '0191', '0196', '0197',
-  ])
-  const moov = new Set([
-    '0145', '0155', '0158', '0160', '0163', '0164', '0165', '0168', '0194', '0195', '0198', '0199',
-  ])
-  const celtiis = new Set([
-    '0120', '0121', '0122', '0123', '0124', '0128', '0129', '0140', '0141', '0143', '0144',
-    '0147', '0148', '0149', '0192', '0193',
-  ])
-  if (mtn.has(ezab)) return 'mtn'
-  if (moov.has(ezab)) return 'moov'
-  if (celtiis.has(ezab)) return 'celtiis'
-  return null
-}
 
 /** Seul pays desservi : envoyé au serveur sans étape de sélection. */
 const COUNTRY = 'BJ'
-
-function formatPrice(amount: number, currency = 'XOF') {
-  return new Intl.NumberFormat('fr-FR', {
-    style: 'currency',
-    currency,
-    maximumFractionDigits: 0,
-  }).format(amount)
-}
 
 export interface ReservationCheckoutSlot {
   moniteurId: string
@@ -145,17 +116,44 @@ export function ReservationMobileMoneyCheckout({
   const startPoll = (bookingGroupId: string) => {
     stopPoll()
     let ticks = 0
+    let approvedSeenAt: number | null = null
     const tick = async () => {
       ticks += 1
       try {
         const result = await syncReservationPayment(bookingGroupId)
-        if (result.payment.status === 'approved') {
+        const reservations = result.reservations || []
+        const allConfirmed =
+          result.confirmed === true ||
+          (reservations.length > 0 && reservations.every((item) => item.status === 'confirmed'))
+
+        // Paiement OK + rendez-vous confirmé (créneau garanti côté serveur).
+        if (result.payment.status === 'approved' && allConfirmed) {
           stopPoll()
-          setSuccess('Paiement confirmé. Réservation validée.')
+          setSuccess('Paiement confirmé. Ton rendez-vous est réservé et garanti.')
           setBusy(false)
-          onSuccess(result.reservations)
+          onSuccess(reservations)
           return
         }
+
+        // Paiement encaissé mais confirmation créneau encore en cours — on insiste.
+        if (result.payment.status === 'approved') {
+          approvedSeenAt = approvedSeenAt ?? ticks
+          setSuccess('Paiement reçu. Confirmation du créneau…')
+          if (ticks - approvedSeenAt >= 8) {
+            stopPoll()
+            setBusy(false)
+            if (reservations.some((item) => item.status === 'confirmed')) {
+              onSuccess(reservations.filter((item) => item.status === 'confirmed'))
+              return
+            }
+            setError(
+              'Paiement reçu mais confirmation du créneau incomplète. Ouvre « Mes réservations » ou contacte le support.',
+            )
+            setStep('phone')
+          }
+          return
+        }
+
         if (['declined', 'failed', 'canceled'].includes(result.payment.status)) {
           stopPoll()
           setBusy(false)

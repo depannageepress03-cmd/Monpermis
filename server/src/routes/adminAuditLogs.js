@@ -1,11 +1,11 @@
 import { Router } from 'express'
 import mongoose from 'mongoose'
 import { AuditLog } from '../models/AuditLog.js'
-import { requireAdminAuth } from '../middleware/adminAuth.js'
+import { requireAdminAuth, requireSuperAdmin } from '../middleware/adminAuth.js'
 import { logger } from '../utils/logger.js'
 
 const router = Router()
-router.use(requireAdminAuth)
+router.use(requireAdminAuth, requireSuperAdmin)
 
 router.get('/', async (req, res) => {
   try {

@@ -11,6 +11,7 @@ import {
   type MobileMoneyOperator,
 } from '../api/accessRequests'
 import { PAYMENT_OPERATORS, paymentOperatorLabel } from '../utils/paymentOperators'
+import { friendlyPaymentError } from '../utils/fedapayErrors'
 
 function guessOperator(phone: string): MobileMoneyOperator | null {
   const digits = phone.replace(/\D/g, '')
@@ -44,6 +45,16 @@ function formatPrice(amount: number, currency = 'XOF') {
   )
 }
 
+function StepDots({ current }: { current: 'intro' | 'operator' | 'phone' | 'waiting' }) {
+  const index = current === 'intro' ? 0 : current === 'operator' ? 1 : 2
+  return (
+    <p className="learner-kicker mm-checkout-steps" aria-label={`Étape ${index + 1} sur 3`}>
+      Étape {index + 1}/3
+      {current === 'waiting' ? ' · Confirmation' : ''}
+    </p>
+  )
+}
+
 export interface MobileMoneyCheckoutProps {
   open: boolean
   items: CheckoutCartItem[]
@@ -65,8 +76,10 @@ export function MobileMoneyCheckout({
   const [operator, setOperator] = useState<MobileMoneyOperator | null>(null)
   const [phone, setPhone] = useState(defaultPhone)
   const [busy, setBusy] = useState(false)
+  const [verifying, setVerifying] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
+  const [pendingId, setPendingId] = useState<string | null>(null)
   const pollRef = useRef<number | null>(null)
 
   useEffect(() => {
@@ -77,6 +90,8 @@ export function MobileMoneyCheckout({
     setError(null)
     setSuccess(null)
     setBusy(false)
+    setVerifying(false)
+    setPendingId(null)
   }, [open, defaultPhone])
 
   useEffect(
@@ -102,45 +117,74 @@ export function MobileMoneyCheckout({
     }
   }
 
+  const applySyncResult = (result: Awaited<ReturnType<typeof syncAccessRequest>>) => {
+    if (result.payment?.status === 'approved' || ['actif', 'valide'].includes(result.accessRequest.status)) {
+      stopPoll()
+      setSuccess('Paiement confirmé. Accès activé.')
+      setBusy(false)
+      setVerifying(false)
+      onSuccess(result.access)
+      return true
+    }
+    if (
+      result.payment?.status === 'declined' ||
+      result.payment?.status === 'failed' ||
+      result.payment?.status === 'canceled' ||
+      result.accessRequest.status === 'rejete'
+    ) {
+      stopPoll()
+      setBusy(false)
+      setVerifying(false)
+      setSuccess(null)
+      setError(
+        friendlyPaymentError(result.payment?.errorMessage, 'Le paiement n’a pas abouti. Réessayez.'),
+      )
+      setStep('phone')
+      return true
+    }
+    return false
+  }
+
   const startPoll = (accessRequestId: string) => {
     stopPoll()
+    setPendingId(accessRequestId)
     let ticks = 0
     const tick = async () => {
       ticks += 1
       try {
         const result = await syncAccessRequest(accessRequestId)
-        if (result.payment?.status === 'approved' || ['actif', 'valide'].includes(result.accessRequest.status)) {
-          stopPoll()
-          setSuccess('Paiement confirmé. Accès activé.')
-          setBusy(false)
-          onSuccess(result.access)
-          return
-        }
-        if (
-          result.payment?.status === 'declined' ||
-          result.payment?.status === 'failed' ||
-          result.payment?.status === 'canceled' ||
-          result.accessRequest.status === 'rejete'
-        ) {
-          stopPoll()
-          setBusy(false)
-          setSuccess(null)
-          setError(result.payment?.errorMessage || 'Le paiement n’a pas abouti. Réessayez.')
-          setStep('phone')
-        }
+        if (applySyncResult(result)) return
       } catch {
         /* ignore transient */
       }
       if (ticks >= 60) {
         stopPoll()
         setBusy(false)
-        setError('Confirmation trop longue. Actualisez vos accès dans un instant.')
+        setError(
+          'Confirmation trop longue. Si vous avez validé sur votre téléphone, appuyez sur « J’ai payé, vérifier ».',
+        )
       }
     }
     void tick()
     pollRef.current = window.setInterval(() => {
       void tick()
     }, 2000)
+  }
+
+  const verifyPaid = async () => {
+    if (!pendingId) return
+    setVerifying(true)
+    setError(null)
+    try {
+      const result = await syncAccessRequest(pendingId)
+      if (!applySyncResult(result)) {
+        setSuccess('Paiement pas encore confirmé. Validez la notification sur votre téléphone, puis réessayez.')
+      }
+    } catch {
+      setError('Vérification temporairement indisponible. Réessayez dans un instant.')
+    } finally {
+      setVerifying(false)
+    }
   }
 
   const submit = async () => {
@@ -179,7 +223,12 @@ export function MobileMoneyCheckout({
       startPoll(result.accessRequest.id)
     } catch (err) {
       setBusy(false)
-      setError(err instanceof AccessRequestError ? err.message : 'Paiement impossible')
+      setError(
+        friendlyPaymentError(
+          err instanceof AccessRequestError ? err.message : null,
+          'Paiement impossible. Vérifiez le numéro et réessayez.',
+        ),
+      )
       const again = guessOperator(phone)
       if (again) setOperator(again)
     }
@@ -194,6 +243,8 @@ export function MobileMoneyCheckout({
             Fermer
           </button>
         </header>
+
+        <StepDots current={step} />
 
         <ul className="mm-checkout-lines">
           {lines.map((line) => (
@@ -217,6 +268,10 @@ export function MobileMoneyCheckout({
 
         {step === 'intro' ? (
           <section className="mm-checkout-step">
+            <p className="subscription-status-copy">
+              1) Choisissez le réseau · 2) Indiquez le numéro · 3) Validez la demande de retrait sur
+              votre téléphone.
+            </p>
             <button type="button" className="btn-primary" onClick={() => setStep('operator')}>
               Passer au paiement
             </button>
@@ -264,22 +319,34 @@ export function MobileMoneyCheckout({
                   Retour
                 </button>
               ) : null}
-              <button
-                type="button"
-                className="btn-primary"
-                disabled={busy || !phone.trim()}
-                onClick={() => void submit()}
-              >
-                {busy
-                  ? 'Envoi de la demande…'
-                  : `Payer ${formatPrice(total)} (${paymentOperatorLabel(operator)})`}
-              </button>
+              {step !== 'waiting' ? (
+                <button
+                  type="button"
+                  className="btn-primary"
+                  disabled={busy || !phone.trim()}
+                  onClick={() => void submit()}
+                >
+                  {busy
+                    ? 'Envoi de la demande…'
+                    : `Payer ${formatPrice(total)} (${paymentOperatorLabel(operator)})`}
+                </button>
+              ) : null}
             </div>
             {step === 'waiting' ? (
-              <p className="subscription-status-copy">
-                Validez maintenant la demande de retrait sur votre téléphone (
-                {paymentOperatorLabel(operator)}).
-              </p>
+              <>
+                <p className="subscription-status-copy">
+                  Ouvrez la notification {paymentOperatorLabel(operator)} sur votre téléphone et
+                  validez avec votre code secret. Ensuite appuyez sur « J’ai payé, vérifier ».
+                </p>
+                <button
+                  type="button"
+                  className="btn-primary"
+                  disabled={verifying || !pendingId}
+                  onClick={() => void verifyPaid()}
+                >
+                  {verifying ? 'Vérification…' : 'J’ai payé, vérifier'}
+                </button>
+              </>
             ) : null}
           </section>
         ) : null}

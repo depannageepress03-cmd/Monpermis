@@ -4,6 +4,7 @@ import { ClipboardList, RefreshCw, ScrollText, Shield, UserPlus } from 'lucide-r
 import { fetchAdmins, type AdminAccount } from '../api/admins'
 import { StatusBadge } from '../components/StatusBadge'
 import { getAdminToken, isAuthError } from '../context/AdminAuthContext'
+import { roleLabel } from '../utils/roles'
 
 function formatDateTime(value?: string | null) {
   if (!value) return '—'
@@ -55,6 +56,10 @@ export function AdminsPage() {
   }, [load])
 
   const activeCount = useMemo(() => admins.filter((a) => a.isActive).length, [admins])
+  const superCount = useMemo(
+    () => admins.filter((a) => a.role === 'superadmin').length,
+    [admins],
+  )
 
   return (
     <div className="admin-page">
@@ -62,7 +67,8 @@ export function AdminsPage() {
         <p className="admin-page-intro-label">Sécurité</p>
         <h2 className="admin-page-intro-title">Administrateurs</h2>
         <p className="admin-page-intro-text">
-          Liste des comptes admin et accès à leur journal d’activité.
+          Gestion des comptes : rôles, activation et journal d’activité. Réservé aux
+          super-administrateurs.
         </p>
       </div>
 
@@ -86,6 +92,7 @@ export function AdminsPage() {
           <h3 className="admin-section-label">
             <Shield size={14} style={{ display: 'inline', marginRight: 6 }} />
             Comptes ({admins.length}) — {activeCount} actif{activeCount > 1 ? 's' : ''}
+            {superCount > 0 ? ` · ${superCount} superadmin${superCount > 1 ? 's' : ''}` : ''}
           </h3>
         </div>
         <div className="admin-section-body" style={{ padding: 0 }}>
@@ -135,8 +142,11 @@ export function AdminsPage() {
                     </td>
                     <td>{admin.phone}</td>
                     <td>
-                      <StatusBadge tone="neutral" withIcon={false}>
-                        Admin
+                      <StatusBadge
+                        tone={admin.role === 'superadmin' ? 'warning' : 'neutral'}
+                        withIcon={false}
+                      >
+                        {roleLabel(admin.role)}
                       </StatusBadge>
                     </td>
                     <td>{formatDateTime(admin.createdAt)}</td>
@@ -153,7 +163,7 @@ export function AdminsPage() {
                         style={{ textDecoration: 'none', whiteSpace: 'nowrap' }}
                       >
                         <ClipboardList size={12} />
-                        Activité
+                        Gérer
                       </Link>
                     </td>
                   </tr>

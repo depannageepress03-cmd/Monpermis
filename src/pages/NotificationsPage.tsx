@@ -15,7 +15,10 @@ import {
   markNotificationRead,
   type AppNotification,
 } from '../api/notifications'
+import { EmptyState } from '../components/EmptyState'
+import { PageLoader } from '../components/PageLoader'
 import { PageNavbar } from '../components/PageNavbar'
+import { PageSkeleton } from '../components/PageSkeleton'
 import { useAuth } from '../hooks/useAuth'
 import '../styles/auth.css'
 import '../styles/learner.css'
@@ -69,12 +72,16 @@ export function NotificationsPage() {
   const { user, loading } = useAuth()
   const [items, setItems] = useState<AppNotification[]>([])
   const [fetching, setFetching] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
+    setFetching(true)
+    setError(null)
     try {
       const { notifications } = await fetchNotifications()
       setItems(notifications)
     } catch {
+      setError('Impossible de charger les notifications.')
       setItems([])
     } finally {
       setFetching(false)
@@ -102,7 +109,7 @@ export function NotificationsPage() {
     void markAllNotificationsRead().catch(() => undefined)
   }
 
-  if (loading || !user) return null
+  if (loading || !user) return <PageLoader />
 
   const hasUnread = items.some((n) => !n.read)
 
@@ -123,16 +130,25 @@ export function NotificationsPage() {
         ) : null}
 
         {fetching ? (
-          <p className="home-news-empty">Chargement…</p>
+          <PageSkeleton variant="list" />
+        ) : error ? (
+          <EmptyState
+            tone="error"
+            icon={<TriangleAlert size={28} />}
+            title="Chargement impossible"
+            message={error}
+            action={
+              <button type="button" className="btn-primary" onClick={() => void load()}>
+                Réessayer
+              </button>
+            }
+          />
         ) : items.length === 0 ? (
-          <div className="auth-card learner-card home-news-empty-card">
-            <Bell size={28} />
-            <strong>Aucune notification</strong>
-            <p>
-              Tu seras prévenu ici dès qu’un paiement est validé, une leçon confirmée ou une annonce
-              publiée.
-            </p>
-          </div>
+          <EmptyState
+            icon={<Bell size={28} />}
+            title="Aucune notification"
+            message="Tu seras prévenu ici dès qu’un paiement est validé, une leçon confirmée ou une annonce publiée."
+          />
         ) : (
           <div className="home-notif-list">
             {items.map((n) => {

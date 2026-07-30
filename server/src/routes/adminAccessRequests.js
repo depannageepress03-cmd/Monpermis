@@ -13,6 +13,7 @@ import {
   expireDueAccessRequests,
   remainingForAccessRequest,
 } from '../utils/accessRequests.js'
+import { recordPaymentLedgerEvent } from '../utils/paymentLedger.js'
 import { addPaymentEventClient, removePaymentEventClient } from '../services/paymentEvents.js'
 import { logger } from '../utils/logger.js'
 
@@ -237,7 +238,21 @@ router.patch('/payments/:id/resolve-refund', audit('resolve_refund', 'payment'),
       : `[Remboursement] ${note}`
     payment.verifiedByAdminId = req.admin._id
     payment.verifiedAt = new Date()
+    payment.refundResolvedAt = new Date()
     await payment.save()
+
+    void recordPaymentLedgerEvent(payment, {
+      eventType: 'refund_resolved',
+      fromStatus: payment.status,
+      toStatus: payment.status,
+      actor: 'admin',
+      actorLabel: req.admin.fullName || 'Admin',
+      adminId: req.admin._id,
+      note,
+      needsRefund: false,
+      idempotencyKey: `refund_resolved:${String(payment._id)}:${payment.refundResolvedAt.toISOString()}`,
+      metadata: { manualRefund: true },
+    })
 
     const user = await User.findById(payment.userId).select('firstName lastName email phone')
     res.json({

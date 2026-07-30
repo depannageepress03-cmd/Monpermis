@@ -64,16 +64,20 @@ questionSchema.methods.toAdminJSON = function toAdminJSON() {
 
 /** Version client : sans isCorrect ni audioPublicId (secret de gestion serveur). */
 questionSchema.methods.toPublicJSON = function toPublicJSON() {
+  const answers = this.answers || []
+  const correctCount = answers.filter((answer) => answer.isCorrect).length
   return {
     id: this._id,
     chapterId: this.chapterId,
     order: this.order,
+    /** Nombre de bonnes réponses (sans révéler lesquelles) — badge multi-réponses. */
+    correctCount,
     prompt: {
       text: this.prompt?.text || '',
       audioUrl: this.prompt?.audioUrl || '',
       imageUrls: Array.isArray(this.prompt?.imageUrls) ? this.prompt.imageUrls : [],
     },
-    answers: (this.answers || []).map((answer) => ({
+    answers: answers.map((answer) => ({
       id: answer._id,
       label: answer.label,
       text: answer.text || '',

@@ -27,6 +27,7 @@ import { uploadRevisionImage } from '../../api/revision'
 import { resolveMediaUrl } from '../../utils/mediaUrl'
 import { AdminSectionHeader } from '../../components/AdminSectionHeader'
 import { PublishSwitch } from '../../components/PublishSwitch'
+import { RichTextEditor } from '../../components/RichTextEditor'
 import { getAdminToken, isAuthError } from '../../context/AdminAuthContext'
 import type { ChapterQuestion, QuestionAnswer, QuestionPrompt } from '../../types/questions'
 
@@ -544,15 +545,16 @@ export function ChapterQuestionsPage() {
 
               <details className="qp-optional">
                 <summary>Texte et images (optionnel)</summary>
-                <label className="question-text-field">
+                <div className="question-text-field">
                   <span className="question-media-label">Texte</span>
-                  <textarea
+                  <RichTextEditor
                     value={prompt.text}
-                    onChange={(e) => setPrompt((current) => ({ ...current, text: e.target.value }))}
-                    placeholder="Note écrite visible pour l’apprenant (optionnel)…"
-                    rows={3}
+                    onChange={(html) => setPrompt((current) => ({ ...current, text: html }))}
+                    placeholder="Note écrite visible pour l’apprenant — gras, listes, liens…"
+                    minHeight={120}
+                    compact
                   />
-                </label>
+                </div>
                 <div className="question-media-block question-media-images">
                   <span className="question-media-label">Images</span>
                   <label className="btn-outline btn-file">

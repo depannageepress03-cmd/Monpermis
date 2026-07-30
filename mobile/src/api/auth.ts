@@ -1,26 +1,23 @@
-import AsyncStorage from '@react-native-async-storage/async-storage'
+import { apiAuthed, apiPublic, ApiError } from './client'
 import { getApiBase } from './config'
+import {
+  clearSession,
+  getStoredToken,
+  getStoredUser,
+  invalidateSessionIfUnauthorized,
+  onSessionInvalidated,
+  saveSession,
+  type AuthUser,
+} from './session'
 
-const TOKEN_KEY = 'token'
-const USER_KEY = 'user'
-
-interface ApiResponse<T> {
-  success: boolean
-  data?: T
-  error?: string
-  code?: string
-  email?: string
-}
-
-export interface AuthUser {
-  id: string
-  firstName: string
-  lastName: string
-  email?: string
-  phone: string
-  authProvider?: 'local' | 'google'
-  isEmailVerified?: boolean
-  createdAt: string
+export type { AuthUser }
+export {
+  clearSession,
+  getStoredToken,
+  getStoredUser,
+  invalidateSessionIfUnauthorized,
+  onSessionInvalidated,
+  saveSession,
 }
 
 interface AuthData {
@@ -41,47 +38,34 @@ export class AuthError extends Error {
   }
 }
 
-export function getAuthErrorDetails(error: unknown): { code?: string; email?: string; message: string } {
-  if (error instanceof AuthError) {
-    return { code: error.code, email: error.email, message: error.message }
+function toAuthError(error: unknown): AuthError {
+  if (error instanceof AuthError) return error
+  if (error instanceof ApiError) {
+    return new AuthError(error.message, error.code, error.email)
   }
-  if (error instanceof Error) {
-    const authLike = error as AuthError
-    return { code: authLike.code, email: authLike.email, message: error.message }
-  }
-  return { message: 'Une erreur est survenue' }
+  if (error instanceof Error) return new AuthError(error.message)
+  return new AuthError('Une erreur est survenue')
 }
 
-async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  let response: Response
+export function getAuthErrorDetails(error: unknown): { code?: string; email?: string; message: string } {
+  const authError = toAuthError(error)
+  return { code: authError.code, email: authError.email, message: authError.message }
+}
 
+async function publicAuth<T>(path: string, options?: RequestInit): Promise<T> {
   try {
-    response = await fetch(`${getApiBase()}${path}`, {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Client': 'mobile',
-        ...options?.headers,
-      },
-    })
-  } catch {
-    throw new AuthError(
-      'Impossible de joindre le serveur. Vérifiez votre connexion internet.',
-    )
+    return await apiPublic<T>(path, options)
+  } catch (error) {
+    throw toAuthError(error)
   }
+}
 
-  let body: ApiResponse<T>
+async function authedAuth<T>(path: string, options?: RequestInit): Promise<T> {
   try {
-    body = await response.json()
-  } catch {
-    throw new AuthError('Réponse serveur invalide')
+    return await apiAuthed<T>(path, options)
+  } catch (error) {
+    throw toAuthError(error)
   }
-
-  if (!response.ok || !body.success) {
-    throw new AuthError(body.error || 'Une erreur est survenue', body.code, body.email)
-  }
-
-  return body.data as T
 }
 
 export function registerUser(data: {
@@ -91,7 +75,7 @@ export function registerUser(data: {
   password: string
   email?: string
 }) {
-  return request<{ message: string; email?: string; phone?: string }>('/auth/register', {
+  return publicAuth<{ message: string; email?: string; phone?: string }>('/auth/register', {
     method: 'POST',
     body: JSON.stringify(data),
   })
@@ -99,7 +83,7 @@ export function registerUser(data: {
 
 export function loginUser(data: { phone?: string; identifier?: string; password: string }) {
   const phone = (data.phone || data.identifier || '').trim()
-  return request<AuthData>('/auth/login', {
+  return publicAuth<AuthData>('/auth/login', {
     method: 'POST',
     body: JSON.stringify({
       phone,
@@ -111,74 +95,38 @@ export function loginUser(data: { phone?: string; identifier?: string; password:
 }
 
 export function forgotPassword(email: string) {
-  return request<{ message: string }>('/auth/forgot-password', {
+  return publicAuth<{ message: string }>('/auth/forgot-password', {
     method: 'POST',
     body: JSON.stringify({ email }),
   })
 }
 
 export function resetPassword(token: string, password: string) {
-  return request<{ message: string }>('/auth/reset-password', {
+  return publicAuth<{ message: string }>('/auth/reset-password', {
     method: 'POST',
     body: JSON.stringify({ token, password }),
   })
 }
 
 export function verifyEmail(token: string) {
-  return request<{ message: string }>('/auth/verify-email', {
+  return publicAuth<{ message: string }>('/auth/verify-email', {
     method: 'POST',
     body: JSON.stringify({ token }),
   })
 }
 
 export function resendVerificationEmail(email: string) {
-  return request<{ message: string }>('/auth/resend-verification', {
+  return publicAuth<{ message: string }>('/auth/resend-verification', {
     method: 'POST',
     body: JSON.stringify({ email }),
   })
 }
 
 export function deleteAccount(data: { password?: string; confirm: boolean }) {
-  return authedRequest<{ deleted: boolean }>('/auth/account', {
+  return authedAuth<{ deleted: boolean }>('/auth/account', {
     method: 'DELETE',
     body: JSON.stringify(data),
   })
-}
-
-async function authedRequest<T>(path: string, options?: RequestInit): Promise<T> {
-  const token = await getStoredToken()
-  if (!token) throw new AuthError('Authentification requise')
-
-  let response: Response
-  try {
-    response = await fetch(`${getApiBase()}${path}`, {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Client': 'mobile',
-        Authorization: `Bearer ${token}`,
-        ...options?.headers,
-      },
-    })
-  } catch {
-    throw new AuthError(
-      'Impossible de joindre le serveur. Vérifiez votre connexion internet.',
-    )
-  }
-
-  let body: ApiResponse<T>
-  try {
-    body = await response.json()
-  } catch {
-    throw new AuthError('Réponse serveur invalide')
-  }
-
-  if (!response.ok || !body.success) {
-    await invalidateSessionIfUnauthorized(response.status)
-    throw new AuthError(body.error || 'Une erreur est survenue', body.code, body.email)
-  }
-
-  return body.data as T
 }
 
 export function updateProfile(data: {
@@ -186,7 +134,7 @@ export function updateProfile(data: {
   lastName?: string
   phone?: string
 }) {
-  return authedRequest<{ user: AuthUser }>('/auth/profile', {
+  return authedAuth<{ user: AuthUser }>('/auth/profile', {
     method: 'PATCH',
     body: JSON.stringify(data),
   })
@@ -196,54 +144,10 @@ export function changePassword(data: {
   currentPassword: string
   newPassword: string
 }) {
-  return authedRequest<{ message: string }>('/auth/change-password', {
+  return authedAuth<{ message: string }>('/auth/change-password', {
     method: 'POST',
     body: JSON.stringify(data),
   })
-}
-
-export async function saveSession(token: string, user: AuthUser) {
-  await AsyncStorage.multiSet([
-    [TOKEN_KEY, token],
-    [USER_KEY, JSON.stringify(user)],
-  ])
-}
-
-export async function clearSession() {
-  await AsyncStorage.multiRemove([TOKEN_KEY, USER_KEY])
-}
-
-export async function getStoredToken(): Promise<string | null> {
-  return AsyncStorage.getItem(TOKEN_KEY)
-}
-
-export async function getStoredUser(): Promise<AuthUser | null> {
-  const raw = await AsyncStorage.getItem(USER_KEY)
-  if (!raw) return null
-  try {
-    return JSON.parse(raw) as AuthUser
-  } catch {
-    await AsyncStorage.multiRemove([TOKEN_KEY, USER_KEY])
-    return null
-  }
-}
-
-type SessionInvalidatedListener = () => void
-const sessionInvalidatedListeners = new Set<SessionInvalidatedListener>()
-
-export function onSessionInvalidated(listener: SessionInvalidatedListener) {
-  sessionInvalidatedListeners.add(listener)
-  return () => {
-    sessionInvalidatedListeners.delete(listener)
-  }
-}
-
-/** Efface la session locale quand l’API renvoie 401 (JWT invalide / expiré). */
-export async function invalidateSessionIfUnauthorized(status: number) {
-  if (status === 401) {
-    await clearSession()
-    for (const listener of sessionInvalidatedListeners) listener()
-  }
 }
 
 /** Sonde légère : false si le token est rejeté (401). Hors-ligne → true (conserve la session). */
@@ -252,7 +156,10 @@ export async function probeSession(): Promise<boolean> {
   if (!token) return false
   try {
     const response = await fetch(`${getApiBase()}/access-requests/me`, {
-      headers: { Authorization: `Bearer ${token}` },
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'X-Client': 'mobile',
+      },
     })
     if (response.status === 401) {
       await invalidateSessionIfUnauthorized(401)

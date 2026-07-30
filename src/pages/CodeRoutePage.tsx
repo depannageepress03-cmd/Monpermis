@@ -12,6 +12,7 @@ import { CodeRouteBanner } from '../components/CodeRouteBanner'
 import { MobileMoneyCheckout } from '../components/MobileMoneyCheckout'
 import { CodeModuleIcon } from '../components/ModuleIcons'
 import { PageNavbar } from '../components/PageNavbar'
+import { PageLoader } from '../components/PageLoader'
 import { useAuth } from '../hooks/useAuth'
 import '../styles/auth.css'
 import '../styles/learner.css'
@@ -89,7 +90,7 @@ export function CodeRoutePage() {
     }
   }, [user])
 
-  if (loading || !user) return null
+  if (loading || !user) return <PageLoader />
 
   const codeModule = modules.find((m) => m.key === 'code')
   const codePrice = codeModule ? computeModuleAmount('code', codeModule.price, 1) : 2000

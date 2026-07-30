@@ -15,6 +15,7 @@ export function CreateAdminPage() {
   const [phone, setPhone] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+  const [role, setRole] = useState<'admin' | 'superadmin'>('admin')
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -62,12 +63,16 @@ export function CreateAdminPage() {
         normalizePhone(phone),
         password,
         confirmPassword,
+        role,
       )
-      setSuccess(`Administrateur « ${admin.fullName} » créé avec succès.`)
+      setSuccess(
+        `Administrateur « ${admin.fullName} » créé (${role === 'superadmin' ? 'superadmin' : 'admin'}).`,
+      )
       setFullName('')
       setPhone('')
       setPassword('')
       setConfirmPassword('')
+      setRole('admin')
     } catch (err) {
       if (isAuthError(err)) {
         setError(err.message)
@@ -85,7 +90,8 @@ export function CreateAdminPage() {
         <p className="admin-page-intro-label">Gestion</p>
         <h2 className="admin-page-intro-title">Nouvel administrateur</h2>
         <p className="admin-page-intro-text">
-          Ajoutez un compte avec accès sécurisé à l’espace d’administration.
+          Ajoutez un compte admin (opérations) ou superadmin (gestion des comptes, audit,
+          trésorerie).
         </p>
       </div>
 
@@ -136,6 +142,21 @@ export function CreateAdminPage() {
                   onChange={(e) => setPhone(normalizePhone(e.target.value))}
                   placeholder={PHONE_PLACEHOLDER}
                 />
+              </div>
+
+              <div className="create-admin-field">
+                <label htmlFor="role">
+                  <ShieldAlert size={14} />
+                  Rôle
+                </label>
+                <select
+                  id="role"
+                  value={role}
+                  onChange={(e) => setRole(e.target.value as 'admin' | 'superadmin')}
+                >
+                  <option value="admin">Admin — opérations courantes</option>
+                  <option value="superadmin">Superadmin — admins, audit &amp; finances</option>
+                </select>
               </div>
 
               <div className="create-admin-field">
@@ -197,6 +218,7 @@ export function CreateAdminPage() {
             <li>Utilisez un numéro de téléphone valide et unique.</li>
             <li>Choisissez un mot de passe d’au moins 8 caractères.</li>
             <li>Ne partagez jamais les identifiants admin.</li>
+            <li>Réservez le rôle superadmin aux personnes qui gèrent l’équipe.</li>
             <li>Créez uniquement les comptes nécessaires à l’équipe.</li>
           </ul>
         </div>

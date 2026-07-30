@@ -1,12 +1,5 @@
-import { getStoredToken, invalidateSessionIfUnauthorized } from './auth'
-import { getApiBase } from './config'
+import { apiAuthed, ApiError } from './client'
 import type { AccessModuleKey } from './accessRequests'
-
-interface ApiResponse<T> {
-  success: boolean
-  data?: T
-  error?: string
-}
 
 export class PaymentHistoryError extends Error {
   constructor(message: string) {
@@ -76,19 +69,11 @@ export function paymentChannelLabel(channel: string) {
 }
 
 export async function fetchMyPayments() {
-  const token = await getStoredToken()
-  if (!token) throw new PaymentHistoryError('Authentification requise')
-
-  const response = await fetch(`${getApiBase()}/payments/me`, {
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-  })
-  const body = (await response.json().catch(() => ({}))) as ApiResponse<{
-    payments: PaymentHistoryItem[]
-  }>
-
-  if (!response.ok || !body.success || !body.data) {
-    await invalidateSessionIfUnauthorized(response.status)
-    throw new PaymentHistoryError(body.error ?? 'Chargement impossible')
+  try {
+    const data = await apiAuthed<{ payments: PaymentHistoryItem[] }>('/payments/me')
+    return data.payments
+  } catch (error) {
+    if (error instanceof ApiError) throw new PaymentHistoryError(error.message)
+    throw new PaymentHistoryError('Chargement impossible')
   }
-  return body.data.payments
 }

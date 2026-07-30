@@ -597,7 +597,7 @@ router.post('/reservations/:id/cancel', audit('cancel', 'reservation'), async (r
         type: 'reservation_cancelled',
         title: 'Réservation annulée',
         body: reservation.cancellationReason || 'Ta réservation de leçon a été annulée par l’auto-école.',
-        link: 'conduite',
+        link: 'conduite/reservations',
       })
     }
 

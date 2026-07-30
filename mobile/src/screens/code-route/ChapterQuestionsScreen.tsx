@@ -26,6 +26,7 @@ import { PageNavbar } from '../../components/PageNavbar'
 import { ProgressBar } from '../../components/ProgressBar'
 import { ScreenLoader } from '../../components/ScreenLoader'
 import { QuestionAudioSequence } from '../../components/QuestionAudioSequence'
+import { QuestionPromptHtml } from '../../components/QuestionPromptHtml'
 import { SkeletonList } from '../../components/Skeleton'
 import { useRequireAuth } from '../../hooks/useRequireAuth'
 import type { RootStackParamList } from '../../navigation/types'
@@ -380,7 +381,7 @@ export function ChapterQuestionsScreen() {
                     )}
                   </View>
                   {entry.question.prompt.text ? (
-                    <Text style={styles.promptText}>{entry.question.prompt.text}</Text>
+                    <QuestionPromptHtml text={entry.question.prompt.text} style={styles.promptText} />
                   ) : null}
                   {entry.question.answers.map((answer) => {
                     const wasSelected = entry.selectedIds.includes(answer.id)
@@ -463,7 +464,7 @@ export function ChapterQuestionsScreen() {
               <View style={styles.promptCard}>
                 <Text style={styles.promptLabel}>Énonce</Text>
                 {question.prompt.text ? (
-                  <Text style={styles.promptText}>{question.prompt.text}</Text>
+                  <QuestionPromptHtml text={question.prompt.text} style={styles.promptText} />
                 ) : null}
                 {sequenceLive && !result && !audioPaused && question.prompt.audioUrl ? (
                   <QuestionAudioSequence

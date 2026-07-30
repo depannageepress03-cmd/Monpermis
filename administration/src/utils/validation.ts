@@ -28,6 +28,9 @@ export function validateName(name: string): string | undefined {
 export function validatePassword(password: string): string | undefined {
   if (!password) return 'Le mot de passe est requis'
   if (password.length < 8) return 'Minimum 8 caractères'
+  if (!/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/\d/.test(password)) {
+    return 'Doit contenir majuscule, minuscule et chiffre'
+  }
   return undefined
 }
 

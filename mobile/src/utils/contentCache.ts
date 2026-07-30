@@ -81,3 +81,10 @@ export async function cacheGetThenFetch<T>(
   options?.onData?.(fresh, { fromCache: false, stale: false })
   return fresh
 }
+
+/** Vide tout le cache contenu (logout / changement de compte). */
+export async function cacheClearAll() {
+  const index = await readIndex()
+  await Promise.all(index.map((key) => AsyncStorage.removeItem(`${PREFIX}${key}`)))
+  await AsyncStorage.removeItem(INDEX_KEY)
+}

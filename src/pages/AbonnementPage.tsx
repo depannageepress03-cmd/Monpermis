@@ -13,8 +13,16 @@ import {
   type CheckoutCartItem,
 } from '../api/accessRequests'
 import { MobileMoneyCheckout } from '../components/MobileMoneyCheckout'
+import { EmptyState } from '../components/EmptyState'
+import { PageLoader } from '../components/PageLoader'
 import { PageNavbar } from '../components/PageNavbar'
+import { PageSkeleton } from '../components/PageSkeleton'
 import { useAuth } from '../hooks/useAuth'
+import { useFocusRefresh } from '../hooks/useFocusRefresh'
+import {
+  formatSubscriptionEndDate,
+  getActiveSubscriptions,
+} from '../utils/subscriptionSummary'
 import '../styles/auth.css'
 import '../styles/learner.css'
 
@@ -69,22 +77,16 @@ export function AbonnementPage() {
 
   useEffect(() => {
     if (!user) return
-    const refresh = () => {
-      void load()
-    }
-    refresh()
-    const onVisible = () => {
-      if (document.visibilityState === 'visible') refresh()
-    }
-    document.addEventListener('visibilitychange', onVisible)
-    window.addEventListener('focus', refresh)
-    return () => {
-      document.removeEventListener('visibilitychange', onVisible)
-      window.removeEventListener('focus', refresh)
-    }
+    void load()
   }, [user, load])
 
-  if (authLoading || !user) return null
+  useFocusRefresh(Boolean(user), () => {
+    void load()
+  })
+
+  if (authLoading || !user) return <PageLoader />
+
+  const activeSubscriptions = getActiveSubscriptions(me)
 
   const cartItems: CheckoutCartItem[] = modules
     .filter((module) => {
@@ -158,13 +160,22 @@ export function AbonnementPage() {
         </button>
 
         {loading ? (
-          <div className="auth-card learner-card learner-empty">
-            <LoaderCircle className="subscription-spinner" aria-hidden="true" />
-            <p>Chargement…</p>
-          </div>
+          <PageSkeleton variant="list" />
         ) : (
           <>
-            {error ? <p className="form-error">{error}</p> : null}
+            {error ? (
+              <EmptyState
+                tone="error"
+                icon={<LoaderCircle size={28} />}
+                title="Chargement impossible"
+                message={error}
+                action={
+                  <button type="button" className="btn-primary" onClick={() => void load()}>
+                    Réessayer
+                  </button>
+                }
+              />
+            ) : null}
 
             {me ? (
               <section className="auth-card learner-card subscription-status-card">
@@ -173,6 +184,34 @@ export function AbonnementPage() {
                   Solde heures de conduite
                 </p>
                 <h2>{me.user.soldeHeures} h</h2>
+                {activeSubscriptions.length > 0 ? (
+                  <div className="subscription-active-list">
+                    {activeSubscriptions.map((sub) => (
+                      <p key={sub.module} className="subscription-status-copy">
+                        <strong>{sub.label}</strong> — expire le{' '}
+                        {formatSubscriptionEndDate(sub.endAt)} ({sub.remainingLabel} restant
+                        {sub.daysLeft > 1 ? 's' : ''})
+                        {sub.daysLeft <= 7 ? (
+                          <>
+                            {' '}
+                            ·{' '}
+                            <button
+                              type="button"
+                              className="btn-outline"
+                              style={{ display: 'inline', padding: '2px 8px', marginLeft: 4, fontSize: 13 }}
+                              onClick={() => {
+                                setSelected({ [sub.module]: true })
+                                window.scrollTo({ top: 0, behavior: 'smooth' })
+                              }}
+                            >
+                              Renouveler
+                            </button>
+                          </>
+                        ) : null}
+                      </p>
+                    ))}
+                  </div>
+                ) : null}
                 {me.pendingRequest ? (
                   <p className="subscription-status-copy">
                     Paiement en confirmation… Actualisez après validation sur votre téléphone.

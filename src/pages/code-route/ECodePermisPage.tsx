@@ -12,8 +12,10 @@ import {
 } from '../../api/content'
 import { fetchAccessMe } from '../../api/accessRequests'
 import { QuestionAudioSequence } from '../../components/QuestionAudioSequence'
+import { PageLoader } from '../../components/PageLoader'
 import { PageNavbar } from '../../components/PageNavbar'
 import { useAuth } from '../../hooks/useAuth'
+import { useLeaveGuard } from '../../hooks/useLeaveGuard'
 import { playFailSound, playSuccessSound, stopAllQuizAudio } from '../../utils/quizSounds'
 import { resolveMediaUrl } from '../../utils/mediaUrl'
 import '../../styles/auth.css'
@@ -99,7 +101,7 @@ export function ECodePermisPage() {
     }
   }
 
-  if (authLoading || !user) return null
+  if (authLoading || !user) return <PageLoader />
 
   return (
     <div className="auth-page">
@@ -438,7 +440,9 @@ export function ECodePermisTakePage() {
     void resolveSelection(ids)
   }
 
-  if (authLoading || !user) return null
+  const { confirmLeave } = useLeaveGuard(Boolean(attempt) && !finished && !loading)
+
+  if (authLoading || !user) return <PageLoader />
 
   return (
     <div className="auth-page">
@@ -446,7 +450,10 @@ export function ECodePermisTakePage() {
         <PageNavbar
           title={`Épreuve ${number}`}
           icon={<ClipboardCheck size={22} />}
-          onBack={() => navigate('/code-de-la-route/e-codepermis')}
+          onBack={() => {
+            if (!confirmLeave()) return
+            navigate('/code-de-la-route/e-codepermis')
+          }}
         />
 
         <header className="auth-header learner-header">

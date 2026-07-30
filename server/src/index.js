@@ -31,6 +31,7 @@ import fedapayWebhooksRoutes from './routes/fedapayWebhooks.js'
 import accessRequestsRoutes from './routes/accessRequests.js'
 import paymentsRoutes from './routes/payments.js'
 import adminAccessRequestsRoutes from './routes/adminAccessRequests.js'
+import adminFinancesRoutes from './routes/adminFinances.js'
 import promoCodesRoutes from './routes/promoCodes.js'
 import adminPromoCodesRoutes from './routes/adminPromoCodes.js'
 import { fedapayKeyFingerprint, isFedaPayConfigured } from './services/fedapay.js'
@@ -42,6 +43,7 @@ import { expireStalePendingReservations } from './utils/reservationPayments.js'
 import { runReservationReminders } from './utils/reservationReminders.js'
 import { completePastConfirmedReservations } from './utils/reservationLifecycle.js'
 import { runAnnouncementJobs } from './services/announcements.js'
+import { ensureSuperAdminBootstrap } from './utils/bootstrapSuperAdmin.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const app = express()
@@ -156,6 +158,23 @@ app.get('/api/health', (_req, res) => {
   })
 })
 
+/** Soft / force update pour l’APK mobile (env optionnels). */
+app.get('/api/app/version', (_req, res) => {
+  const latest = String(process.env.MOBILE_LATEST_VERSION || '').trim() || null
+  const minSupported = String(process.env.MOBILE_MIN_VERSION || '').trim() || null
+  const apkUrl = String(process.env.MOBILE_APK_URL || '').trim() || null
+  const releaseNotes = String(process.env.MOBILE_RELEASE_NOTES || '').trim() || null
+  res.json({
+    success: true,
+    data: {
+      latest,
+      minSupported,
+      apkUrl,
+      releaseNotes,
+    },
+  })
+})
+
 // Un seul limiteur API (évite le double comptage sur les mounts /admin/revision répétés).
 // Les routes /api/admin/* (hors login) sont déjà protégées par JWT → pas de rate-limit ici.
 app.use('/api', (req, res, next) => {
@@ -163,7 +182,8 @@ app.use('/api', (req, res, next) => {
     req.path.startsWith('/auth') ||
     req.path.startsWith('/admin') ||
     req.path.startsWith('/webhooks') ||
-    req.path === '/health'
+    req.path === '/health' ||
+    req.path === '/app/version'
   ) {
     return next()
   }
@@ -183,6 +203,7 @@ app.use('/api/admin/conduite', adminReservationsRoutes)
 app.use('/api/admin/users', adminUsersRoutes)
 app.use('/api/admin/dashboard', adminDashboardRoutes)
 app.use('/api/admin/access-requests', adminAccessRequestsRoutes)
+app.use('/api/admin/finances', adminFinancesRoutes)
 app.use('/api/access-requests', accessRequestsRoutes)
 app.use('/api/payments', paymentsRoutes)
 app.use('/api/admin/promo-codes', adminPromoCodesRoutes)
@@ -304,6 +325,11 @@ async function connectMongo() {
   logger.info('Connecté à MongoDB Atlas')
   await ensureUserIndexes()
   await ensureReservationIndexes()
+  try {
+    await ensureSuperAdminBootstrap()
+  } catch (e) {
+    logger.error('Bootstrap superadmin', { error: e.message })
+  }
   try {
     const pricingSeed = await ensureAccessModulePricing()
     if (pricingSeed.created > 0) {

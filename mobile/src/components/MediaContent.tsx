@@ -13,6 +13,7 @@ import { WebView } from 'react-native-webview'
 import { dark, fonts } from '../theme'
 import { buildEmbedHtml, resolveVideoEmbed } from '../utils/mediaEmbed'
 import { resolveMediaUrl } from '../utils/mediaUrl'
+import { safeHtmlTagsStyles, sanitizeCmsHtml } from '../utils/safeHtml'
 
 interface MediaContentProps {
   title?: string
@@ -109,8 +110,13 @@ function VideoPlayer({
         bounces={false}
         setSupportMultipleWindows={false}
         androidLayerType="hardware"
-        originWhitelist={['*']}
-        mixedContentMode="always"
+        originWhitelist={[
+          'https://*',
+          'http://localhost*',
+          'http://10.0.2.2*',
+          'about:blank',
+        ]}
+        mixedContentMode="compatibility"
         onLoadStart={() => setLoading(true)}
         onLoadEnd={() => setLoading(false)}
         onError={() => {
@@ -175,22 +181,9 @@ export function MediaContent({ title, text, videoUrl, imageUrl }: MediaContentPr
         isHtml ? (
           <RenderHTML
             contentWidth={contentWidth}
-            source={{ html: text ?? '' }}
-            baseStyle={styles.htmlBase}
-            tagsStyles={{
-              p: styles.htmlParagraph,
-              h2: styles.htmlHeading,
-              h3: styles.htmlHeading,
-              strong: styles.htmlStrong,
-              b: styles.htmlStrong,
-              em: styles.htmlEm,
-              u: styles.htmlUnderline,
-              s: styles.htmlStrike,
-              a: styles.htmlLink,
-              ul: styles.htmlList,
-              ol: styles.htmlList,
-              li: styles.htmlListItem,
-            }}
+            source={{ html: sanitizeCmsHtml(text ?? '') }}
+            defaultTextProps={{ selectable: true }}
+            tagsStyles={safeHtmlTagsStyles}
           />
         ) : (
           <Text style={styles.text}>{plainText}</Text>

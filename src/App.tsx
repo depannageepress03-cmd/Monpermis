@@ -24,8 +24,7 @@ import { HomePage } from './pages/HomePage'
 import { LoginPage } from './pages/LoginPage'
 import { RegisterPage } from './pages/RegisterPage'
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage'
-import { ResetPasswordPage } from './pages/ResetPasswordPage'
-import { VerifyEmailPage } from './pages/VerifyEmailPage'
+import { RedirectToLogin } from './components/RedirectToLogin'
 import { TermsOfUsePage } from './pages/TermsOfUsePage'
 import { PrivacyPolicyPage } from './pages/PrivacyPolicyPage'
 import { MentionsLegalesPage } from './pages/MentionsLegalesPage'
@@ -39,10 +38,33 @@ export default function App() {
     <Routes>
       <Route path="/intro" element={<IntroPage />} />
       <Route path="/" element={<LoginPage />} />
+      <Route path="/connexion" element={<LoginPage />} />
       <Route path="/inscription" element={<RegisterPage />} />
       <Route path="/mot-de-passe-oublie" element={<ForgotPasswordPage />} />
-      <Route path="/reinitialiser-mot-de-passe" element={<ResetPasswordPage />} />
-      <Route path="/verifier-email" element={<VerifyEmailPage />} />
+      <Route
+        path="/reinitialiser-mot-de-passe"
+        element={
+          <RedirectToLogin message="La réinitialisation par e-mail n’est plus disponible. Utilise « Code oublié » ou contacte le support WhatsApp." />
+        }
+      />
+      <Route
+        path="/reset-password"
+        element={
+          <RedirectToLogin message="La réinitialisation par e-mail n’est plus disponible. Utilise « Code oublié » ou contacte le support WhatsApp." />
+        }
+      />
+      <Route
+        path="/verifier-email"
+        element={
+          <RedirectToLogin message="La vérification e-mail n’est plus nécessaire. Connecte-toi avec ton téléphone et ton code." />
+        }
+      />
+      <Route
+        path="/verify-email"
+        element={
+          <RedirectToLogin message="La vérification e-mail n’est plus nécessaire. Connecte-toi avec ton téléphone et ton code." />
+        }
+      />
       <Route path="/conditions-utilisation" element={<TermsOfUsePage />} />
       <Route path="/politique-de-confidentialite" element={<PrivacyPolicyPage />} />
       <Route path="/mentions-legales" element={<MentionsLegalesPage />} />

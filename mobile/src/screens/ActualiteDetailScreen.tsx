@@ -25,6 +25,7 @@ import { useRequireAuth } from '../hooks/useRequireAuth'
 import type { RootStackParamList } from '../navigation/types'
 import { dark, fonts } from '../theme'
 import { resolveMediaUrl } from '../utils/mediaUrl'
+import { safeHtmlTagsStyles, sanitizeCmsHtml } from '../utils/safeHtml'
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ActualiteDetail'>
 type Nav = NativeStackNavigationProp<RootStackParamList, 'ActualiteDetail'>
@@ -123,20 +124,9 @@ export function ActualiteDetailScreen() {
               isHtml ? (
                 <RenderHTML
                   contentWidth={width - 64}
-                  source={{ html: item.body }}
+                  source={{ html: sanitizeCmsHtml(item.body) }}
                   baseStyle={styles.htmlBase}
-                  tagsStyles={{
-                    p: styles.htmlP,
-                    h2: styles.htmlH,
-                    h3: styles.htmlH,
-                    strong: styles.htmlStrong,
-                    b: styles.htmlStrong,
-                    em: styles.htmlEm,
-                    a: styles.htmlA,
-                    ul: styles.htmlList,
-                    ol: styles.htmlList,
-                    li: styles.htmlLi,
-                  }}
+                  tagsStyles={safeHtmlTagsStyles}
                 />
               ) : (
                 <Text style={styles.body}>{plain}</Text>

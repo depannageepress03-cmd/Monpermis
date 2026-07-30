@@ -20,16 +20,19 @@ import {
 import { AuthInput } from '../components/AuthInput'
 import { Bouncy } from '../components/Bouncy'
 import { DarkHeader, DarkScreen } from '../components/DarkScreen'
+import { ScreenLoader } from '../components/ScreenLoader'
 import { useAuth } from '../context/AuthContext'
+import { useRequireAuth } from '../hooks/useRequireAuth'
 import type { RootStackParamList } from '../navigation/types'
 import { dark, fonts } from '../theme'
-import { normalizePhone, validateName, validatePhone } from '../utils/validation'
+import { normalizePhone, validateName, validatePassword, validatePhone } from '../utils/validation'
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'Profile'>
 
 export function ProfileScreen() {
   const navigation = useNavigation<Nav>()
-  const { user, updateUser, signOut } = useAuth()
+  const { user, loading: authLoading } = useRequireAuth(navigation)
+  const { updateUser, signOut } = useAuth()
 
   const [firstName, setFirstName] = useState(user?.firstName ?? '')
   const [lastName, setLastName] = useState(user?.lastName ?? '')
@@ -119,9 +122,8 @@ export function ProfileScreen() {
   const handleChangePassword = async () => {
     const errs: typeof pwErrors = {}
     if (!currentPassword) errs.currentPassword = 'Code actuel requis'
-    if (newPassword.length < 8) errs.newPassword = 'Minimum 8 caractères'
-    else if (!/[A-Z]/.test(newPassword) || !/[a-z]/.test(newPassword) || !/\d/.test(newPassword))
-      errs.newPassword = 'Majuscule, minuscule et chiffre requis'
+    const newPwError = validatePassword(newPassword)
+    if (newPwError) errs.newPassword = newPwError
     if (confirmPassword !== newPassword) errs.confirmPassword = 'Les codes ne correspondent pas'
     if (Object.values(errs).some(Boolean)) {
       setPwErrors(errs)
@@ -142,6 +144,8 @@ export function ProfileScreen() {
       setSavingPw(false)
     }
   }
+
+  if (authLoading || !user) return <ScreenLoader />
 
   return (
     <DarkScreen>

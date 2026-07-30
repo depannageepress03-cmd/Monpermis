@@ -8,6 +8,7 @@ import {
 } from '../api/auth-password'
 import { clearSession } from '../api/auth'
 import { PageNavbar } from '../components/PageNavbar'
+import { PageLoader } from '../components/PageLoader'
 import { useAuth } from '../hooks/useAuth'
 import { normalizePhone, PHONE_PLACEHOLDER, validateName, validatePhone } from '../utils/validation'
 import '../styles/auth.css'
@@ -58,7 +59,7 @@ export function ProfilePage() {
     }
   }, [location.pathname, location.state, navigate, user])
 
-  if (loading || !user) return null
+  if (loading || !user) return <PageLoader />
 
   const phoneMissing = !String(phone || '').trim()
 

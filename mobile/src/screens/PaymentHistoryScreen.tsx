@@ -15,6 +15,7 @@ import { ScreenLoader } from '../components/ScreenLoader'
 import { useRequireAuth } from '../hooks/useRequireAuth'
 import type { RootStackParamList } from '../navigation/types'
 import { dark, fonts } from '../theme'
+import { formatPrice } from '../utils/money'
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'HistoriquePaiements'>
 
@@ -24,14 +25,6 @@ function formatDate(value: string | null | undefined) {
         new Date(value),
       )
     : '—'
-}
-
-function formatPrice(price: number, currency: string) {
-  return new Intl.NumberFormat('fr-FR', {
-    style: 'currency',
-    currency,
-    maximumFractionDigits: 0,
-  }).format(price)
 }
 
 function statusTone(status: PaymentHistoryItem['status']) {

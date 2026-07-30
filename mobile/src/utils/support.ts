@@ -1,0 +1,16 @@
+/** Lien WhatsApp support Monpermis (même fallback que le serveur). */
+function normalizeSupportNumber(raw: string | undefined): string {
+  const digits = String(raw || '').replace(/\D/g, '')
+  if (!digits) return '2290192878702'
+  if (digits.startsWith('229')) return digits
+  if (digits.length === 10) return `229${digits}`
+  return digits
+}
+
+export const SUPPORT_WHATSAPP_NUMBER = normalizeSupportNumber(
+  process.env.EXPO_PUBLIC_SUPPORT_WHATSAPP || '0192878702',
+)
+
+export function supportWhatsAppUrl(text = 'Bonjour Monpermis, j’ai besoin d’aide.') {
+  return `https://wa.me/${SUPPORT_WHATSAPP_NUMBER}?text=${encodeURIComponent(text)}`
+}

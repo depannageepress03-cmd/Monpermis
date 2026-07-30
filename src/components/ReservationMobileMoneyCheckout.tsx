@@ -12,6 +12,7 @@ import {
   redeemPromoCode,
 } from '../api/accessRequests'
 import { PAYMENT_OPERATORS, paymentOperatorLabel } from '../utils/paymentOperators'
+import { friendlyPaymentError } from '../utils/fedapayErrors'
 
 function guessOperator(phone: string): MobileMoneyOperator | null {
   const digits = phone.replace(/\D/g, '')
@@ -86,8 +87,10 @@ export function ReservationMobileMoneyCheckout({
   const [soldeHeures, setSoldeHeures] = useState<number | null>(null)
   const [busy, setBusy] = useState(false)
   const [promoBusy, setPromoBusy] = useState(false)
+  const [verifying, setVerifying] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
+  const [pendingGroupId, setPendingGroupId] = useState<string | null>(null)
   const pollRef = useRef<number | null>(null)
 
   useEffect(() => {
@@ -98,6 +101,8 @@ export function ReservationMobileMoneyCheckout({
     setPromoCode('')
     setError(null)
     setSuccess(null)
+    setVerifying(false)
+    setPendingGroupId(null)
     setBusy(false)
     setPromoBusy(false)
     fetchAccessMe()
@@ -126,40 +131,106 @@ export function ReservationMobileMoneyCheckout({
     }
   }
 
+  const applySyncResult = (
+    result: Awaited<ReturnType<typeof syncReservationPayment>>,
+    ticks = 0,
+    approvedSeenAt: number | null = null,
+  ): { done: boolean; approvedSeenAt: number | null } => {
+    const reservations = result.reservations || []
+    const allConfirmed =
+      result.confirmed === true ||
+      (reservations.length > 0 && reservations.every((item) => item.status === 'confirmed'))
+
+    if (result.payment.status === 'approved' && allConfirmed) {
+      stopPoll()
+      setSuccess('Paiement confirmé. Votre rendez-vous est réservé et garanti.')
+      setBusy(false)
+      setVerifying(false)
+      onSuccess(reservations)
+      return { done: true, approvedSeenAt }
+    }
+
+    if (result.payment.status === 'approved') {
+      const seen = approvedSeenAt ?? ticks
+      setSuccess('Paiement reçu. Confirmation du créneau…')
+      if (ticks - seen >= 8) {
+        stopPoll()
+        setBusy(false)
+        setVerifying(false)
+        const confirmed = reservations.filter((item) => item.status === 'confirmed')
+        if (confirmed.length) {
+          onSuccess(confirmed)
+          return { done: true, approvedSeenAt: seen }
+        }
+        setError(
+          'Paiement reçu mais confirmation du créneau incomplète. Consultez « Mes réservations » ou contactez le support.',
+        )
+        setStep('phone')
+        return { done: true, approvedSeenAt: seen }
+      }
+      return { done: false, approvedSeenAt: seen }
+    }
+
+    if (['declined', 'failed', 'canceled'].includes(result.payment.status)) {
+      stopPoll()
+      setBusy(false)
+      setVerifying(false)
+      setSuccess(null)
+      setError(
+        friendlyPaymentError(result.payment.errorMessage, 'Le paiement n’a pas abouti. Réessayez.'),
+      )
+      setStep('phone')
+      return { done: true, approvedSeenAt }
+    }
+    return { done: false, approvedSeenAt }
+  }
+
   const startPoll = (bookingGroupId: string) => {
     stopPoll()
+    setPendingGroupId(bookingGroupId)
     let ticks = 0
+    let approvedSeenAt: number | null = null
     const tick = async () => {
       ticks += 1
       try {
         const result = await syncReservationPayment(bookingGroupId)
-        if (result.payment.status === 'approved') {
-          stopPoll()
-          setSuccess('Paiement confirmé. Réservation validée.')
-          setBusy(false)
-          onSuccess(result.reservations)
-          return
-        }
-        if (['declined', 'failed', 'canceled'].includes(result.payment.status)) {
-          stopPoll()
-          setBusy(false)
-          setSuccess(null)
-          setError(result.payment.errorMessage || 'Le paiement n’a pas abouti. Réessayez.')
-          setStep('phone')
-        }
+        const applied = applySyncResult(result, ticks, approvedSeenAt)
+        approvedSeenAt = applied.approvedSeenAt
+        if (applied.done) return
       } catch {
         /* ignore transient */
       }
       if (ticks >= 60) {
         stopPoll()
         setBusy(false)
-        setError('Confirmation trop longue. Vérifiez vos réservations dans un instant.')
+        setError(
+          'Confirmation trop longue. Si vous avez validé sur votre téléphone, appuyez sur « J’ai payé, vérifier ».',
+        )
       }
     }
     void tick()
     pollRef.current = window.setInterval(() => {
       void tick()
     }, 2000)
+  }
+
+  const verifyPaid = async () => {
+    if (!pendingGroupId) return
+    setVerifying(true)
+    setError(null)
+    try {
+      const result = await syncReservationPayment(pendingGroupId)
+      const applied = applySyncResult(result, 8, 0)
+      if (!applied.done) {
+        setSuccess(
+          'Paiement pas encore confirmé. Validez la notification sur votre téléphone, puis réessayez.',
+        )
+      }
+    } catch {
+      setError('Vérification temporairement indisponible. Réessayez dans un instant.')
+    } finally {
+      setVerifying(false)
+    }
   }
 
   const applyPromo = async () => {
@@ -249,7 +320,12 @@ export function ReservationMobileMoneyCheckout({
       startPoll(result.bookingGroupId)
     } catch (err) {
       setBusy(false)
-      setError(err instanceof ReservationError ? err.message : 'Paiement impossible')
+      setError(
+        friendlyPaymentError(
+          err instanceof ReservationError ? err.message : null,
+          'Paiement impossible. Vérifiez le numéro et réessayez.',
+        ),
+      )
       const detectedAfterError = guessOperator(phone)
       if (detectedAfterError) setOperator(detectedAfterError)
     }
@@ -381,22 +457,34 @@ export function ReservationMobileMoneyCheckout({
                   Retour
                 </button>
               ) : null}
-              <button
-                type="button"
-                className="btn-primary"
-                disabled={busy || !phone.trim()}
-                onClick={() => void submit()}
-              >
-                {busy
-                  ? 'Envoi de la demande…'
-                  : `Payer ${formatPrice(amount)} (${paymentOperatorLabel(operator)})`}
-              </button>
+              {step !== 'waiting' ? (
+                <button
+                  type="button"
+                  className="btn-primary"
+                  disabled={busy || !phone.trim()}
+                  onClick={() => void submit()}
+                >
+                  {busy
+                    ? 'Envoi de la demande…'
+                    : `Payer ${formatPrice(amount)} (${paymentOperatorLabel(operator)})`}
+                </button>
+              ) : null}
             </div>
             {step === 'waiting' ? (
-              <p className="subscription-status-copy">
-                Validez maintenant la demande de retrait sur votre téléphone (
-                {paymentOperatorLabel(operator)}).
-              </p>
+              <>
+                <p className="subscription-status-copy">
+                  Ouvrez la notification {paymentOperatorLabel(operator)} et validez avec votre code
+                  secret. Ensuite appuyez sur « J’ai payé, vérifier ».
+                </p>
+                <button
+                  type="button"
+                  className="btn-primary"
+                  disabled={verifying || !pendingGroupId}
+                  onClick={() => void verifyPaid()}
+                >
+                  {verifying ? 'Vérification…' : 'J’ai payé, vérifier'}
+                </button>
+              </>
             ) : null}
           </section>
         ) : null}

@@ -26,6 +26,7 @@ import { sendSubscriptionExpiryEmail } from '../services/email.js'
 import { broadcastPaymentEvent } from '../services/paymentEvents.js'
 import { applyHoursDiscount } from './pricing.js'
 import { logger } from './logger.js'
+import { recordPaymentCreated, recordPaymentOutcome } from './paymentLedger.js'
 
 /**
  * Table d'adjacence des transitions légales. Toute transition absente de cette
@@ -179,7 +180,7 @@ export async function transitionAccessRequest(request, toStatus, { actor, actorL
       type: 'access_validated',
       title: 'Accès activé ✅',
       body: `Ton accès « ${request.module} » est maintenant actif.`,
-      link: 'abonnement',
+      link: request.module?.startsWith('conduite') ? 'conduite' : 'abonnement',
     })
   } else if (request.status === 'rejete') {
     void notifyUser(request.userId, {
@@ -499,6 +500,7 @@ export async function startFedaPayForRequest(user, request) {
     currency: request.currency,
     status: 'pending',
   })
+  void recordPaymentCreated(payment, { note: `Checkout FedaPay — ${request.module}` })
 
   const callbackUrl = buildFedaPayCallbackUrl(request._id)
 
@@ -542,6 +544,11 @@ export async function startFedaPayForRequest(user, request) {
     payment.errorMessage = error.message || 'Échec initiation FedaPay'
     await payment.save()
     void broadcastPaymentUpdate(payment, { user, module: request.module })
+    void recordPaymentOutcome({ status: 'pending' }, { payment, alreadyProcessed: false }, {
+      actor: 'system',
+      actorLabel: 'FedaPay',
+      note: payment.errorMessage,
+    })
     throw error
   }
 }
@@ -874,6 +881,9 @@ export async function checkoutCartOnlineAccess({
     status: 'pending',
     paymentMethod: mode,
   })
+  void recordPaymentCreated(payment, {
+    note: `Mobile Money (${mode}) — panier ${requests.length} offre(s)`,
+  })
 
   const callbackUrl = buildFedaPayCallbackUrl(primary._id)
   const description =
@@ -1201,6 +1211,10 @@ export async function findPaymentFromFedaEvent(eventObject = {}) {
 }
 
 export async function applyApprovedAccessPayment(payment, { eventName = '', eventId = '', raw = null } = {}) {
+  const previous = {
+    status: payment.status,
+    needsRefund: Boolean(payment.needsRefund),
+  }
   if (eventId && payment.processedEventIds.includes(String(eventId))) {
     return { payment, alreadyProcessed: true }
   }
@@ -1238,7 +1252,9 @@ export async function applyApprovedAccessPayment(payment, { eventName = '', even
       status: payment.status,
     })
     void broadcastPaymentUpdate(flagged)
-    return { payment: flagged, alreadyProcessed: true, needsRefund: true, orphan: true }
+    const result = { payment: flagged, alreadyProcessed: true, needsRefund: true, orphan: true }
+    void recordPaymentOutcome(previous, result, { eventName, eventId })
+    return result
   }
 
   // Transition atomique pending → approved (course webhook vs sync).
@@ -1274,7 +1290,9 @@ export async function applyApprovedAccessPayment(payment, { eventName = '', even
         },
         { new: true },
       )
-      return { payment: flagged, alreadyProcessed: true, needsRefund: true, orphan: true }
+      const result = { payment: flagged, alreadyProcessed: true, needsRefund: true, orphan: true }
+      void recordPaymentOutcome(previous, result, { eventName, eventId })
+      return result
     }
     return { payment: fresh || payment, alreadyProcessed: true }
   }
@@ -1291,8 +1309,9 @@ export async function applyApprovedAccessPayment(payment, { eventName = '', even
     logger.warn('Paiement access orphelin — needsRefund (pas de demande liée)', {
       paymentId: String(claimed._id),
     })
-    // Ne pas throw : le webhook FedaPay doit recevoir 2xx (état déjà persisté).
-    return { payment: claimed, alreadyProcessed: false, needsRefund: true, orphan: true }
+    const result = { payment: claimed, alreadyProcessed: false, needsRefund: true, orphan: true }
+    void recordPaymentOutcome(previous, result, { eventName, eventId })
+    return result
   }
 
   const requests = []
@@ -1320,7 +1339,9 @@ export async function applyApprovedAccessPayment(payment, { eventName = '', even
     logger.warn('Paiement access orphelin — needsRefund (demande introuvable)', {
       paymentId: String(claimed._id),
     })
-    return { payment: claimed, alreadyProcessed: false, needsRefund: true, orphan: true }
+    const result = { payment: claimed, alreadyProcessed: false, needsRefund: true, orphan: true }
+    void recordPaymentOutcome(previous, result, { eventName, eventId })
+    return result
   }
 
   // Approved mais toutes les demandes déjà rejetées (replace) → argent sans accès.
@@ -1334,7 +1355,17 @@ export async function applyApprovedAccessPayment(payment, { eventName = '', even
     logger.warn('Paiement access orphelin — needsRefund', { paymentId: String(claimed._id) })
   }
 
-  return { payment: claimed, request: requests[0], requests, alreadyProcessed: false, unlocked }
+  const result = {
+    payment: claimed,
+    request: requests[0],
+    requests,
+    alreadyProcessed: false,
+    unlocked,
+    needsRefund: Boolean(claimed.needsRefund),
+    orphan: unlocked === 0,
+  }
+  void recordPaymentOutcome(previous, result, { eventName, eventId })
+  return result
 }
 
 export async function applyFailedAccessPayment(
@@ -1342,6 +1373,7 @@ export async function applyFailedAccessPayment(
   status,
   { eventName = '', eventId = '', raw = null, message = '' } = {},
 ) {
+  const previous = { status: payment.status, needsRefund: Boolean(payment.needsRefund) }
   if (eventId && payment.processedEventIds.includes(String(eventId))) {
     return { payment, alreadyProcessed: true }
   }
@@ -1402,7 +1434,20 @@ export async function applyFailedAccessPayment(
     }
   }
 
-  return { payment: effective, request: requests[0] || null, requests, alreadyProcessed: !claimed }
+  const result = {
+    payment: effective,
+    request: requests[0] || null,
+    requests,
+    alreadyProcessed: !claimed,
+  }
+  if (claimed) {
+    void recordPaymentOutcome(previous, result, {
+      eventName,
+      eventId,
+      note: message || '',
+    })
+  }
+  return result
 }
 
 export async function syncAccessPaymentFromProvider(payment) {

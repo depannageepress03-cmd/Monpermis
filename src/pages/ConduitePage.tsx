@@ -11,7 +11,10 @@ import {
 import { fetchAccessMe, fetchAccessModules, computeModuleAmount, claimFreeAccess, type AccessMe, type AccessModule, type CheckoutCartItem } from '../api/accessRequests'
 import { DriveModuleIcon } from '../components/ModuleIcons'
 import { MobileMoneyCheckout } from '../components/MobileMoneyCheckout'
+import { CancelReservationModal } from '../components/CancelReservationModal'
+import { EmptyState } from '../components/EmptyState'
 import { PageNavbar } from '../components/PageNavbar'
+import { PageLoader } from '../components/PageLoader'
 import { useAuth } from '../hooks/useAuth'
 import '../styles/auth.css'
 import '../styles/learner.css'
@@ -138,7 +141,7 @@ export function ConduitePage() {
     }
   }
 
-  if (loading || !user) return null
+  if (loading || !user) return <PageLoader />
 
   return (
     <div className="auth-page">
@@ -249,7 +252,19 @@ export function ConduitePage() {
             <div className="upcoming-block">
               <h3 className="section-title">Mes réservations</h3>
               {upcoming.length === 0 ? (
-                <p className="subtitle">Aucune séance réservée pour le moment.</p>
+                <EmptyState
+                  title="Aucune séance"
+                  message="Aucune séance réservée pour le moment."
+                  action={
+                    <button
+                      type="button"
+                      className="btn-primary"
+                      onClick={() => navigate('/conduite/reservation')}
+                    >
+                      Réserver
+                    </button>
+                  }
+                />
               ) : (
                 <ul className="upcoming-list">
                   {upcoming.map((item) => (
@@ -327,58 +342,14 @@ export function ConduitePage() {
       </div>
 
       {conduiteUnlocked && cancelTarget ? (
-        <div
-          className="cancel-modal-backdrop"
-          role="presentation"
-          onClick={() => !cancelling && setCancelTarget(null)}
-        >
-          <div
-            className="cancel-modal"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="cancel-modal-title"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 id="cancel-modal-title">Annuler la séance</h3>
-            <p className="subtitle">
-              {cancelTarget.creneau
-                ? `${cancelTarget.creneau.date} · ${cancelTarget.creneau.startTime}`
-                : 'Séance'}{' '}
-              — {cancelTarget.moniteur?.fullName || 'Moniteur'}
-            </p>
-            <label className="field-label" htmlFor="cancel-reason">
-              Justification (obligatoire)
-            </label>
-            <textarea
-              id="cancel-reason"
-              className="field-input cancel-reason-input"
-              rows={4}
-              value={cancelReason}
-              onChange={(e) => setCancelReason(e.target.value)}
-              placeholder="Ex. Empêchement familial, maladie, problème de transport…"
-              maxLength={500}
-              disabled={cancelling}
-            />
-            <div className="cancel-modal-actions">
-              <button
-                type="button"
-                className="btn-outline"
-                disabled={cancelling}
-                onClick={() => setCancelTarget(null)}
-              >
-                Fermer
-              </button>
-              <button
-                type="button"
-                className="btn-primary"
-                disabled={cancelling || cancelReason.trim().length < 5}
-                onClick={() => void submitCancel()}
-              >
-                {cancelling ? 'Annulation…' : 'Confirmer l’annulation'}
-              </button>
-            </div>
-          </div>
-        </div>
+        <CancelReservationModal
+          target={cancelTarget}
+          reason={cancelReason}
+          cancelling={cancelling}
+          onReasonChange={setCancelReason}
+          onClose={() => setCancelTarget(null)}
+          onConfirm={() => void submitCancel()}
+        />
       ) : null}
     </div>
   )
