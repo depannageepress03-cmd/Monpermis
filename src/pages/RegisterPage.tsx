@@ -74,8 +74,8 @@ export function RegisterPage() {
 
   return (
     <AuthStage
-      tagline="Quelques minutes pour démarrer ta préparation au permis."
-      imageSrc="/home/i3.jpg"
+      tagline="Code, conduite, confiance — avance à ton rythme."
+      imageSrc="/home/i2.jpg"
     >
       <p className="auth-stage-kicker">Inscription</p>
       <h2 className="auth-stage-heading">Crée ton compte</h2>

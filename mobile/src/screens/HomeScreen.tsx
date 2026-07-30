@@ -20,24 +20,14 @@ import {
   Linking,
   Modal,
   Pressable,
-  RefreshControl,
-  ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import {
-  fetchAnnouncements,
-  stripAnnouncementHtml,
-  announcementLooksLikeHtml,
-  type Announcement,
-} from '../api/announcements'
 import { fetchAccessMe, type AccessMe } from '../api/accessRequests'
 import { Bouncy } from '../components/Bouncy'
-import { LegalFooter } from '../components/LegalFooter'
 import { BrandName } from '../components/BrandName'
-import { HomeBottomAnimation } from '../components/HomeBottomAnimation'
 import { InfiniteImageMarquee } from '../components/InfiniteImageMarquee'
 import { HomeSkeleton } from '../components/Skeleton'
 import { ScreenLoader } from '../components/ScreenLoader'
@@ -45,10 +35,7 @@ import { useAuth } from '../context/AuthContext'
 import { useRequireAuth } from '../hooks/useRequireAuth'
 import { useUnreadNotifications } from '../hooks/useUnreadNotifications'
 import type { RootStackParamList } from '../navigation/types'
-import {
-  formatSubscriptionEndDate,
-  getActiveSubscriptions,
-} from '../utils/subscriptionSummary'
+import { getActiveSubscriptions } from '../utils/subscriptionSummary'
 import { colors, dark, fonts } from '../theme'
 import { cacheGetThenFetch, cacheSet } from '../utils/contentCache'
 
@@ -67,40 +54,27 @@ export function HomeScreen() {
   const { user, loading } = useRequireAuth(navigation)
   const [profileOpen, setProfileOpen] = useState(false)
   const [accessMe, setAccessMe] = useState<AccessMe | null>(null)
-  const [announcements, setAnnouncements] = useState<Announcement[]>([])
   const [bootstrapping, setBootstrapping] = useState(true)
-  const [refreshing, setRefreshing] = useState(false)
   const unreadCount = useUnreadNotifications(Boolean(user))
 
   const loadHome = useCallback(async (silent = false) => {
     if (!user) return
     if (!silent) setBootstrapping(true)
     try {
-      await Promise.all([
-        // Accès : toujours revalider (coupure d’abonnement) — cache seulement pour affichage immédiat.
-        cacheGetThenFetch(
-          `access:me:${user.id}`,
-          () => fetchAccessMe(),
-          {
-            maxAgeMs: 0,
-            onData: (data) => {
-              setAccessMe(data)
-              setBootstrapping(false)
-            },
+      // Accès : toujours revalider (coupure d’abonnement) — cache seulement pour affichage immédiat.
+      await cacheGetThenFetch(
+        `access:me:${user.id}`,
+        () => fetchAccessMe(),
+        {
+          maxAgeMs: 0,
+          onData: (data) => {
+            setAccessMe(data)
+            setBootstrapping(false)
           },
-        ).catch(() => setAccessMe(null)),
-        cacheGetThenFetch(
-          'announcements',
-          () => fetchAnnouncements(),
-          {
-            maxAgeMs: 5 * 60 * 1000,
-            onData: (data) => setAnnouncements(data),
-          },
-        ).catch(() => setAnnouncements([])),
-      ])
+        },
+      ).catch(() => setAccessMe(null))
     } finally {
       setBootstrapping(false)
-      setRefreshing(false)
     }
   }, [user])
 
@@ -146,20 +120,7 @@ export function HomeScreen() {
   return (
     <View style={styles.root}>
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-        <ScrollView
-          contentContainerStyle={styles.body}
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={() => {
-                setRefreshing(true)
-                void loadHome(true)
-              }}
-              tintColor={dark.green}
-            />
-          }
-        >
+        <View style={styles.body}>
           {bootstrapping && !accessMe ? <HomeSkeleton /> : null}
           <View style={styles.topBar}>
             <View style={styles.topBarLeft}>
@@ -195,14 +156,13 @@ export function HomeScreen() {
             </View>
           </View>
 
-          {/* Hero greeting */}
           <View style={styles.hero}>
             <Text style={styles.heroEyebrow}>{greetingWord()}</Text>
-            <Text style={styles.heroTitle} numberOfLines={2}>
+            <Text style={styles.heroTitle} numberOfLines={1}>
               {user.firstName}
             </Text>
-            <Text style={styles.heroSubtitle}>
-              Code, conduite — ta route vers le permis commence ici.
+            <Text style={styles.heroSubtitle} numberOfLines={1}>
+              Code, conduite — ta route vers le permis.
             </Text>
           </View>
 
@@ -211,15 +171,14 @@ export function HomeScreen() {
               style={({ pressed }) => [styles.statusStrip, styles.phoneStrip, pressed && styles.pressed]}
               onPress={() => navigation.navigate('Profile')}
             >
-              <Text style={styles.statusText} numberOfLines={2}>
-                Numéro manquant — ajoute ton téléphone pour Mobile Money
+              <Text style={styles.statusText} numberOfLines={1}>
+                Numéro manquant — ajoute ton téléphone
               </Text>
               <Text style={styles.statusAction}>Compléter</Text>
               <ChevronRight size={16} color={dark.textMuted} />
             </Pressable>
           ) : null}
 
-          {/* Status strip */}
           <Pressable
             style={({ pressed }) => [styles.statusStrip, pressed && styles.pressed]}
             onPress={() => navigation.navigate('Abonnement')}
@@ -230,7 +189,7 @@ export function HomeScreen() {
                 hasActiveAccess ? styles.statusDotActive : styles.statusDotOff,
               ]}
             />
-            <Text style={styles.statusText} numberOfLines={2}>
+            <Text style={styles.statusText} numberOfLines={1}>
               {hasActiveAccess
                 ? nearestSub
                   ? `${nearestSub.label} · ${nearestSub.daysLeft} j restants`
@@ -249,71 +208,8 @@ export function HomeScreen() {
             <ChevronRight size={16} color={dark.textMuted} />
           </Pressable>
 
-          {/* Showcase marquee */}
-          <Text style={styles.sectionLabel}>Sur la route avec Monpermis</Text>
-          <View style={styles.marqueeWrap}>
-            <InfiniteImageMarquee compact />
-          </View>
-
-          {/* Path selector — juste sous les images qui défilent */}
-          <Text style={[styles.sectionLabel, styles.pathSectionLabel]}>Choisis ton parcours</Text>
-
-          <Bouncy
-            scaleTo={0.97}
-            onPress={() => navigation.navigate('CodeRoute')}
-          >
-            <View style={[styles.pathCard, codeLocked ? styles.pathCardLocked : styles.pathCardGreen]}>
-              <Image
-                source={require('../../assets/home/paths/code.jpg')}
-                style={[styles.pathImage, styles.pathImageGreen]}
-                resizeMode="cover"
-              />
-              <View style={styles.pathCopy}>
-                <Text style={styles.pathTitle}>Code de la route</Text>
-                {codeLocked ? (
-                  <View style={styles.pathDescRow}>
-                    <Lock size={12} color={dark.textMuted} />
-                    <Text style={styles.pathDesc}>Accès requis</Text>
-                  </View>
-                ) : (
-                  <Text style={styles.pathDesc}>Cours, quiz & examens</Text>
-                )}
-              </View>
-              <ChevronRight size={20} color={codeLocked ? dark.textMuted : dark.green} />
-            </View>
-          </Bouncy>
-
-          <Bouncy
-            scaleTo={0.97}
-            style={styles.secondPath}
-            onPress={() => navigation.navigate('Conduite')}
-          >
-            <View style={[styles.pathCard, conduiteLocked ? styles.pathCardLocked : styles.pathCardCoral]}>
-              <Image
-                source={require('../../assets/home/paths/conduite.jpg')}
-                style={[styles.pathImage, styles.pathImageCoral]}
-                resizeMode="cover"
-              />
-              <View style={styles.pathCopy}>
-                <Text style={styles.pathTitle}>Conduite</Text>
-                {conduiteLocked ? (
-                  <View style={styles.pathDescRow}>
-                    <Lock size={12} color={dark.textMuted} />
-                    <Text style={styles.pathDesc}>Accès requis</Text>
-                  </View>
-                ) : (
-                  <Text style={styles.pathDesc}>Leçons & réservations</Text>
-                )}
-              </View>
-              <ChevronRight size={20} color={conduiteLocked ? dark.textMuted : dark.coral} />
-            </View>
-          </Bouncy>
-
-          <Bouncy
-            scaleTo={0.97}
-            style={styles.secondPath}
-            onPress={() => navigation.navigate('Abonnement')}
-          >
+          {/* Abonnement reste au-dessus des images */}
+          <Bouncy scaleTo={0.97} onPress={() => navigation.navigate('Abonnement')}>
             <View style={[styles.pathCard, styles.pathCardAccess]}>
               <View style={styles.pathCopy}>
                 <Text style={[styles.pathTitle, styles.pathTitleOnDark]}>Abonnement</Text>
@@ -325,64 +221,65 @@ export function HomeScreen() {
             </View>
           </Bouncy>
 
-          {/* Actualités */}
-          {announcements.length > 0 ? (
-            <>
-              <View style={styles.newsHead}>
-                <Text style={[styles.sectionLabel, styles.pathSectionLabel, styles.newsHeadLabel]}>
-                  Actualités
-                </Text>
-                <Pressable
-                  onPress={() => navigation.navigate('Actualites')}
-                  hitSlop={8}
-                  style={styles.newsAllBtn}
-                >
-                  <Text style={styles.newsAllText}>Voir toutes</Text>
-                  <ChevronRight size={14} color={dark.green} />
-                </Pressable>
-              </View>
-              <View style={styles.newsList}>
-                {announcements.slice(0, 3).map((item) => {
-                  const plain = announcementLooksLikeHtml(item.body)
-                    ? stripAnnouncementHtml(item.body)
-                    : item.body
-                  return (
-                    <Pressable
-                      key={item.id}
-                      style={styles.newsCard}
-                      onPress={() => navigation.navigate('ActualiteDetail', { id: item.id })}
-                    >
-                      <View
-                        style={[
-                          styles.newsAccent,
-                          item.kind === 'alerte'
-                            ? styles.newsAccentAlert
-                            : item.kind === 'promo'
-                              ? styles.newsAccentPromo
-                              : styles.newsAccentInfo,
-                        ]}
-                      />
-                      <View style={styles.newsBody}>
-                        <Text style={styles.newsTitle}>{item.title}</Text>
-                        {plain ? (
-                          <Text style={styles.newsText} numberOfLines={3}>
-                            {plain}
-                          </Text>
-                        ) : null}
-                      </View>
-                    </Pressable>
-                  )
-                })}
-              </View>
-            </>
-          ) : null}
-
-          <View style={styles.bottomAnim}>
-            <HomeBottomAnimation compact />
+          <Text style={[styles.sectionLabel, styles.marqueeLabel]}>Sur la route avec Monpermis</Text>
+          <View style={styles.marqueeWrap}>
+            <InfiniteImageMarquee compact />
           </View>
 
-          <LegalFooter />
-        </ScrollView>
+          <View style={styles.pathsBlock}>
+            <Text style={styles.sectionLabel}>Choisis ton parcours</Text>
+
+            <Bouncy scaleTo={0.97} onPress={() => navigation.navigate('CodeRoute')}>
+              <View style={[styles.pathCard, codeLocked ? styles.pathCardLocked : styles.pathCardGreen]}>
+                <Image
+                  source={require('../../assets/home/paths/code.jpg')}
+                  style={[styles.pathImage, styles.pathImageGreen]}
+                  resizeMode="cover"
+                />
+                <View style={styles.pathCopy}>
+                  <Text style={styles.pathTitle}>Code de la route</Text>
+                  {codeLocked ? (
+                    <View style={styles.pathDescRow}>
+                      <Lock size={12} color={dark.textMuted} />
+                      <Text style={styles.pathDesc}>Accès requis</Text>
+                    </View>
+                  ) : (
+                    <Text style={styles.pathDesc}>Cours, quiz & examens</Text>
+                  )}
+                </View>
+                <ChevronRight size={20} color={codeLocked ? dark.textMuted : dark.green} />
+              </View>
+            </Bouncy>
+
+            <Bouncy
+              scaleTo={0.97}
+              style={styles.secondPath}
+              onPress={() => navigation.navigate('Conduite')}
+            >
+              <View
+                style={[styles.pathCard, conduiteLocked ? styles.pathCardLocked : styles.pathCardCoral]}
+              >
+                <Image
+                  source={require('../../assets/home/paths/conduite.jpg')}
+                  style={[styles.pathImage, styles.pathImageCoral]}
+                  resizeMode="cover"
+                />
+                <View style={styles.pathCopy}>
+                  <Text style={styles.pathTitle}>Conduite</Text>
+                  {conduiteLocked ? (
+                    <View style={styles.pathDescRow}>
+                      <Lock size={12} color={dark.textMuted} />
+                      <Text style={styles.pathDesc}>Accès requis</Text>
+                    </View>
+                  ) : (
+                    <Text style={styles.pathDesc}>Leçons & réservations</Text>
+                  )}
+                </View>
+                <ChevronRight size={20} color={conduiteLocked ? dark.textMuted : dark.coral} />
+              </View>
+            </Bouncy>
+          </View>
+        </View>
       </SafeAreaView>
 
       <Modal
@@ -487,9 +384,10 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   body: {
+    flex: 1,
     paddingHorizontal: 22,
-    paddingTop: 6,
-    paddingBottom: 20,
+    paddingTop: 4,
+    paddingBottom: 8,
   },
 
   /* Top bar */
@@ -498,7 +396,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: 10,
-    marginBottom: 22,
+    marginBottom: 12,
   },
   topBarLeft: {
     flexDirection: 'row',
@@ -556,92 +454,30 @@ const styles = StyleSheet.create({
     color: '#0B0F1A',
   },
 
-  /* Actualités */
-  newsHead: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 2,
-  },
-  newsHeadLabel: {
-    marginBottom: 0,
-  },
-  newsAllBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-  },
-  newsAllText: {
-    fontFamily: fonts.bodyBold,
-    fontSize: 12,
-    color: dark.green,
-  },
-  newsList: {
-    gap: 10,
-    marginBottom: 4,
-  },
-  newsCard: {
-    flexDirection: 'row',
-    backgroundColor: dark.surface,
-    borderWidth: 1,
-    borderColor: dark.border,
-    borderRadius: 16,
-    overflow: 'hidden',
-  },
-  newsAccent: {
-    width: 4,
-  },
-  newsAccentInfo: {
-    backgroundColor: dark.green,
-  },
-  newsAccentPromo: {
-    backgroundColor: dark.coral,
-  },
-  newsAccentAlert: {
-    backgroundColor: '#FFC000',
-  },
-  newsBody: {
-    flex: 1,
-    paddingVertical: 13,
-    paddingHorizontal: 15,
-  },
-  newsTitle: {
-    fontFamily: fonts.displayBold,
-    fontSize: 14.5,
-    color: dark.textPrimary,
-    marginBottom: 3,
-  },
-  newsText: {
-    fontFamily: fonts.body,
-    fontSize: 13,
-    lineHeight: 19,
-    color: dark.textMuted,
-  },
-
   /* Hero */
   hero: {
-    marginBottom: 18,
+    marginBottom: 10,
   },
   heroEyebrow: {
     fontFamily: fonts.bodySemiBold,
-    fontSize: 13,
+    fontSize: 12,
     color: dark.green,
     letterSpacing: 0.3,
-    marginBottom: 2,
+    marginBottom: 1,
   },
   heroTitle: {
     fontFamily: fonts.displayExtraBold,
-    fontSize: 34,
-    lineHeight: 40,
+    fontSize: 28,
+    lineHeight: 32,
     color: dark.textPrimary,
-    letterSpacing: -0.6,
+    letterSpacing: -0.5,
     textTransform: 'capitalize',
   },
   heroSubtitle: {
-    marginTop: 6,
+    marginTop: 4,
     fontFamily: fonts.body,
-    fontSize: 14.5,
-    lineHeight: 21,
+    fontSize: 13.5,
+    lineHeight: 18,
     color: dark.textMuted,
     maxWidth: 320,
   },
@@ -651,18 +487,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    paddingVertical: 10,
+    paddingVertical: 9,
     paddingHorizontal: 14,
     borderRadius: 999,
     backgroundColor: dark.surface,
     borderWidth: 1,
     borderColor: dark.border,
-    marginBottom: 24,
+    marginBottom: 10,
   },
   phoneStrip: {
     borderColor: '#f59e0b',
     backgroundColor: '#fffbeb',
-    marginBottom: 12,
+    marginBottom: 8,
   },
   statusDot: {
     width: 7,
@@ -691,28 +527,33 @@ const styles = StyleSheet.create({
   /* Section labels */
   sectionLabel: {
     fontFamily: fonts.display,
-    fontSize: 11.5,
+    fontSize: 11,
     letterSpacing: 0.8,
     textTransform: 'uppercase',
     color: dark.textMuted,
-    marginBottom: 10,
+    marginBottom: 8,
   },
-  pathSectionLabel: {
-    marginTop: 22,
+  marqueeLabel: {
+    marginTop: 12,
   },
-
   marqueeWrap: {
-    borderRadius: 18,
+    borderRadius: 16,
     overflow: 'hidden',
+    marginBottom: 4,
+  },
+  pathsBlock: {
+    marginTop: 12,
+    flexGrow: 1,
+    justifyContent: 'flex-end',
   },
 
   /* Path cards */
   pathCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
-    borderRadius: 20,
-    paddingVertical: 12,
+    gap: 12,
+    borderRadius: 18,
+    paddingVertical: 10,
     paddingHorizontal: 12,
     borderWidth: 1,
   },
@@ -727,7 +568,7 @@ const styles = StyleSheet.create({
   pathCardAccess: {
     backgroundColor: '#001030',
     borderColor: '#001030',
-    minHeight: 72,
+    minHeight: 64,
   },
   pathTitleOnDark: {
     color: '#FFFFFF',
@@ -741,24 +582,12 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   secondPath: {
-    marginTop: 12,
-  },
-  pathIcon: {
-    width: 64,
-    height: 64,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: dark.surfaceRaised,
-    flexShrink: 0,
-  },
-  pathIconLocked: {
-    backgroundColor: dark.surfaceRaised,
+    marginTop: 10,
   },
   pathImage: {
-    width: 64,
-    height: 64,
-    borderRadius: 16,
+    width: 56,
+    height: 56,
+    borderRadius: 14,
     flexShrink: 0,
   },
   pathImageGreen: {
@@ -775,25 +604,19 @@ const styles = StyleSheet.create({
   },
   pathTitle: {
     fontFamily: fonts.displayBold,
-    fontSize: 17,
+    fontSize: 16,
     color: dark.textPrimary,
-    marginBottom: 3,
+    marginBottom: 2,
   },
   pathDesc: {
     fontFamily: fonts.body,
-    fontSize: 13,
+    fontSize: 12.5,
     color: dark.textMuted,
   },
   pathDescRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-  },
-
-  bottomAnim: {
-    marginTop: 22,
-    borderRadius: 18,
-    overflow: 'hidden',
   },
   pressed: {
     opacity: 0.85,

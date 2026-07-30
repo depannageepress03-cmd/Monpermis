@@ -19,7 +19,7 @@ const IMAGES = [
 ]
 
 const STRIP_HEIGHT = 160
-const STRIP_HEIGHT_COMPACT = 112
+const STRIP_HEIGHT_COMPACT = 96
 const HOLD_MS = 5500
 const CROSSFADE_MS = 2400
 

@@ -2,10 +2,13 @@ import { useNavigation } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { LinearGradient } from 'expo-linear-gradient'
 import { setStatusBarStyle } from 'expo-status-bar'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
+  Animated,
   Image,
+  ImageBackground,
   KeyboardAvoidingView,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -18,7 +21,7 @@ import { Bouncy } from '../components/Bouncy'
 import { LegalFooter } from '../components/LegalFooter'
 import { BrandName } from '../components/BrandName'
 import type { RootStackParamList } from '../navigation/types'
-import { dark, fonts, gradients } from '../theme'
+import { brand, dark, fonts, gradients } from '../theme'
 import {
   normalizePhone,
   PHONE_PLACEHOLDER,
@@ -42,10 +45,25 @@ export function RegisterScreen() {
   const [phone, setPhone] = useState('')
   const [acceptTerms, setAcceptTerms] = useState(false)
   const [errors, setErrors] = useState<FormErrors>({})
+  const contentOpacity = useRef(new Animated.Value(0)).current
+  const contentTranslate = useRef(new Animated.Value(16)).current
 
   useEffect(() => {
-    setStatusBarStyle('dark')
-  }, [])
+    setStatusBarStyle('light')
+    Animated.parallel([
+      Animated.timing(contentOpacity, {
+        toValue: 1,
+        duration: 520,
+        useNativeDriver: true,
+      }),
+      Animated.timing(contentTranslate, {
+        toValue: 0,
+        duration: 520,
+        useNativeDriver: true,
+      }),
+    ]).start()
+    return () => setStatusBarStyle('dark')
+  }, [contentOpacity, contentTranslate])
 
   const handleContinue = () => {
     const newErrors: FormErrors = {
@@ -70,105 +88,131 @@ export function RegisterScreen() {
 
   return (
     <View style={styles.root}>
-      <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-        <KeyboardAvoidingView
-          style={styles.flex}
-          behavior="padding"
-        >
-          <ScrollView
-            contentContainerStyle={styles.scroll}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
+      <ImageBackground
+        source={require('../../assets/home/i2.jpg')}
+        style={styles.hero}
+        imageStyle={styles.heroImage}
+      >
+        <LinearGradient
+          colors={['rgba(0,16,48,0.55)', 'rgba(0,16,48,0.82)', brand.navy]}
+          locations={[0, 0.55, 1]}
+          style={StyleSheet.absoluteFill}
+        />
+        <SafeAreaView edges={['top']} style={styles.heroSafe}>
+          <Animated.View
+            style={[
+              styles.heroCopy,
+              {
+                opacity: contentOpacity,
+                transform: [{ translateY: contentTranslate }],
+              },
+            ]}
           >
-            <View style={styles.header}>
-              <Image
-                source={require('../../assets/logo.png')}
-                style={styles.logo}
-                resizeMode="contain"
-              />
-              <BrandName size={22} style={styles.brand} mainColor={dark.textPrimary} />
+            <Image
+              source={require('../../assets/logo.png')}
+              style={styles.logo}
+              resizeMode="contain"
+            />
+            <BrandName size={34} mainColor="#ffffff" style={styles.brand} />
+            <Text style={styles.tagline}>Code, conduite, confiance — avance à ton rythme.</Text>
+          </Animated.View>
+        </SafeAreaView>
+      </ImageBackground>
+
+      <View style={styles.panel}>
+        <SafeAreaView style={styles.panelSafe} edges={['bottom']}>
+          <KeyboardAvoidingView
+            style={styles.flex}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          >
+            <ScrollView
+              contentContainerStyle={styles.scroll}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
+              <Text style={styles.kicker}>Inscription</Text>
               <Text style={styles.title}>Crée ton compte</Text>
               <Text style={styles.subtitle}>
                 Quelques infos et tu démarres ta préparation au permis.
               </Text>
-            </View>
 
-            <View style={styles.row}>
-              <View style={styles.half}>
+              <View style={styles.row}>
+                <View style={styles.half}>
+                  <AuthInput
+                    label="Prénom"
+                    placeholder="Prénom"
+                    autoComplete="name-given"
+                    value={firstName}
+                    onChangeText={setFirstName}
+                    error={errors.firstName}
+                  />
+                </View>
+                <View style={styles.half}>
+                  <AuthInput
+                    label="Nom"
+                    placeholder="Nom"
+                    autoComplete="name-family"
+                    value={lastName}
+                    onChangeText={setLastName}
+                    error={errors.lastName}
+                  />
+                </View>
+              </View>
+
+              <View style={styles.fields}>
                 <AuthInput
-                  label="Prénom"
-                  placeholder="Prénom"
-                  autoComplete="name-given"
-                  value={firstName}
-                  onChangeText={setFirstName}
-                  error={errors.firstName}
+                  label="Téléphone"
+                  placeholder={PHONE_PLACEHOLDER}
+                  keyboardType="phone-pad"
+                  autoComplete="tel"
+                  value={phone}
+                  onChangeText={(value) => setPhone(normalizePhone(value))}
+                  error={errors.phone}
                 />
               </View>
-              <View style={styles.half}>
-                <AuthInput
-                  label="Nom"
-                  placeholder="Nom"
-                  autoComplete="name-family"
-                  value={lastName}
-                  onChangeText={setLastName}
-                  error={errors.lastName}
-                />
-              </View>
-            </View>
 
-            <View style={styles.fields}>
-              <AuthInput
-                label="Téléphone"
-                placeholder={PHONE_PLACEHOLDER}
-                keyboardType="phone-pad"
-                autoComplete="tel"
-                value={phone}
-                onChangeText={(value) => setPhone(normalizePhone(value))}
-                error={errors.phone}
-              />
-            </View>
-
-            <View style={styles.checkboxRow}>
-              <Pressable
-                style={styles.checkboxHit}
-                onPress={() => setAcceptTerms((prev) => !prev)}
-                hitSlop={8}
-              >
-                <View style={[styles.checkbox, acceptTerms && styles.checkboxChecked]} />
-              </Pressable>
-              <Text style={styles.checkboxLabel}>
-                J'accepte les{' '}
-                <Text
-                  style={styles.checkboxLink}
-                  onPress={() => navigation.navigate('TermsOfUse')}
+              <View style={styles.checkboxRow}>
+                <Pressable
+                  style={styles.checkboxHit}
+                  onPress={() => setAcceptTerms((prev) => !prev)}
+                  hitSlop={8}
                 >
-                  conditions d'utilisation
+                  <View style={[styles.checkbox, acceptTerms && styles.checkboxChecked]} />
+                </Pressable>
+                <Text style={styles.checkboxLabel}>
+                  J'accepte les{' '}
+                  <Text
+                    style={styles.checkboxLink}
+                    onPress={() => navigation.navigate('TermsOfUse')}
+                  >
+                    conditions d'utilisation
+                  </Text>
+                </Text>
+              </View>
+              {errors.terms ? <Text style={styles.termsError}>{errors.terms}</Text> : null}
+
+              <Bouncy onPress={handleContinue} scaleTo={0.97}>
+                <LinearGradient
+                  colors={gradients.green}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.submitBtn}
+                >
+                  <Text style={styles.submitText}>Continuer</Text>
+                </LinearGradient>
+              </Bouncy>
+
+              <Text style={styles.footer}>
+                Déjà inscrit ?{' '}
+                <Text style={styles.link} onPress={() => navigation.navigate('Login')}>
+                  Se connecter
                 </Text>
               </Text>
-            </View>
-            {errors.terms ? <Text style={styles.termsError}>{errors.terms}</Text> : null}
-
-            <Bouncy onPress={handleContinue} scaleTo={0.97}>
-              <LinearGradient
-                colors={gradients.green}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.submitBtn}
-              >
-                <Text style={styles.submitText}>Continuer</Text>
-              </LinearGradient>
-            </Bouncy>
-
-            <Text style={styles.footer}>
-              Déjà inscrit ?{' '}
-              <Text style={styles.link} onPress={() => navigation.navigate('Login')}>
-                Se connecter
-              </Text>
-            </Text>
-          <LegalFooter />
+              <LegalFooter />
             </ScrollView>
-        </KeyboardAvoidingView>
-      </SafeAreaView>
+          </KeyboardAvoidingView>
+        </SafeAreaView>
+      </View>
     </View>
   )
 }
@@ -176,9 +220,52 @@ export function RegisterScreen() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: dark.bg,
+    backgroundColor: brand.navy,
   },
-  safe: {
+  hero: {
+    minHeight: 220,
+    justifyContent: 'flex-end',
+  },
+  heroImage: {
+    resizeMode: 'cover',
+  },
+  heroSafe: {
+    paddingHorizontal: 24,
+    paddingBottom: 28,
+  },
+  heroCopy: {
+    alignItems: 'center',
+  },
+  logo: {
+    width: 72,
+    height: 48,
+    marginBottom: 10,
+  },
+  brand: {
+    marginBottom: 10,
+  },
+  tagline: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: 15,
+    lineHeight: 22,
+    color: 'rgba(255,255,255,0.88)',
+    textAlign: 'center',
+    maxWidth: 300,
+  },
+  panel: {
+    flex: 1,
+    marginTop: -18,
+    backgroundColor: '#F4F7FB',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    overflow: 'hidden',
+    shadowColor: brand.navy,
+    shadowOffset: { width: 0, height: -8 },
+    shadowOpacity: 0.18,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  panelSafe: {
     flex: 1,
   },
   flex: {
@@ -190,33 +277,28 @@ const styles = StyleSheet.create({
     paddingTop: 24,
     paddingBottom: 28,
   },
-  header: {
-    alignItems: 'center',
-    marginBottom: 28,
-  },
-  logo: {
-    width: 110,
-    height: 74,
-    marginBottom: 12,
-  },
-  brand: {
-    marginBottom: 16,
+  kicker: {
+    fontFamily: fonts.displayBold,
+    fontSize: 12,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+    color: dark.green,
+    marginBottom: 6,
   },
   title: {
     fontFamily: fonts.displayExtraBold,
     fontSize: 26,
     color: dark.textPrimary,
+    marginBottom: 6,
     letterSpacing: -0.4,
-    textAlign: 'center',
-    marginBottom: 8,
   },
   subtitle: {
     fontFamily: fonts.body,
     fontSize: 14,
     lineHeight: 20,
     color: dark.textMuted,
-    textAlign: 'center',
-    maxWidth: 300,
+    marginBottom: 20,
+    maxWidth: 320,
   },
   row: {
     flexDirection: 'row',
@@ -271,25 +353,25 @@ const styles = StyleSheet.create({
   },
   submitBtn: {
     width: '100%',
-    minHeight: 52,
+    minHeight: 54,
     borderRadius: 999,
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 16,
-    marginTop: 12,
+    marginTop: 8,
     shadowColor: dark.green,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.35,
+    shadowRadius: 18,
+    elevation: 5,
   },
   submitText: {
-    color: '#0B0F1A',
-    fontFamily: fonts.bodyBold,
-    fontSize: 15,
+    fontFamily: fonts.displayBold,
+    fontSize: 16,
+    color: '#FFFFFF',
   },
   footer: {
-    marginTop: 32,
+    marginTop: 28,
     textAlign: 'center',
     fontFamily: fonts.body,
     fontSize: 14,
@@ -298,5 +380,6 @@ const styles = StyleSheet.create({
   link: {
     color: dark.green,
     fontFamily: fonts.bodyBold,
+    fontSize: 14,
   },
 })

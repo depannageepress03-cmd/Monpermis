@@ -14,13 +14,9 @@ import {
 } from 'lucide-react'
 import { supportWhatsAppUrl } from '../utils/support'
 import { clearSession } from '../api/auth'
-import { fetchAnnouncements, type Announcement } from '../api/announcements'
 import { fetchUnreadCount } from '../api/notifications'
 import { fetchAccessMe, type AccessMe } from '../api/accessRequests'
-import { AnnouncementCard } from '../components/AnnouncementCard'
 import { BrandName } from '../components/BrandName'
-import { HomeBottomAnimation } from '../components/HomeBottomAnimation'
-import { LegalFooter } from '../components/LegalFooter'
 import { PageLoader } from '../components/PageLoader'
 import { PageSkeleton } from '../components/PageSkeleton'
 import { useAuth } from '../hooks/useAuth'
@@ -41,7 +37,6 @@ export function HomePage() {
   const [profileOpen, setProfileOpen] = useState(false)
   const [accessMe, setAccessMe] = useState<AccessMe | null>(null)
   const [accessReady, setAccessReady] = useState(false)
-  const [announcements, setAnnouncements] = useState<Announcement[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
 
   useEffect(() => {
@@ -51,7 +46,6 @@ export function HomePage() {
       .then(setAccessMe)
       .catch(() => setAccessMe(null))
       .finally(() => setAccessReady(true))
-    void fetchAnnouncements().then(setAnnouncements).catch(() => setAnnouncements([]))
     void fetchUnreadCount()
       .then(({ unreadCount: count }) => setUnreadCount(count))
       .catch(() => setUnreadCount(0))
@@ -138,6 +132,21 @@ export function HomePage() {
     </div>
   )
 
+  const accessButton = (
+    <button
+      type="button"
+      className="home-app-path home-app-path--panel home-app-path--access home-app-access-top"
+      onClick={() => navigate('/abonnement')}
+    >
+      <span className="home-app-path-shade" aria-hidden="true" />
+      <span className="home-app-path-text">
+        <strong>Abonnement</strong>
+        <small>{hasActiveAccess ? 'Gérer mes accès' : 'Débloquer les parcours'}</small>
+      </span>
+      <ChevronRight size={22} className="home-app-path-chevron" />
+    </button>
+  )
+
   const pathsSection = (
     <section className="home-desk-paths home-app-paths-block">
       <p className="home-app-section-label">Choisis ton parcours</p>
@@ -195,25 +204,12 @@ export function HomePage() {
           </span>
           <ChevronRight size={22} className="home-app-path-chevron" />
         </button>
-
-        <button
-          type="button"
-          className="home-app-path home-app-path--panel home-app-path--access"
-          onClick={() => navigate('/abonnement')}
-        >
-          <span className="home-app-path-shade" aria-hidden="true" />
-          <span className="home-app-path-text">
-            <strong>Abonnement</strong>
-            <small>{hasActiveAccess ? 'Gérer mes accès' : 'Débloquer les parcours'}</small>
-          </span>
-          <ChevronRight size={22} className="home-app-path-chevron" />
-        </button>
       </div>
     </section>
   )
 
   return (
-    <div className="home-app" data-home-layout="route-claire">
+    <div className="home-app home-app--static" data-home-layout="route-claire">
       <div className="home-app-inner">
         <header className="home-app-top">
           <div className="home-app-brand">
@@ -259,14 +255,15 @@ export function HomePage() {
           </section>
         ) : null}
 
-        {/* Mobile stack: images qui défilent, puis choix de parcours juste en dessous */}
+        {/* Mobile: abonnement au-dessus, images, puis parcours — page fixe */}
         <div className="home-mobile-stack">
           <section className="home-app-hero home-app-hero--enter">
             <p className="home-app-eyebrow">{greetingWord()}</p>
             <h2 className="home-app-name">{user.firstName}</h2>
-            <p className="home-app-subtitle">Code, conduite — ta route vers le permis commence ici.</p>
+            <p className="home-app-subtitle">Code, conduite — ta route vers le permis.</p>
           </section>
           {subStrip}
+          {accessButton}
           <p className="home-app-section-label">Sur la route avec Monpermis</p>
           {marquee}
           {pathsSection}
@@ -278,9 +275,10 @@ export function HomePage() {
             <section className="home-app-hero home-app-hero--enter">
               <p className="home-app-eyebrow">{greetingWord()}</p>
               <h2 className="home-app-name">{user.firstName}</h2>
-              <p className="home-app-subtitle">Code, conduite — ta route vers le permis commence ici.</p>
+              <p className="home-app-subtitle">Code, conduite — ta route vers le permis.</p>
             </section>
             {subStrip}
+            {accessButton}
           </div>
           <div className="home-desk-visual">
             <p className="home-app-section-label">Sur la route avec Monpermis</p>
@@ -289,37 +287,6 @@ export function HomePage() {
         </div>
 
         <div className="home-desk-only-paths">{pathsSection}</div>
-
-        {announcements.length > 0 ? (
-          <section className="home-app-news">
-            <div className="home-app-news-head">
-              <p className="home-app-section-label">Actualités</p>
-              <button
-                type="button"
-                className="home-app-news-all"
-                onClick={() => navigate('/actualites')}
-              >
-                Voir toutes les actualités
-                <ChevronRight size={14} />
-              </button>
-            </div>
-            <div className="home-app-news-list">
-              {announcements.slice(0, 4).map((item) => (
-                <AnnouncementCard
-                  key={item.id}
-                  item={item}
-                  compact
-                  onOpen={() => navigate(`/actualites/${item.id}`)}
-                />
-              ))}
-            </div>
-          </section>
-        ) : null}
-
-        <div className="home-desk-footer">
-          <HomeBottomAnimation />
-          <LegalFooter />
-        </div>
       </div>
 
       {profileOpen ? (
