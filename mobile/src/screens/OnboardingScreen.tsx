@@ -6,6 +6,7 @@ import {
   Dimensions,
   FlatList,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -42,7 +43,7 @@ const SLIDES = [
   {
     key: 'abo',
     title: 'Accès & paiement',
-    body: 'Souscris à l’accès Code en Mobile Money (MTN, Moov, Celtiis). Les cours vidéo restent gratuits ; les heures moniteur se réservent dans Conduite.',
+    body: 'Active ton accès en quelques secondes. Progresse à ton rythme, puis réserve ta conduite depuis l’app.',
     icon: CreditCard,
     accent: '#F0B429',
   },
@@ -84,6 +85,7 @@ export function OnboardingScreen() {
 
       <FlatList
         ref={listRef}
+        style={styles.list}
         data={[...SLIDES]}
         keyExtractor={(item) => item.key}
         horizontal
@@ -99,11 +101,19 @@ export function OnboardingScreen() {
           const Icon = item.icon
           return (
             <View style={[styles.slide, { width }]}>
-              <View style={[styles.iconWell, { backgroundColor: `${item.accent}22` }]}>
-                <Icon size={36} color={item.accent} />
-              </View>
-              <Text style={styles.title}>{item.title}</Text>
-              <Text style={styles.body}>{item.body}</Text>
+              <ScrollView
+                style={styles.slideScroll}
+                contentContainerStyle={styles.slideScrollContent}
+                showsVerticalScrollIndicator={false}
+                bounces={false}
+                nestedScrollEnabled
+              >
+                <View style={[styles.iconWell, { backgroundColor: `${item.accent}22` }]}>
+                  <Icon size={36} color={item.accent} />
+                </View>
+                <Text style={styles.title}>{item.title}</Text>
+                <Text style={styles.body}>{item.body}</Text>
+              </ScrollView>
             </View>
           )
         }}
@@ -139,9 +149,15 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   skip: { fontFamily: fonts.bodySemiBold, fontSize: 14, color: dark.textMuted },
+  list: { flex: 1 },
   slide: {
+    flex: 1,
     paddingHorizontal: 28,
-    paddingTop: 48,
+    paddingTop: 24,
+  },
+  slideScroll: { flex: 1 },
+  slideScrollContent: {
+    paddingBottom: 12,
     alignItems: 'flex-start',
   },
   iconWell: {
@@ -150,7 +166,7 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 28,
+    marginBottom: 22,
   },
   title: {
     fontFamily: fonts.displayExtraBold,
@@ -161,10 +177,10 @@ const styles = StyleSheet.create({
   },
   body: {
     fontFamily: fonts.body,
-    fontSize: 16,
-    lineHeight: 25,
+    fontSize: 15,
+    lineHeight: 24,
     color: dark.textMuted,
-    maxWidth: 340,
+    maxWidth: 360,
   },
   footer: {
     paddingHorizontal: 22,

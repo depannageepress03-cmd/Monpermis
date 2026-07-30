@@ -7,7 +7,6 @@ import {
   Animated,
   Image,
   KeyboardAvoidingView,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -26,8 +25,8 @@ import { dark, fonts, gradients } from '../theme'
 import {
   normalizePhone,
   PHONE_PLACEHOLDER,
-  validatePassword,
   validatePhone,
+  validatePassword,
 } from '../utils/validation'
 import { showAuthError } from '../utils/showAuthError'
 
@@ -99,7 +98,7 @@ export function LoginScreen() {
 
     try {
       const { user, token } = await loginUser({
-        phone: normalizePhone(phone),
+        identifier: normalizePhone(phone),
         password,
       })
       await finishAuth(token, user)
@@ -113,10 +112,7 @@ export function LoginScreen() {
   return (
     <View style={styles.root}>
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-        <KeyboardAvoidingView
-          style={styles.flex}
-          behavior="padding"
-        >
+        <KeyboardAvoidingView style={styles.flex} behavior="padding">
           <Animated.View
             style={[
               styles.flex,
@@ -157,21 +153,30 @@ export function LoginScreen() {
                   error={errors.phone}
                 />
                 <AuthInput
-                  label="Code"
-                  placeholder="Ton code"
+                  label="Mot de passe"
+                  placeholder="Ton mot de passe"
                   secureTextEntry
                   autoComplete="password"
                   value={password}
                   onChangeText={setPassword}
                   error={errors.password}
                 />
+                <Text style={styles.forgotWrap}>
+                  <Text
+                    style={styles.link}
+                    onPress={() => navigation.navigate('ForgotPassword')}
+                  >
+                    Mot de passe oublié ?
+                  </Text>
+                </Text>
               </View>
 
-              <Pressable style={styles.forgotHit} onPress={() => navigation.navigate('ForgotPassword')}>
-                <Text style={styles.forgot}>Code oublié ?</Text>
-              </Pressable>
-
-              <Bouncy onPress={handleSubmit} disabled={loading} scaleTo={0.97} style={loading && styles.disabled}>
+              <Bouncy
+                onPress={handleSubmit}
+                disabled={loading}
+                scaleTo={0.97}
+                style={loading ? styles.disabled : undefined}
+              >
                 <LinearGradient
                   colors={gradients.green}
                   start={{ x: 0, y: 0 }}
@@ -190,7 +195,7 @@ export function LoginScreen() {
                   Créer un compte
                 </Text>
               </Text>
-            <LegalFooter />
+              <LegalFooter />
             </ScrollView>
           </Animated.View>
         </KeyboardAvoidingView>
@@ -258,15 +263,11 @@ const styles = StyleSheet.create({
   },
   fields: {
     gap: 18,
+    marginBottom: 20,
   },
-  forgotHit: {
-    alignSelf: 'center',
-    paddingVertical: 16,
-  },
-  forgot: {
-    fontFamily: fonts.bodyMedium,
-    fontSize: 13,
-    color: dark.textMuted,
+  forgotWrap: {
+    marginTop: -8,
+    textAlign: 'right',
   },
   submitBtn: {
     width: '100%',
@@ -297,9 +298,6 @@ const styles = StyleSheet.create({
     color: dark.green,
     fontFamily: fonts.bodyBold,
     fontSize: 14,
-  },
-  pressed: {
-    opacity: 0.9,
   },
   disabled: {
     opacity: 0.6,

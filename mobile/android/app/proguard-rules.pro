@@ -11,4 +11,22 @@
 -keep class com.swmansion.reanimated.** { *; }
 -keep class com.facebook.react.turbomodule.** { *; }
 
+# Expo / Hermes / RN
+-keep class com.facebook.react.** { *; }
+-keep class com.facebook.hermes.** { *; }
+-keep class com.facebook.jni.** { *; }
+-keep class expo.modules.** { *; }
+-keepclassmembers class * { @com.facebook.react.uimanager.annotations.ReactProp <methods>; }
+-keepclassmembers class * { @com.facebook.react.uimanager.annotations.ReactPropGroup <methods>; }
+
+# SecureStore / Keystore
+-keep class androidx.security.crypto.** { *; }
+-keep class androidx.security.crypto.MasterKeys { *; }
+
+# WebView
+-keepclassmembers class * extends android.webkit.WebViewClient {
+  public void *(android.webkit.WebView, java.lang.String, android.graphics.Bitmap);
+  public boolean *(android.webkit.WebView, java.lang.String);
+}
+
 # Add any project specific keep options here:

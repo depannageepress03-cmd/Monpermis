@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 # Build EAS profile preview-local with the machine LAN IP (port 5001).
-# Google client IDs : environnement EAS "preview" (eas env:set EXPO_PUBLIC_GOOGLE_*).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 

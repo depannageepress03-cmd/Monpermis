@@ -8,17 +8,14 @@ import {
 } from '../utils/chapterTestSubjects.js'
 import { requireAdminAuth } from '../middleware/adminAuth.js'
 import { audit } from '../middleware/audit.js'
-import { audioUpload } from '../middleware/upload.js'
-import { destroyAudioByPublicId, uploadAudioBuffer } from '../services/cloudinary.js'
 import { logger } from '../utils/logger.js'
+import {
+  getHardcodedQuestionsForChapter,
+  listHardcodedQuestionsAdmin,
+} from '../services/hardcodedQuestions.js'
 
 const router = Router()
 router.use(requireAdminAuth)
-
-function nextOrder(items) {
-  if (!items.length) return 0
-  return Math.max(...items.map((item) => item.order ?? 0)) + 1
-}
 
 /** Mélange équitable (Fisher–Yates) puis prend les N premiers. */
 function pickRandomQuestions(questions, count) {
@@ -28,48 +25,6 @@ function pickRandomQuestions(questions, count) {
     ;[pool[i], pool[j]] = [pool[j], pool[i]]
   }
   return pool.slice(0, count)
-}
-
-function normalizeAnswers(rawAnswers) {
-  if (!Array.isArray(rawAnswers) || rawAnswers.length < 1) {
-    return { error: 'Ajoutez au moins une réponse' }
-  }
-
-  const answers = rawAnswers.map((answer, index) => ({
-    label:
-      String(answer.label || String.fromCharCode(97 + index)).trim() ||
-      String.fromCharCode(97 + index),
-    text: '',
-    audioUrl: '',
-    isCorrect: Boolean(answer.isCorrect),
-  }))
-
-  if (!answers.some((answer) => answer.isCorrect)) {
-    return { error: 'Cochez au moins une bonne réponse' }
-  }
-
-  return { answers }
-}
-
-function normalizePrompt(rawPrompt = {}) {
-  const text = String(rawPrompt.text || '').trim()
-  const audioUrl = String(rawPrompt.audioUrl || '').trim()
-  const audioPublicId = String(rawPrompt.audioPublicId || '').trim()
-  const imageUrls = Array.isArray(rawPrompt.imageUrls)
-    ? rawPrompt.imageUrls.map((url) => String(url).trim()).filter(Boolean)
-    : []
-
-  if (!audioUrl) {
-    return { error: 'L’audio unique (question + choix) est obligatoire' }
-  }
-
-  return { prompt: { text, audioUrl, audioPublicId, imageUrls } }
-}
-
-async function destroyPromptAudio(prompt) {
-  const publicId = String(prompt?.audioPublicId || '').trim()
-  if (!publicId) return
-  await destroyAudioByPublicId(publicId)
 }
 
 async function ensureChapter(chapterId) {
@@ -91,20 +46,38 @@ router.get('/chapters/:chapterId/questions', async (req, res) => {
       return res.status(404).json({ success: false, error: 'Chapitre introuvable' })
     }
 
-    const page = Math.max(1, parseInt(req.query.page) || 1)
-    const limit = Math.min(200, Math.max(1, parseInt(req.query.limit) || 100))
-    const skip = (page - 1) * limit
+    const hardcoded = listHardcodedQuestionsAdmin(chapter)
+    if (hardcoded) {
+      return res.json({
+        success: true,
+        data: {
+          chapter: { id: chapter._id, name: chapter.name, order: chapter.order },
+          fileBased: true,
+          hardcoded: true,
+          awaitingFiles: false,
+          readOnly: true,
+          pagination: {
+            page: 1,
+            limit: hardcoded.length,
+            total: hardcoded.length,
+            pages: 1,
+          },
+          questions: hardcoded,
+        },
+      })
+    }
 
-    const [questions, total] = await Promise.all([
-      Question.find({ chapterId: chapter._id }).sort({ order: 1, createdAt: 1 }).skip(skip).limit(limit),
-      Question.countDocuments({ chapterId: chapter._id }),
-    ])
+    // Plus de banque Mongo éditable : les questions arrivent par fichiers code.
     res.json({
       success: true,
       data: {
-        chapter: { id: chapter._id, name: chapter.name },
-        pagination: { page, limit, total, pages: Math.ceil(total / limit) },
-        questions: questions.map((question) => question.toAdminJSON()),
+        chapter: { id: chapter._id, name: chapter.name, order: chapter.order },
+        fileBased: true,
+        hardcoded: false,
+        awaitingFiles: true,
+        readOnly: true,
+        pagination: { page: 1, limit: 0, total: 0, pages: 1 },
+        questions: [],
       },
     })
   } catch (error) {
@@ -113,106 +86,19 @@ router.get('/chapters/:chapterId/questions', async (req, res) => {
   }
 })
 
-router.post('/chapters/:chapterId/questions', audit('create', 'question'), async (req, res) => {
-  try {
-    const chapter = await ensureChapter(req.params.chapterId)
-    if (!chapter) {
-      return res.status(404).json({ success: false, error: 'Chapitre introuvable' })
-    }
+const FILE_BASED_QUESTIONS_ERROR =
+  'Les questions sont fournies par fichiers (code + audio). Création, modification et upload désactivés.'
 
-    const promptResult = normalizePrompt(req.body.prompt)
-    if (promptResult.error) {
-      return res.status(400).json({ success: false, error: promptResult.error })
-    }
-
-    const answersResult = normalizeAnswers(req.body.answers)
-    if (answersResult.error) {
-      return res.status(400).json({ success: false, error: answersResult.error })
-    }
-
-    const existing = await Question.find({ chapterId: chapter._id }).select('order')
-    const question = await Question.create({
-      chapterId: chapter._id,
-      order: nextOrder(existing),
-      published: Boolean(req.body.published),
-      prompt: promptResult.prompt,
-      answers: answersResult.answers,
-    })
-
-    res.status(201).json({
-      success: true,
-      data: { question: question.toAdminJSON() },
-    })
-  } catch (error) {
-    logger.error('Erreur création question:', error)
-    res.status(500).json({ success: false, error: 'Création impossible' })
-  }
+router.post('/chapters/:chapterId/questions', audit('create', 'question'), async (_req, res) => {
+  return res.status(400).json({ success: false, error: FILE_BASED_QUESTIONS_ERROR })
 })
 
-router.patch('/chapters/:chapterId/questions/:questionId', audit('update', 'question'), async (req, res) => {
-  try {
-    const question = await Question.findOne({
-      _id: req.params.questionId,
-      chapterId: req.params.chapterId,
-    })
-    if (!question) {
-      return res.status(404).json({ success: false, error: 'Question introuvable' })
-    }
-
-    if (req.body.prompt !== undefined) {
-      const promptResult = normalizePrompt(req.body.prompt)
-      if (promptResult.error) {
-        return res.status(400).json({ success: false, error: promptResult.error })
-      }
-      const previousPublicId = String(question.prompt?.audioPublicId || '').trim()
-      const nextPublicId = String(promptResult.prompt.audioPublicId || '').trim()
-      question.prompt = promptResult.prompt
-      if (previousPublicId && previousPublicId !== nextPublicId) {
-        await destroyAudioByPublicId(previousPublicId)
-      }
-    }
-
-    if (req.body.answers !== undefined) {
-      const answersResult = normalizeAnswers(req.body.answers)
-      if (answersResult.error) {
-        return res.status(400).json({ success: false, error: answersResult.error })
-      }
-      question.answers = answersResult.answers
-    }
-
-    if (req.body.published !== undefined) {
-      question.published = Boolean(req.body.published)
-    }
-
-    if (req.body.order !== undefined) {
-      question.order = Number(req.body.order) || 0
-    }
-
-    await question.save()
-    res.json({ success: true, data: { question: question.toAdminJSON() } })
-  } catch (error) {
-    logger.error('Erreur mise à jour question:', error)
-    res.status(500).json({ success: false, error: 'Mise à jour impossible' })
-  }
+router.patch('/chapters/:chapterId/questions/:questionId', audit('update', 'question'), async (_req, res) => {
+  return res.status(400).json({ success: false, error: FILE_BASED_QUESTIONS_ERROR })
 })
 
-router.delete('/chapters/:chapterId/questions/:questionId', audit('delete', 'question'), async (req, res) => {
-  try {
-    const question = await Question.findOneAndDelete({
-      _id: req.params.questionId,
-      chapterId: req.params.chapterId,
-    })
-    if (!question) {
-      return res.status(404).json({ success: false, error: 'Question introuvable' })
-    }
-
-    await destroyPromptAudio(question.prompt)
-
-    res.json({ success: true, data: { deleted: true, id: String(question._id) } })
-  } catch (error) {
-    logger.error('Erreur suppression question:', error)
-    res.status(500).json({ success: false, error: 'Suppression impossible' })
-  }
+router.delete('/chapters/:chapterId/questions/:questionId', audit('delete', 'question'), async (_req, res) => {
+  return res.status(400).json({ success: false, error: FILE_BASED_QUESTIONS_ERROR })
 })
 
 router.get('/chapters/:chapterId/test-subjects/current', async (req, res) => {
@@ -222,10 +108,13 @@ router.get('/chapters/:chapterId/test-subjects/current', async (req, res) => {
       return res.status(404).json({ success: false, error: 'Chapitre introuvable' })
     }
 
-    const [bankCount, publishedCount] = await Promise.all([
-      Question.countDocuments({ chapterId: chapter._id }),
-      Question.countDocuments({ chapterId: chapter._id, published: true }),
-    ])
+    const hardcoded = getHardcodedQuestionsForChapter(chapter)
+    const publishedCount = hardcoded
+      ? hardcoded.length
+      : await Question.countDocuments({ chapterId: chapter._id, published: true })
+    const bankCount = hardcoded
+      ? hardcoded.length
+      : await Question.countDocuments({ chapterId: chapter._id })
     const subjects = buildSubjectSummaries(publishedCount, String(chapter._id))
 
     res.json({
@@ -335,63 +224,8 @@ router.delete('/chapters/:chapterId/test-subjects/:subjectId', audit('delete', '
   }
 })
 
-router.post('/upload-audio', (req, res) => {
-  audioUpload.single('audio')(req, res, async (error) => {
-    if (error) {
-      return res.status(400).json({ success: false, error: error.message })
-    }
-    if (!req.file) {
-      return res.status(400).json({ success: false, error: 'Aucun fichier audio fourni' })
-    }
-
-    try {
-      const buffer = req.file.buffer
-      if (!buffer?.length) {
-        return res.status(400).json({ success: false, error: 'Fichier vide ou illisible' })
-      }
-
-      const AUDIO_MAGIC = [
-        { bytes: [0x49, 0x44, 0x33] },
-        { bytes: [0xff, 0xfb] },
-        { bytes: [0xff, 0xf3] },
-        { bytes: [0xff, 0xf2] },
-        { bytes: [0x52, 0x49, 0x46, 0x46] },
-        { bytes: [0x4f, 0x67, 0x67, 0x53] },
-        { bytes: [0x1a, 0x45, 0xdf, 0xa3] },
-      ]
-      const magicOk = AUDIO_MAGIC.some(
-        (sig) =>
-          buffer.length >= sig.bytes.length &&
-          sig.bytes.every((byte, i) => buffer[i] === byte),
-      )
-      if (!magicOk) {
-        return res.status(400).json({
-          success: false,
-          error: 'Format audio non supporté (MP3, WAV, OGG, WebM)',
-        })
-      }
-
-      const uploaded = await uploadAudioBuffer(buffer, {
-        mimeType: req.file.mimetype,
-        originalName: req.file.originalname,
-      })
-
-      res.status(201).json({
-        success: true,
-        data: {
-          audioUrl: uploaded.audioUrl,
-          audioPublicId: uploaded.audioPublicId,
-          mediaBytes: uploaded.bytes,
-        },
-      })
-    } catch (err) {
-      logger.error('Upload audio Cloudinary:', err)
-      return res.status(err.status || 400).json({
-        success: false,
-        error: err.message || 'Enregistrement audio impossible',
-      })
-    }
-  })
+router.post('/upload-audio', audit('create', 'question_audio'), async (_req, res) => {
+  return res.status(400).json({ success: false, error: FILE_BASED_QUESTIONS_ERROR })
 })
 
 export default router

@@ -14,6 +14,7 @@ import { QuestionAudioSequence } from '../../components/QuestionAudioSequence'
 import { PageLoader } from '../../components/PageLoader'
 import { PageNavbar } from '../../components/PageNavbar'
 import { useAuth } from '../../hooks/useAuth'
+import { useFocusRefresh } from '../../hooks/useFocusRefresh'
 import { useLeaveGuard } from '../../hooks/useLeaveGuard'
 import { playFailSound, playSuccessSound, stopAllQuizAudio } from '../../utils/quizSounds'
 import { resolveMediaUrl } from '../../utils/mediaUrl'
@@ -51,16 +52,11 @@ export function ExamensTestPage() {
     if (user) void load()
   }, [user, load])
 
-  // Notes en temps réel pendant que la page est ouverte
-  useEffect(() => {
-    if (!user) return
-    const timer = window.setInterval(() => {
-      void fetchPracticeExams()
-        .then(setData)
-        .catch(() => undefined)
-    }, 5000)
-    return () => window.clearInterval(timer)
-  }, [user])
+  useFocusRefresh(Boolean(user), () => {
+    void fetchPracticeExams()
+      .then(setData)
+      .catch(() => undefined)
+  })
 
   const handleStart = async (examNumber: number) => {
     setStarting(examNumber)
@@ -403,7 +399,11 @@ export function ExamensTestTakePage() {
     void resolveSelection(ids)
   }
 
-  const { confirmLeave } = useLeaveGuard(Boolean(attempt) && !finished && !loading)
+  const leaveMessage =
+    answeredCount > 0
+      ? `Quitter ? Vos ${answeredCount} réponses sont enregistrées — reprenez via Continuer sur la même épreuve.`
+      : 'Quitter ? Votre progression en cours sera conservée si vous reprenez le même examen.'
+  const { confirmLeave } = useLeaveGuard(Boolean(attempt) && !finished && !loading, leaveMessage)
 
   if (authLoading || !user) return <PageLoader />
 
@@ -430,6 +430,12 @@ export function ExamensTestTakePage() {
         <div className="auth-card learner-card">
           {loading ? <p className="subtitle">Chargement…</p> : null}
           {error ? <p className="form-error">{error}</p> : null}
+          {!loading && !finished && answeredCount > 0 ? (
+            <p className="form-success">
+              Reprise à la question {Math.min(index + 1, attempt?.total || 20)} · {answeredCount}{' '}
+              réponse{answeredCount > 1 ? 's' : ''} enregistrée{answeredCount > 1 ? 's' : ''}.
+            </p>
+          ) : null}
 
           {!loading && finished && finalScore ? (
             <div className="learner-empty">
@@ -462,6 +468,11 @@ export function ExamensTestTakePage() {
               <p className="learner-quiz-progress">
                 {progressLabel} · Score live {liveCorrect}/{answeredCount || '—'}
               </p>
+              {(question.correctCount ?? 1) > 1 ? (
+                <span className="learner-multi-badge">
+                  {question.correctCount} bonnes réponses à cocher
+                </span>
+              ) : null}
               {question.prompt?.imageUrls?.length ? (
                 <div className="learner-quiz-images">
                   {question.prompt.imageUrls.map((url) => (

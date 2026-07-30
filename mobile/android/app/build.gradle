@@ -92,8 +92,8 @@ android {
         applicationId 'com.monpermis.app'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 41
-        versionName "1.0.41"
+        versionCode 49
+        versionName "1.0.49"
 
         buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
     }
@@ -105,7 +105,8 @@ android {
             keyPassword 'android'
         }
         release {
-            // Alimenté par GitHub Actions (secrets) — jamais de mots de passe en clair ici.
+            // Alimenté par env / CI — jamais de mots de passe en clair ici.
+            // Les valeurs manquantes font échouer assembleRelease (voir whenReady ci-dessous).
             def releaseStoreFile = System.getenv("MYAPP_UPLOAD_STORE_FILE")
             if (releaseStoreFile) {
                 storeFile file(releaseStoreFile)
@@ -120,12 +121,8 @@ android {
             signingConfig signingConfigs.debug
         }
         release {
-            // Signature release si secrets présents, sinon debug (dev local uniquement).
-            if (System.getenv("MYAPP_UPLOAD_STORE_FILE")) {
-                signingConfig signingConfigs.release
-            } else {
-                signingConfig signingConfigs.debug
-            }
+            // Pas de fallback debug : la release exige le keystore upload.
+            signingConfig signingConfigs.release
             def enableShrinkResources = findProperty('android.enableShrinkResourcesInReleaseBuilds') ?: 'false'
             shrinkResources enableShrinkResources.toBoolean()
             minifyEnabled enableMinifyInReleaseBuilds
@@ -191,5 +188,38 @@ dependencies {
         implementation("com.facebook.react:hermes-android")
     } else {
         implementation jscFlavor
+    }
+}
+
+// Échec explicite des tâches release si le keystore upload n’est pas configuré
+// (évite de signer en debug « par accident »).
+gradle.taskGraph.whenReady { graph ->
+    def needsReleaseSigning = graph.allTasks.any { task ->
+        def n = task.name.toLowerCase()
+        n.contains('release') && (
+            n.startsWith('assemble') ||
+            n.startsWith('bundle') ||
+            n.contains('packagerelease') ||
+            n.contains('signrelease')
+        )
+    }
+    if (!needsReleaseSigning) return
+
+    def required = [
+        'MYAPP_UPLOAD_STORE_FILE',
+        'MYAPP_UPLOAD_STORE_PASSWORD',
+        'MYAPP_UPLOAD_KEY_ALIAS',
+        'MYAPP_UPLOAD_KEY_PASSWORD',
+    ]
+    def missing = required.findAll { !System.getenv(it)?.trim() }
+    if (!missing.isEmpty()) {
+        throw new GradleException(
+            "Release signing blocked: missing env ${missing.join(', ')}. " +
+            "Set the upload keystore variables — debug signing fallback is disabled."
+        )
+    }
+    def storePath = System.getenv('MYAPP_UPLOAD_STORE_FILE')
+    if (!file(storePath).exists()) {
+        throw new GradleException("Release signing blocked: keystore file not found: ${storePath}")
     }
 }

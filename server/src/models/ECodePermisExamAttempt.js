@@ -8,7 +8,7 @@ import {
 
 const responseSchema = new mongoose.Schema(
   {
-    questionId: { type: mongoose.Schema.Types.ObjectId, ref: 'Question', required: true },
+    questionId: { type: String, required: true },
     answerIds: [{ type: String }],
     isCorrect: { type: Boolean, default: false },
   },
@@ -30,7 +30,7 @@ const ecodepermisExamAttemptSchema = new mongoose.Schema(
       index: true,
     },
     examNumber: { type: Number, required: true },
-    questionIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Question' }],
+    questionIds: [{ type: String }],
     responses: { type: [responseSchema], default: [] },
     status: {
       type: String,

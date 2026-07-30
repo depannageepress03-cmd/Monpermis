@@ -43,12 +43,6 @@ export function LoginPage() {
         <BrandName as="p" className="login-brand-name" />
         <p className="login-badge-text">Espace sécurisé · Administration</p>
 
-        <div className="accent-row">
-          <span className="accent accent-green" />
-          <span className="accent accent-gold" />
-          <span className="accent accent-navy" />
-        </div>
-
         <form onSubmit={handleSubmit} className="login-form">
           <label htmlFor="phone">Téléphone</label>
           <input

@@ -274,7 +274,7 @@ export function ConduiteScreen() {
                 trackColor="rgba(255,255,255,0.08)"
                 height={10}
               />
-              <Text style={styles.progressMeta}>Solde disponible : {progress.soldeHeures} h</Text>
+              <Text style={styles.progressMeta}>Solde heures moniteur : {progress.soldeHeures} h (≠ abonnement Code)</Text>
             </View>
           </FadeUp>
         ) : null}

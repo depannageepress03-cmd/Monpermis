@@ -3,6 +3,7 @@ import { FileText } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { ContentError, fetchLearnerJourney, type LearnerJourney } from '../../api/content'
 import { useAuth } from '../../hooks/useAuth'
+import { useFocusRefresh } from '../../hooks/useFocusRefresh'
 import { PageNavbar } from '../../components/PageNavbar'
 import '../../styles/auth.css'
 import '../../styles/learner.css'
@@ -31,14 +32,9 @@ export function MesNotesPage() {
     if (user) void load()
   }, [user, load])
 
-  // Notes à temps réel
-  useEffect(() => {
-    if (!user) return
-    const timer = window.setInterval(() => {
-      void load(true)
-    }, 4000)
-    return () => window.clearInterval(timer)
-  }, [user, load])
+  useFocusRefresh(Boolean(user), () => {
+    void load(true)
+  })
 
   if (authLoading || !user) return null
 

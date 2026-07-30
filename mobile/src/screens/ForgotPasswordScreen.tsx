@@ -14,6 +14,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { LegalFooter } from '../components/LegalFooter'
 import { BrandName } from '../components/BrandName'
+import { Bouncy } from '../components/Bouncy'
+import { buildPasswordHelpWhatsAppUrl } from '../config/support'
 import type { RootStackParamList } from '../navigation/types'
 import { dark, fonts } from '../theme'
 import { supportWhatsAppUrl } from '../utils/support'
@@ -42,7 +44,7 @@ export function ForgotPasswordScreen() {
                 resizeMode="contain"
               />
               <BrandName size={22} style={styles.brand} mainColor={dark.textPrimary} />
-              <Text style={styles.title}>Code oublié</Text>
+              <Text style={styles.title}>Mot de passe oublié</Text>
               <Text style={styles.subtitle}>
                 La connexion se fait avec ton numéro de téléphone et ton code. Pour réinitialiser
                 ton code, contacte le support Monpermis via WhatsApp en indiquant ton numéro.
@@ -82,7 +84,7 @@ const styles = StyleSheet.create({
   },
   header: {
     alignItems: 'center',
-    marginBottom: 32,
+    marginBottom: 28,
   },
   logo: { width: 110, height: 74, marginBottom: 12 },
   brand: { marginBottom: 16 },

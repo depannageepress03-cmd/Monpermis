@@ -8,9 +8,12 @@ import {
   computeQuestionBankFingerprint,
   summarizeChapterBank,
 } from '../utils/practiceExam.js'
+import { hardcodedAsQuestionDocs } from './hardcodedQuestions.js'
 
 export async function loadPublishedExamQuestionBank() {
-  const chapters = await Chapter.find({ published: true }).select('_id name').sort({ order: 1, createdAt: 1 })
+  const chapters = await Chapter.find({ published: true })
+    .select('_id name order')
+    .sort({ order: 1, createdAt: 1 })
   const chapterIds = chapters.map((chapter) => chapter._id)
   const chapterNameById = new Map(chapters.map((chapter) => [String(chapter._id), chapter.name]))
 
@@ -20,6 +23,17 @@ export async function loadPublishedExamQuestionBank() {
       published: true,
       chapterId: { $in: chapterIds },
     }).select('_id chapterId')
+  }
+
+  // Injecte / remplace par les banques en dur (ex. chapitre 21).
+  for (const chapter of chapters) {
+    const hardcoded = hardcodedAsQuestionDocs(chapter)
+    if (!hardcoded?.length) continue
+    const chapterId = String(chapter._id)
+    questions = questions.filter((q) => String(q.chapterId) !== chapterId)
+    for (const doc of hardcoded) {
+      questions.push({ _id: doc.id, chapterId: chapter._id })
+    }
   }
 
   // Secours : questions publiées orphelines / chapitres non publiés absents.

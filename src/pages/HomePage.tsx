@@ -1,6 +1,18 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Bell, ChevronRight, Lock, LogOut, Settings, User, X } from 'lucide-react'
+import {
+  Bell,
+  ChevronRight,
+  CreditCard,
+  History,
+  Lock,
+  LogOut,
+  MessageCircle,
+  Settings,
+  User,
+  X,
+} from 'lucide-react'
+import { supportWhatsAppUrl } from '../utils/support'
 import { clearSession } from '../api/auth'
 import { fetchAnnouncements, type Announcement } from '../api/announcements'
 import { fetchUnreadCount } from '../api/notifications'
@@ -327,9 +339,43 @@ export function HomePage() {
               </div>
               <div>
                 <dt>Compte</dt>
-                <dd>Téléphone / code</dd>
+                <dd>Téléphone / mot de passe</dd>
               </div>
             </dl>
+            <div className="home-profile-shortcuts">
+              <button
+                type="button"
+                className="home-profile-shortcut"
+                onClick={() => {
+                  setProfileOpen(false)
+                  navigate('/abonnement')
+                }}
+              >
+                <CreditCard size={16} />
+                Abonnement / Mes accès
+              </button>
+              <button
+                type="button"
+                className="home-profile-shortcut"
+                onClick={() => {
+                  setProfileOpen(false)
+                  navigate('/abonnement/historique')
+                }}
+              >
+                <History size={16} />
+                Historique des paiements
+              </button>
+              <a
+                className="home-profile-shortcut"
+                href={supportWhatsAppUrl('Bonjour Monpermis, j’ai besoin d’aide.')}
+                target="_blank"
+                rel="noreferrer"
+                onClick={() => setProfileOpen(false)}
+              >
+                <MessageCircle size={16} />
+                Support WhatsApp
+              </a>
+            </div>
             <button
               type="button"
               className="btn-outline"

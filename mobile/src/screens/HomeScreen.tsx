@@ -1,10 +1,23 @@
 import { useFocusEffect, useNavigation } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { setStatusBarStyle } from 'expo-status-bar'
-import { Bell, ChevronRight, Lock, LogOut, Settings, User, X } from 'lucide-react-native'
+import {
+  Bell,
+  ChevronRight,
+  CreditCard,
+  History,
+  Lock,
+  LogOut,
+  MessageCircle,
+  Settings,
+  User,
+  X,
+} from 'lucide-react-native'
+import { supportWhatsAppUrl } from '../utils/support'
 import { useCallback, useEffect, useState } from 'react'
 import {
   Image,
+  Linking,
   Modal,
   Pressable,
   RefreshControl,
@@ -387,8 +400,41 @@ export function HomeScreen() {
               </View>
               <View style={styles.modalRow}>
                 <Text style={styles.modalRowLabel}>Compte</Text>
-                <Text style={styles.modalRowValue}>Téléphone / code</Text>
+                <Text style={styles.modalRowValue}>Téléphone / mot de passe</Text>
               </View>
+            </View>
+
+            <View style={styles.modalShortcuts}>
+              <Pressable
+                style={({ pressed }) => [styles.modalShortcut, pressed && styles.pressed]}
+                onPress={() => {
+                  setProfileOpen(false)
+                  navigation.navigate('Abonnement')
+                }}
+              >
+                <CreditCard size={16} color={dark.textPrimary} />
+                <Text style={styles.modalShortcutText}>Abonnement / Mes accès</Text>
+              </Pressable>
+              <Pressable
+                style={({ pressed }) => [styles.modalShortcut, pressed && styles.pressed]}
+                onPress={() => {
+                  setProfileOpen(false)
+                  navigation.navigate('HistoriquePaiements')
+                }}
+              >
+                <History size={16} color={dark.textPrimary} />
+                <Text style={styles.modalShortcutText}>Historique des paiements</Text>
+              </Pressable>
+              <Pressable
+                style={({ pressed }) => [styles.modalShortcut, pressed && styles.pressed]}
+                onPress={() => {
+                  setProfileOpen(false)
+                  void Linking.openURL(supportWhatsAppUrl('Bonjour Monpermis, j’ai besoin d’aide.'))
+                }}
+              >
+                <MessageCircle size={16} color={dark.textPrimary} />
+                <Text style={styles.modalShortcutText}>Support WhatsApp</Text>
+              </Pressable>
             </View>
 
             <Pressable
@@ -796,6 +842,19 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: dark.textPrimary,
   },
+  modalShortcuts: { gap: 8, marginBottom: 12 },
+  modalShortcut: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    borderWidth: 1,
+    borderColor: dark.border,
+    backgroundColor: dark.surfaceRaised,
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+  },
+  modalShortcutText: { fontFamily: fonts.bodySemiBold, fontSize: 14, color: dark.textPrimary },
   modalEdit: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -19,19 +19,12 @@ export function AdminSectionHeader({
   return (
     <header className="admin-section-header">
       <Link to={backTo} className="admin-back-link">
-        <ArrowLeft size={18} />
+        <ArrowLeft size={16} />
         {backLabel}
       </Link>
 
       {kicker ? <p className="admin-section-kicker">{kicker}</p> : null}
       <h2 className="admin-section-title">{title}</h2>
-
-      <div className="accent-row" aria-hidden>
-        <span className="accent accent-green" />
-        <span className="accent accent-gold" />
-        <span className="accent accent-navy" />
-      </div>
-
       {subtitle ? <p className="admin-section-subtitle">{subtitle}</p> : null}
     </header>
   )

@@ -181,9 +181,15 @@ export function AbonnementPage() {
               <section className="auth-card learner-card subscription-status-card">
                 <p className="learner-kicker">
                   <Clock size={14} style={{ verticalAlign: '-2px', marginRight: 4 }} />
-                  Solde heures de conduite
+                  Solde heures moniteur (espace Conduite)
                 </p>
                 <h2>{me.user.soldeHeures} h</h2>
+                <p className="subscription-status-copy">
+                  Ce solde sert aux séances moniteur — pas à l’abonnement Code.{' '}
+                  <button type="button" className="btn-outline" style={{ display: 'inline', padding: '2px 8px', fontSize: 13 }} onClick={() => navigate('/conduite')}>
+                    Ouvrir Conduite
+                  </button>
+                </p>
                 {activeSubscriptions.length > 0 ? (
                   <div className="subscription-active-list">
                     {activeSubscriptions.map((sub) => (

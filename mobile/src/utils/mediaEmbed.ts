@@ -94,11 +94,63 @@ export function resolveVideoEmbed(url: string): { kind: 'iframe' | 'video'; src:
     if (isYoutubeOrVimeoHost(parsed)) {
       return null
     }
+
+    // Hors YouTube/Vimeo : uniquement HTTPS (pas de schémas arbitraires / file / javascript)
+    if (parsed.protocol !== 'https:') {
+      return null
+    }
+    return { kind: 'video', src: parsed.toString() }
   } catch {
-    // URL relative ou invalide : lecture directe
+    // URL relative : sera résolue côté MediaContent via resolveMediaUrl
   }
 
-  return { kind: 'video', src: trimmed }
+  if (trimmed.startsWith('/')) {
+    return { kind: 'video', src: trimmed }
+  }
+
+  return null
+}
+
+/** Profil moniteur : uniquement YouTube / Vimeo (jamais d’URL arbitraire). */
+export function resolveMoniteurVideoEmbed(
+  url: string,
+): { kind: 'iframe'; src: string; watchUrl: string } | null {
+  const trimmed = normalizeVideoInput(url)
+  if (!trimmed) return null
+  try {
+    const parsed = new URL(trimmed)
+    if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return null
+
+    const youtubeId = extractYoutubeId(parsed)
+    if (youtubeId) {
+      const params = new URLSearchParams({
+        playsinline: '1',
+        rel: '0',
+        modestbranding: '1',
+      })
+      return {
+        kind: 'iframe',
+        src: `https://www.youtube-nocookie.com/embed/${youtubeId}?${params.toString()}`,
+        watchUrl: `https://www.youtube.com/watch?v=${youtubeId}`,
+      }
+    }
+
+    const vimeoId = extractVimeoId(parsed)
+    if (vimeoId) {
+      return {
+        kind: 'iframe',
+        src: `https://player.vimeo.com/video/${vimeoId}?playsinline=1&title=0&byline=0`,
+        watchUrl: `https://vimeo.com/${vimeoId}`,
+      }
+    }
+  } catch {
+    return null
+  }
+  return null
+}
+
+export function isAllowedMoniteurVideoUrl(url: string): boolean {
+  return Boolean(resolveMoniteurVideoEmbed(url))
 }
 
 /** HTML plein écran pour charger un embed de façon fiable dans un WebView mobile. */

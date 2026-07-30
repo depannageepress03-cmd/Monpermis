@@ -81,7 +81,7 @@ export function AdminsPage() {
           <ScrollText size={12} strokeWidth={2} />
           Journal d’audit
         </Link>
-        <Link to="/creer-admin" className="btn-primary btn-primary-inline" style={{ textDecoration: 'none' }}>
+        <Link to="/creer-admin" className="ui-btn ui-btn-primary" style={{ textDecoration: 'none' }}>
           <UserPlus size={16} />
           Créer un admin
         </Link>

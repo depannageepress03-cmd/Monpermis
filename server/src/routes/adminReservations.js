@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import mongoose from 'mongoose'
-import { Moniteur } from '../models/Moniteur.js'
+import { Moniteur, MONITEUR_BIO_MAX, MONITEUR_PHOTOS_MAX, MONITEUR_VIDEOS_MAX } from '../models/Moniteur.js'
 import { Creneau } from '../models/Creneau.js'
 import { Reservation } from '../models/Reservation.js'
 import { User } from '../models/User.js'
@@ -16,6 +16,7 @@ import {
   parseLocalDate,
 } from '../utils/localDate.js'
 import { creditHeuresEffectueesForCompletion } from '../utils/reservationLifecycle.js'
+import { filterAllowedMoniteurVideos } from '../utils/moniteurVideos.js'
 
 function asObjectId(value) {
   if (!value) return null
@@ -40,9 +41,28 @@ function parseVehicleTypes(raw) {
   return cleaned.length > 0 ? cleaned : ['voiture']
 }
 
-function parseUrlList(raw) {
+function parseUrlList(raw, max = 50) {
   if (!Array.isArray(raw)) return []
-  return raw.map((item) => String(item || '').trim()).filter(Boolean)
+  const out = []
+  for (const item of raw) {
+    const url = String(item || '').trim()
+    if (!url) continue
+    if (!out.includes(url)) out.push(url)
+    if (out.length >= max) break
+  }
+  return out
+}
+
+function parsePhotosList(raw) {
+  return parseUrlList(raw, MONITEUR_PHOTOS_MAX)
+}
+
+function parseVideosList(raw) {
+  return filterAllowedMoniteurVideos(raw, MONITEUR_VIDEOS_MAX)
+}
+
+function clampBio(value) {
+  return String(value || '').trim().slice(0, MONITEUR_BIO_MAX)
 }
 
 router.get('/moniteurs', async (_req, res) => {
@@ -103,9 +123,9 @@ router.post('/moniteurs', audit('create', 'moniteur'), async (req, res) => {
       vehiclePhotoUrl: String(req.body.vehiclePhotoUrl || '').trim(),
       photoUrl: String(req.body.photoUrl || '').trim(),
       city: String(req.body.city || '').trim(),
-      bio: String(req.body.bio || '').trim(),
-      photos: parseUrlList(req.body.photos),
-      videos: parseUrlList(req.body.videos),
+      bio: clampBio(req.body.bio),
+      photos: parsePhotosList(req.body.photos),
+      videos: parseVideosList(req.body.videos),
     })
 
     res.status(201).json({ success: true, data: { moniteur: moniteur.toJSONSafe() } })
@@ -163,13 +183,22 @@ router.patch('/moniteurs/:id', audit('update', 'moniteur'), async (req, res) => 
       moniteur.city = String(req.body.city).trim()
     }
     if (req.body.bio !== undefined) {
-      moniteur.bio = String(req.body.bio).trim()
+      moniteur.bio = clampBio(req.body.bio)
     }
     if (req.body.photos !== undefined) {
-      moniteur.photos = parseUrlList(req.body.photos)
+      moniteur.photos = parsePhotosList(req.body.photos)
     }
     if (req.body.videos !== undefined) {
-      moniteur.videos = parseUrlList(req.body.videos)
+      const rawVideos = Array.isArray(req.body.videos) ? req.body.videos : []
+      const allowed = parseVideosList(rawVideos)
+      const cleanedRaw = rawVideos.map((item) => String(item || '').trim()).filter(Boolean)
+      if (cleanedRaw.length > 0 && allowed.length < cleanedRaw.length) {
+        return res.status(400).json({
+          success: false,
+          error: 'Vidéos : uniquement des liens YouTube ou Vimeo (https).',
+        })
+      }
+      moniteur.videos = allowed
     }
 
     await moniteur.save()

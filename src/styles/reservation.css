@@ -657,30 +657,70 @@
 
 /* ---- Profil moniteur ---- */
 .moniteur-profile-head {
-  text-align: center;
+  text-align: left;
   margin-bottom: 0.5rem;
 }
 
-.moniteur-profile-cover {
-  width: 100%;
-  height: 160px;
-  border-radius: 16px;
-  object-fit: cover;
-  margin-bottom: 12px;
+.moniteur-profile-head--split {
+  text-align: left;
 }
 
-.moniteur-profile-head h2 {
+.moniteur-profile-portrait {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.moniteur-profile-avatar {
+  width: 88px;
+  height: 88px;
+  border-radius: 20px;
+  object-fit: cover;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 1.6rem;
+  color: #001030;
+}
+
+.moniteur-profile-identity {
+  flex: 1;
+  min-width: 0;
+}
+
+.moniteur-profile-identity h2 {
   margin: 0 0 4px;
   font-size: 1.2rem;
   font-weight: 800;
   color: #001030;
 }
 
-.moniteur-profile-head .subtitle {
+.moniteur-profile-head .subtitle,
+.moniteur-profile-identity .subtitle {
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  margin: 2px 0;
+}
+
+.moniteur-profile-price {
+  font-weight: 700;
+  color: #00713a;
+}
+
+.moniteur-vehicle-card .moniteur-vehicle-photo {
+  width: 100%;
+  height: 160px;
+  border-radius: 14px;
+  object-fit: cover;
+  margin: 8px 0;
+  display: flex;
+  align-items: center;
   justify-content: center;
+  font-size: 0.85rem;
+  color: rgba(0, 16, 48, 0.55);
 }
 
 .moniteur-profile-bio p {
@@ -688,6 +728,13 @@
   font-size: 0.92rem;
   line-height: 1.55;
   color: rgba(0, 16, 48, 0.75);
+  white-space: pre-wrap;
+}
+
+.moniteur-profile-empty {
+  margin: 6px 0 0;
+  font-size: 0.88rem;
+  color: rgba(0, 16, 48, 0.55);
 }
 
 .moniteur-profile-specialties {
@@ -713,6 +760,33 @@
   margin-top: 1rem;
 }
 
+.moniteur-availability-list {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.moniteur-availability-list li {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(0, 16, 48, 0.04);
+  font-size: 0.88rem;
+}
+
+.moniteur-availability-list strong {
+  color: #001030;
+}
+
+.moniteur-availability-list span {
+  color: rgba(0, 16, 48, 0.7);
+}
+
 .moniteur-profile-gallery {
   display: flex;
   flex-wrap: wrap;
@@ -720,11 +794,27 @@
   margin-top: 8px;
 }
 
-.moniteur-profile-gallery img {
+.moniteur-gallery-thumb {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.moniteur-gallery-thumb:focus-visible {
+  outline: 2px solid #00b050;
+  outline-offset: 2px;
+}
+
+.moniteur-profile-gallery img,
+.moniteur-gallery-thumb img {
   width: 104px;
   height: 78px;
   border-radius: 12px;
   object-fit: cover;
+  display: block;
 }
 
 .moniteur-profile-videos {
@@ -749,6 +839,53 @@
   width: 100%;
   height: 100%;
   border: 0;
+}
+
+.moniteur-video-external {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  z-index: 1;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #001030;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.moniteur-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  background: rgba(0, 8, 24, 0.86);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.moniteur-lightbox img {
+  max-width: min(920px, 100%);
+  max-height: 90vh;
+  border-radius: 12px;
+  object-fit: contain;
+}
+
+.moniteur-lightbox-close {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
 }
 
 /* ---- Sélecteur d'heures ---- */

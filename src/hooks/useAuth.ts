@@ -29,6 +29,7 @@ export function useAuth() {
   useEffect(() => {
     const stored = getStoredUser()
     if (!stored) {
+      setLoading(false)
       navigate('/', { replace: true })
       return
     }

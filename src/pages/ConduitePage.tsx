@@ -245,12 +245,17 @@ export function ConduitePage() {
                 <div className="progress-track">
                   <div className="progress-fill" style={{ width: `${progress.percent}%` }} />
                 </div>
-                <small>Solde disponible : {progress.soldeHeures} h</small>
+                <small>Solde heures moniteur : {progress.soldeHeures} h (≠ abonnement Code)</small>
               </div>
             ) : null}
 
             <div className="upcoming-block">
-              <h3 className="section-title">Mes réservations</h3>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', marginBottom: '0.35rem' }}>
+                <h3 className="section-title" style={{ margin: 0 }}>Mes réservations</h3>
+                <button type="button" className="btn-outline" style={{ padding: '0.35rem 0.7rem', fontSize: '0.85rem' }} onClick={() => navigate('/conduite/mes-reservations')}>
+                  Voir tout
+                </button>
+              </div>
               {upcoming.length === 0 ? (
                 <EmptyState
                   title="Aucune séance"

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native'
+import { useNavigation, useRoute } from '@react-navigation/native'
 import type { RouteProp } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { ShieldCheck } from 'lucide-react-native'
@@ -28,6 +28,8 @@ import { PageNavbar } from '../../components/PageNavbar'
 import { QuestionAudioSequence } from '../../components/QuestionAudioSequence'
 import { QuestionPromptHtml } from '../../components/QuestionPromptHtml'
 import { ScreenLoader } from '../../components/ScreenLoader'
+import { useFocusRefresh } from '../../hooks/useFocusRefresh'
+import { useLeaveGuard } from '../../hooks/useLeaveGuard'
 import { useRequireAuth } from '../../hooks/useRequireAuth'
 import type { RootStackParamList } from '../../navigation/types'
 import { dark, fonts } from '../../theme'
@@ -67,19 +69,13 @@ export function ECodePermisScreen() {
     }
   }, [])
 
-  useFocusEffect(
-    useCallback(() => {
-      if (user) void load()
-    }, [user, load]),
-  )
-
   useEffect(() => {
-    if (!user) return
-    const timer = setInterval(() => {
-      void load(true)
-    }, 5000)
-    return () => clearInterval(timer)
+    if (user) void load()
   }, [user, load])
+
+  useFocusRefresh(Boolean(user), () => {
+    void load(true)
+  })
 
   const handleStart = async (examNumber: number) => {
     setStarting(examNumber)
@@ -450,6 +446,12 @@ export function ECodePermisTakeScreen() {
     void resolveSelection(ids)
   }
 
+  const leaveMessage =
+    answeredCount > 0
+      ? `Quitter ? Vos ${answeredCount} réponses sont enregistrées — reprenez via Continuer sur la même épreuve.`
+      : 'Quitter ? Votre progression en cours sera conservée si vous reprenez le même examen.'
+  useLeaveGuard(Boolean(attempt) && !finished && !loading, leaveMessage)
+
   if (authLoading || !user) return <ScreenLoader />
 
   return (
@@ -471,6 +473,12 @@ export function ECodePermisTakeScreen() {
 
           {loading ? <ActivityIndicator color={dark.green} /> : null}
           {error ? <Text style={styles.error}>{error}</Text> : null}
+          {!loading && !finished && answeredCount > 0 ? (
+            <Text style={styles.success}>
+              Reprise à la question {Math.min(index + 1, attempt?.total || 20)} · {answeredCount}{' '}
+              réponse{answeredCount > 1 ? 's' : ''} enregistrée{answeredCount > 1 ? 's' : ''}.
+            </Text>
+          ) : null}
 
           {finished && finalScore ? (
             <View style={styles.resultBox}>
@@ -490,6 +498,11 @@ export function ECodePermisTakeScreen() {
               <Text style={styles.progress}>
                 {progressLabel} · Score live {liveCorrect}/{answeredCount || '—'}
               </Text>
+              {(question.correctCount ?? 1) > 1 ? (
+                <Text style={styles.multiBadge}>
+                  {question.correctCount} bonnes réponses à cocher
+                </Text>
+              ) : null}
               {question.prompt?.text ? (
                 <QuestionPromptHtml text={question.prompt.text} style={styles.prompt} />
               ) : null}
@@ -717,6 +730,19 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   error: { color: dark.coral, marginBottom: 10, fontFamily: fonts.body },
+  success: { color: dark.green, marginBottom: 10, fontFamily: fonts.body },
+  multiBadge: {
+    alignSelf: 'flex-start',
+    marginBottom: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+    backgroundColor: '#eff6ff',
+    color: '#1d4ed8',
+    fontFamily: fonts.bodyBold,
+    fontSize: 12,
+    overflow: 'hidden',
+  },
   ok: {
     color: dark.green,
     fontFamily: fonts.bodyBold,

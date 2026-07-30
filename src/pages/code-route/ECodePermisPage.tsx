@@ -15,6 +15,7 @@ import { QuestionAudioSequence } from '../../components/QuestionAudioSequence'
 import { PageLoader } from '../../components/PageLoader'
 import { PageNavbar } from '../../components/PageNavbar'
 import { useAuth } from '../../hooks/useAuth'
+import { useFocusRefresh } from '../../hooks/useFocusRefresh'
 import { useLeaveGuard } from '../../hooks/useLeaveGuard'
 import { playFailSound, playSuccessSound, stopAllQuizAudio } from '../../utils/quizSounds'
 import { resolveMediaUrl } from '../../utils/mediaUrl'
@@ -65,26 +66,22 @@ export function ECodePermisPage() {
     if (user) void load()
   }, [user, load])
 
-  useEffect(() => {
-    if (!user || subscriptionLocked) return
-    const timer = window.setInterval(() => {
-      void fetchECodePermisExams()
-        .then((next) => {
-          setData(next)
-          setError(null)
-        })
-        .catch((err) => {
-          if (
-            err instanceof ContentError &&
-            (err.status === 403 || err.code === 'SUBSCRIPTION_REQUIRED')
-          ) {
-            setSubscriptionLocked(true)
-            setError(err.message)
-          }
-        })
-    }, 5000)
-    return () => window.clearInterval(timer)
-  }, [user, subscriptionLocked])
+  useFocusRefresh(Boolean(user) && !subscriptionLocked, () => {
+    void fetchECodePermisExams()
+      .then((next) => {
+        setData(next)
+        setError(null)
+      })
+      .catch((err) => {
+        if (
+          err instanceof ContentError &&
+          (err.status === 403 || err.code === 'SUBSCRIPTION_REQUIRED')
+        ) {
+          setSubscriptionLocked(true)
+          setError(err.message)
+        }
+      })
+  })
 
   const handleStart = async (examNumber: number) => {
     setStarting(examNumber)
@@ -440,7 +437,11 @@ export function ECodePermisTakePage() {
     void resolveSelection(ids)
   }
 
-  const { confirmLeave } = useLeaveGuard(Boolean(attempt) && !finished && !loading)
+  const leaveMessage =
+    answeredCount > 0
+      ? `Quitter ? Vos ${answeredCount} réponses sont enregistrées — reprenez via Continuer sur la même épreuve.`
+      : 'Quitter ? Votre progression en cours sera conservée si vous reprenez le même examen.'
+  const { confirmLeave } = useLeaveGuard(Boolean(attempt) && !finished && !loading, leaveMessage)
 
   if (authLoading || !user) return <PageLoader />
 
@@ -494,11 +495,23 @@ export function ECodePermisTakePage() {
             </div>
           ) : null}
 
+          {!loading && !finished && answeredCount > 0 ? (
+            <p className="form-success">
+              Reprise à la question {Math.min(index + 1, attempt?.total || 20)} · {answeredCount}{' '}
+              réponse{answeredCount > 1 ? 's' : ''} enregistrée{answeredCount > 1 ? 's' : ''}.
+            </p>
+          ) : null}
+
           {!loading && !error && question && !finished ? (
             <form className="learner-quiz">
               <p className="learner-quiz-progress">
                 {progressLabel} · Score live {liveCorrect}/{answeredCount || '—'}
               </p>
+              {(question.correctCount ?? 1) > 1 ? (
+                <span className="learner-multi-badge">
+                  {question.correctCount} bonnes réponses à cocher
+                </span>
+              ) : null}
               {question.prompt?.imageUrls?.length ? (
                 <div className="learner-quiz-images">
                   {question.prompt.imageUrls.map((url) => (

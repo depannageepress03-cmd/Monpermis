@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { useFocusEffect, useNavigation } from '@react-navigation/native'
+import { useNavigation } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { FileText } from 'lucide-react-native'
 import {
@@ -15,6 +15,7 @@ import { ContentError, fetchLearnerJourney, type LearnerJourney } from '../../ap
 import { DarkScreen } from '../../components/DarkScreen'
 import { PageNavbar } from '../../components/PageNavbar'
 import { ScreenLoader } from '../../components/ScreenLoader'
+import { useFocusRefresh } from '../../hooks/useFocusRefresh'
 import { useRequireAuth } from '../../hooks/useRequireAuth'
 import type { RootStackParamList } from '../../navigation/types'
 import { dark, fonts } from '../../theme'
@@ -43,19 +44,13 @@ export function MesNotesScreen() {
     }
   }, [])
 
-  useFocusEffect(
-    useCallback(() => {
-      if (user) void load()
-    }, [user, load]),
-  )
-
   useEffect(() => {
-    if (!user) return
-    const timer = setInterval(() => {
-      void load(true)
-    }, 4000)
-    return () => clearInterval(timer)
+    if (user) void load()
   }, [user, load])
+
+  useFocusRefresh(Boolean(user), () => {
+    void load(true)
+  })
 
   if (authLoading || !user) return <ScreenLoader />
 

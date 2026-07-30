@@ -2,11 +2,12 @@ import { useMemo } from 'react'
 import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { CalendarPlus, Check } from 'lucide-react-native'
-import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { DarkScreen } from '../../components/DarkScreen'
 import { PageNavbar } from '../../components/PageNavbar'
 import type { RootStackParamList } from '../../navigation/types'
 import { dark, fonts } from '../../theme'
+import { safeOpenUrl } from '../../utils/safeOpenUrl'
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'ReservationConfirm'>
 type Route = RouteProp<RootStackParamList, 'ReservationConfirm'>
@@ -107,12 +108,12 @@ export function ReservationConfirmScreen() {
         </View>
 
         {calendarUrl ? (
-          <Pressable style={styles.secondaryBtn} onPress={() => void Linking.openURL(calendarUrl)}>
+          <Pressable style={styles.secondaryBtn} onPress={() => void safeOpenUrl(calendarUrl)}>
             <Text style={styles.secondaryBtnText}>Ajouter à mon agenda</Text>
           </Pressable>
         ) : null}
         {whatsappLink ? (
-          <Pressable style={styles.secondaryBtn} onPress={() => void Linking.openURL(whatsappLink)}>
+          <Pressable style={styles.secondaryBtn} onPress={() => void safeOpenUrl(whatsappLink)}>
             <Text style={styles.secondaryBtnText}>Notifier par WhatsApp</Text>
           </Pressable>
         ) : null}

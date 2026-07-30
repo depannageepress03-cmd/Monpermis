@@ -14,7 +14,3 @@ Repo → **Settings** → **Secrets and variables** → **Actions** :
 | `ANDROID_KEY_PASSWORD` | mot de passe de la clé |
 
 Générés localement dans `github-secrets.local.txt` (gitignored).
-
-## Google Sign-In
-
-Après le premier APK release, ajoute le **SHA-1** du keystore release dans Google Cloud Console (client OAuth Android, package `com.monpermis.app`).

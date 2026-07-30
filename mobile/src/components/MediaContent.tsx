@@ -158,7 +158,7 @@ export function MediaContent({ title, text, videoUrl, imageUrl }: MediaContentPr
 
   const videoSrc =
     video?.kind === 'video'
-      ? resolveMediaUrl(video.src) ?? video.src
+      ? resolveMediaUrl(video.src)
       : video?.src
 
   return (

@@ -66,11 +66,19 @@ export const conduiteModules: ModuleItem[] = [
   },
   {
     id: 'reservations',
-    label: 'Réservations & moniteurs',
-    subtitle: 'Équipe, véhicules, créneaux et séances',
+    label: 'Réservations',
+    subtitle: 'Séances, filtres et paiements',
     path: '/conduite/reservations',
     icon: Calendar,
     tone: 'green',
+  },
+  {
+    id: 'moniteurs',
+    label: 'Moniteurs',
+    subtitle: 'Équipe, véhicules et disponibilités',
+    path: '/conduite/moniteurs',
+    icon: CarFront,
+    tone: 'navy',
   },
 ]
 

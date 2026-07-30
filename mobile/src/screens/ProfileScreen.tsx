@@ -58,6 +58,15 @@ export function ProfileScreen() {
   const [deletePassword, setDeletePassword] = useState('')
   const [deleting, setDeleting] = useState(false)
 
+  if (authLoading || !user) {
+    return (
+      <DarkScreen>
+        <DarkHeader title="Mon profil" onBack={() => navigation.goBack()} icon={User} />
+        <ScreenLoader />
+      </DarkScreen>
+    )
+  }
+
   const handleSaveProfile = async () => {
     const errs = {
       firstName: validateName(firstName, 'Le prénom'),
@@ -97,7 +106,7 @@ export function ProfileScreen() {
           style: 'destructive',
           onPress: () => {
             if (!deletePassword) {
-              Alert.alert('Code requis', 'Saisis ton code pour confirmer.')
+              Alert.alert('Mot de passe requis', 'Saisis ton mot de passe pour confirmer.')
               return
             }
             setDeleting(true)
@@ -134,7 +143,7 @@ export function ProfileScreen() {
     setSavingPw(true)
     try {
       await changePassword({ currentPassword, newPassword })
-      setPwMsg('Code modifié ✓')
+      setPwMsg('Mot de passe modifié ✓')
       setCurrentPassword('')
       setNewPassword('')
       setConfirmPassword('')
@@ -204,24 +213,24 @@ export function ProfileScreen() {
             </Bouncy>
           </View>
 
-          <Text style={styles.sectionTitle}>Changer de code</Text>
+          <Text style={styles.sectionTitle}>Changer de mot de passe</Text>
           <View style={styles.card}>
             <AuthInput
-              label="Code actuel"
+              label="Mot de passe actuel"
               value={currentPassword}
               onChangeText={setCurrentPassword}
               secureTextEntry
               error={pwErrors.currentPassword}
             />
             <AuthInput
-              label="Nouveau code"
+              label="Nouveau mot de passe"
               value={newPassword}
               onChangeText={setNewPassword}
               secureTextEntry
               error={pwErrors.newPassword}
             />
             <AuthInput
-              label="Confirmer le code"
+              label="Confirmer le mot de passe"
               value={confirmPassword}
               onChangeText={setConfirmPassword}
               secureTextEntry
@@ -231,7 +240,7 @@ export function ProfileScreen() {
             <Bouncy onPress={handleChangePassword} disabled={savingPw} scaleTo={0.97}>
               <View style={[styles.primaryBtn, savingPw && styles.disabled]}>
                 <Text style={styles.primaryBtnText}>
-                  {savingPw ? 'Modification…' : 'Modifier le code'}
+                  {savingPw ? 'Modification…' : 'Modifier le mot de passe'}
                 </Text>
               </View>
             </Bouncy>
@@ -243,7 +252,7 @@ export function ProfileScreen() {
               La suppression du compte est définitive (profil, abonnements liés, notifications).
             </Text>
             <AuthInput
-              label="Code pour confirmer"
+              label="Mot de passe pour confirmer"
               value={deletePassword}
               onChangeText={setDeletePassword}
               secureTextEntry
@@ -265,11 +274,35 @@ export function ProfileScreen() {
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
+  flexShrink: { flex: 1 },
   scroll: {
     paddingHorizontal: 22,
     paddingTop: 8,
     paddingBottom: 28,
     gap: 8,
+  },
+  emailCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: dark.surface,
+    borderWidth: 1,
+    borderColor: dark.border,
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    marginBottom: 8,
+  },
+  emailLabel: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 12,
+    color: dark.textMuted,
+  },
+  emailValue: {
+    fontFamily: fonts.bodyBold,
+    fontSize: 15,
+    color: dark.textPrimary,
+    marginTop: 2,
   },
   sectionTitle: {
     fontFamily: fonts.displayBold,

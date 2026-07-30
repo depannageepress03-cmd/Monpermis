@@ -26,6 +26,7 @@ import { hapticLight, hapticSuccess } from '../utils/haptics'
 import { clearPendingCheckoutCart, savePendingCheckoutCart } from '../utils/checkoutCart'
 import { guessOperator } from '../utils/guessOperator'
 import { formatPrice } from '../utils/money'
+import { friendlyPaymentError } from '../utils/fedapayErrors'
 import { PAYMENT_OPERATORS, paymentOperatorLabel } from '../utils/paymentOperators'
 
 /** Seul pays desservi : envoyé au serveur sans étape de sélection. */
@@ -52,8 +53,10 @@ export function MobileMoneyCheckout({
   const [operator, setOperator] = useState<MobileMoneyOperator | null>(null)
   const [phone, setPhone] = useState(defaultPhone)
   const [busy, setBusy] = useState(false)
+  const [verifying, setVerifying] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
+  const [pendingId, setPendingId] = useState<string | null>(null)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
@@ -64,6 +67,8 @@ export function MobileMoneyCheckout({
     setError(null)
     setSuccess(null)
     setBusy(false)
+    setVerifying(false)
+    setPendingId(null)
     if (items.length > 0) {
       void savePendingCheckoutCart({
         items,
@@ -94,47 +99,76 @@ export function MobileMoneyCheckout({
     }
   }
 
+  const applySyncResult = (result: Awaited<ReturnType<typeof syncAccessRequest>>) => {
+    if (result.payment?.status === 'approved' || ['actif', 'valide'].includes(result.accessRequest.status)) {
+      stopPoll()
+      setSuccess('Paiement confirmé. Accès activé.')
+      setBusy(false)
+      setVerifying(false)
+      void clearPendingCheckoutCart()
+      void hapticSuccess()
+      onSuccess(result.access)
+      return true
+    }
+    if (
+      result.payment?.status === 'declined' ||
+      result.payment?.status === 'failed' ||
+      result.payment?.status === 'canceled' ||
+      result.accessRequest.status === 'rejete'
+    ) {
+      stopPoll()
+      setBusy(false)
+      setVerifying(false)
+      setSuccess(null)
+      setError(friendlyPaymentError(result.payment?.errorMessage, 'Le paiement n’a pas abouti. Réessaie.'))
+      setStep('phone')
+      return true
+    }
+    return false
+  }
+
   const startPoll = (accessRequestId: string) => {
     stopPoll()
+    setPendingId(accessRequestId)
     let ticks = 0
     const tick = async () => {
       ticks += 1
       try {
         const result = await syncAccessRequest(accessRequestId)
-        if (result.payment?.status === 'approved' || ['actif', 'valide'].includes(result.accessRequest.status)) {
-          stopPoll()
-          setSuccess('Paiement confirmé. Accès activé.')
-          setBusy(false)
-          void clearPendingCheckoutCart()
-          void hapticSuccess()
-          onSuccess(result.access)
-          return
-        }
-        if (
-          result.payment?.status === 'declined' ||
-          result.payment?.status === 'failed' ||
-          result.payment?.status === 'canceled' ||
-          result.accessRequest.status === 'rejete'
-        ) {
-          stopPoll()
-          setBusy(false)
-          setSuccess(null)
-          setError(result.payment?.errorMessage || 'Le paiement n’a pas abouti. Réessaie.')
-          setStep('phone')
-        }
+        if (applySyncResult(result)) return
       } catch {
         /* ignore */
       }
       if (ticks >= 60) {
         stopPoll()
         setBusy(false)
-        setError('Confirmation trop longue. Actualise tes accès dans un instant.')
+        setError(
+          'Confirmation trop longue. Si tu as validé sur ton téléphone, appuie sur « J’ai payé, vérifier ».',
+        )
       }
     }
     void tick()
     pollRef.current = setInterval(() => {
       void tick()
     }, 2000)
+  }
+
+  const verifyPaid = async () => {
+    if (!pendingId) return
+    setVerifying(true)
+    setError(null)
+    try {
+      const result = await syncAccessRequest(pendingId)
+      if (!applySyncResult(result)) {
+        setSuccess(
+          'Paiement pas encore confirmé. Valide la notification sur ton téléphone, puis réessaie.',
+        )
+      }
+    } catch {
+      setError('Vérification temporairement indisponible. Réessaie dans un instant.')
+    } finally {
+      setVerifying(false)
+    }
   }
 
   const submit = async () => {
@@ -175,7 +209,7 @@ export function MobileMoneyCheckout({
       setBusy(false)
       setStep('phone')
       if (err instanceof AccessRequestError) {
-        setError(err.message)
+        setError(friendlyPaymentError(err.message, 'Paiement impossible. Vérifie le numéro et réessaie.'))
         if (err.code === 'OPERATOR_MISMATCH') {
           const expected = guessOperator(phone)
           if (expected) setOperator(expected)

@@ -6,7 +6,6 @@ import {
   ActivityIndicator,
   Animated,
   Image,
-  Linking,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -38,10 +37,13 @@ import {
   type ReservationCheckoutSlot,
 } from '../../components/ReservationMobileMoneyCheckout'
 import { ScreenLoader } from '../../components/ScreenLoader'
+import { useHoldTimer } from '../../hooks/useHoldTimer'
 import { useRequireAuth } from '../../hooks/useRequireAuth'
 import type { RootStackParamList } from '../../navigation/types'
 import { dark, fonts } from '../../theme'
 import { resolveMediaUrl } from '../../utils/mediaUrl'
+import { resolveMoniteurVideoEmbed } from '../../utils/mediaEmbed'
+import { safeOpenUrl } from '../../utils/safeOpenUrl'
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'ReservationFlow'>
 type Step = 'moniteur' | 'profile' | 'duration' | 'slots'
@@ -278,19 +280,17 @@ export function ReservationFlowScreen() {
     navigation.replace('ReservationConfirm', { ...params, fromList: false })
   }
 
-  const openPaymentCheckout = () => {
-    if (!moniteurId || !selectedDate || !selectedStart || !selectedEnd) return
-    setCheckoutSlot({
-      moniteurId,
-      date: selectedDate,
-      startTime: selectedStart,
-      endTime: selectedEnd,
-      vehicleType: vehicleType || 'voiture',
-      hours: durationHours,
-      amount: priceFcfa,
-    })
-    setMmOpen(true)
-  }
+  const onHoldExpired = useCallback(() => {
+    setMmOpen(false)
+    setCheckoutSlot(null)
+    setError('Créneau libéré — le délai de réservation est écoulé. Choisissez un autre horaire.')
+    void loadAvailability()
+  }, [loadAvailability])
+
+  const hold = useHoldTimer(
+    mmOpen && checkoutSlot?.lockedUntil ? checkoutSlot.lockedUntil : null,
+    onHoldExpired,
+  )
 
   const onContinue = async () => {
     if (!moniteurId || !selectedDate || !selectedStart || !selectedEnd) {
@@ -309,15 +309,15 @@ export function ReservationFlowScreen() {
         /* ignore */
       }
 
-      // Solde déjà suffisant (ex. code promo déjà appliqué) → confirmation sans MM
+      const data = await requestReservationSlot({
+        moniteurId,
+        date: selectedDate,
+        startTime: selectedStart,
+        endTime: selectedEnd,
+        vehicleType: vehicleType || 'voiture',
+      })
+
       if (currentSolde !== null && currentSolde >= durationHours) {
-        const data = await requestReservationSlot({
-          moniteurId,
-          date: selectedDate,
-          startTime: selectedStart,
-          endTime: selectedEnd,
-          vehicleType: vehicleType || 'voiture',
-        })
         const result = await createReservation({
           creneauIds: [String(data.creneau.id)],
           vehicleType: data.creneau.vehicleType || vehicleType || 'voiture',
@@ -340,7 +340,18 @@ export function ReservationFlowScreen() {
         return
       }
 
-      openPaymentCheckout()
+      setCheckoutSlot({
+        moniteurId,
+        date: selectedDate,
+        startTime: selectedStart,
+        endTime: selectedEnd,
+        vehicleType: vehicleType || 'voiture',
+        hours: durationHours,
+        amount: data.amountFcfa ?? priceFcfa,
+        creneauId: String(data.creneau.id),
+        lockedUntil: data.lockedUntil || null,
+      })
+      setMmOpen(true)
     } catch (err) {
       setError(err instanceof ReservationError ? err.message : 'Impossible de continuer')
       void loadAvailability()
@@ -490,8 +501,9 @@ export function ReservationFlowScreen() {
                   </View>
                 ) : null}
                 <Text style={styles.typeText}>
-                  {profile.vehicleTypes?.[0] || 'Véhicule'} ·{' '}
-                  {profile.defaultPriceFcfa.toLocaleString('fr-FR')} FCFA/h
+                  {(profile.vehicleTypes?.filter(Boolean).join(' · ') || 'Véhicule') +
+                    ' · ' +
+                    `${profile.defaultPriceFcfa.toLocaleString('fr-FR')} FCFA/h`}
                 </Text>
               </View>
             </View>
@@ -518,7 +530,9 @@ export function ReservationFlowScreen() {
                 <Text style={styles.section}>Présentation</Text>
                 <Text style={styles.bioText}>{profile.bio}</Text>
               </View>
-            ) : null}
+            ) : (
+              <Text style={styles.empty}>Présentation non renseignée pour le moment.</Text>
+            )}
 
             {profile.specialties?.length ? (
               <View>
@@ -550,19 +564,27 @@ export function ReservationFlowScreen() {
                   ))}
                 </ScrollView>
               </View>
-            ) : null}
+            ) : (
+              <Text style={styles.empty}>Pas encore de galerie photo.</Text>
+            )}
 
             {profile.videos?.length
-              ? profile.videos.map((video) => (
-                  <Pressable
-                    key={video}
-                    style={styles.secondaryBtn}
-                    onPress={() => void Linking.openURL(video)}
-                  >
-                    <Text style={styles.secondaryBtnText}>Ouvrir la vidéo</Text>
-                  </Pressable>
-                ))
-              : null}
+              ? profile.videos.map((video) => {
+                  const embed = resolveMoniteurVideoEmbed(video)
+                  if (!embed) return null
+                  return (
+                    <Pressable
+                      key={video}
+                      style={styles.secondaryBtn}
+                      onPress={() => void safeOpenUrl(embed.watchUrl)}
+                    >
+                      <Text style={styles.secondaryBtnText}>Ouvrir la vidéo</Text>
+                    </Pressable>
+                  )
+                })
+              : (
+                <Text style={styles.empty}>Pas encore de vidéo de présentation.</Text>
+              )}
 
             <Pressable style={styles.primaryBtn} onPress={() => setStep('duration')}>
               <Text style={styles.primaryBtnText}>Choisir ce moniteur</Text>
@@ -803,6 +825,9 @@ export function ReservationFlowScreen() {
           slot={checkoutSlot}
           hoursNeeded={durationHours}
           defaultPhone={user.phone || ''}
+          holdLabel={hold.label}
+          holdExpired={hold.expired}
+          holdUrgent={(hold.remainingMs ?? 0) <= 60_000}
           onClose={() => {
             setMmOpen(false)
             setCheckoutSlot(null)

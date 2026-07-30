@@ -20,6 +20,7 @@ export interface ChapterQuestion {
   chapterId: string
   order: number
   published: boolean
+  hardcoded?: boolean
   prompt: QuestionPrompt
   answers: QuestionAnswer[]
   createdAt?: string

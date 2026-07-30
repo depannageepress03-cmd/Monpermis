@@ -26,6 +26,7 @@ import {
 import { dark, fonts } from '../theme'
 import { guessOperator } from '../utils/guessOperator'
 import { formatPrice } from '../utils/money'
+import { friendlyPaymentError } from '../utils/fedapayErrors'
 import { PAYMENT_OPERATORS, paymentOperatorLabel } from '../utils/paymentOperators'
 
 /** Seul pays desservi : envoyé au serveur sans étape de sélection. */
@@ -38,6 +39,7 @@ export interface ReservationCheckoutSlot {
   endTime: string
   vehicleType: string
   creneauId?: string
+  lockedUntil?: string | null
   hours?: number
   amount?: number
 }
@@ -55,6 +57,9 @@ interface Props {
   slot: ReservationCheckoutSlot
   hoursNeeded: number
   defaultPhone?: string
+  holdLabel?: string | null
+  holdExpired?: boolean
+  holdUrgent?: boolean
   onClose: () => void
   onSuccess: (reservations: ReservationItem[]) => void
   onSoldeSuccess: (result: SoldeSuccessResult) => void
@@ -67,6 +72,9 @@ export function ReservationMobileMoneyCheckout({
   slot,
   hoursNeeded,
   defaultPhone = '',
+  holdLabel = null,
+  holdExpired = false,
+  holdUrgent = false,
   onClose,
   onSuccess,
   onSoldeSuccess,
@@ -78,8 +86,10 @@ export function ReservationMobileMoneyCheckout({
   const [soldeHeures, setSoldeHeures] = useState<number | null>(null)
   const [busy, setBusy] = useState(false)
   const [promoBusy, setPromoBusy] = useState(false)
+  const [verifying, setVerifying] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
+  const [pendingGroupId, setPendingGroupId] = useState<string | null>(null)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
@@ -92,6 +102,8 @@ export function ReservationMobileMoneyCheckout({
     setSuccess(null)
     setBusy(false)
     setPromoBusy(false)
+    setVerifying(false)
+    setPendingGroupId(null)
     fetchAccessMe()
       .then((data) => setSoldeHeures(data.user.soldeHeures))
       .catch(() => setSoldeHeures(null))
@@ -115,6 +127,7 @@ export function ReservationMobileMoneyCheckout({
 
   const startPoll = (bookingGroupId: string) => {
     stopPoll()
+    setPendingGroupId(bookingGroupId)
     let ticks = 0
     let approvedSeenAt: number | null = null
     const tick = async () => {
@@ -158,7 +171,7 @@ export function ReservationMobileMoneyCheckout({
           stopPoll()
           setBusy(false)
           setSuccess(null)
-          setError(result.payment.errorMessage || 'Le paiement n’a pas abouti. Réessaie.')
+          setError(friendlyPaymentError(result.payment.errorMessage, 'Le paiement n’a pas abouti. Réessaie.'))
           setStep('phone')
         }
       } catch {
@@ -167,13 +180,46 @@ export function ReservationMobileMoneyCheckout({
       if (ticks >= 60) {
         stopPoll()
         setBusy(false)
-        setError('Confirmation trop longue. Vérifie tes réservations dans un instant.')
+        setError('Confirmation trop longue. Si tu as validé sur ton téléphone, appuie sur « J’ai payé, vérifier ».')
       }
     }
     void tick()
     pollRef.current = setInterval(() => {
       void tick()
     }, 2000)
+  }
+
+  const verifyPaid = async () => {
+    if (!pendingGroupId) return
+    setVerifying(true)
+    setError(null)
+    try {
+      const result = await syncReservationPayment(pendingGroupId)
+      const reservations = result.reservations || []
+      const allConfirmed =
+        result.confirmed === true ||
+        (reservations.length > 0 && reservations.every((item) => item.status === 'confirmed'))
+      if (result.payment.status === 'approved' && allConfirmed) {
+        stopPoll()
+        setBusy(false)
+        setVerifying(false)
+        onSuccess(reservations)
+        return
+      }
+      if (['declined', 'failed', 'canceled'].includes(result.payment.status)) {
+        stopPoll()
+        setBusy(false)
+        setVerifying(false)
+        setError(friendlyPaymentError(result.payment.errorMessage, 'Le paiement n’a pas abouti. Réessaie.'))
+        setStep('phone')
+        return
+      }
+      setSuccess('Paiement pas encore confirmé. Valide la notification, puis réessaie.')
+    } catch {
+      setError('Vérification temporairement indisponible. Réessaie dans un instant.')
+    } finally {
+      setVerifying(false)
+    }
   }
 
   const applyPromo = async () => {
@@ -312,6 +358,19 @@ export function ReservationMobileMoneyCheckout({
           </View>
 
           <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+            {holdLabel || holdExpired ? (
+              <Text
+                style={[
+                  styles.holdBanner,
+                  holdUrgent && styles.holdUrgent,
+                  holdExpired && styles.holdExpired,
+                ]}
+              >
+                {holdExpired
+                  ? 'Créneau libéré — choisis un autre horaire.'
+                  : `Créneau réservé pour toi : ${holdLabel}`}
+              </Text>
+            ) : null}
             <View style={styles.line}>
               <Text style={styles.lineLabel}>{label}</Text>
               <Text style={styles.lineAmount}>{formatPrice(amount)}</Text>
@@ -474,6 +533,19 @@ const styles = StyleSheet.create({
     paddingTop: 18,
     paddingBottom: 8,
   },
+  holdBanner: {
+    color: '#065f46',
+    backgroundColor: '#ecfdf5',
+    borderColor: '#a7f3d0',
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 10,
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 13,
+    overflow: 'hidden',
+  },
+  holdUrgent: { color: '#9a3412', backgroundColor: '#fff7ed', borderColor: '#fed7aa' },
+  holdExpired: { color: '#991b1b', backgroundColor: '#fef2f2', borderColor: '#fecaca' },
   title: { color: dark.textPrimary, fontFamily: fonts.displayBold, fontSize: 20 },
   close: { color: dark.textMuted, fontFamily: fonts.bodyBold, fontSize: 14 },
   scroll: { paddingHorizontal: 18, paddingBottom: 20, gap: 10 },

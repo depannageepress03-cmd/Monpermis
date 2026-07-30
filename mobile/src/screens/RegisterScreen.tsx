@@ -299,7 +299,4 @@ const styles = StyleSheet.create({
     color: dark.green,
     fontFamily: fonts.bodyBold,
   },
-  pressed: {
-    opacity: 0.9,
-  },
 })

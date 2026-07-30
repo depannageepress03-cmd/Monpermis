@@ -66,19 +66,38 @@ function applyOrder(items, orderedIds) {
 
 /**
  * @param {import('mongoose').Model} Model
- * @param {{ mediaFolder?: string }} [options]
+ * @param {{
+ *   mediaFolder?: string
+ *   lockChapterStructure?: boolean
+ *   ensureChapters?: () => Promise<unknown>
+ * }} [options]
  */
 export function createAdminChapterRouter(Model, options = {}) {
   const mediaFolder = String(options.mediaFolder || '').trim() || resolveCodeMediaFolder()
+  const lockChapterStructure = Boolean(options.lockChapterStructure)
+  const ensureChapters =
+    typeof options.ensureChapters === 'function' ? options.ensureChapters : null
   const router = Router()
   router.use(requireAdminAuth)
 
+  const structureLockedResponse = (res) =>
+    res.status(400).json({
+      success: false,
+      error:
+        'Les 21 chapitres de révision sont standards et figés. Seuls les cours / modules restent éditables.',
+    })
+
   router.get('/chapters', async (_req, res) => {
     try {
-      const chapters = await Model.find().sort({ order: 1, createdAt: 1 })
+      if (ensureChapters) await ensureChapters()
+      const filter = lockChapterStructure ? { order: { $gte: 1, $lte: 21 } } : {}
+      const chapters = await Model.find(filter).sort({ order: 1, createdAt: 1 })
       res.json({
         success: true,
-        data: { chapters: chapters.map((chapter) => chapter.toAdminJSON()) },
+        data: {
+          chapters: chapters.map((chapter) => chapter.toAdminJSON()),
+          lockChapterStructure,
+        },
       })
     } catch (error) {
       console.error('Erreur liste chapitres:', error)
@@ -87,6 +106,7 @@ export function createAdminChapterRouter(Model, options = {}) {
   })
 
   router.post('/chapters', audit('create', 'chapter'), async (req, res) => {
+    if (lockChapterStructure) return structureLockedResponse(res)
     try {
       const name = req.body.name?.trim()
       if (!name || name.length < 2) {
@@ -110,6 +130,12 @@ export function createAdminChapterRouter(Model, options = {}) {
       }
 
       if (req.body.name !== undefined) {
+        if (lockChapterStructure) {
+          return res.status(400).json({
+            success: false,
+            error: 'Le nom des chapitres standards n’est pas modifiable.',
+          })
+        }
         const name = String(req.body.name).trim()
         if (name.length < 2) {
           return res.status(400).json({ success: false, error: 'Nom de chapitre trop court' })
@@ -135,6 +161,7 @@ export function createAdminChapterRouter(Model, options = {}) {
   })
 
   router.post('/chapters/reorder', audit('reorder', 'chapter'), async (req, res) => {
+    if (lockChapterStructure) return structureLockedResponse(res)
     try {
       const orderedIds = req.body.orderedIds
       if (!Array.isArray(orderedIds) || orderedIds.length === 0) {
@@ -171,6 +198,7 @@ export function createAdminChapterRouter(Model, options = {}) {
   })
 
   router.post('/chapters/:chapterId/duplicate', audit('duplicate', 'chapter'), async (req, res) => {
+    if (lockChapterStructure) return structureLockedResponse(res)
     try {
       const source = await Model.findById(req.params.chapterId)
       if (!source) {
@@ -200,6 +228,7 @@ export function createAdminChapterRouter(Model, options = {}) {
   })
 
   router.delete('/chapters/:chapterId', audit('delete', 'chapter'), async (req, res) => {
+    if (lockChapterStructure) return structureLockedResponse(res)
     try {
       const chapter = await Model.findByIdAndDelete(req.params.chapterId)
       if (!chapter) {

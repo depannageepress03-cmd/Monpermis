@@ -44,6 +44,7 @@ import { runReservationReminders } from './utils/reservationReminders.js'
 import { completePastConfirmedReservations } from './utils/reservationLifecycle.js'
 import { runAnnouncementJobs } from './services/announcements.js'
 import { ensureSuperAdminBootstrap } from './utils/bootstrapSuperAdmin.js'
+import { ensureStandardRevisionChaptersSafe } from './services/standardRevisionChapters.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const app = express()
@@ -139,6 +140,14 @@ app.use(express.json())
 // Disque local d’abord, puis MongoDB (Render n’a pas de disque persistant).
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')))
 app.get('/uploads/:kind/:filename', sendMediaAsset)
+// Audios questions en dur (chapitre 21, …)
+app.use(
+  '/content/code-audio',
+  express.static(path.join(__dirname, '../content/code-audio'), {
+    maxAge: '7d',
+    fallthrough: false,
+  }),
+)
 
 app.get('/api/health', (_req, res) => {
   const dbReady = mongoose.connection.readyState === 1
@@ -303,7 +312,7 @@ if (serveWebApp) {
     }),
   )
 
-  app.get(/^(?!\/api(?:\/|$)|\/uploads(?:\/|$)|\/assets(?:\/|$)).*/, (req, res, next) => {
+  app.get(/^(?!\/api(?:\/|$)|\/uploads(?:\/|$)|\/content(?:\/|$)|\/assets(?:\/|$)).*/, (req, res, next) => {
     if (req.method !== 'GET' && req.method !== 'HEAD') return next()
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate')
     // Aide les navigateurs à lâcher les vieux caches HTML/SW
@@ -335,6 +344,7 @@ async function connectMongo() {
     if (pricingSeed.created > 0) {
       logger.info(`Tarifs modules d'accès initialisés (${pricingSeed.created})`)
     }
+    await ensureStandardRevisionChaptersSafe()
     await expireDueAccessRequests()
     await warnExpiringAccessRequests(Number(process.env.SUBSCRIPTION_EXPIRY_WARN_DAYS) || 3)
     await expireStalePendingReservations()

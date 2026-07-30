@@ -97,6 +97,7 @@ export function RevisionChapitresScreen() {
     navigation.navigate('ChapterQuestionsList', {
       chapterId: chapter.id,
       chapterName: `${index + 1}. ${chapter.name}`,
+      chapterOrder: chapter.order || index + 1,
     })
   }
 
@@ -104,6 +105,7 @@ export function RevisionChapitresScreen() {
     navigation.navigate('ChapterTestSubject', {
       chapterId: chapter.id,
       chapterName: `${index + 1}. ${chapter.name}`,
+      chapterOrder: chapter.order || index + 1,
     })
   }
 
@@ -176,6 +178,7 @@ export function RevisionChapitresScreen() {
                   completedForChapter,
                 )
                 const testDone = completedTestIds.has(chapter.id)
+                const prevChapter = index > 0 ? chapters[index - 1] : null
 
                 return (
                   <View
@@ -194,7 +197,9 @@ export function RevisionChapitresScreen() {
                         <Text style={styles.cardTitle}>{chapter.name}</Text>
                         <Text style={styles.cardSubtitle}>
                           {!chapterUnlocked
-                            ? 'Validez le sujet test du chapitre précédent'
+                            ? prevChapter
+                              ? `Validez le sujet test de « ${index}. ${prevChapter.name} »`
+                              : 'Validez le sujet test du chapitre précédent'
                             : testDone
                               ? `${chapter.courses.length} cours · Chapitre validé`
                               : quizUnlocked
@@ -203,6 +208,15 @@ export function RevisionChapitresScreen() {
                         </Text>
                       </View>
                     </View>
+
+                    {!chapterUnlocked && prevChapter ? (
+                      <Pressable
+                        style={styles.lockCta}
+                        onPress={() => openTestSubject(prevChapter, index - 1)}
+                      >
+                        <Text style={styles.lockCtaText}>Aller au sujet test à valider</Text>
+                      </Pressable>
+                    ) : null}
 
                     <View style={styles.actions}>
                       <Pressable
@@ -344,6 +358,15 @@ const styles = StyleSheet.create({
     lineHeight: 16,
     color: dark.textMuted,
   },
+  lockCta: {
+    marginBottom: 10,
+    borderRadius: 12,
+    backgroundColor: dark.green,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    alignItems: 'center',
+  },
+  lockCtaText: { fontFamily: fonts.bodyBold, fontSize: 13, color: '#0B0F1A' },
   actions: {
     flexDirection: 'row',
     alignItems: 'stretch',

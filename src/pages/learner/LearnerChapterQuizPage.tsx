@@ -318,6 +318,11 @@ export function LearnerChapterQuizPage({
           {!loading && !error && question && !finished ? (
             <div className="learner-quiz">
               <p className="learner-quiz-progress">{progressLabel}</p>
+              {(question.correctCount ?? 1) > 1 ? (
+                <span className="learner-multi-badge">
+                  {question.correctCount} bonnes réponses à cocher
+                </span>
+              ) : null}
               {question.prompt?.imageUrls?.length ? (
                 <div className="learner-quiz-images">
                   {question.prompt.imageUrls.map((url) => (
