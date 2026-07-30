@@ -1,9 +1,9 @@
 import { useEffect, useRef } from 'react'
 
-const BG = '#FAF9F6'
-const GREEN = '#1FA857'
-const YELLOW = '#F5B31B'
-const NAVY = '#14263F'
+const BG = '#f4f7fb'
+const GREEN = '#00b050'
+const YELLOW = '#ffc000'
+const NAVY = '#001030'
 
 export function IntroAnimation({ onDone }: { onDone: () => void }) {
   const doneRef = useRef(onDone)
@@ -23,7 +23,7 @@ export function IntroAnimation({ onDone }: { onDone: () => void }) {
       position: 'fixed', inset: 0,
       background: BG, display: 'flex',
       alignItems: 'center', justifyContent: 'center',
-      fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+      fontFamily: 'Poppins, Manrope, system-ui, sans-serif',
     }}>
       <style>{`
         @keyframes intro-fade-in {
@@ -54,7 +54,8 @@ export function IntroAnimation({ onDone }: { onDone: () => void }) {
 
       <div style={{
         position: 'fixed', inset: 0,
-        background: 'radial-gradient(ellipse 55% 45% at 50% 44%, #ffffff 0%, var(--bg, #FAF9F6) 70%)',
+        background:
+          'radial-gradient(ellipse 70% 50% at 50% 40%, rgba(0, 176, 80, 0.12) 0%, transparent 60%), radial-gradient(ellipse 55% 45% at 50% 44%, #ffffff 0%, #f4f7fb 70%)',
         opacity: 0, animation: 'intro-fade-in 1.6s ease-out forwards',
       }} />
 

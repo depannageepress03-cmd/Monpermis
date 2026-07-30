@@ -2,7 +2,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { type FormEvent, useState } from 'react'
 import { resetPassword } from '../api/auth-password'
 import { AuthInput } from '../components/AuthInput'
-import { BrandName } from '../components/BrandName'
+import { AuthStage } from '../components/AuthStage'
 import { LegalFooter } from '../components/LegalFooter'
 import '../styles/login.css'
 
@@ -52,82 +52,74 @@ export function ResetPasswordPage() {
 
   if (!token) {
     return (
-      <div className="signin-page signin-page--app">
-        <div className="signin-container signin-container--app">
-          <header className="signin-header signin-header--app">
-            <img src="/logo.png" alt="" className="signin-logo-img" width={110} height={74} />
-            <BrandName as="p" className="signin-brand" />
-            <h1 className="signin-title">Lien invalide</h1>
-            <p className="signin-subtitle">Ce lien est invalide ou a expiré.</p>
-          </header>
-          <p className="signin-register-link" style={{ textAlign: 'center' }}>
+      <AuthStage tagline="On t’aide à retrouver l’accès rapidement." imageSrc="/home/i4.jpg">
+        <p className="auth-stage-kicker">Assistance</p>
+        <h2 className="auth-stage-heading">Lien invalide</h2>
+        <p className="auth-stage-lead">Ce lien est invalide ou a expiré.</p>
+        <div className="signin-form signin-form--stage">
+          <p className="signin-register-link">
             <Link to="/mot-de-passe-oublie">Contacter le support</Link>
           </p>
           <LegalFooter />
         </div>
-      </div>
+      </AuthStage>
     )
   }
 
   return (
-    <div className="signin-page signin-page--app">
-      <div className="signin-container signin-container--app">
-        <header className="signin-header signin-header--app">
-          <img src="/logo.png" alt="" className="signin-logo-img" width={110} height={74} />
-          <BrandName as="p" className="signin-brand" />
-          <h1 className="signin-title">Nouveau mot de passe</h1>
-          <p className="signin-subtitle">Choisis un mot de passe sécurisé pour ton compte.</p>
-        </header>
+    <AuthStage tagline="Choisis un nouveau code et reprends ta route." imageSrc="/home/i1.jpg">
+      <p className="auth-stage-kicker">Sécurité</p>
+      <h2 className="auth-stage-heading">Nouveau mot de passe</h2>
+      <p className="auth-stage-lead">Choisis un mot de passe sécurisé pour ton compte.</p>
 
-        {done ? (
-          <div className="signin-form signin-form--app">
-            <p className="signin-banner signin-banner--ok">Mot de passe réinitialisé !</p>
-            <p className="signin-register-link">
-              <Link to="/">Se connecter</Link>
-            </p>
-            <LegalFooter />
+      {done ? (
+        <div className="signin-form signin-form--stage">
+          <p className="signin-banner signin-banner--ok">Mot de passe réinitialisé !</p>
+          <p className="signin-register-link">
+            <Link to="/">Se connecter</Link>
+          </p>
+          <LegalFooter />
+        </div>
+      ) : (
+        <form className="signin-form signin-form--stage" onSubmit={handleSubmit} noValidate>
+          {error ? <p className="signin-banner signin-banner--err">{error}</p> : null}
+
+          <div className="signin-fields">
+            <AuthInput
+              label="Nouveau mot de passe"
+              name="password"
+              type="password"
+              placeholder="Nouveau mot de passe"
+              autoComplete="new-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+            <AuthInput
+              label="Confirmer le mot de passe"
+              name="confirmPassword"
+              type="password"
+              placeholder="Confirmer le mot de passe"
+              autoComplete="new-password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+            />
           </div>
-        ) : (
-          <form className="signin-form signin-form--app" onSubmit={handleSubmit} noValidate>
-            {error ? <p className="signin-banner signin-banner--err">{error}</p> : null}
 
-            <div className="signin-fields">
-              <AuthInput
-                label="Nouveau mot de passe"
-                name="password"
-                type="password"
-                placeholder="Nouveau mot de passe"
-                autoComplete="new-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-              <AuthInput
-                label="Confirmer le mot de passe"
-                name="confirmPassword"
-                type="password"
-                placeholder="Confirmer le mot de passe"
-                autoComplete="new-password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-              />
-            </div>
+          <button
+            type="submit"
+            className="signin-btn-continue signin-btn-continue--app"
+            disabled={loading}
+          >
+            {loading ? 'Réinitialisation…' : 'Réinitialiser'}
+          </button>
 
-            <button
-              type="submit"
-              className="signin-btn-continue signin-btn-continue--app"
-              disabled={loading}
-            >
-              {loading ? 'Réinitialisation…' : 'Réinitialiser'}
-            </button>
+          <p className="signin-register-link">
+            <Link to="/">Retour à la connexion</Link>
+          </p>
 
-            <p className="signin-register-link">
-              <Link to="/">Retour à la connexion</Link>
-            </p>
-
-            <LegalFooter />
-          </form>
-        )}
-      </div>
-    </div>
+          <LegalFooter />
+        </form>
+      )}
+    </AuthStage>
   )
 }

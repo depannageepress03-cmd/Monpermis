@@ -94,7 +94,7 @@ export const colors = {
   border: '#e2e8f0',
   signinAccent: '#00B050',
   white: '#ffffff',
-  introBg: '#FAF9F6',
+  introBg: '#F4F7FB',
   overlay: 'rgba(0,16,48,0.4)',
 }
 

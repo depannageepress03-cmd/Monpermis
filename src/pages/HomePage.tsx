@@ -138,8 +138,82 @@ export function HomePage() {
     </div>
   )
 
+  const pathsSection = (
+    <section className="home-desk-paths home-app-paths-block">
+      <p className="home-app-section-label">Choisis ton parcours</p>
+      <div className="home-app-paths">
+        <button
+          type="button"
+          className={`home-app-path home-app-path--photo home-app-path--panel home-app-path--code${codeLocked ? ' is-locked' : ''}`}
+          onClick={() => navigate('/code-de-la-route')}
+        >
+          <img
+            src="/home/paths/code.jpg"
+            alt=""
+            className="home-app-path-image"
+            draggable={false}
+          />
+          <span className="home-app-path-shade" aria-hidden="true" />
+          <span className="home-app-path-text">
+            <strong>Code de la route</strong>
+            <small>
+              {codeLocked ? (
+                <>
+                  <Lock size={12} /> Accès requis
+                </>
+              ) : (
+                'Cours, quiz & examens'
+              )}
+            </small>
+          </span>
+          <ChevronRight size={22} className="home-app-path-chevron" />
+        </button>
+
+        <button
+          type="button"
+          className={`home-app-path home-app-path--photo home-app-path--panel home-app-path--drive${conduiteLocked ? ' is-locked' : ''}`}
+          onClick={() => navigate('/conduite')}
+        >
+          <img
+            src="/home/paths/conduite.jpg"
+            alt=""
+            className="home-app-path-image"
+            draggable={false}
+          />
+          <span className="home-app-path-shade" aria-hidden="true" />
+          <span className="home-app-path-text">
+            <strong>Conduite</strong>
+            <small>
+              {conduiteLocked ? (
+                <>
+                  <Lock size={12} /> Accès requis
+                </>
+              ) : (
+                'Leçons & réservations'
+              )}
+            </small>
+          </span>
+          <ChevronRight size={22} className="home-app-path-chevron" />
+        </button>
+
+        <button
+          type="button"
+          className="home-app-path home-app-path--panel home-app-path--access"
+          onClick={() => navigate('/abonnement')}
+        >
+          <span className="home-app-path-shade" aria-hidden="true" />
+          <span className="home-app-path-text">
+            <strong>Abonnement</strong>
+            <small>{hasActiveAccess ? 'Gérer mes accès' : 'Débloquer les parcours'}</small>
+          </span>
+          <ChevronRight size={22} className="home-app-path-chevron" />
+        </button>
+      </div>
+    </section>
+  )
+
   return (
-    <div className="home-app" data-home-layout="fullbleed-v3">
+    <div className="home-app" data-home-layout="route-claire">
       <div className="home-app-inner">
         <header className="home-app-top">
           <div className="home-app-brand">
@@ -173,8 +247,7 @@ export function HomePage() {
 
         {needsPhone ? (
           <section
-            className="home-app-sub-strip"
-            style={{ marginBottom: 12, borderColor: '#f59e0b', background: '#fffbeb' }}
+            className="home-app-sub-strip home-app-sub-strip--warn"
           >
             <div>
               <strong>Numéro manquant</strong>
@@ -186,29 +259,26 @@ export function HomePage() {
           </section>
         ) : null}
 
-        {/* Mobile stack */}
+        {/* Mobile stack: marque déjà en header → salutation + parcours d’abord */}
         <div className="home-mobile-stack">
-          <section className="home-app-hero">
+          <section className="home-app-hero home-app-hero--enter">
             <p className="home-app-eyebrow">{greetingWord()}</p>
             <h2 className="home-app-name">{user.firstName}</h2>
-            <p className="home-app-subtitle">
-              Ton permis commence ici. Choisis ton parcours ci-dessous.
-            </p>
+            <p className="home-app-subtitle">Code, conduite — ta route vers le permis commence ici.</p>
           </section>
+          {pathsSection}
           {subStrip}
           <p className="home-app-section-label">Sur la route avec Monpermis</p>
           {marquee}
         </div>
 
-        {/* Desktop: intro + visuel côte à côte */}
+        {/* Desktop: intro + parcours + visuel */}
         <div className="home-desk-stage">
           <div className="home-desk-intro">
-            <section className="home-app-hero">
+            <section className="home-app-hero home-app-hero--enter">
               <p className="home-app-eyebrow">{greetingWord()}</p>
               <h2 className="home-app-name">{user.firstName}</h2>
-              <p className="home-app-subtitle">
-                Ton permis commence ici. Choisis ton parcours ci-dessous.
-              </p>
+              <p className="home-app-subtitle">Code, conduite — ta route vers le permis commence ici.</p>
             </section>
             {subStrip}
           </div>
@@ -217,6 +287,8 @@ export function HomePage() {
             {marquee}
           </div>
         </div>
+
+        <div className="home-desk-only-paths">{pathsSection}</div>
 
         {announcements.length > 0 ? (
           <section className="home-app-news">
@@ -243,65 +315,6 @@ export function HomePage() {
             </div>
           </section>
         ) : null}
-
-        <section className="home-desk-paths">
-          <p className="home-app-section-label">Choisis ton parcours</p>
-          <div className="home-app-paths">
-            <button
-              type="button"
-              className={`home-app-path home-app-path--photo home-app-path--panel home-app-path--code${codeLocked ? ' is-locked' : ''}`}
-              onClick={() => navigate('/code-de-la-route')}
-            >
-              <img
-                src="/home/paths/code.jpg"
-                alt=""
-                className="home-app-path-image"
-                draggable={false}
-              />
-              <span className="home-app-path-shade" aria-hidden="true" />
-              <span className="home-app-path-text">
-                <strong>Code de la route</strong>
-                <small>
-                  {codeLocked ? (
-                    <>
-                      <Lock size={12} /> Accès requis
-                    </>
-                  ) : (
-                    'Cours, quiz & examens'
-                  )}
-                </small>
-              </span>
-              <ChevronRight size={22} className="home-app-path-chevron" />
-            </button>
-
-            <button
-              type="button"
-              className={`home-app-path home-app-path--photo home-app-path--panel home-app-path--drive${conduiteLocked ? ' is-locked' : ''}`}
-              onClick={() => navigate('/conduite')}
-            >
-              <img
-                src="/home/paths/conduite.jpg"
-                alt=""
-                className="home-app-path-image"
-                draggable={false}
-              />
-              <span className="home-app-path-shade" aria-hidden="true" />
-              <span className="home-app-path-text">
-                <strong>Conduite</strong>
-                <small>
-                  {conduiteLocked ? (
-                    <>
-                      <Lock size={12} /> Accès requis
-                    </>
-                  ) : (
-                    'Leçons & réservations'
-                  )}
-                </small>
-              </span>
-              <ChevronRight size={22} className="home-app-path-chevron" />
-            </button>
-          </div>
-        </section>
 
         <div className="home-desk-footer">
           <HomeBottomAnimation />

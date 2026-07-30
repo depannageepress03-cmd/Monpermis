@@ -202,7 +202,7 @@ export function HomeScreen() {
               {user.firstName}
             </Text>
             <Text style={styles.heroSubtitle}>
-              Ton permis commence ici. Choisis ton parcours ci-dessous.
+              Code, conduite — ta route vers le permis commence ici.
             </Text>
           </View>
 
@@ -218,6 +218,76 @@ export function HomeScreen() {
               <ChevronRight size={16} color={dark.textMuted} />
             </Pressable>
           ) : null}
+
+          {/* Path selector — actions principales d’abord */}
+          <Text style={[styles.sectionLabel, styles.pathSectionLabel]}>Choisis ton parcours</Text>
+
+          <Bouncy
+            scaleTo={0.97}
+            onPress={() => navigation.navigate('CodeRoute')}
+          >
+            <View style={[styles.pathCard, codeLocked ? styles.pathCardLocked : styles.pathCardGreen]}>
+              <Image
+                source={require('../../assets/home/paths/code.jpg')}
+                style={[styles.pathImage, styles.pathImageGreen]}
+                resizeMode="cover"
+              />
+              <View style={styles.pathCopy}>
+                <Text style={styles.pathTitle}>Code de la route</Text>
+                {codeLocked ? (
+                  <View style={styles.pathDescRow}>
+                    <Lock size={12} color={dark.textMuted} />
+                    <Text style={styles.pathDesc}>Accès requis</Text>
+                  </View>
+                ) : (
+                  <Text style={styles.pathDesc}>Cours, quiz & examens</Text>
+                )}
+              </View>
+              <ChevronRight size={20} color={codeLocked ? dark.textMuted : dark.green} />
+            </View>
+          </Bouncy>
+
+          <Bouncy
+            scaleTo={0.97}
+            style={styles.secondPath}
+            onPress={() => navigation.navigate('Conduite')}
+          >
+            <View style={[styles.pathCard, conduiteLocked ? styles.pathCardLocked : styles.pathCardCoral]}>
+              <Image
+                source={require('../../assets/home/paths/conduite.jpg')}
+                style={[styles.pathImage, styles.pathImageCoral]}
+                resizeMode="cover"
+              />
+              <View style={styles.pathCopy}>
+                <Text style={styles.pathTitle}>Conduite</Text>
+                {conduiteLocked ? (
+                  <View style={styles.pathDescRow}>
+                    <Lock size={12} color={dark.textMuted} />
+                    <Text style={styles.pathDesc}>Accès requis</Text>
+                  </View>
+                ) : (
+                  <Text style={styles.pathDesc}>Leçons & réservations</Text>
+                )}
+              </View>
+              <ChevronRight size={20} color={conduiteLocked ? dark.textMuted : dark.coral} />
+            </View>
+          </Bouncy>
+
+          <Bouncy
+            scaleTo={0.97}
+            style={styles.secondPath}
+            onPress={() => navigation.navigate('Abonnement')}
+          >
+            <View style={[styles.pathCard, styles.pathCardAccess]}>
+              <View style={styles.pathCopy}>
+                <Text style={[styles.pathTitle, styles.pathTitleOnDark]}>Abonnement</Text>
+                <Text style={[styles.pathDesc, styles.pathDescOnDark]}>
+                  {hasActiveAccess ? 'Gérer mes accès' : 'Débloquer les parcours'}
+                </Text>
+              </View>
+              <ChevronRight size={20} color="#FFC000" />
+            </View>
+          </Bouncy>
 
           {/* Status strip */}
           <Pressable
@@ -306,60 +376,6 @@ export function HomeScreen() {
               </View>
             </>
           ) : null}
-
-          {/* Path selector */}
-          <Text style={[styles.sectionLabel, styles.pathSectionLabel]}>Choisis ton parcours</Text>
-
-          <Bouncy
-            scaleTo={0.97}
-            onPress={() => navigation.navigate('CodeRoute')}
-          >
-            <View style={[styles.pathCard, codeLocked ? styles.pathCardLocked : styles.pathCardGreen]}>
-              <Image
-                source={require('../../assets/home/paths/code.jpg')}
-                style={[styles.pathImage, styles.pathImageGreen]}
-                resizeMode="cover"
-              />
-              <View style={styles.pathCopy}>
-                <Text style={styles.pathTitle}>Code de la route</Text>
-                {codeLocked ? (
-                  <View style={styles.pathDescRow}>
-                    <Lock size={12} color={dark.textMuted} />
-                    <Text style={styles.pathDesc}>Accès requis</Text>
-                  </View>
-                ) : (
-                  <Text style={styles.pathDesc}>Cours, quiz & examens</Text>
-                )}
-              </View>
-              <ChevronRight size={20} color={codeLocked ? dark.textMuted : dark.green} />
-            </View>
-          </Bouncy>
-
-          <Bouncy
-            scaleTo={0.97}
-            style={styles.secondPath}
-            onPress={() => navigation.navigate('Conduite')}
-          >
-            <View style={[styles.pathCard, conduiteLocked ? styles.pathCardLocked : styles.pathCardCoral]}>
-              <Image
-                source={require('../../assets/home/paths/conduite.jpg')}
-                style={[styles.pathImage, styles.pathImageCoral]}
-                resizeMode="cover"
-              />
-              <View style={styles.pathCopy}>
-                <Text style={styles.pathTitle}>Conduite</Text>
-                {conduiteLocked ? (
-                  <View style={styles.pathDescRow}>
-                    <Lock size={12} color={dark.textMuted} />
-                    <Text style={styles.pathDesc}>Accès requis</Text>
-                  </View>
-                ) : (
-                  <Text style={styles.pathDesc}>Leçons & réservations</Text>
-                )}
-              </View>
-              <ChevronRight size={20} color={conduiteLocked ? dark.textMuted : dark.coral} />
-            </View>
-          </Bouncy>
 
           <View style={styles.bottomAnim}>
             <HomeBottomAnimation compact />
@@ -465,7 +481,7 @@ export function HomeScreen() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: dark.bg,
+    backgroundColor: '#F4F7FB',
   },
   safe: {
     flex: 1,
@@ -706,7 +722,18 @@ const styles = StyleSheet.create({
   },
   pathCardCoral: {
     backgroundColor: dark.surface,
-    borderColor: 'rgba(255,107,74,0.28)',
+    borderColor: 'rgba(0,16,48,0.16)',
+  },
+  pathCardAccess: {
+    backgroundColor: '#001030',
+    borderColor: '#001030',
+    minHeight: 72,
+  },
+  pathTitleOnDark: {
+    color: '#FFFFFF',
+  },
+  pathDescOnDark: {
+    color: 'rgba(255,255,255,0.78)',
   },
   pathCardLocked: {
     backgroundColor: dark.surface,

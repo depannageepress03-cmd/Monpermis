@@ -7,15 +7,15 @@
 }
 
 :root {
-  /* Aligné sur mobile/src/theme (brand + dark) */
+  /* Route claire — Monpermis (aligné mobile/src/theme) */
   --color-primary: #001030;
   --color-primary-dark: #0a1530;
   --color-accent: #ffc000;
   --color-success: #00b050;
   --color-error: #e85d3b;
-  --color-bg: #ffffff;
-  --color-surface: #f8fafc;
-  --color-surface-raised: #eef1f5;
+  --color-bg: #f4f7fb;
+  --color-surface: #ffffff;
+  --color-surface-raised: #eef2f7;
   --color-text: #001030;
   --color-text-muted: #3d5a73;
   --color-border: rgba(0, 16, 48, 0.1);
@@ -24,28 +24,41 @@
   --brand-green-gradient: linear-gradient(135deg, #00d566, #00a344);
   --brand-green-soft: rgba(0, 176, 80, 0.12);
   --brand-gold: #ffc000;
+  --brand-gold-soft: rgba(255, 192, 0, 0.16);
   --brand-navy: #001030;
   --brand-coral: #e85d3b;
   --brand-coral-soft: rgba(232, 93, 59, 0.12);
-  --intro-bg: #faf9f6;
-  --font-body: 'Inter', system-ui, -apple-system, sans-serif;
-  --font-display: 'Poppins', 'Inter', system-ui, sans-serif;
-  --font-heading: 'Playfair Display', Georgia, serif;
+  --intro-bg: #f4f7fb;
+  --cta-bg: var(--brand-green-gradient);
+  --cta-fg: #ffffff;
+  --hero-overlay: linear-gradient(
+    165deg,
+    rgba(0, 16, 48, 0.88) 0%,
+    rgba(0, 16, 48, 0.55) 45%,
+    rgba(0, 176, 80, 0.22) 100%
+  );
+  --page-max: 720px;
+  --page-pad: 1.25rem;
+  --font-body: 'Manrope', system-ui, -apple-system, sans-serif;
+  --font-display: 'Poppins', 'Manrope', system-ui, sans-serif;
+  --font-heading: 'Poppins', 'Manrope', system-ui, sans-serif;
   --radius-xs: 6px;
   --radius-sm: 10px;
   --radius-md: 14px;
   --radius-lg: 20px;
   --radius-xl: 28px;
   --radius-pill: 999px;
-  --shadow-sm: 0 2px 8px rgba(0, 16, 48, 0.06);
-  --shadow-md: 0 4px 16px rgba(0, 16, 48, 0.08);
-  --shadow-lg: 0 8px 24px rgba(0, 16, 48, 0.1);
-  --shadow-card: 0 6px 20px rgba(0, 16, 48, 0.1);
+  --shadow-sm: 0 1px 3px rgba(0, 16, 48, 0.05);
+  --shadow-md: 0 4px 14px rgba(0, 16, 48, 0.07);
+  --shadow-lg: 0 10px 28px rgba(0, 16, 48, 0.09);
+  --shadow-card: 0 4px 18px rgba(0, 16, 48, 0.08);
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --motion-fast: 180ms ease;
+  --motion-enter: 420ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-/* Mot-symbole Monpermis.bj — identique mobile */
+/* Mot-symbole Monpermis.bj — signal hero */
 .brand-name {
   display: inline-flex;
   align-items: baseline;
@@ -69,6 +82,10 @@
   border-radius: 999px;
 }
 
+.brand-name--on-dark .brand-name-main {
+  color: var(--brand-navy);
+}
+
 html,
 body,
 #root {
@@ -78,7 +95,7 @@ body,
 
 body {
   font-family: var(--font-body);
-  background: #ffffff;
+  background: var(--color-bg);
   color: var(--color-text);
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
@@ -99,4 +116,14 @@ select {
 
 a {
   color: inherit;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

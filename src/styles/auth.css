@@ -195,13 +195,15 @@
   margin-top: 0.5rem;
   border: none;
   border-radius: var(--radius-pill);
-  background: var(--brand-green-gradient);
-  color: #fff;
-  font-weight: 600;
+  background: var(--cta-bg, var(--brand-green-gradient));
+  color: var(--cta-fg, #fff);
+  font-family: var(--font-display);
+  font-weight: 700;
   font-size: 0.95rem;
   cursor: pointer;
-  transition: transform 0.15s, box-shadow 0.15s, opacity 0.15s;
-  box-shadow: 0 8px 20px rgba(0, 176, 80, 0.35);
+  transition: transform var(--motion-fast, 0.15s), box-shadow var(--motion-fast, 0.15s),
+    opacity var(--motion-fast, 0.15s);
+  box-shadow: 0 8px 20px rgba(0, 176, 80, 0.28);
 }
 
 .btn-primary:hover:not(:disabled) {
@@ -1562,13 +1564,15 @@
   }
 }
 
-/* ─── Accueil aligné app mobile (fond clair) ───────────────── */
+/* ─── Accueil aligné app mobile (Route claire) ───────────────── */
 .home-app {
   min-height: 100dvh;
   width: 100%;
   max-width: none;
   margin: 0;
-  background: #ffffff;
+  background:
+    radial-gradient(ellipse 80% 40% at 100% 0%, rgba(0, 176, 80, 0.07), transparent 50%),
+    var(--color-bg);
   color: var(--brand-navy);
   box-sizing: border-box;
 }
@@ -1586,7 +1590,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-  margin-bottom: 1.5rem;
+  margin-bottom: 1.35rem;
   padding-top: var(--safe-top);
 }
 
@@ -1598,16 +1602,17 @@
 }
 
 .home-app-logo-badge {
-  width: 40px;
-  height: 40px;
+  width: 42px;
+  height: 42px;
   border-radius: 12px;
-  background: var(--color-surface);
+  background: #fff;
   border: 1px solid var(--color-border);
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
   flex-shrink: 0;
+  box-shadow: var(--shadow-sm);
 }
 
 .home-app-logo-badge img {
@@ -1617,7 +1622,7 @@
 }
 
 .home-app-brand-name {
-  font-size: 1.05rem;
+  font-size: clamp(1.35rem, 5vw, 1.65rem);
   margin: 0;
 }
 
@@ -1632,12 +1637,18 @@
   height: 40px;
   border-radius: 999px;
   border: 1px solid var(--color-border);
-  background: var(--color-surface-raised);
+  background: #fff;
   color: var(--brand-navy);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
+  transition: background var(--motion-fast, 0.15s), border-color var(--motion-fast, 0.15s);
+}
+
+.home-app-icon-btn:hover {
+  background: var(--color-surface-raised);
+  border-color: rgba(0, 16, 48, 0.16);
 }
 
 .home-app-bell-badge {
@@ -1658,30 +1669,57 @@
 }
 
 .home-app-hero {
-  margin-bottom: 1.25rem;
+  margin-bottom: 1.15rem;
+}
+
+.home-app-hero--enter {
+  animation: home-hero-enter var(--motion-enter, 420ms cubic-bezier(0.22, 1, 0.36, 1)) both;
+}
+
+@keyframes home-hero-enter {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .home-app-eyebrow {
-  margin: 0 0 0.25rem;
-  font-size: 0.85rem;
+  margin: 0 0 0.2rem;
+  font-size: 0.8rem;
   font-weight: 600;
-  color: var(--color-text-muted);
+  letter-spacing: 0.02em;
+  color: var(--brand-green);
+}
+
+.home-app[data-home-layout='route-claire'] .home-app-hero {
+  padding: 0.15rem 0 0.25rem;
+}
+
+.home-app[data-home-layout='route-claire'] .home-app-eyebrow {
+  font-family: var(--font-display);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-size: 0.72rem;
 }
 
 .home-app-name {
-  margin: 0 0 0.4rem;
+  margin: 0 0 0.35rem;
   font-family: var(--font-display);
-  font-weight: 800;
-  font-size: clamp(1.75rem, 6vw, 2.125rem);
-  letter-spacing: -0.03em;
-  line-height: 1.15;
+  font-weight: 700;
+  font-size: clamp(1.45rem, 5vw, 1.85rem);
+  letter-spacing: -0.02em;
+  line-height: 1.2;
   color: var(--brand-navy);
   text-transform: capitalize;
 }
 
 .home-app-subtitle {
   margin: 0;
-  font-size: 0.95rem;
+  font-size: 0.92rem;
   line-height: 1.45;
   color: var(--color-text-muted);
   max-width: 22rem;
@@ -1694,9 +1732,16 @@
   gap: 0.75rem;
   padding: 0.85rem 1rem;
   border-radius: 16px;
-  background: var(--color-surface);
+  background: #fff;
   border: 1px solid var(--color-border);
-  margin-bottom: 1.25rem;
+  margin-bottom: 1.15rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.home-app-sub-strip--warn {
+  margin-bottom: 12px;
+  border-color: rgba(245, 158, 11, 0.45);
+  background: #fffbeb;
 }
 
 .home-app-sub-strip > div {
@@ -1963,6 +2008,12 @@
   cursor: pointer;
   box-shadow: var(--shadow-sm);
   overflow: hidden;
+  transition: transform var(--motion-fast), box-shadow var(--motion-fast), border-color var(--motion-fast);
+}
+
+.home-app-path:hover:not(.is-locked) {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
 }
 
 .home-app-path--code {
@@ -1970,7 +2021,7 @@
 }
 
 .home-app-path--drive {
-  border-color: rgba(232, 93, 59, 0.35);
+  border-color: rgba(0, 16, 48, 0.18);
 }
 
 .home-app-path.is-locked {
@@ -2031,6 +2082,118 @@
   display: none;
 }
 
+/* Route claire — tuiles photo inspirées apps edtech */
+.home-app[data-home-layout='route-claire'] .home-app-path--photo {
+  position: relative;
+  display: block;
+  min-height: 7.25rem;
+  padding: 0;
+  overflow: hidden;
+  border: none;
+  border-radius: 20px;
+  box-shadow: var(--shadow-md);
+}
+
+.home-app[data-home-layout='route-claire'] .home-app-path--photo .home-app-path-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 0;
+  box-shadow: none;
+  object-fit: cover;
+}
+
+.home-app[data-home-layout='route-claire'] .home-app-path--photo .home-app-path-shade {
+  display: block;
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.home-app[data-home-layout='route-claire'] .home-app-path--photo.home-app-path--code .home-app-path-shade {
+  background: linear-gradient(
+    to top,
+    rgba(0, 16, 48, 0.92) 0%,
+    rgba(0, 176, 80, 0.35) 48%,
+    transparent 100%
+  );
+}
+
+.home-app[data-home-layout='route-claire'] .home-app-path--photo.home-app-path--drive .home-app-path-shade {
+  background: linear-gradient(
+    to top,
+    rgba(0, 16, 48, 0.92) 0%,
+    rgba(0, 16, 48, 0.35) 50%,
+    transparent 100%
+  );
+}
+
+.home-app[data-home-layout='route-claire'] .home-app-path--photo .home-app-path-text {
+  position: absolute;
+  left: 1rem;
+  right: 2.5rem;
+  bottom: 0.85rem;
+  z-index: 2;
+}
+
+.home-app[data-home-layout='route-claire'] .home-app-path--photo .home-app-path-text strong {
+  color: #fff;
+  font-size: 1.05rem;
+}
+
+.home-app[data-home-layout='route-claire'] .home-app-path--photo .home-app-path-text small {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.home-app[data-home-layout='route-claire'] .home-app-path--photo .home-app-path-chevron {
+  position: absolute;
+  right: 0.9rem;
+  bottom: 0.95rem;
+  z-index: 2;
+  color: #fff;
+}
+
+.home-app-path--access {
+  background: linear-gradient(135deg, #001030 0%, #0a2a1a 55%, #00a344 160%);
+  color: #fff;
+  min-height: 4.75rem;
+  border: none;
+}
+
+.home-app-path--access .home-app-path-text strong {
+  color: #fff;
+}
+
+.home-app-path--access .home-app-path-text small {
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.home-app-path--access .home-app-path-chevron {
+  color: var(--brand-gold);
+}
+
+.home-app-paths-block {
+  margin-bottom: 1.15rem;
+  animation: home-paths-enter 520ms cubic-bezier(0.22, 1, 0.36, 1) 80ms both;
+}
+
+@keyframes home-paths-enter {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.home-desk-only-paths {
+  display: none;
+}
+
 .home-desk-stage {
   display: none;
 }
@@ -2054,6 +2217,10 @@
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 1rem;
+  }
+
+  .home-app-path--access {
+    grid-column: 1 / -1;
   }
 
   .home-app-path {
@@ -2104,6 +2271,10 @@
 
   .home-mobile-stack {
     display: none !important;
+  }
+
+  .home-desk-only-paths {
+    display: block;
   }
 
   .home-desk-stage {
@@ -2190,6 +2361,14 @@
     margin-right: auto;
   }
 
+  .home-desk-paths .home-app-path--access {
+    grid-column: 1 / -1;
+    max-width: 28rem;
+    width: 100%;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
   .home-desk-paths .home-app-path--panel {
     margin: 0;
   }
@@ -2237,7 +2416,7 @@
   }
 
   .home-app-path--panel.home-app-path--drive .home-app-path-shade {
-    background: linear-gradient(to top, rgba(140, 50, 30, 0.9), rgba(232, 93, 59, 0.22), transparent);
+    background: linear-gradient(to top, rgba(0, 16, 48, 0.92), rgba(0, 16, 48, 0.28), transparent);
   }
 
   .home-app-path--panel .home-app-path-text {

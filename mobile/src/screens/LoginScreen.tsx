@@ -6,7 +6,9 @@ import { setStatusBarStyle } from 'expo-status-bar'
 import {
   Animated,
   Image,
+  ImageBackground,
   KeyboardAvoidingView,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -21,7 +23,7 @@ import { LegalFooter } from '../components/LegalFooter'
 import { BrandName } from '../components/BrandName'
 import { useAuth } from '../context/AuthContext'
 import type { RootStackParamList } from '../navigation/types'
-import { dark, fonts, gradients } from '../theme'
+import { brand, dark, fonts, gradients } from '../theme'
 import {
   normalizePhone,
   PHONE_PLACEHOLDER,
@@ -42,10 +44,10 @@ export function LoginScreen() {
   const [errors, setErrors] = useState<{ phone?: string; password?: string; info?: string }>({})
   const [loading, setLoading] = useState(false)
   const contentOpacity = useRef(new Animated.Value(0)).current
-  const contentTranslate = useRef(new Animated.Value(12)).current
+  const contentTranslate = useRef(new Animated.Value(16)).current
 
   useEffect(() => {
-    setStatusBarStyle('dark')
+    setStatusBarStyle('light')
     Animated.parallel([
       Animated.timing(contentOpacity, {
         toValue: 1,
@@ -58,6 +60,7 @@ export function LoginScreen() {
         useNativeDriver: true,
       }),
     ]).start()
+    return () => setStatusBarStyle('dark')
   }, [contentOpacity, contentTranslate])
 
   useEffect(() => {
@@ -111,34 +114,53 @@ export function LoginScreen() {
 
   return (
     <View style={styles.root}>
-      <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-        <KeyboardAvoidingView style={styles.flex} behavior="padding">
+      <ImageBackground
+        source={require('../../assets/home/i2.jpg')}
+        style={styles.hero}
+        imageStyle={styles.heroImage}
+      >
+        <LinearGradient
+          colors={['rgba(0,16,48,0.55)', 'rgba(0,16,48,0.82)', brand.navy]}
+          locations={[0, 0.55, 1]}
+          style={StyleSheet.absoluteFill}
+        />
+        <SafeAreaView edges={['top']} style={styles.heroSafe}>
           <Animated.View
             style={[
-              styles.flex,
+              styles.heroCopy,
               {
                 opacity: contentOpacity,
                 transform: [{ translateY: contentTranslate }],
               },
             ]}
           >
+            <Image
+              source={require('../../assets/logo.png')}
+              style={styles.logo}
+              resizeMode="contain"
+            />
+            <BrandName size={34} mainColor="#ffffff" style={styles.brand} />
+            <Text style={styles.tagline}>Code, conduite, confiance — avance à ton rythme.</Text>
+          </Animated.View>
+        </SafeAreaView>
+      </ImageBackground>
+
+      <View style={styles.panel}>
+        <SafeAreaView style={styles.panelSafe} edges={['bottom']}>
+          <KeyboardAvoidingView
+            style={styles.flex}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          >
             <ScrollView
               contentContainerStyle={styles.scroll}
               keyboardShouldPersistTaps="handled"
               showsVerticalScrollIndicator={false}
             >
-              <View style={styles.header}>
-                <Image
-                  source={require('../../assets/logo.png')}
-                  style={styles.logo}
-                  resizeMode="contain"
-                />
-                <BrandName size={22} style={styles.brand} mainColor={dark.textPrimary} />
-                <Text style={styles.title}>Content de te revoir</Text>
-                <Text style={styles.subtitle}>
-                  Connecte-toi pour reprendre ta préparation au permis.
-                </Text>
-              </View>
+              <Text style={styles.kicker}>Connexion</Text>
+              <Text style={styles.title}>Content de te revoir</Text>
+              <Text style={styles.subtitle}>
+                Connecte-toi pour reprendre ta préparation au permis.
+              </Text>
 
               {errors.info ? <Text style={styles.info}>{errors.info}</Text> : null}
 
@@ -197,9 +219,9 @@ export function LoginScreen() {
               </Text>
               <LegalFooter />
             </ScrollView>
-          </Animated.View>
-        </KeyboardAvoidingView>
-      </SafeAreaView>
+          </KeyboardAvoidingView>
+        </SafeAreaView>
+      </View>
     </View>
   )
 }
@@ -207,9 +229,52 @@ export function LoginScreen() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: dark.bg,
+    backgroundColor: brand.navy,
   },
-  safe: {
+  hero: {
+    minHeight: 240,
+    justifyContent: 'flex-end',
+  },
+  heroImage: {
+    resizeMode: 'cover',
+  },
+  heroSafe: {
+    paddingHorizontal: 24,
+    paddingBottom: 28,
+  },
+  heroCopy: {
+    alignItems: 'center',
+  },
+  logo: {
+    width: 72,
+    height: 48,
+    marginBottom: 10,
+  },
+  brand: {
+    marginBottom: 10,
+  },
+  tagline: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: 15,
+    lineHeight: 22,
+    color: 'rgba(255,255,255,0.88)',
+    textAlign: 'center',
+    maxWidth: 300,
+  },
+  panel: {
+    flex: 1,
+    marginTop: -18,
+    backgroundColor: '#F4F7FB',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    overflow: 'hidden',
+    shadowColor: brand.navy,
+    shadowOffset: { width: 0, height: -8 },
+    shadowOpacity: 0.18,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  panelSafe: {
     flex: 1,
   },
   flex: {
@@ -221,24 +286,19 @@ const styles = StyleSheet.create({
     paddingTop: 24,
     paddingBottom: 28,
   },
-  header: {
-    alignItems: 'center',
-    marginBottom: 32,
-  },
-  logo: {
-    width: 110,
-    height: 74,
-    marginBottom: 12,
-  },
-  brand: {
-    marginBottom: 16,
+  kicker: {
+    fontFamily: fonts.displayBold,
+    fontSize: 12,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+    color: dark.green,
+    marginBottom: 6,
   },
   title: {
     fontFamily: fonts.displayExtraBold,
     fontSize: 26,
     color: dark.textPrimary,
-    textAlign: 'center',
-    marginBottom: 8,
+    marginBottom: 6,
     letterSpacing: -0.4,
   },
   subtitle: {
@@ -246,8 +306,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
     color: dark.textMuted,
-    textAlign: 'center',
-    maxWidth: 280,
+    marginBottom: 20,
+    maxWidth: 320,
   },
   info: {
     color: dark.green,
@@ -263,7 +323,7 @@ const styles = StyleSheet.create({
   },
   fields: {
     gap: 18,
-    marginBottom: 20,
+    marginBottom: 12,
   },
   forgotWrap: {
     marginTop: -8,
@@ -271,24 +331,24 @@ const styles = StyleSheet.create({
   },
   submitBtn: {
     width: '100%',
-    minHeight: 52,
+    minHeight: 54,
     borderRadius: 999,
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 16,
     shadowColor: dark.green,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.35,
+    shadowRadius: 18,
+    elevation: 5,
   },
   submitText: {
-    fontFamily: fonts.bodyBold,
-    fontSize: 15,
-    color: '#0B0F1A',
+    fontFamily: fonts.displayBold,
+    fontSize: 16,
+    color: '#FFFFFF',
   },
   footer: {
-    marginTop: 32,
+    marginTop: 28,
     textAlign: 'center',
     fontFamily: fonts.body,
     fontSize: 14,
