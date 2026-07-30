@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from 'react'
 import { useFocusEffect, useNavigation } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
-import { BookOpen, ClipboardList, HelpCircle, Layers, Lock } from 'lucide-react-native'
+import { BookOpen, ClipboardList, HelpCircle, Layers } from 'lucide-react-native'
 import {
   Pressable,
   RefreshControl,
@@ -24,12 +24,6 @@ import { SkeletonList } from '../../components/Skeleton'
 import { useRequireAuth } from '../../hooks/useRequireAuth'
 import type { RootStackParamList } from '../../navigation/types'
 import { dark, fonts } from '../../theme'
-import {
-  isChapterQuestionsUnlocked,
-  isChapterQuizUnlocked,
-  isChapterTestSubjectUnlocked,
-  isChapterUnlocked,
-} from '../../utils/unlock'
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'RevisionChapitres'>
 
@@ -37,9 +31,6 @@ export function RevisionChapitresScreen() {
   const navigation = useNavigation<Nav>()
   const { user, loading: authLoading } = useRequireAuth(navigation)
   const [chapters, setChapters] = useState<RevisionChapter[]>([])
-  const [completedCourseIdsByChapter, setCompletedCourseIdsByChapter] = useState<
-    Record<string, Set<string>>
-  >({})
   const [completedTestIds, setCompletedTestIds] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
@@ -57,13 +48,6 @@ export function RevisionChapitresScreen() {
         if (meta.fromCache) setLoading(false)
       })
       const progress = await progressPromise
-
-      const byChapter: Record<string, Set<string>> = {}
-      for (const entry of progress.completedCourses) {
-        if (!byChapter[entry.chapterId]) byChapter[entry.chapterId] = new Set()
-        byChapter[entry.chapterId].add(entry.courseId)
-      }
-      setCompletedCourseIdsByChapter(byChapter)
       setCompletedTestIds(new Set(progress.completedTests.map((entry) => entry.chapterId)))
     } catch (err) {
       if (!hasDataRef.current) {
@@ -162,116 +146,51 @@ export function RevisionChapitresScreen() {
 
           {chapters.length > 0 && !error
             ? chapters.map((chapter, index) => {
-                const chapterUnlocked = isChapterUnlocked(
-                  index,
-                  chapters[index - 1]?.id,
-                  completedTestIds,
-                )
-                const courseIds = chapter.courses.map((course) => course.id)
-                const completedForChapter =
-                  completedCourseIdsByChapter[chapter.id] ?? new Set()
-                const quizUnlocked = isChapterQuizUnlocked(courseIds, completedForChapter)
-                const questionsUnlocked = isChapterQuestionsUnlocked(chapterUnlocked)
-                const testSubjectUnlocked = isChapterTestSubjectUnlocked(
-                  chapterUnlocked,
-                  courseIds,
-                  completedForChapter,
-                )
                 const testDone = completedTestIds.has(chapter.id)
-                const prevChapter = index > 0 ? chapters[index - 1] : null
 
                 return (
-                  <View
-                    key={chapter.id}
-                    style={[styles.card, !chapterUnlocked && styles.cardLocked]}
-                  >
+                  <View key={chapter.id} style={styles.card}>
                     <View style={styles.cardTop}>
                       <View style={styles.iconWrap}>
-                        {chapterUnlocked ? (
-                          <Text style={styles.cardNumber}>{index + 1}</Text>
-                        ) : (
-                          <Lock size={15} color={dark.textMuted} />
-                        )}
+                        <Text style={styles.cardNumber}>{index + 1}</Text>
                       </View>
                       <View style={styles.cardContent}>
                         <Text style={styles.cardTitle}>{chapter.name}</Text>
                         <Text style={styles.cardSubtitle}>
-                          {!chapterUnlocked
-                            ? prevChapter
-                              ? `Validez le sujet test de « ${index}. ${prevChapter.name} »`
-                              : 'Validez le sujet test du chapitre précédent'
-                            : testDone
-                              ? `${chapter.courses.length} cours · Chapitre validé`
-                              : quizUnlocked
-                                ? `${chapter.courses.length} cours · Sujet test débloqué`
-                                : `${chapter.courses.length} cours · Questions ouvertes · Terminez les cours pour le sujet test`}
+                          {testDone
+                            ? `${chapter.courses.length} cours · Chapitre validé`
+                            : `${chapter.courses.length} cours · Accès libre`}
                         </Text>
                       </View>
                     </View>
 
-                    {!chapterUnlocked && prevChapter ? (
-                      <Pressable
-                        style={styles.lockCta}
-                        onPress={() => openTestSubject(prevChapter, index - 1)}
-                      >
-                        <Text style={styles.lockCtaText}>Aller au sujet test à valider</Text>
-                      </Pressable>
-                    ) : null}
-
                     <View style={styles.actions}>
                       <Pressable
-                        style={({ pressed }) => [
-                          styles.actionBtn,
-                          !chapterUnlocked && styles.actionDisabled,
-                          pressed && chapterUnlocked && styles.pressed,
-                        ]}
-                        disabled={!chapterUnlocked}
+                        style={({ pressed }) => [styles.actionBtn, pressed && styles.pressed]}
                         onPress={() => openCourses(chapter, index)}
                       >
                         <View style={[styles.actionIcon, styles.actionCourses]}>
-                          {chapterUnlocked ? (
-                            <BookOpen size={15} color={dark.green} />
-                          ) : (
-                            <Lock size={13} color={dark.textMuted} />
-                          )}
+                          <BookOpen size={15} color={dark.green} />
                         </View>
                         <Text style={styles.actionLabel}>Cours</Text>
                       </Pressable>
 
                       <Pressable
-                        style={({ pressed }) => [
-                          styles.actionBtn,
-                          !questionsUnlocked && styles.actionDisabled,
-                          pressed && questionsUnlocked && styles.pressed,
-                        ]}
-                        disabled={!questionsUnlocked}
+                        style={({ pressed }) => [styles.actionBtn, pressed && styles.pressed]}
                         onPress={() => openQuestions(chapter, index)}
                       >
                         <View style={[styles.actionIcon, styles.actionQuestions]}>
-                          {questionsUnlocked ? (
-                            <HelpCircle size={15} color={dark.coral} />
-                          ) : (
-                            <Lock size={13} color={dark.textMuted} />
-                          )}
+                          <HelpCircle size={15} color={dark.coral} />
                         </View>
                         <Text style={styles.actionLabel}>Questions</Text>
                       </Pressable>
 
                       <Pressable
-                        style={({ pressed }) => [
-                          styles.actionBtn,
-                          !testSubjectUnlocked && styles.actionDisabled,
-                          pressed && testSubjectUnlocked && styles.pressed,
-                        ]}
-                        disabled={!testSubjectUnlocked}
+                        style={({ pressed }) => [styles.actionBtn, pressed && styles.pressed]}
                         onPress={() => openTestSubject(chapter, index)}
                       >
                         <View style={[styles.actionIcon, styles.actionTest]}>
-                          {testSubjectUnlocked ? (
-                            <ClipboardList size={15} color={dark.textPrimary} />
-                          ) : (
-                            <Lock size={13} color={dark.textMuted} />
-                          )}
+                          <ClipboardList size={15} color={dark.textPrimary} />
                         </View>
                         <Text style={styles.actionLabel}>Sujet test</Text>
                       </Pressable>
@@ -358,15 +277,6 @@ const styles = StyleSheet.create({
     lineHeight: 16,
     color: dark.textMuted,
   },
-  lockCta: {
-    marginBottom: 10,
-    borderRadius: 12,
-    backgroundColor: dark.green,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    alignItems: 'center',
-  },
-  lockCtaText: { fontFamily: fonts.bodyBold, fontSize: 13, color: '#0B0F1A' },
   actions: {
     flexDirection: 'row',
     alignItems: 'stretch',
@@ -447,7 +357,7 @@ const styles = StyleSheet.create({
   pressed: {
     opacity: 0.85,
   },
-  cardLocked: {
+  cardLockedUnused: {
     opacity: 0.55,
     borderColor: dark.border,
   },

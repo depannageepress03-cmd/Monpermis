@@ -1,4 +1,19 @@
 /** URLs Vite des MP3 embarqués (hors ligne après premier chargement navigateur). */
+import a18_1 from '../../assets/code-audio/chapitre-18/1.mp3?url'
+import a18_2 from '../../assets/code-audio/chapitre-18/2.mp3?url'
+import a18_3 from '../../assets/code-audio/chapitre-18/3.mp3?url'
+import a18_4 from '../../assets/code-audio/chapitre-18/4.mp3?url'
+import a18_5 from '../../assets/code-audio/chapitre-18/5.mp3?url'
+import a18_6 from '../../assets/code-audio/chapitre-18/6.mp3?url'
+import a18_7 from '../../assets/code-audio/chapitre-18/7.mp3?url'
+import a18_8 from '../../assets/code-audio/chapitre-18/8.mp3?url'
+import a18_9 from '../../assets/code-audio/chapitre-18/9.mp3?url'
+import a18_10 from '../../assets/code-audio/chapitre-18/10.mp3?url'
+import a18_11 from '../../assets/code-audio/chapitre-18/11.mp3?url'
+import a18_12 from '../../assets/code-audio/chapitre-18/12.mp3?url'
+import a18_13 from '../../assets/code-audio/chapitre-18/13.mp3?url'
+import a18_14 from '../../assets/code-audio/chapitre-18/14.mp3?url'
+import a18_15 from '../../assets/code-audio/chapitre-18/15.mp3?url'
 import a20_1 from '../../assets/code-audio/chapitre-20/1.mp3?url'
 import a20_2 from '../../assets/code-audio/chapitre-20/2.mp3?url'
 import a20_3 from '../../assets/code-audio/chapitre-20/3.mp3?url'
@@ -16,6 +31,23 @@ import a21_9 from '../../assets/code-audio/chapitre-21/9.mp3?url'
 import a21_10 from '../../assets/code-audio/chapitre-21/10.mp3?url'
 
 const MAP: Record<number, Record<number, string>> = {
+  18: {
+    1: a18_1,
+    2: a18_2,
+    3: a18_3,
+    4: a18_4,
+    5: a18_5,
+    6: a18_6,
+    7: a18_7,
+    8: a18_8,
+    9: a18_9,
+    10: a18_10,
+    11: a18_11,
+    12: a18_12,
+    13: a18_13,
+    14: a18_14,
+    15: a18_15,
+  },
   20: { 1: a20_1, 2: a20_2, 3: a20_3, 4: a20_4, 5: a20_5 },
   21: {
     1: a21_1,

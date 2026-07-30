@@ -1,56 +1,51 @@
-/** Helpers de déblocage progressif (cours → quiz → chapitre suivant). */
+/** Accès libre au rythme de l’élève (après abonnement / code promo module). */
 
 export function isChapterUnlocked(
-  chapterIndex: number,
-  previousChapterId: string | undefined,
-  completedTestIds: Set<string>,
+  _chapterIndex: number,
+  _previousChapterId: string | undefined,
+  _completedTestIds: Set<string>,
 ) {
-  if (chapterIndex <= 0) return true
-  if (!previousChapterId) return true
-  return completedTestIds.has(previousChapterId)
+  return true
 }
 
-export function isChapterQuizUnlocked(courseIds: string[], completedCourseIds: Set<string>) {
-  if (courseIds.length === 0) return false
-  return courseIds.every((id) => completedCourseIds.has(id))
+export function isChapterQuizUnlocked(_courseIds: string[], _completedCourseIds: Set<string>) {
+  return true
 }
 
 /** Questions accessibles dès que le chapitre est ouvert. */
-export function isChapterQuestionsUnlocked(chapterUnlocked: boolean) {
-  return chapterUnlocked
+export function isChapterQuestionsUnlocked(_chapterUnlocked: boolean) {
+  return true
 }
 
-/** Sujet test du chapitre : uniquement après tous les cours terminés. */
+/** Sujet test accessible sans prérequis de cours. */
 export function isChapterTestSubjectUnlocked(
-  chapterUnlocked: boolean,
-  courseIds: string[],
-  completedCourseIds: Set<string>,
+  _chapterUnlocked: boolean,
+  _courseIds: string[],
+  _completedCourseIds: Set<string>,
 ) {
-  return chapterUnlocked && isChapterQuizUnlocked(courseIds, completedCourseIds)
+  return true
 }
 
-/** Examens test globaux : tous les cours de tous les chapitres terminés. */
+/** Conservé pour stats / parcours ; n’est plus un verrou d’accès. */
 export function areAllRevisionCoursesCompleted(
   chapters: { id: string; courses: { id: string }[] }[],
   completedCourseIdsByChapter: Record<string, Set<string>>,
 ) {
   if (chapters.length === 0) return false
-  return chapters.every((chapter) =>
-    isChapterQuizUnlocked(
-      chapter.courses.map((course) => course.id),
-      completedCourseIdsByChapter[chapter.id] ?? new Set(),
-    ),
-  )
+  return chapters.every((chapter) => {
+    const courseIds = chapter.courses.map((course) => course.id)
+    if (courseIds.length === 0) return true
+    const done = completedCourseIdsByChapter[chapter.id] ?? new Set()
+    return courseIds.every((id) => done.has(id))
+  })
 }
 
 export function isCourseUnlocked(
-  courseIndex: number,
-  previousCourseId: string | undefined,
-  completedCourseIds: Set<string>,
+  _courseIndex: number,
+  _previousCourseId: string | undefined,
+  _completedCourseIds: Set<string>,
 ) {
-  if (courseIndex <= 0) return true
-  if (!previousCourseId) return true
-  return completedCourseIds.has(previousCourseId)
+  return true
 }
 
 export function formatSeconds(seconds: number) {

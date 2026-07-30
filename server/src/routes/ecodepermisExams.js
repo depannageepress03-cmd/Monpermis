@@ -12,21 +12,12 @@ import {
 } from '../utils/ecodepermis.js'
 import { ensureECodePermisExamSheets } from '../services/ecodepermisExams.js'
 import { loadQuestionsByIds } from '../services/hardcodedQuestions.js'
-import { Chapter } from '../models/Chapter.js'
-import { allRevisionCoursesCompleted } from '../utils/progress.js'
 
 const router = Router()
 const withECodeAccess = [requireUserAuth, requireModuleAccess('ecodepermis')]
 
-async function assertECodePermisUnlocked(user) {
-  const chapters = await Chapter.find({ published: true }).sort({ order: 1, createdAt: 1 })
-  if (!allRevisionCoursesCompleted(user, chapters)) {
-    const error = new Error(
-      'Terminez tous les cours de chaque chapitre avant d’accéder à E-Codepermis.',
-    )
-    error.status = 403
-    throw error
-  }
+async function assertECodePermisUnlocked(_user) {
+  // Accès libre dès que le module E-Codepermis est actif (abonnement / promo).
 }
 
 function evaluateAnswers(question, answerIds) {
@@ -44,8 +35,7 @@ function evaluateAnswers(question, answerIds) {
 
 router.get('/exams', ...withECodeAccess, async (req, res) => {
   try {
-    const chapters = await Chapter.find({ published: true }).sort({ order: 1, createdAt: 1 })
-    const unlocked = allRevisionCoursesCompleted(req.user, chapters)
+    const unlocked = true
 
     const ensured = await ensureECodePermisExamSheets()
     if (ensured.error) {

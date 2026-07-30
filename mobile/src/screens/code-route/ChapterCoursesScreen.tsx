@@ -56,10 +56,7 @@ export function ChapterCoursesScreen() {
     }, [user, loadProgress]),
   )
 
-  const isCourseUnlocked = (index: number) => {
-    if (index === 0) return true
-    return completedIds.has(courses[index - 1]?.id)
-  }
+  const isCourseUnlocked = (_index: number) => true
 
   if (loading || !user) return <ScreenLoader />
 
@@ -76,7 +73,7 @@ export function ChapterCoursesScreen() {
           <FadeUp delay={100} style={styles.header}>
             <Text style={styles.heroEyebrow}>Cours du chapitre</Text>
             <Text style={styles.subtitle}>
-              Parcours les cours dans l’ordre. Chaque leçon validée ouvre la suivante.
+              Accède aux cours librement, à ton rythme.
             </Text>
           </FadeUp>
 

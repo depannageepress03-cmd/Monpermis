@@ -3,8 +3,7 @@
     "name": "Monpermis.bj",
     "slug": "monpermis",
     "scheme": "monpermis",
-    "version": "1.0.51",
-    "orientation": "portrait",
+    "version": "1.0.51",    "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "splash": {
@@ -34,8 +33,7 @@
     },
     "android": {
       "package": "com.monpermis.app",
-      "versionCode": 51,
-      "adaptiveIcon": {
+      "versionCode": 51,      "adaptiveIcon": {
         "backgroundColor": "#FFFFFF",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",

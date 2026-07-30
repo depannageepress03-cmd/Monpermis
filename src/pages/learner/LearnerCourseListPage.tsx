@@ -75,12 +75,8 @@ export function LearnerCourseListPage({
   const courses = chapter?.courses ?? []
 
   const isUnlocked = useMemo(() => {
-    return (index: number) => {
-      if (index === 0) return true
-      const prevId = courses[index - 1]?.id
-      return prevId ? completedIds.has(String(prevId)) : true
-    }
-  }, [completedIds, courses])
+    return (_index: number) => true
+  }, [])
 
   if (authLoading) {
     return (
@@ -111,11 +107,10 @@ export function LearnerCourseListPage({
             <span className="learner-accent learner-accent-navy" />
           </div>
           <p className="learner-courses-lead">
-            Parcourez les cours dans l’ordre. Chaque leçon validée ouvre la suivante pour
-            construire vos bases solidement.
+            Accédez aux cours librement, à votre rythme.
           </p>
           <p className="learner-courses-detail">
-            Prenez le temps de bien comprendre chaque notion avant de passer à la suite.
+            Prenez le temps de bien comprendre chaque notion.
           </p>
         </header>
 

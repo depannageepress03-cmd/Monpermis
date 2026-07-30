@@ -47,10 +47,7 @@ export function LeconsCoursesScreen() {
     }, [user, loadProgress]),
   )
 
-  const isCourseUnlocked = (index: number) => {
-    if (index === 0) return true
-    return completedIds.has(courses[index - 1]?.id)
-  }
+  const isCourseUnlocked = (_index: number) => true
 
   if (loading || !user) return <ScreenLoader />
 
@@ -75,7 +72,7 @@ export function LeconsCoursesScreen() {
               <View style={[styles.accent, styles.accentNavy]} />
             </View>
             <Text style={styles.subtitle}>
-              Validez chaque cours pour débloquer le suivant.
+              Accède aux cours librement, à ton rythme.
             </Text>
           </View>
 

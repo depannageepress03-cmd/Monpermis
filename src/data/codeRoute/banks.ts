@@ -58,6 +58,24 @@ function question(
   }
 }
 
+const CHAPITRE_18: LocalQuestion[] = [
+  question(18, 1, ['A', 'B', 'C', 'D'], ['A', 'C']),
+  question(18, 2, ['A', 'B', 'C'], ['C']),
+  question(18, 3, ['A', 'B', 'C', 'D'], ['C']),
+  question(18, 4, ['A', 'B', 'C', 'D'], ['C']),
+  question(18, 5, ['A', 'B', 'C'], ['A', 'B', 'C']),
+  question(18, 6, ['A', 'B', 'C'], ['A', 'B', 'C']),
+  question(18, 7, ['A', 'B'], ['A']),
+  question(18, 8, ['A', 'B', 'C', 'D'], ['D']),
+  question(18, 9, ['A', 'B', 'C'], ['C']),
+  question(18, 10, ['A', 'B', 'C'], ['B']),
+  question(18, 11, ['A', 'B', 'C', 'D'], ['A', 'C', 'D']),
+  question(18, 12, ['A', 'B', 'C', 'D'], ['A', 'B', 'C']),
+  question(18, 13, ['A', 'B', 'C', 'D'], ['C']),
+  question(18, 14, ['A', 'B', 'C'], ['A']),
+  question(18, 15, ['A', 'B', 'C', 'D'], ['A', 'C']),
+]
+
 const CHAPITRE_20: LocalQuestion[] = [
   question(20, 1, ['A', 'B'], ['B']),
   question(20, 2, ['A', 'B', 'C'], ['A']),
@@ -80,6 +98,7 @@ const CHAPITRE_21: LocalQuestion[] = [
 ]
 
 const BANKS_BY_ORDER: Record<number, LocalQuestion[]> = {
+  18: CHAPITRE_18,
   20: CHAPITRE_20,
   21: CHAPITRE_21,
 }

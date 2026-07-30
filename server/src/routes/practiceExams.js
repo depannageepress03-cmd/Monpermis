@@ -12,21 +12,12 @@ import {
 } from '../utils/practiceExam.js'
 import { ensurePracticeExamSheets } from '../services/practiceExams.js'
 import { loadQuestionsByIds } from '../services/hardcodedQuestions.js'
-import { Chapter } from '../models/Chapter.js'
-import { allRevisionCoursesCompleted } from '../utils/progress.js'
 
 const router = Router()
 const withCodeAccess = [requireUserAuth, requireModuleAccess('code')]
 
-async function assertPracticeExamsUnlocked(user) {
-  const chapters = await Chapter.find({ published: true }).sort({ order: 1, createdAt: 1 })
-  if (!allRevisionCoursesCompleted(user, chapters)) {
-    const error = new Error(
-      'Terminez tous les cours de chaque chapitre avant d’accéder aux examens test. Vous pouvez encore répondre aux questions et passer le sujet test de chaque chapitre.',
-    )
-    error.status = 403
-    throw error
-  }
+async function assertPracticeExamsUnlocked(_user) {
+  // Accès libre dès que le module code est actif (abonnement / promo).
 }
 
 function evaluateAnswers(question, answerIds) {
@@ -44,8 +35,7 @@ function evaluateAnswers(question, answerIds) {
 
 router.get('/practice-exams', ...withCodeAccess, async (req, res) => {
   try {
-    const chapters = await Chapter.find({ published: true }).sort({ order: 1, createdAt: 1 })
-    const unlocked = allRevisionCoursesCompleted(req.user, chapters)
+    const unlocked = true
 
     const ensured = await ensurePracticeExamSheets()
     if (ensured.error) {
