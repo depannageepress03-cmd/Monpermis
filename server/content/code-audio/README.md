@@ -6,6 +6,8 @@ Structure :
 code-audio/
   chapitre-18/
     1.mp3 … 15.mp3
+  chapitre-19/
+    1.mp3 … 26.mp3
   chapitre-20/
     1.mp3 … 5.mp3
   chapitre-21/
