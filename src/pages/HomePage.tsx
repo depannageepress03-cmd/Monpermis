@@ -259,20 +259,20 @@ export function HomePage() {
           </section>
         ) : null}
 
-        {/* Mobile stack: marque déjà en header → salutation + parcours d’abord */}
+        {/* Mobile stack: images qui défilent, puis choix de parcours juste en dessous */}
         <div className="home-mobile-stack">
           <section className="home-app-hero home-app-hero--enter">
             <p className="home-app-eyebrow">{greetingWord()}</p>
             <h2 className="home-app-name">{user.firstName}</h2>
             <p className="home-app-subtitle">Code, conduite — ta route vers le permis commence ici.</p>
           </section>
-          {pathsSection}
           {subStrip}
           <p className="home-app-section-label">Sur la route avec Monpermis</p>
           {marquee}
+          {pathsSection}
         </div>
 
-        {/* Desktop: intro + parcours + visuel */}
+        {/* Desktop: intro + visuel, parcours sous le carrousel */}
         <div className="home-desk-stage">
           <div className="home-desk-intro">
             <section className="home-app-hero home-app-hero--enter">

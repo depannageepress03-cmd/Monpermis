@@ -219,7 +219,43 @@ export function HomeScreen() {
             </Pressable>
           ) : null}
 
-          {/* Path selector — actions principales d’abord */}
+          {/* Status strip */}
+          <Pressable
+            style={({ pressed }) => [styles.statusStrip, pressed && styles.pressed]}
+            onPress={() => navigation.navigate('Abonnement')}
+          >
+            <View
+              style={[
+                styles.statusDot,
+                hasActiveAccess ? styles.statusDotActive : styles.statusDotOff,
+              ]}
+            />
+            <Text style={styles.statusText} numberOfLines={2}>
+              {hasActiveAccess
+                ? nearestSub
+                  ? `${nearestSub.label} · ${nearestSub.daysLeft} j restants`
+                  : 'Accès actifs'
+                : pendingRequest
+                  ? 'Paiement en cours de validation'
+                  : 'Aucun accès actif'}
+            </Text>
+            <Text style={styles.statusAction}>
+              {hasActiveAccess
+                ? nearestSub && nearestSub.daysLeft <= 7
+                  ? 'Renouveler'
+                  : 'Gérer'
+                : 'Voir les offres'}
+            </Text>
+            <ChevronRight size={16} color={dark.textMuted} />
+          </Pressable>
+
+          {/* Showcase marquee */}
+          <Text style={styles.sectionLabel}>Sur la route avec Monpermis</Text>
+          <View style={styles.marqueeWrap}>
+            <InfiniteImageMarquee compact />
+          </View>
+
+          {/* Path selector — juste sous les images qui défilent */}
           <Text style={[styles.sectionLabel, styles.pathSectionLabel]}>Choisis ton parcours</Text>
 
           <Bouncy
@@ -288,42 +324,6 @@ export function HomeScreen() {
               <ChevronRight size={20} color="#FFC000" />
             </View>
           </Bouncy>
-
-          {/* Status strip */}
-          <Pressable
-            style={({ pressed }) => [styles.statusStrip, pressed && styles.pressed]}
-            onPress={() => navigation.navigate('Abonnement')}
-          >
-            <View
-              style={[
-                styles.statusDot,
-                hasActiveAccess ? styles.statusDotActive : styles.statusDotOff,
-              ]}
-            />
-            <Text style={styles.statusText} numberOfLines={2}>
-              {hasActiveAccess
-                ? nearestSub
-                  ? `${nearestSub.label} · ${nearestSub.daysLeft} j restants`
-                  : 'Accès actifs'
-                : pendingRequest
-                  ? 'Paiement en cours de validation'
-                  : 'Aucun accès actif'}
-            </Text>
-            <Text style={styles.statusAction}>
-              {hasActiveAccess
-                ? nearestSub && nearestSub.daysLeft <= 7
-                  ? 'Renouveler'
-                  : 'Gérer'
-                : 'Voir les offres'}
-            </Text>
-            <ChevronRight size={16} color={dark.textMuted} />
-          </Pressable>
-
-          {/* Showcase marquee */}
-          <Text style={styles.sectionLabel}>Sur la route avec Monpermis</Text>
-          <View style={styles.marqueeWrap}>
-            <InfiniteImageMarquee compact />
-          </View>
 
           {/* Actualités */}
           {announcements.length > 0 ? (
