@@ -1,4 +1,16 @@
 /** URLs Vite des images embarquées (hors ligne après premier chargement). N° = question. */
+import img1_3 from '../../assets/code-images/chapitre-1/3.png?url'
+import img1_4 from '../../assets/code-images/chapitre-1/4.png?url'
+import img1_6 from '../../assets/code-images/chapitre-1/6.png?url'
+import img1_14 from '../../assets/code-images/chapitre-1/14.png?url'
+import img1_15 from '../../assets/code-images/chapitre-1/15.png?url'
+import img1_16 from '../../assets/code-images/chapitre-1/16.png?url'
+import img1_18 from '../../assets/code-images/chapitre-1/18.png?url'
+import img1_19 from '../../assets/code-images/chapitre-1/19.png?url'
+import img1_20 from '../../assets/code-images/chapitre-1/20.png?url'
+import img1_22 from '../../assets/code-images/chapitre-1/22.png?url'
+import img1_33 from '../../assets/code-images/chapitre-1/33.png?url'
+import img1_36 from '../../assets/code-images/chapitre-1/36.png?url'
 import img3_2 from '../../assets/code-images/chapitre-3/2.png?url'
 import img3_6 from '../../assets/code-images/chapitre-3/6.png?url'
 import img3_8 from '../../assets/code-images/chapitre-3/8.png?url'
@@ -21,6 +33,20 @@ import img16_8 from '../../assets/code-images/chapitre-16/8.png?url'
 import img18_1 from '../../assets/code-images/chapitre-18/1.png?url'
 
 const MAP: Record<number, Record<number, string>> = {
+  1: {
+    3: img1_3,
+    4: img1_4,
+    6: img1_6,
+    14: img1_14,
+    15: img1_15,
+    16: img1_16,
+    18: img1_18,
+    19: img1_19,
+    20: img1_20,
+    22: img1_22,
+    33: img1_33,
+    36: img1_36,
+  },
   3: {
     2: img3_2,
     6: img3_6,

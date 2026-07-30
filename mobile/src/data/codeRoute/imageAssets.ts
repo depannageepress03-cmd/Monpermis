@@ -1,5 +1,19 @@
 /** Images embarquées — quiz hors ligne. N° image = N° question. */
 export const CODE_IMAGE_MODULES: Record<number, Record<number, number>> = {
+  1: {
+    3: require('../../../assets/code-images/chapitre-1/3.png'),
+    4: require('../../../assets/code-images/chapitre-1/4.png'),
+    6: require('../../../assets/code-images/chapitre-1/6.png'),
+    14: require('../../../assets/code-images/chapitre-1/14.png'),
+    15: require('../../../assets/code-images/chapitre-1/15.png'),
+    16: require('../../../assets/code-images/chapitre-1/16.png'),
+    18: require('../../../assets/code-images/chapitre-1/18.png'),
+    19: require('../../../assets/code-images/chapitre-1/19.png'),
+    20: require('../../../assets/code-images/chapitre-1/20.png'),
+    22: require('../../../assets/code-images/chapitre-1/22.png'),
+    33: require('../../../assets/code-images/chapitre-1/33.png'),
+    36: require('../../../assets/code-images/chapitre-1/36.png'),
+  },
   3: {
     2: require('../../../assets/code-images/chapitre-3/2.png'),
     6: require('../../../assets/code-images/chapitre-3/6.png'),

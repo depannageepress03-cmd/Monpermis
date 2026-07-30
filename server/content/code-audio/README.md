@@ -4,6 +4,8 @@ Structure :
 
 ```
 code-audio/
+  chapitre-1/
+    1.mp3 … 42.mp3
   chapitre-6/
     1.mp3 … 30.mp3
   chapitre-7/

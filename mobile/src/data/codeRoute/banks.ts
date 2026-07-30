@@ -61,6 +61,51 @@ function question(
   }
 }
 
+const CHAPITRE_1: LocalQuestion[] = [
+  question(1, 1, ['A', 'B', 'C'], ['B']),
+  question(1, 2, ['A', 'B', 'C'], ['C']),
+  question(1, 3, ['A', 'B', 'C'], ['A'], [3]),
+  question(1, 4, ['A', 'B', 'C'], ['C'], [4]),
+  question(1, 5, ['A', 'B', 'C'], ['B']),
+  question(1, 6, ['A', 'B', 'C'], ['C'], [6]),
+  question(1, 7, ['A', 'B', 'C'], ['B']),
+  question(1, 8, ['A', 'B', 'C'], ['B']),
+  question(1, 9, ['A', 'B', 'C'], ['B', 'C']),
+  question(1, 10, ['A', 'B', 'C'], ['A']),
+  question(1, 11, ['A', 'B', 'C', 'D'], ['D']),
+  question(1, 12, ['A', 'B', 'C', 'D'], ['A', 'B', 'C']),
+  question(1, 13, ['A', 'B', 'C'], ['A']),
+  question(1, 14, ['A', 'B', 'C', 'D'], ['D'], [14]),
+  question(1, 15, ['A', 'B', 'C'], ['B'], [15]),
+  question(1, 16, ['A', 'B', 'C', 'D'], ['D'], [16]),
+  question(1, 17, ['A', 'B', 'C'], ['C']),
+  question(1, 18, ['A', 'B', 'C', 'D'], ['B'], [18]),
+  question(1, 19, ['A', 'B', 'C'], ['C'], [19]),
+  question(1, 20, ['A', 'B', 'C'], ['B'], [20]),
+  question(1, 21, ['A', 'B', 'C', 'D'], ['D']),
+  question(1, 22, ['A', 'B', 'C', 'D'], ['D'], [22]),
+  question(1, 23, ['A', 'B'], ['B']),
+  question(1, 24, ['A', 'B', 'C', 'D'], ['A']),
+  question(1, 25, ['A', 'B', 'C', 'D'], ['C']),
+  question(1, 26, ['A', 'B', 'C', 'D'], ['C']),
+  question(1, 27, ['A', 'B', 'C'], ['C']),
+  question(1, 28, ['A', 'B', 'C'], ['B']),
+  question(1, 29, ['A', 'B', 'C', 'D'], ['D']),
+  question(1, 30, ['A', 'B', 'C'], ['C']),
+  question(1, 31, ['A', 'B', 'C'], ['B']),
+  question(1, 32, ['A', 'B', 'C'], ['A']),
+  question(1, 33, ['A', 'B', 'C'], ['A'], [33]),
+  question(1, 34, ['A', 'B', 'C'], ['B']),
+  question(1, 35, ['A', 'B', 'C'], ['C']),
+  question(1, 36, ['A', 'B', 'C'], ['A'], [36]),
+  question(1, 37, ['A', 'B', 'C'], ['C']),
+  question(1, 38, ['A', 'B', 'C'], ['C']),
+  question(1, 39, ['A', 'B', 'C'], ['B']),
+  question(1, 40, ['A', 'B', 'C'], ['B']),
+  question(1, 41, ['A', 'B', 'C', 'D'], ['D']),
+  question(1, 42, ['A', 'B', 'C', 'D'], ['A']),
+]
+
 const CHAPITRE_3: LocalQuestion[] = [
   question(3, 1, ['A', 'B', 'C'], ['A']),
   question(3, 2, ['A', 'B', 'C', 'D'], ['A'], [2]),
@@ -341,6 +386,7 @@ const CHAPITRE_20: LocalQuestion[] = [
 ]
 
 const BANKS_BY_ORDER: Record<number, LocalQuestion[]> = {
+  1: CHAPITRE_1,
   3: CHAPITRE_3,
   6: CHAPITRE_6,
   7: CHAPITRE_7,

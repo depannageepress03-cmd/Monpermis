@@ -1,4 +1,8 @@
 import {
+  CHAPITRE_01_QUESTIONS,
+  matchesChapitre01,
+} from './chapitre01.js'
+import {
   CHAPITRE_03_QUESTIONS,
   matchesChapitre03,
 } from './chapitre03.js'
@@ -90,6 +94,11 @@ export const HARDCODED_CHAPTER_BANKS = [
     order: 3,
     match: matchesChapitre03,
     questions: CHAPITRE_03_QUESTIONS,
+  },
+  {
+    order: 1,
+    match: matchesChapitre01,
+    questions: CHAPITRE_01_QUESTIONS,
   },
 ]
 
