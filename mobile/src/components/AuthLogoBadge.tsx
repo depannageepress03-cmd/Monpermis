@@ -6,14 +6,21 @@ type Props = {
   style?: StyleProp<ViewStyle>
 }
 
-/** Logo Monpermis (marque détourée) dans un cercle fond blanc. */
+/** Logo Monpermis (marque détourée) parfaitement centré dans un cercle blanc. */
 export function AuthLogoBadge({ size = 72, style }: Props) {
-  const logo = Math.round(size * 0.9)
+  const logo = Math.round(size * 0.78)
+  const inset = Math.round((size - logo) / 2)
   return (
     <View style={[styles.badge, { width: size, height: size, borderRadius: size / 2 }, style]}>
       <Image
         source={require('../../assets/logo-mark.png')}
-        style={{ width: logo, height: logo }}
+        style={{
+          position: 'absolute',
+          left: inset,
+          top: inset,
+          width: logo,
+          height: logo,
+        }}
         resizeMode="contain"
       />
     </View>
@@ -22,10 +29,11 @@ export function AuthLogoBadge({ size = 72, style }: Props) {
 
 const styles = StyleSheet.create({
   badge: {
+    position: 'relative',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#FFFFFF',
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255,255,255,0.35)',
     shadowColor: '#001030',
     shadowOffset: { width: 0, height: 8 },

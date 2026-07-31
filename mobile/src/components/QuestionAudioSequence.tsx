@@ -118,7 +118,8 @@ async function playUntilEnd(player: Player, isCancelled?: () => boolean) {
 
 /**
  * Lance l’audio automatiquement (×2), puis décompte 5→0.
- * Démonter le composant (Continuer) annule tout sans décompte.
+ * Démonter le composant (Continuer / fin) annule tout.
+ * La simple sélection d’une réponse ne doit pas démonter ce composant.
  */
 export function QuestionAudioSequence({
   questionKey,

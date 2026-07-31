@@ -69,7 +69,8 @@ function wait(ms: number, isCancelled?: () => boolean) {
 
 /**
  * Lance l’audio automatiquement (×2), puis décompte 5→0.
- * Si le parent démonte le composant (sélection / Continuer / fin), tout s’arrête.
+ * Si le parent démonte le composant (Continuer / fin), tout s’arrête.
+ * La simple sélection d’une réponse ne doit pas démonter ce composant.
  */
 export function QuestionAudioSequence({
   questionKey,

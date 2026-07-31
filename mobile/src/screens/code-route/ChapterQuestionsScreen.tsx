@@ -35,7 +35,6 @@ import { dark, fonts } from '../../theme'
 import { hapticError, hapticSelect, hapticSuccess } from '../../utils/haptics'
 import { playFailSound, playSuccessSound, stopAllQuizAudio } from '../../utils/quizSounds'
 import { rememberChapterOrder } from '../../data/codeRoute/chapterIndex'
-import { resolveMediaUrl } from '../../utils/mediaUrl'
 import { resolveQuestionImageUri } from '../../utils/questionImages'
 
 function wait(ms: number) {
@@ -165,15 +164,7 @@ export function ChapterQuestionsScreen() {
     if (finished) stopAllQuizAudio()
   }, [finished])
 
-  useEffect(() => {
-    if (finished || result || checking) return
-    if (selectedIds.size > 0) {
-      setSequenceLive(false)
-      stopAllQuizAudio()
-    } else {
-      setSequenceLive(true)
-    }
-  }, [selectedIds, finished, result, checking])
+  // Sélection d’une réponse : ne coupe PAS l’audio (2 lectures complètes jusqu’à Continuer / fin de séquence).
 
   const question = questions[index]
   const [resolvedImages, setResolvedImages] = useState<{ key: string; uri: string }[]>([])
@@ -509,10 +500,10 @@ export function ChapterQuestionsScreen() {
                 {question.prompt.text ? (
                   <QuestionPromptHtml text={question.prompt.text} style={styles.promptText} />
                 ) : null}
-                {sequenceLive && !result && !audioPaused && question.prompt.audioUrl ? (
+                {sequenceLive && !result && !audioPaused ? (
                   <QuestionAudioSequence
                     questionKey={question.id}
-                    promptUri={resolveMediaUrl(question.prompt.audioUrl)}
+                    promptUri={question.prompt?.audioUrl}
                     onSequenceComplete={handleSequenceComplete}
                   />
                 ) : null}
@@ -612,7 +603,7 @@ export function ChapterQuestionsScreen() {
               ) : null}
               {!result && selectedIds.size === 0 ? (
                 <Text style={styles.awaitingText}>
-                  L’audio démarre tout seul. Cochez puis Continuer pour passer sans décompte.
+                  L’audio lit la question 2 fois. Vous pouvez cocher pendant la lecture ; Continuer valide sans attendre.
                 </Text>
               ) : null}
               {result ? <Text style={styles.awaitingText}>Passage automatique…</Text> : null}

@@ -41,7 +41,7 @@ export function AuthStage({
             className="auth-stage-logo-badge auth-stage-stagger"
             style={{ ['--stagger' as string]: '0' }}
           >
-            <img src="/logo-mark.png" alt="" className="auth-stage-logo" width={62} height={62} />
+            <img src="/logo-mark.png" alt="" className="auth-stage-logo" width={56} height={56} />
           </div>
           <BrandName
             as="h1"

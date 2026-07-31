@@ -133,16 +133,7 @@ export function LearnerChapterQuizPage({
     if (finished) stopAllQuizAudio()
   }, [finished])
 
-  /** Dès qu’une réponse est cochée : coupe l’audio ; si tout est décoché : relance. */
-  useEffect(() => {
-    if (finished || result || checking) return
-    if (selectedIds.length > 0) {
-      setSequenceLive(false)
-      stopAllQuizAudio()
-    } else {
-      setSequenceLive(true)
-    }
-  }, [selectedIds, finished, result, checking])
+  // Sélection d’une réponse : ne coupe PAS l’audio (2 lectures complètes jusqu’à Continuer / fin de séquence).
 
   const question = questions[index]
   const progressLabel = useMemo(() => {
@@ -384,8 +375,8 @@ export function LearnerChapterQuizPage({
                 ) : null}
                 {!result && selectedIds.length === 0 ? (
                   <p className="learner-quiz-audio-status">
-                    L’audio démarre tout seul. Cochez puis appuyez sur Continuer pour passer sans
-                    décompte. Sans choix à 0 : question ratée.
+                    L’audio lit la question 2 fois. Vous pouvez cocher pendant la lecture ; Continuer
+                    valide sans attendre. Sans choix à la fin : question ratée.
                   </p>
                 ) : null}
                 {result ? (
