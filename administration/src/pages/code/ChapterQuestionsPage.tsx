@@ -107,6 +107,7 @@ export function ChapterQuestionsPage() {
         backTo={`/code/revision-chapitres?chapter=${chapterId}`}
         backLabel="Retour au chapitre"
         kicker="Banque figée"
+        kickerTone="success"
         title={chapterName ? `Questions — ${chapterName}` : 'Questions'}
         subtitle="Les questions et audios viennent des fichiers du chapitre. Consultation uniquement — pas d’upload ni de création ici."
       />

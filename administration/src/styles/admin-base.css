@@ -484,8 +484,7 @@ textarea {
 }
 
 .admin-app h1,
-.admin-module-title,
-.admin-section-title {
+.admin-module-title {
   font-size: var(--text-xl) !important;
   font-weight: 700;
   letter-spacing: -0.02em;
@@ -495,12 +494,24 @@ textarea {
   font-size: var(--text-lg) !important;
 }
 
+.admin-app h1.admin-section-title,
+.admin-section-title {
+  font-size: 24px !important;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.2;
+  color: var(--navy);
+}
+
 .admin-module-kicker,
 .admin-section-kicker {
-  font-size: var(--text-xs) !important;
-  font-weight: 600;
-  letter-spacing: 0.04em;
+  font-size: 11px !important;
+  font-weight: 700;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
+}
+
+.admin-module-kicker {
   color: var(--navy-muted);
 }
 
