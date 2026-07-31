@@ -33,7 +33,7 @@ export function LearnerChapterListPage({
   backTo: string
   backLabel: string
   navTitle?: string
-  coursesPath: (chapterId: string) => string
+  coursesPath?: (chapterId: string) => string
   questionsPath?: (chapterId: string) => string
   testSubjectPath?: (chapterId: string) => string
 }) {
@@ -67,14 +67,17 @@ export function LearnerChapterListPage({
 
   if (authLoading || !user) return null
 
-  const showSectionIcons = track === 'revision' && questionsPath && testSubjectPath
+  const showQuizActions = Boolean(questionsPath || testSubjectPath)
+  const coursesOnly = Boolean(coursesPath) && !showQuizActions
 
   return (
     <div className="auth-page">
       <div className="auth-container learner-container">
         <PageNavbar
           title={navTitle || title}
-          icon={track === 'conduite' ? <BookOpen size={22} /> : <Layers size={22} />}
+          icon={
+            coursesOnly || track === 'conduite' ? <BookOpen size={22} /> : <Layers size={22} />
+          }
           onBack={() => navigate(backTo)}
           tone={track === 'conduite' ? 'drive' : 'default'}
           backLabel={backLabel}
@@ -83,9 +86,11 @@ export function LearnerChapterListPage({
         <header className="auth-header learner-header">
           <p className="learner-kicker">{kicker}</p>
           <p>
-            {showSectionIcons
-              ? 'Suivez chaque chapitre dans l’ordre : cours, questions, puis sujet test pour progresser sereinement.'
-              : 'Parcourez les leçons dans l’ordre pour avancer dans votre formation. Chaque chapitre regroupe les cours pratiques publiés par l’auto-école.'}
+            {coursesOnly
+              ? 'Choisissez un chapitre pour accéder à ses cours, à votre rythme.'
+              : showQuizActions
+                ? 'Questions et sujets test pour chaque chapitre. Les cours sont accessibles depuis le bouton Cours du menu Code.'
+                : 'Parcourez les leçons dans l’ordre pour avancer dans votre formation. Chaque chapitre regroupe les cours pratiques publiés par l’auto-école.'}
           </p>
         </header>
 
@@ -111,7 +116,7 @@ export function LearnerChapterListPage({
                 const numberedName = `${index + 1}. ${chapter.name}`
                 const testDone = completedTestIds.has(chapter.id)
 
-                if (showSectionIcons) {
+                if (showQuizActions) {
                   return (
                     <div key={chapter.id} className="learner-chapter-card">
                       <div className="learner-chapter-card-top">
@@ -126,40 +131,48 @@ export function LearnerChapterListPage({
                         </span>
                       </div>
                       <div className="learner-chapter-actions">
-                        <Link
-                          to={coursesPath(chapter.id)}
-                          state={{ chapter: { ...chapter, name: numberedName } }}
-                          className="learner-chapter-action"
-                        >
-                          <span className="learner-chapter-action-icon is-courses">
-                            <BookOpen size={15} />
-                          </span>
-                          <span>Cours</span>
-                        </Link>
-                        <Link
-                          to={questionsPath!(chapter.id)}
-                          state={{ chapterName: numberedName }}
-                          className="learner-chapter-action"
-                        >
-                          <span className="learner-chapter-action-icon is-questions">
-                            <HelpCircle size={15} />
-                          </span>
-                          <span>Questions</span>
-                        </Link>
-                        <Link
-                          to={testSubjectPath!(chapter.id)}
-                          state={{ chapterName: numberedName }}
-                          className="learner-chapter-action"
-                        >
-                          <span className="learner-chapter-action-icon is-test">
-                            <ClipboardList size={15} />
-                          </span>
-                          <span>Sujet test</span>
-                        </Link>
+                        {coursesPath ? (
+                          <Link
+                            to={coursesPath(chapter.id)}
+                            state={{ chapter: { ...chapter, name: numberedName } }}
+                            className="learner-chapter-action"
+                          >
+                            <span className="learner-chapter-action-icon is-courses">
+                              <BookOpen size={15} />
+                            </span>
+                            <span>Cours</span>
+                          </Link>
+                        ) : null}
+                        {questionsPath ? (
+                          <Link
+                            to={questionsPath(chapter.id)}
+                            state={{ chapterName: numberedName }}
+                            className="learner-chapter-action"
+                          >
+                            <span className="learner-chapter-action-icon is-questions">
+                              <HelpCircle size={15} />
+                            </span>
+                            <span>Questions</span>
+                          </Link>
+                        ) : null}
+                        {testSubjectPath ? (
+                          <Link
+                            to={testSubjectPath(chapter.id)}
+                            state={{ chapterName: numberedName }}
+                            className="learner-chapter-action"
+                          >
+                            <span className="learner-chapter-action-icon is-test">
+                              <ClipboardList size={15} />
+                            </span>
+                            <span>Sujet test</span>
+                          </Link>
+                        ) : null}
                       </div>
                     </div>
                   )
                 }
+
+                if (!coursesPath) return null
 
                 return (
                   <Link

@@ -1,679 +1,22 @@
-import {
-  DndContext,
-  KeyboardSensor,
-  PointerSensor,
-  closestCenter,
-  type DragEndEvent,
-  useSensor,
-  useSensors,
-} from '@dnd-kit/core'
-import {
-  SortableContext,
-  arrayMove,
-  sortableKeyboardCoordinates,
-  useSortable,
-  verticalListSortingStrategy,
-} from '@dnd-kit/sortable'
-import { CSS } from '@dnd-kit/utilities'
-import { FormEvent, useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { ChapterTestSubjectPanel } from './ChapterTestSubjectPanel'
 import {
   BookOpen,
-  ChevronDown,
-  ChevronRight,
   ClipboardList,
-  Copy,
-  Film,
-  GripVertical,
   HelpCircle,
-  Image,
-  Pencil,
-  Plus,
-  Trash2,
-  Type,
 } from 'lucide-react'
 import {
-  createCourse,
-  createModule,
-  deleteCourse,
-  deleteModule,
-  duplicateModule,
   fetchChapters,
-  reorderCourses,
-  reorderModules,
   updateChapter,
-  updateCourse,
-  updateModule,
-  uploadRevisionImage,
-  uploadRevisionVideo,
 } from '../../api/revision'
 import { AdminSectionHeader } from '../../components/AdminSectionHeader'
 import { CmsWorkspace, EmptyState, SkeletonBlock } from '../../ui'
-import { MediaPreview } from '../../components/MediaPreview'
 import { PublishSwitch } from '../../components/PublishSwitch'
-import { RichTextEditor } from '../../components/RichTextEditor'
 import { getAdminToken, isAuthError } from '../../context/AdminAuthContext'
-import type { Chapter, ContentModule, Course, MediaType } from '../../types/revision'
-import { describeModuleSize } from '../../utils/moduleSize'
-import { stripHtml } from '../../utils/richText'
+import type { Chapter } from '../../types/revision'
 
-function useAdminSensors() {
-  return useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
-  )
-}
-
-interface DragHandleProps {
-  attributes: ReturnType<typeof useSortable>['attributes']
-  listeners: ReturnType<typeof useSortable>['listeners']
-}
-
-function DragHandle({ attributes, listeners }: DragHandleProps) {
-  return (
-    <button
-      type="button"
-      className="drag-handle"
-      aria-label="Réordonner"
-      {...attributes}
-      {...listeners}
-      onClick={(e) => e.stopPropagation()}
-    >
-      <GripVertical size={16} />
-    </button>
-  )
-}
-
-interface ModuleEditorProps {
-  chapterId: string
-  courseId: string
-  courseTitle: string
-  module: ContentModule
-  onUpdated: () => void
-}
-
-function ModuleEditor({
-  chapterId,
-  courseId,
-  courseTitle,
-  module,
-  onUpdated,
-}: ModuleEditorProps) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
-    id: module.id,
-  })
-
-  const inferredType: MediaType =
-    module.mediaType ||
-    (module.videoUrl ? 'video' : module.imageUrl ? 'image' : '')
-
-  const isEmpty = !stripHtml(module.text) && !module.videoUrl?.trim() && !module.imageUrl?.trim()
-
-  const [text, setText] = useState(module.text)
-  const [mediaType, setMediaType] = useState<MediaType>(inferredType)
-  const [videoUrl, setVideoUrl] = useState(module.videoUrl)
-  const [imageUrl, setImageUrl] = useState(module.imageUrl)
-  const [mediaBytes, setMediaBytes] = useState(module.mediaBytes || 0)
-  const [editing, setEditing] = useState(isEmpty)
-  const [saving, setSaving] = useState(false)
-  const [uploading, setUploading] = useState(false)
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [savedNotice, setSavedNotice] = useState(false)
-
-  useEffect(() => {
-    const type =
-      module.mediaType ||
-      (module.videoUrl ? 'video' : module.imageUrl ? 'image' : '')
-    setText(module.text)
-    setMediaType(type)
-    setVideoUrl(module.videoUrl)
-    setImageUrl(module.imageUrl)
-    setMediaBytes(module.mediaBytes || 0)
-    if (!stripHtml(module.text) && !module.videoUrl?.trim() && !module.imageUrl?.trim()) {
-      setEditing(true)
-    }
-  }, [module])
-
-  useEffect(() => {
-    if (!savedNotice) return
-    const timer = window.setTimeout(() => setSavedNotice(false), 3000)
-    return () => window.clearTimeout(timer)
-  }, [savedNotice])
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.7 : 1,
-  }
-
-  const sizeInfo = describeModuleSize({
-    text,
-    mediaType,
-    videoUrl,
-    imageUrl,
-    mediaBytes,
-  })
-
-  const previewTitle = courseTitle
-  const previewVideo = mediaType === 'video' ? videoUrl : ''
-  const previewImage = mediaType === 'image' ? imageUrl : ''
-
-  const handleMediaTypeChange = (next: MediaType) => {
-    setMediaType(next)
-    if (next === 'video') {
-      setImageUrl('')
-      setMediaBytes(0)
-    } else if (next === 'image') {
-      setVideoUrl('')
-    } else {
-      setVideoUrl('')
-      setImageUrl('')
-      setMediaBytes(0)
-    }
-  }
-
-  const handleSave = async () => {
-    const token = getAdminToken()
-    if (!token) return
-
-    setSaving(true)
-    setError(null)
-    try {
-      await updateModule(token, chapterId, courseId, module.id, {
-        name: courseTitle,
-        title: courseTitle,
-        text,
-        mediaType,
-        videoUrl: mediaType === 'video' ? videoUrl : '',
-        imageUrl: mediaType === 'image' ? imageUrl : '',
-        mediaBytes: mediaType === 'image' || mediaType === 'video' ? mediaBytes : 0,
-      })
-      setEditing(false)
-      setSavedNotice(true)
-      onUpdated()
-    } catch (err) {
-      setError(isAuthError(err) ? err.message : 'Enregistrement impossible')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const handleImageUpload = async (file: File | undefined) => {
-    if (!file) return
-    const token = getAdminToken()
-    if (!token) return
-
-    setUploading(true)
-    setError(null)
-    try {
-      const uploaded = await uploadRevisionImage(token, file)
-      setImageUrl(uploaded.imageUrl)
-      setMediaBytes(uploaded.mediaBytes || file.size || 0)
-      setMediaType('image')
-      setVideoUrl('')
-    } catch (err) {
-      setError(isAuthError(err) ? err.message : 'Import image impossible')
-    } finally {
-      setUploading(false)
-    }
-  }
-
-  const handleVideoUpload = async (file: File | undefined) => {
-    if (!file) return
-    const token = getAdminToken()
-    if (!token) return
-
-    setUploading(true)
-    setError(null)
-    try {
-      const uploaded = await uploadRevisionVideo(token, file)
-      setVideoUrl(uploaded.videoUrl)
-      setMediaBytes(uploaded.mediaBytes || file.size || 0)
-      setMediaType('video')
-      setImageUrl('')
-    } catch (err) {
-      setError(isAuthError(err) ? err.message : 'Import vidéo impossible')
-    } finally {
-      setUploading(false)
-    }
-  }
-
-  const handleDuplicate = async () => {
-    const token = getAdminToken()
-    if (!token) return
-
-    setBusy(true)
-    setError(null)
-    try {
-      await duplicateModule(token, chapterId, courseId, module.id)
-      onUpdated()
-    } catch (err) {
-      setError(isAuthError(err) ? err.message : 'Duplication impossible')
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  const handleDelete = async () => {
-    if (!window.confirm('Supprimer ce contenu ?')) return
-    const token = getAdminToken()
-    if (!token) return
-
-    setBusy(true)
-    try {
-      await deleteModule(token, chapterId, courseId, module.id)
-      onUpdated()
-    } catch (err) {
-      setError(isAuthError(err) ? err.message : 'Suppression impossible')
-      setBusy(false)
-    }
-  }
-
-  return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      className={`revision-module${isDragging ? ' is-dragging' : ''}${editing ? ' is-editing' : ' is-saved'}`}
-    >
-      <div className="revision-module-header">
-        <DragHandle attributes={attributes} listeners={listeners} />
-        <div className="revision-module-title-wrap">
-          <span className="revision-module-title">{courseTitle}</span>
-          {editing ? <span className="revision-tag revision-tag-edit">Édition</span> : null}
-          {!editing && savedNotice ? <span className="revision-tag revision-tag-ok">Enregistré</span> : null}
-        </div>
-        <div className="revision-item-actions">
-          {!editing ? (
-            <button
-              type="button"
-              className="btn-outline-sm"
-              onClick={() => setEditing(true)}
-              title="Modifier"
-            >
-              <Pencil size={16} />
-              Modifier
-            </button>
-          ) : null}
-          <button
-            type="button"
-            className="btn-icon-muted"
-            onClick={handleDuplicate}
-            disabled={busy}
-            aria-label="Dupliquer le contenu"
-            title="Dupliquer"
-          >
-            <Copy size={16} />
-          </button>
-          <button
-            type="button"
-            className="btn-icon-danger"
-            onClick={handleDelete}
-            disabled={busy}
-            aria-label="Supprimer le contenu"
-          >
-            <Trash2 size={16} />
-          </button>
-        </div>
-      </div>
-
-      {editing ? (
-        <div className="revision-module-workspace">
-          <div className="revision-module-form">
-            <section className="revision-form-section">
-              <h4 className="revision-form-section-title">Taille du contenu</h4>
-              <div className={`revision-size-meter${sizeInfo.warning ? ' is-warning' : ''}`}>
-                <strong>{sizeInfo.label}</strong>
-                <span>{sizeInfo.detail}</span>
-              </div>
-            </section>
-
-            <section className="revision-form-section">
-              <h4 className="revision-form-section-title">Configuration des éléments</h4>
-
-              <div className="revision-field">
-                <span>Support média</span>
-                <div className="revision-media-switch" role="group" aria-label="Type de média">
-                  <button
-                    type="button"
-                    className={`revision-media-option${mediaType === 'video' ? ' active' : ''}`}
-                    onClick={() => handleMediaTypeChange(mediaType === 'video' ? '' : 'video')}
-                  >
-                    <Film size={16} />
-                    Vidéo
-                  </button>
-                  <button
-                    type="button"
-                    className={`revision-media-option${mediaType === 'image' ? ' active' : ''}`}
-                    onClick={() => handleMediaTypeChange(mediaType === 'image' ? '' : 'image')}
-                  >
-                    <Image size={16} />
-                    Image
-                  </button>
-                </div>
-              </div>
-
-              {mediaType === 'video' ? (
-                <>
-                  <label className="revision-field">
-                    <span>
-                      <Film size={16} /> Fichier vidéo
-                    </span>
-                    <input
-                      type="file"
-                      accept="video/mp4,video/webm,video/quicktime"
-                      onChange={(e) => handleVideoUpload(e.target.files?.[0])}
-                      disabled={uploading}
-                    />
-                    {uploading ? <span className="revision-field-hint">Import en cours…</span> : null}
-                    {videoUrl ? (
-                      <button
-                        type="button"
-                        className="btn-text-danger"
-                        onClick={() => {
-                          setVideoUrl('')
-                          setMediaBytes(0)
-                        }}
-                      >
-                        Retirer la vidéo
-                      </button>
-                    ) : null}
-                  </label>
-                  <label className="revision-field">
-                    <span>
-                      <Film size={16} /> Ou lien YouTube / Vimeo
-                    </span>
-                    <input
-                      type="url"
-                      value={videoUrl}
-                      onChange={(e) => {
-                        setVideoUrl(e.target.value)
-                        setMediaBytes(0)
-                      }}
-                      placeholder="https://…"
-                    />
-                  </label>
-                </>
-              ) : null}
-
-              {mediaType === 'image' ? (
-                <label className="revision-field">
-                  <span>
-                    <Image size={16} /> Image
-                  </span>
-                  <input
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp,image/gif"
-                    onChange={(e) => handleImageUpload(e.target.files?.[0])}
-                    disabled={uploading}
-                  />
-                  {imageUrl ? (
-                    <button
-                      type="button"
-                      className="btn-text-danger"
-                      onClick={() => {
-                        setImageUrl('')
-                        setMediaBytes(0)
-                      }}
-                    >
-                      Retirer l'image
-                    </button>
-                  ) : null}
-                </label>
-              ) : null}
-
-              <div className="revision-field">
-                <span>
-                  <Type size={16} /> Bloc texte
-                </span>
-                <RichTextEditor
-                  value={text}
-                  onChange={setText}
-                  placeholder="Explications ou cours théorique — gras, titres, listes, liens…"
-                />
-              </div>
-            </section>
-
-            {error ? <p className="form-error">{error}</p> : null}
-
-            <div className="revision-actions">
-              <button
-                type="button"
-                className="btn-primary btn-primary-inline"
-                onClick={handleSave}
-                disabled={saving}
-              >
-                {saving ? 'Enregistrement…' : 'Enregistrer'}
-              </button>
-              {!isEmpty ? (
-                <button type="button" className="btn-outline-sm" onClick={() => setEditing(false)}>
-                  Annuler
-                </button>
-              ) : null}
-            </div>
-          </div>
-
-          <aside className="revision-module-preview" aria-label="Aperçu téléphone">
-            <div className="revision-preview-banner">
-              <p className="revision-preview-kicker">Aperçu téléphone</p>
-              <p className="revision-preview-note">Rendu élève en temps réel</p>
-            </div>
-            <div className="phone-shell">
-              <span className="phone-btn phone-btn-silent" aria-hidden="true" />
-              <span className="phone-btn phone-btn-volume-up" aria-hidden="true" />
-              <span className="phone-btn phone-btn-volume-down" aria-hidden="true" />
-              <span className="phone-btn phone-btn-power" aria-hidden="true" />
-              <div className="phone-frame">
-                <div className="phone-island" aria-hidden="true">
-                  <span className="phone-island-camera" />
-                </div>
-                <div className="phone-screen">
-                  <div className="phone-status" aria-hidden="true">
-                    <span>9:41</span>
-                    <span className="phone-status-icons">▮▮▮</span>
-                  </div>
-                  <div className="phone-content">
-                    <MediaPreview
-                      title={previewTitle}
-                      hideTitle
-                      layout="stack"
-                      videoUrl={previewVideo}
-                      imageUrl={previewImage}
-                      text={text}
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-          </aside>
-        </div>
-      ) : (
-        <div className="revision-module-saved">
-          <MediaPreview
-            title={courseTitle}
-            hideTitle
-            layout="stack"
-            videoUrl={module.mediaType === 'image' ? '' : module.videoUrl}
-            imageUrl={module.mediaType === 'video' ? '' : module.imageUrl}
-            text={module.text}
-          />
-        </div>
-      )}
-    </div>
-  )
-}
-
-interface CoursePanelProps {
-  chapterId: string
-  course: Course
-  onUpdated: () => void
-}
-
-function CoursePanel({ chapterId, course, onUpdated }: CoursePanelProps) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
-    id: course.id,
-  })
-  const sensors = useAdminSensors()
-  const [expanded, setExpanded] = useState(false)
-  const [modules, setModules] = useState(course.modules)
-  const [error, setError] = useState<string | null>(null)
-  const [busy, setBusy] = useState(false)
-
-  useEffect(() => {
-    setModules(course.modules)
-  }, [course.modules])
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.7 : 1,
-  }
-
-  const handleAddModule = async () => {
-    const token = getAdminToken()
-    if (!token) return
-
-    setError(null)
-    try {
-      await createModule(token, chapterId, course.id)
-      onUpdated()
-      setExpanded(true)
-    } catch (err) {
-      setError(isAuthError(err) ? err.message : 'Ajout impossible')
-    }
-  }
-
-  const handlePublishToggle = async (published: boolean) => {
-    const token = getAdminToken()
-    if (!token) return
-
-    setBusy(true)
-    setError(null)
-    try {
-      await updateCourse(token, chapterId, course.id, { published })
-      onUpdated()
-    } catch (err) {
-      setError(isAuthError(err) ? err.message : 'Publication impossible')
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  const handleDeleteCourse = async () => {
-    if (!window.confirm(`Supprimer le cours « ${course.title} » et tous ses modules ?`)) return
-    const token = getAdminToken()
-    if (!token) return
-
-    try {
-      await deleteCourse(token, chapterId, course.id)
-      onUpdated()
-    } catch (err) {
-      setError(isAuthError(err) ? err.message : 'Suppression impossible')
-    }
-  }
-
-  const handleModuleDragEnd = async (event: DragEndEvent) => {
-    const { active, over } = event
-    if (!over || active.id === over.id) return
-
-    const oldIndex = modules.findIndex((item) => item.id === active.id)
-    const newIndex = modules.findIndex((item) => item.id === over.id)
-    if (oldIndex < 0 || newIndex < 0) return
-
-    const next = arrayMove(modules, oldIndex, newIndex)
-    setModules(next)
-
-    const token = getAdminToken()
-    if (!token) return
-
-    try {
-      await reorderModules(
-        token,
-        chapterId,
-        course.id,
-        next.map((item) => item.id),
-      )
-      onUpdated()
-    } catch (err) {
-      setModules(course.modules)
-      setError(isAuthError(err) ? err.message : 'Réordonnancement impossible')
-    }
-  }
-
-  return (
-    <div ref={setNodeRef} style={style} className={`revision-course${isDragging ? ' is-dragging' : ''}`}>
-      <div className="revision-course-header">
-        <DragHandle attributes={attributes} listeners={listeners} />
-        <button
-          type="button"
-          className="revision-course-toggle"
-          onClick={() => setExpanded((v) => !v)}
-        >
-          {expanded ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
-          <BookOpen size={18} />
-          <span>{course.title}</span>
-            <span className="revision-count">
-              {modules.length} contenu{modules.length !== 1 ? 's' : ''}
-            </span>
-        </button>
-        <div className="revision-item-actions">
-          <PublishSwitch checked={course.published} onChange={handlePublishToggle} disabled={busy} />
-          <button
-            type="button"
-            className="btn-text-danger"
-            onClick={handleDeleteCourse}
-            aria-label={`Supprimer le cours ${course.title}`}
-            title="Supprimer le cours"
-          >
-            <Trash2 size={16} />
-            Supprimer
-          </button>
-        </div>
-      </div>
-
-      {expanded ? (
-        <div className="revision-course-body">
-          {modules.length === 0 ? (
-            <p className="revision-empty">Aucun contenu. Ajoutez une vidéo, une image ou du texte.</p>
-          ) : (
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragEnd={handleModuleDragEnd}
-            >
-              <SortableContext items={modules.map((item) => item.id)} strategy={verticalListSortingStrategy}>
-                <div className="revision-modules-list">
-                  {modules.map((module) => (
-                    <ModuleEditor
-                      key={module.id}
-                      chapterId={chapterId}
-                      courseId={course.id}
-                      courseTitle={course.title}
-                      module={module}
-                      onUpdated={onUpdated}
-                    />
-                  ))}
-                </div>
-              </SortableContext>
-            </DndContext>
-          )}
-
-          <div className="revision-actions revision-actions-footer">
-            <button type="button" className="btn-outline-sm" onClick={handleAddModule}>
-              <Plus size={16} />
-              Ajouter un contenu
-            </button>
-          </div>
-
-          {error ? <p className="form-error">{error}</p> : null}
-        </div>
-      ) : null}
-    </div>
-  )
-}
-
-type ChapterWorkspaceTab = 'cours' | 'sujet-test'
+type ChapterWorkspaceTab = 'sujet-test'
 
 interface ChapterPanelProps {
   chapter: Chapter
@@ -689,46 +32,8 @@ function ChapterPanel({
   onTabChange,
 }: ChapterPanelProps) {
   const navigate = useNavigate()
-  const sensors = useAdminSensors()
-  const [courses, setCourses] = useState(chapter.courses)
-  const [courseTitle, setCourseTitle] = useState('')
-  const [addingCourse, setAddingCourse] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [success, setSuccess] = useState<string | null>(null)
-
-  useEffect(() => {
-    setCourses(chapter.courses)
-  }, [chapter.courses])
-
-  useEffect(() => {
-    if (!success) return
-    const timer = window.setTimeout(() => setSuccess(null), 4000)
-    return () => window.clearTimeout(timer)
-  }, [success])
-
-  const handleAddCourse = async (e: FormEvent) => {
-    e.preventDefault()
-    const title = courseTitle.trim()
-    if (!title) return
-
-    const token = getAdminToken()
-    if (!token) return
-
-    setAddingCourse(true)
-    setError(null)
-    setSuccess(null)
-    try {
-      const { course } = await createCourse(token, chapter.id, title)
-      setCourseTitle('')
-      setSuccess(`Création finie — le cours « ${course.title} » a été ajouté.`)
-      onUpdated()
-    } catch (err) {
-      setError(isAuthError(err) ? err.message : 'Ajout impossible')
-    } finally {
-      setAddingCourse(false)
-    }
-  }
 
   const handlePublishToggle = async (published: boolean) => {
     const token = getAdminToken()
@@ -746,33 +51,6 @@ function ChapterPanel({
     }
   }
 
-  const handleCourseDragEnd = async (event: DragEndEvent) => {
-    const { active, over } = event
-    if (!over || active.id === over.id) return
-
-    const oldIndex = courses.findIndex((item) => item.id === active.id)
-    const newIndex = courses.findIndex((item) => item.id === over.id)
-    if (oldIndex < 0 || newIndex < 0) return
-
-    const next = arrayMove(courses, oldIndex, newIndex)
-    setCourses(next)
-
-    const token = getAdminToken()
-    if (!token) return
-
-    try {
-      await reorderCourses(
-        token,
-        chapter.id,
-        next.map((item) => item.id),
-      )
-      onUpdated()
-    } catch (err) {
-      setCourses(chapter.courses)
-      setError(isAuthError(err) ? err.message : 'Réordonnancement impossible')
-    }
-  }
-
   return (
     <div className="revision-chapter selected revision-chapter-workspace">
       <div className="revision-chapter-header">
@@ -780,7 +58,6 @@ function ChapterPanel({
           <p className="revision-chapter-kicker">Chapitre sélectionné</p>
           <div className="revision-chapter-title">
             {chapter.name}
-            <span className="revision-count">{courses.length} cours</span>
             {!chapter.published ? <span className="revision-tag">Brouillon</span> : null}
           </div>
         </div>
@@ -788,19 +65,10 @@ function ChapterPanel({
           <PublishSwitch checked={chapter.published} onChange={handlePublishToggle} disabled={busy} />
         </div>
       </div>
+      {error ? <p className="form-error">{error}</p> : null}
 
       <div className="revision-chapter-body">
         <div className="revision-chapter-tabs" role="tablist" aria-label="Contenu du chapitre">
-          <button
-            type="button"
-            role="tab"
-            aria-selected={activeTab === 'cours'}
-            className={`revision-chapter-tab${activeTab === 'cours' ? ' active' : ''}`}
-            onClick={() => onTabChange('cours')}
-          >
-            <BookOpen size={15} />
-            Cours
-          </button>
           <button
             type="button"
             role="tab"
@@ -821,66 +89,19 @@ function ChapterPanel({
             <ClipboardList size={15} />
             Sujet Test
           </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={false}
+            className="revision-chapter-tab"
+            onClick={() => navigate('/code/cours')}
+          >
+            <BookOpen size={15} />
+            Cours (page dédiée)
+          </button>
         </div>
 
-        {activeTab === 'cours' ? (
-          <>
-            {success ? (
-              <p className="form-success" role="status">
-                {success}
-              </p>
-            ) : null}
-
-            <div className="revision-courses-stack">
-              {courses.length === 0 ? (
-                <p className="revision-empty">Aucun cours dans ce chapitre.</p>
-              ) : (
-                <DndContext
-                  sensors={sensors}
-                  collisionDetection={closestCenter}
-                  onDragEnd={handleCourseDragEnd}
-                >
-                  <SortableContext
-                    items={courses.map((item) => item.id)}
-                    strategy={verticalListSortingStrategy}
-                  >
-                    {courses.map((course) => (
-                      <CoursePanel
-                        key={course.id}
-                        chapterId={chapter.id}
-                        course={course}
-                        onUpdated={onUpdated}
-                      />
-                    ))}
-                  </SortableContext>
-                </DndContext>
-              )}
-            </div>
-
-            <form onSubmit={handleAddCourse} className="revision-inline-form revision-add-course">
-              <input
-                type="text"
-                value={courseTitle}
-                onChange={(e) => setCourseTitle(e.target.value)}
-                placeholder="Titre du nouveau cours"
-                required
-                minLength={2}
-              />
-              <button
-                type="submit"
-                className="btn-primary btn-primary-inline"
-                disabled={addingCourse}
-              >
-                <Plus size={16} />
-                {addingCourse ? 'Ajout…' : 'Ajouter un cours'}
-              </button>
-            </form>
-
-            {error ? <p className="form-error">{error}</p> : null}
-          </>
-        ) : (
-          <ChapterTestSubjectPanel chapterId={chapter.id} />
-        )}
+        <ChapterTestSubjectPanel chapterId={chapter.id} />
       </div>
     </div>
   )
@@ -900,8 +121,7 @@ function ChapterRailItem({
       <button type="button" className="revision-rail-button" onClick={onSelect}>
         <span className="revision-rail-name">{chapter.name}</span>
         <span className="revision-rail-meta">
-          {chapter.courses.length} cours
-          {!chapter.published ? ' · Brouillon' : ''}
+          {!chapter.published ? 'Brouillon' : 'Publié'}
         </span>
       </button>
     </div>
@@ -913,7 +133,7 @@ export function RevisionChapitresPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [chapters, setChapters] = useState<Chapter[]>([])
   const [selectedChapterId, setSelectedChapterId] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<ChapterWorkspaceTab>('cours')
+  const [activeTab, setActiveTab] = useState<ChapterWorkspaceTab>('sujet-test')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -952,8 +172,11 @@ export function RevisionChapitresPage() {
     if (chapterFromUrl) {
       setSelectedChapterId(chapterFromUrl)
     }
-    if (tabFromUrl === 'cours' || tabFromUrl === 'sujet-test') {
-      setActiveTab(tabFromUrl)
+    if (tabFromUrl === 'sujet-test') {
+      setActiveTab('sujet-test')
+    }
+    if (tabFromUrl === 'cours') {
+      navigate('/code/cours', { replace: true })
     }
   }, [searchParams, navigate])
 
@@ -966,17 +189,14 @@ export function RevisionChapitresPage() {
 
   const handleSelectChapter = (chapterId: string) => {
     setSelectedChapterId(chapterId)
-    setActiveTab('cours')
+    setActiveTab('sujet-test')
     setSearchParams({}, { replace: true })
   }
 
   const handleTabChange = (tab: ChapterWorkspaceTab) => {
     setActiveTab(tab)
     if (selectedChapterId) {
-      setSearchParams(
-        tab === 'cours' ? {} : { chapter: selectedChapterId, tab },
-        { replace: true },
-      )
+      setSearchParams({ chapter: selectedChapterId, tab }, { replace: true })
     }
   }
 
@@ -988,7 +208,7 @@ export function RevisionChapitresPage() {
           backLabel="Code de la route"
           kicker="Formation"
           title="Révision par chapitres"
-          subtitle="20 chapitres standards. Éditez uniquement les cours ; les questions viennent des fichiers."
+          subtitle="20 chapitres standards : questions et sujets test. Les cours se gèrent dans la page Cours."
         />
       </header>
 
@@ -1038,7 +258,7 @@ export function RevisionChapitresPage() {
             ) : (
               <EmptyState
                 title="Aucun chapitre sélectionné"
-                description="Sélectionnez un chapitre dans l’arbre pour éditer ses cours."
+                description="Sélectionnez un chapitre pour gérer les questions et le sujet test."
               />
             )
           }

@@ -5,7 +5,7 @@ import { SuperAdminRoute } from './components/SuperAdminRoute'
 import { CodeRouteHubPage } from './pages/code/CodeRouteHubPage'
 import { ChapterQuestionsPage } from './pages/code/ChapterQuestionsPage'
 import { ExamensTestAdminPage } from './pages/code/ExamensTestAdminPage'
-import { ECodePermisAdminPage } from './pages/code/ECodePermisAdminPage'
+import { CoursesPage } from './pages/code/CoursesPage'
 import { RevisionChapitresPage } from './pages/code/RevisionChapitresPage'
 import { ConduiteHubPage } from './pages/conduite/ConduiteHubPage'
 import { LeconsConduitePage } from './pages/conduite/LeconsConduitePage'
@@ -53,6 +53,7 @@ export default function App() {
             path="/code/revision-chapitres/:chapterId/questions"
             element={<ChapterQuestionsPage />}
           />
+          <Route path="/code/cours" element={<CoursesPage />} />
           <Route path="/code/examens-test" element={<ExamensTestAdminPage />} />
           <Route
             path="/code/suivi-apprenants"
@@ -60,7 +61,7 @@ export default function App() {
           />
           <Route path="/code/suivi-apprenants/:userId" element={<LearnerProgressDetailPage />} />
           <Route path="/code/mes-notes" element={<Navigate to="/code/suivi-apprenants" replace />} />
-          <Route path="/code/e-codepermis" element={<ECodePermisAdminPage />} />
+          <Route path="/code/e-codepermis" element={<Navigate to="/code/cours" replace />} />
           <Route path="/conduite" element={<ConduiteHubPage />} />
           <Route path="/conduite/lecons" element={<LeconsConduitePage />} />
           <Route path="/conduite/reservations" element={<ReservationsPage />} />

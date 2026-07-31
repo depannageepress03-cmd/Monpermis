@@ -9,7 +9,6 @@ export function RevisionChapitresPage() {
       navTitle="Nos chapitres"
       backTo="/code-de-la-route"
       backLabel="Retour"
-      coursesPath={(chapterId) => `/code-de-la-route/revision-chapitres/${chapterId}`}
       questionsPath={(chapterId) =>
         `/code-de-la-route/revision-chapitres/${chapterId}/questions`
       }

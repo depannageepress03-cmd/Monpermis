@@ -50,12 +50,11 @@ const categories = [
     tone: 'green' as const,
   },
   {
-    id: 'ECodePermis' as const,
-    label: 'E-Codepermis',
-    subtitle: '(examen blanc)',
+    id: 'CodeCours' as const,
+    label: 'Cours',
+    subtitle: '(par chapitre)',
     image: require('../../assets/code-route/cards/ecodepermis.jpg'),
     tone: 'purple' as const,
-    needsECode: true,
   },
 ]
 
@@ -209,21 +208,15 @@ export function CodeRouteScreen() {
           </FadeUp>
 
           <View style={styles.grid}>
-            {categories.map((category, index) => {
-              const eCodeLocked = Boolean(category.needsECode && !accessMe?.access.ecodepermis)
-              return (
+            {categories.map((category, index) => (
                 <FadeUp key={category.id} delay={200 + index * 70} style={styles.gridItem}>
                   <Bouncy
                     scaleTo={0.97}
                     onPress={() => {
-                      if (eCodeLocked) {
-                        navigation.navigate('Abonnement')
-                        return
-                      }
                       navigation.navigate(category.id)
                     }}
                   >
-                    <View style={[styles.card, eCodeLocked && styles.cardLocked]}>
+                    <View style={styles.card}>
                       <Image source={category.image} style={styles.cardImage} resizeMode="cover" />
                       <LinearGradient
                         colors={[...toneShade[category.tone]]}
@@ -236,18 +229,11 @@ export function CodeRouteScreen() {
                         {category.subtitle ? (
                           <Text style={styles.cardSubtitle}>{category.subtitle}</Text>
                         ) : null}
-                        {eCodeLocked ? (
-                          <View style={styles.lockRow}>
-                            <Lock size={12} color="#fff" />
-                            <Text style={styles.cardSubtitle}>Accès E-Codepermis requis</Text>
-                          </View>
-                        ) : null}
                       </View>
                     </View>
                   </Bouncy>
                 </FadeUp>
-              )
-            })}
+            ))}
           </View>
         </ScrollView>
       </SafeAreaView>

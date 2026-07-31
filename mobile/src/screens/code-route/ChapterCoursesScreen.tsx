@@ -65,7 +65,7 @@ export function ChapterCoursesScreen() {
       <PageNavbar
         title={formatChapterHeading(chapterName)}
         icon={Layers}
-        onBack={() => navigation.navigate('RevisionChapitres')}
+        onBack={() => navigation.goBack()}
         numberOfLines={2}
       />
 

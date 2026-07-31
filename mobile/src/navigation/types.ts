@@ -25,6 +25,8 @@ export type RootStackParamList = {
   HistoriquePaiements: undefined
   CodeRoute: undefined
   RevisionChapitres: undefined
+  /** Liste des chapitres pour accéder aux cours (remplace E-Codepermis dans le hub). */
+  CodeCours: undefined
   ChapterCourses: {
     chapterId: string
     chapterName: string

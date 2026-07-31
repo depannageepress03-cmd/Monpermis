@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { Chapter } from '../models/Chapter.js'
 import { Question } from '../models/Question.js'
+import { RevisionCourse } from '../models/RevisionCourse.js'
 import { MIN_COURSE_SECONDS } from '../models/User.js'
 import { requireUserAuth } from '../middleware/userAuth.js'
 import { requireModuleAccess } from '../middleware/moduleAccess.js'
@@ -9,6 +10,10 @@ import {
   serializeProgress,
 } from '../utils/progress.js'
 import { buildLearnerJourney } from '../utils/learnerJourney.js'
+import { ensureStandaloneRevisionCourses } from '../services/migrateRevisionCourses.js'
+
+/** Clé de progression pour les cours hors chapitre. */
+const STANDALONE_COURSE_CHAPTER = 'standalone'
 import {
   buildSubjectSummaries,
   pickQuestionsForSubject,
@@ -34,6 +39,7 @@ async function loadChapterQuestionBank(chapter) {
 router.get('/chapters', ...withCodeAccess, async (_req, res) => {
   try {
     await ensureStandardRevisionChapters()
+    await ensureStandaloneRevisionCourses()
     const chapters = await Chapter.find({ order: { $gte: 1, $lte: 20 } }).sort({
       order: 1,
       createdAt: 1,
@@ -47,6 +53,35 @@ router.get('/chapters', ...withCodeAccess, async (_req, res) => {
   } catch (error) {
     console.error('Erreur contenu public:', error)
     res.status(500).json({ success: false, error: 'Contenu indisponible' })
+  }
+})
+
+/** Cours autonomes (plus liés aux chapitres). */
+router.get('/courses', ...withCodeAccess, async (_req, res) => {
+  try {
+    await ensureStandaloneRevisionCourses()
+    const courses = await RevisionCourse.find({ published: true }).sort({ order: 1, createdAt: 1 })
+    res.json({
+      success: true,
+      data: { courses: courses.map((course) => course.toPublicJSON()) },
+    })
+  } catch (error) {
+    console.error('Erreur liste cours publics:', error)
+    res.status(500).json({ success: false, error: 'Cours indisponibles' })
+  }
+})
+
+router.get('/courses/:courseId', ...withCodeAccess, async (req, res) => {
+  try {
+    await ensureStandaloneRevisionCourses()
+    const course = await RevisionCourse.findById(req.params.courseId)
+    if (!course || !course.published) {
+      return res.status(404).json({ success: false, error: 'Cours introuvable' })
+    }
+    res.json({ success: true, data: { course: course.toPublicJSON() } })
+  } catch (error) {
+    console.error('Erreur détail cours:', error)
+    res.status(500).json({ success: false, error: 'Cours indisponible' })
   }
 })
 
@@ -272,10 +307,33 @@ router.get('/progress/journey', ...withCodeAccess, async (req, res) => {
 router.post('/progress/start', ...withCodeAccess, async (req, res) => {
   try {
     const { chapterId, courseId } = req.body ?? {}
-    if (!chapterId || !courseId) {
+    if (!courseId) {
       return res.status(400).json({
         success: false,
-        error: 'Chapitre et cours requis',
+        error: 'Cours requis',
+      })
+    }
+
+    // Cours autonome (plus de lien chapitre).
+    if (!chapterId || chapterId === STANDALONE_COURSE_CHAPTER) {
+      await ensureStandaloneRevisionCourses()
+      const course = await RevisionCourse.findById(courseId)
+      if (!course || !course.published) {
+        return res.status(404).json({ success: false, error: 'Cours introuvable' })
+      }
+      const progressChapterId = STANDALONE_COURSE_CHAPTER
+      const session = await req.user.startCourseSession(progressChapterId, courseId)
+      const secondsRemaining = req.user.getCourseUnlockSeconds(progressChapterId, courseId)
+      return res.json({
+        success: true,
+        data: {
+          chapterId: progressChapterId,
+          courseId: String(courseId),
+          openedAt: session?.openedAt ?? null,
+          secondsRemaining,
+          minCourseSeconds: MIN_COURSE_SECONDS,
+          alreadyCompleted: req.user.hasCompletedCourse(progressChapterId, courseId),
+        },
       })
     }
 
@@ -313,10 +371,29 @@ router.post('/progress', ...withCodeAccess, async (req, res) => {
   try {
     const { chapterId, courseId } = req.body ?? {}
 
-    if (!chapterId || !courseId) {
+    if (!courseId) {
       return res.status(400).json({
         success: false,
-        error: 'Chapitre et cours requis',
+        error: 'Cours requis',
+      })
+    }
+
+    if (!chapterId || chapterId === STANDALONE_COURSE_CHAPTER) {
+      await ensureStandaloneRevisionCourses()
+      const course = await RevisionCourse.findById(courseId)
+      if (!course || !course.published) {
+        return res.status(404).json({ success: false, error: 'Cours introuvable' })
+      }
+      const progressChapterId = STANDALONE_COURSE_CHAPTER
+      await req.user.markCourseCompleted(progressChapterId, courseId)
+      return res.json({
+        success: true,
+        data: {
+          completed: true,
+          chapterId: progressChapterId,
+          courseId: String(courseId),
+          chapterQuizUnlocked: true,
+        },
       })
     }
 

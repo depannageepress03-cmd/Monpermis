@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from 'react'
-import { useFocusEffect, useNavigation } from '@react-navigation/native'
+import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { BookOpen, ClipboardList, HelpCircle, Layers } from 'lucide-react-native'
 import {
@@ -25,10 +25,12 @@ import { useRequireAuth } from '../../hooks/useRequireAuth'
 import type { RootStackParamList } from '../../navigation/types'
 import { dark, fonts } from '../../theme'
 
-type Nav = NativeStackNavigationProp<RootStackParamList, 'RevisionChapitres'>
+type Nav = NativeStackNavigationProp<RootStackParamList, 'RevisionChapitres' | 'CodeCours'>
 
 export function RevisionChapitresScreen() {
   const navigation = useNavigation<Nav>()
+  const route = useRoute()
+  const coursOnly = route.name === 'CodeCours'
   const { user, loading: authLoading } = useRequireAuth(navigation)
   const [chapters, setChapters] = useState<RevisionChapter[]>([])
   const [completedTestIds, setCompletedTestIds] = useState<Set<string>>(new Set())
@@ -98,8 +100,8 @@ export function RevisionChapitresScreen() {
   return (
     <DarkScreen>
       <PageNavbar
-        title="Nos chapitres"
-        icon={Layers}
+        title={coursOnly ? 'Cours' : 'Nos chapitres'}
+        icon={coursOnly ? BookOpen : Layers}
         onBack={() => navigation.navigate('CodeRoute')}
       />
 
@@ -117,54 +119,60 @@ export function RevisionChapitresScreen() {
           />
         }
       >
-          <View style={styles.header}>
-            <Text style={styles.heroEyebrow}>Progression</Text>
-            <Text style={styles.heroTitle}>Nos chapitres</Text>
-            <Text style={styles.subtitle}>
-              Suis chaque chapitre dans l’ordre : cours, questions, puis sujet test.
-            </Text>
-          </View>
+        <View style={styles.header}>
+          <Text style={styles.heroEyebrow}>Code de la route</Text>
+          <Text style={styles.heroTitle}>
+            {coursOnly ? 'Cours par chapitre' : 'Révision par chapitres'}
+          </Text>
+          <Text style={styles.subtitle}>
+            {coursOnly
+              ? 'Choisis un chapitre pour accéder à ses cours, à ton rythme.'
+              : 'Questions et sujets test pour chaque chapitre — les cours sont dans le bouton Cours du menu Code.'}
+          </Text>
+        </View>
 
-          {loading && chapters.length === 0 ? <SkeletonList count={5} /> : null}
+        {loading ? <SkeletonList count={4} /> : null}
 
-          {error && chapters.length === 0 ? (
-            <View style={styles.centerBox}>
-              <Text style={styles.errorText}>{error}</Text>
-              <Pressable style={styles.retryBtn} onPress={() => void loadChapters()}>
-                <Text style={styles.retryText}>Réessayer</Text>
-              </Pressable>
-            </View>
-          ) : null}
+        {error && chapters.length === 0 ? (
+          <EmptyState
+            icon={<Layers size={30} color={dark.textMuted} />}
+            title="Chargement impossible"
+            message={error}
+          />
+        ) : null}
 
-          {!loading && !error && chapters.length === 0 ? (
-            <EmptyState
-              icon={<Layers size={30} color={dark.textMuted} />}
-              title="Aucun chapitre disponible"
-              message="Les chapitres publiés par votre auto-école apparaîtront ici."
-            />
-          ) : null}
+        {!loading && !error && chapters.length === 0 ? (
+          <EmptyState
+            icon={<Layers size={30} color={dark.textMuted} />}
+            title="Aucun chapitre disponible"
+            message="Les chapitres publiés par votre auto-école apparaîtront ici."
+          />
+        ) : null}
 
-          {chapters.length > 0 && !error
-            ? chapters.map((chapter, index) => {
-                const testDone = completedTestIds.has(chapter.id)
+        {chapters.length > 0 && !error
+          ? chapters.map((chapter, index) => {
+              const testDone = completedTestIds.has(chapter.id)
 
-                return (
-                  <View key={chapter.id} style={styles.card}>
-                    <View style={styles.cardTop}>
-                      <View style={styles.iconWrap}>
-                        <Text style={styles.cardNumber}>{index + 1}</Text>
-                      </View>
-                      <View style={styles.cardContent}>
-                        <Text style={styles.cardTitle}>{chapter.name}</Text>
-                        <Text style={styles.cardSubtitle}>
-                          {testDone
+              return (
+                <View key={chapter.id} style={styles.card}>
+                  <View style={styles.cardTop}>
+                    <View style={styles.iconWrap}>
+                      <Text style={styles.cardNumber}>{index + 1}</Text>
+                    </View>
+                    <View style={styles.cardContent}>
+                      <Text style={styles.cardTitle}>{chapter.name}</Text>
+                      <Text style={styles.cardSubtitle}>
+                        {coursOnly
+                          ? `${chapter.courses.length} cours`
+                          : testDone
                             ? `${chapter.courses.length} cours · Chapitre validé`
                             : `${chapter.courses.length} cours · Accès libre`}
-                        </Text>
-                      </View>
+                      </Text>
                     </View>
+                  </View>
 
-                    <View style={styles.actions}>
+                  <View style={styles.actions}>
+                    {coursOnly ? (
                       <Pressable
                         style={({ pressed }) => [styles.actionBtn, pressed && styles.pressed]}
                         onPress={() => openCourses(chapter, index)}
@@ -174,31 +182,34 @@ export function RevisionChapitresScreen() {
                         </View>
                         <Text style={styles.actionLabel}>Cours</Text>
                       </Pressable>
+                    ) : (
+                      <>
+                        <Pressable
+                          style={({ pressed }) => [styles.actionBtn, pressed && styles.pressed]}
+                          onPress={() => openQuestions(chapter, index)}
+                        >
+                          <View style={[styles.actionIcon, styles.actionQuestions]}>
+                            <HelpCircle size={15} color={dark.coral} />
+                          </View>
+                          <Text style={styles.actionLabel}>Questions</Text>
+                        </Pressable>
 
-                      <Pressable
-                        style={({ pressed }) => [styles.actionBtn, pressed && styles.pressed]}
-                        onPress={() => openQuestions(chapter, index)}
-                      >
-                        <View style={[styles.actionIcon, styles.actionQuestions]}>
-                          <HelpCircle size={15} color={dark.coral} />
-                        </View>
-                        <Text style={styles.actionLabel}>Questions</Text>
-                      </Pressable>
-
-                      <Pressable
-                        style={({ pressed }) => [styles.actionBtn, pressed && styles.pressed]}
-                        onPress={() => openTestSubject(chapter, index)}
-                      >
-                        <View style={[styles.actionIcon, styles.actionTest]}>
-                          <ClipboardList size={15} color={dark.textPrimary} />
-                        </View>
-                        <Text style={styles.actionLabel}>Sujet test</Text>
-                      </Pressable>
-                    </View>
+                        <Pressable
+                          style={({ pressed }) => [styles.actionBtn, pressed && styles.pressed]}
+                          onPress={() => openTestSubject(chapter, index)}
+                        >
+                          <View style={[styles.actionIcon, styles.actionTest]}>
+                            <ClipboardList size={15} color={dark.textPrimary} />
+                          </View>
+                          <Text style={styles.actionLabel}>Sujet test</Text>
+                        </Pressable>
+                      </>
+                    )}
                   </View>
-                )
-              })
-            : null}
+                </View>
+              )
+            })
+          : null}
       </ScrollView>
     </DarkScreen>
   )
@@ -237,12 +248,11 @@ const styles = StyleSheet.create({
   },
   card: {
     borderRadius: 18,
-    borderWidth: 1,
-    borderColor: 'rgba(34,214,115,0.28)',
     backgroundColor: dark.surface,
-    padding: 12,
-    marginBottom: 10,
-    gap: 10,
+    borderWidth: 1,
+    borderColor: dark.border,
+    padding: 16,
+    marginBottom: 12,
   },
   cardTop: {
     flexDirection: 'row',
@@ -250,50 +260,47 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   iconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: 'rgba(31,168,87,0.12)',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: dark.greenSoft,
   },
   cardNumber: {
     fontFamily: fonts.displayBold,
-    fontSize: 15,
+    fontSize: 18,
     color: dark.green,
   },
   cardContent: {
     flex: 1,
   },
   cardTitle: {
-    fontFamily: fonts.displayBold,
-    fontSize: 15,
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 16,
     color: dark.textPrimary,
-    marginBottom: 2,
   },
   cardSubtitle: {
+    marginTop: 2,
     fontFamily: fonts.body,
-    fontSize: 12,
-    lineHeight: 16,
+    fontSize: 13,
     color: dark.textMuted,
   },
   actions: {
+    marginTop: 14,
     flexDirection: 'row',
-    alignItems: 'stretch',
     gap: 8,
   },
   actionBtn: {
     flex: 1,
-    minWidth: 0,
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 5,
+    gap: 6,
     paddingVertical: 10,
-    paddingHorizontal: 4,
     borderRadius: 14,
     backgroundColor: dark.surfaceRaised,
-    borderWidth: 1,
-    borderColor: dark.border,
+  },
+  pressed: {
+    opacity: 0.85,
   },
   actionIcon: {
     width: 32,
@@ -303,65 +310,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   actionCourses: {
-    backgroundColor: dark.greenSoft,
+    backgroundColor: 'rgba(31,168,87,0.15)',
   },
   actionQuestions: {
-    backgroundColor: dark.coralSoft,
+    backgroundColor: 'rgba(255,107,107,0.15)',
   },
   actionTest: {
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: 'rgba(255,255,255,0.08)',
   },
   actionLabel: {
     fontFamily: fonts.bodySemiBold,
-    fontSize: 11.5,
+    fontSize: 12,
     color: dark.textPrimary,
-    textAlign: 'center',
-  },
-  centerBox: {
-    alignItems: 'center',
-    paddingVertical: 32,
-    paddingHorizontal: 12,
-  },
-  emptyTitle: {
-    fontFamily: fonts.displayBold,
-    fontSize: 18,
-    color: dark.textPrimary,
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  emptyText: {
-    fontFamily: fonts.body,
-    fontSize: 14,
-    lineHeight: 20,
-    color: dark.textMuted,
-    textAlign: 'center',
-  },
-  errorText: {
-    fontFamily: fonts.body,
-    fontSize: 14,
-    color: dark.coral,
-    textAlign: 'center',
-    marginBottom: 12,
-  },
-  retryBtn: {
-    paddingHorizontal: 18,
-    paddingVertical: 11,
-    borderRadius: 999,
-    backgroundColor: dark.green,
-  },
-  retryText: {
-    fontFamily: fonts.bodyBold,
-    fontSize: 13,
-    color: '#0B0F1A',
-  },
-  pressed: {
-    opacity: 0.85,
-  },
-  cardLocked: {
-    opacity: 0.55,
-    borderColor: dark.border,
-  },
-  actionDisabled: {
-    opacity: 0.5,
   },
 })

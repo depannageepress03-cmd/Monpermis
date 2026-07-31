@@ -20,6 +20,7 @@ import adminUsersRoutes from './routes/adminUsers.js'
 import adminDashboardRoutes from './routes/adminDashboard.js'
 import contentRoutes from './routes/content.js'
 import practiceExamsRoutes from './routes/practiceExams.js'
+import adminRevisionCoursesRoutes from './routes/adminRevisionCourses.js'
 import ecodepermisExamsRoutes from './routes/ecodepermisExams.js'
 import contentConduiteRoutes from './routes/contentConduite.js'
 import reservationsRoutes from './routes/reservations.js'
@@ -212,6 +213,7 @@ app.use('/api/admin/auth', authLimiter, adminAuthRoutes)
 app.use('/api/admin/admins', adminAdminsRoutes)
 app.use('/api/admin/audit-logs', adminAuditLogsRoutes)
 app.use('/api/admin/activity', adminActivityRoutes)
+app.use('/api/admin/revision', adminRevisionCoursesRoutes)
 app.use('/api/admin/revision', adminRevisionRoutes)
 app.use('/api/admin/revision', adminQuestionsRoutes)
 app.use('/api/admin/revision', adminPracticeExamsRoutes)

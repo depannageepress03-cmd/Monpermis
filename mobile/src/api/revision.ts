@@ -110,6 +110,26 @@ export async function fetchRevisionChapters(): Promise<RevisionChapter[]> {
   }
 }
 
+/** Cours autonomes (hors chapitres). */
+export async function fetchRevisionCourses(): Promise<
+  {
+    id: string
+    title: string
+    order: number
+    modules: RevisionChapter['courses'][number]['modules']
+  }[]
+> {
+  const data = await request<{
+    courses: {
+      id: string
+      title: string
+      order: number
+      modules: RevisionChapter['courses'][number]['modules']
+    }[]
+  }>('/content/revision/courses', { auth: true })
+  return data.courses
+}
+
 /** Variante SWR : pousse le cache immédiatement via onData, puis le réseau. */
 export async function fetchRevisionChaptersSWR(
   onData: (chapters: RevisionChapter[], meta: { fromCache: boolean }) => void,

@@ -40,10 +40,11 @@ const categories = [
     image: '/code-route/cards/notes.jpg',
   },
   {
-    id: 'e-codepermis',
-    label: 'E-Codepermis',
-    subtitle: '(examen blanc)',
+    id: 'cours',
+    label: 'Cours',
+    subtitle: '(par chapitre)',
     className: 'category-purple',
+    /** Image conservée (ex-E-Codepermis) pour la carte Cours. */
     image: '/code-route/cards/ecodepermis.jpg',
   },
 ] as const
@@ -145,20 +146,13 @@ export function CodeRoutePage() {
         <CodeRouteBanner />
 
         <div className="category-grid">
-          {categories.map((category, index) => {
-            const eCodeLocked = category.id === 'e-codepermis' && !accessMe?.access.ecodepermis
-            return (
+          {categories.map((category, index) => (
             <button
               key={category.id}
               type="button"
-              className={`category-card category-card--photo ${category.className} code-route-anim-card${eCodeLocked ? ' is-locked' : ''}`}
+              className={`category-card category-card--photo ${category.className} code-route-anim-card`}
               style={{ animationDelay: `${0.28 + index * 0.09}s` }}
-              disabled={eCodeLocked}
               onClick={() => {
-                if (eCodeLocked) {
-                  navigate('/abonnement')
-                  return
-                }
                 navigate(`/code-de-la-route/${category.id}`)
               }}
             >
@@ -174,15 +168,9 @@ export function CodeRoutePage() {
                 {category.subtitle ? (
                   <span className="category-subtitle">{category.subtitle}</span>
                 ) : null}
-                {eCodeLocked ? (
-                  <span className="category-subtitle category-lock-row">
-                    <Lock size={12} /> Accès E-Codepermis requis
-                  </span>
-                ) : null}
               </span>
             </button>
-            )
-          })}
+          ))}
         </div>
           </>
         )}

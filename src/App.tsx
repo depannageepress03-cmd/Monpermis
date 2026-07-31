@@ -8,7 +8,8 @@ import { ConduiteLeconsPage } from './pages/conduite/ConduiteLeconsPage'
 import { ReservationPage } from './pages/conduite/ReservationPage'
 import { MesReservationsPage } from './pages/conduite/MesReservationsPage'
 import { MoniteurProfilePage } from './pages/conduite/MoniteurProfilePage'
-import { ECodePermisPage, ECodePermisTakePage } from './pages/code-route/ECodePermisPage'
+import { CodeCoursPage } from './pages/code-route/CodeCoursPage'
+import { StandaloneCourseDetailPage } from './pages/code-route/StandaloneCourseDetailPage'
 import { ExamensTestPage, ExamensTestTakePage } from './pages/code-route/ExamensTestPage'
 import { MesNotesPage } from './pages/code-route/MesNotesPage'
 import { RevisionChapterCoursesPage } from './pages/code-route/RevisionChapterCoursesPage'
@@ -101,8 +102,13 @@ export default function App() {
       <Route path="/code-de-la-route/examens-test" element={<ExamensTestPage />} />
       <Route path="/code-de-la-route/examens-test/:examNumber" element={<ExamensTestTakePage />} />
       <Route path="/code-de-la-route/mes-notes" element={<MesNotesPage />} />
-      <Route path="/code-de-la-route/e-codepermis" element={<ECodePermisPage />} />
-      <Route path="/code-de-la-route/e-codepermis/:examNumber" element={<ECodePermisTakePage />} />
+      <Route path="/code-de-la-route/cours" element={<CodeCoursPage />} />
+      <Route path="/code-de-la-route/cours/:courseId" element={<StandaloneCourseDetailPage />} />
+      <Route path="/code-de-la-route/e-codepermis" element={<Navigate to="/code-de-la-route/cours" replace />} />
+      <Route
+        path="/code-de-la-route/e-codepermis/:examNumber"
+        element={<Navigate to="/code-de-la-route/cours" replace />}
+      />
       <Route path="/conduite" element={<ConduitePage />} />
       <Route path="/conduite/reservation" element={<ReservationPage />} />
       <Route path="/conduite/mes-reservations" element={<MesReservationsPage />} />

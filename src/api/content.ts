@@ -131,6 +131,20 @@ export async function fetchRevisionChapters() {
   }
 }
 
+/** Cours autonomes (hors chapitres). */
+export function fetchRevisionCourses() {
+  return request<{ courses: LearnerCourse[] }>('/content/revision/courses', { auth: true }).then(
+    (data) => data.courses,
+  )
+}
+
+export function fetchRevisionCourse(courseId: string) {
+  return request<{ course: LearnerCourse }>(
+    `/content/revision/courses/${encodeURIComponent(courseId)}`,
+    { auth: true },
+  ).then((data) => data.course)
+}
+
 export function fetchConduiteChapters() {
   return request<{ chapters: LearnerChapter[] }>('/content/conduite/chapters', { auth: true }).then(
     (data) => data.chapters,
