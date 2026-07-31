@@ -154,12 +154,15 @@ export function changePassword(data: {
 export async function probeSession(): Promise<boolean> {
   const token = await getStoredToken()
   if (!token) return false
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), 4000)
   try {
     const response = await fetch(`${getApiBase()}/access-requests/me`, {
       headers: {
         Authorization: `Bearer ${token}`,
         'X-Client': 'mobile',
       },
+      signal: controller.signal,
     })
     if (response.status === 401) {
       await invalidateSessionIfUnauthorized(401)
@@ -167,6 +170,9 @@ export async function probeSession(): Promise<boolean> {
     }
     return response.ok
   } catch {
+    // Timeout / hors-ligne : on garde la session locale.
     return true
+  } finally {
+    clearTimeout(timer)
   }
 }

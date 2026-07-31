@@ -33,13 +33,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (!cancelled) setUser(null)
           return
         }
+        // Hydrate tout de suite (évite écran blanc après intro pendant le probe réseau).
+        if (!cancelled) {
+          setUser(stored)
+          setLoading(false)
+        }
         const stillValid = await probeSession()
         if (cancelled) return
         if (!stillValid) {
           setUser(null)
-          return
         }
-        setUser(stored)
       } catch (error) {
         console.warn('Session locale illisible, réinitialisation:', error)
         await clearSession()

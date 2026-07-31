@@ -1,5 +1,4 @@
 import { Chapter } from '../models/Chapter.js'
-import { Question } from '../models/Question.js'
 import { PracticeExam } from '../models/PracticeExam.js'
 import {
   PRACTICE_EXAM_COUNT,
@@ -9,36 +8,39 @@ import {
   summarizeChapterBank,
 } from '../utils/practiceExam.js'
 import { hardcodedAsQuestionDocs } from './hardcodedQuestions.js'
+import fs from 'node:fs'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const CODE_AUDIO_ROOT = path.resolve(__dirname, '../../content/code-audio')
+
+/** True si l’audio généré (MP3 embarqué serveur) existe pour cet id hc-ch… */
+export function hasGeneratedExamAudio(questionId) {
+  const match = String(questionId || '').match(/^hc-ch(\d+)-q(\d+)$/i)
+  if (!match) return false
+  const chapter = Number(match[1])
+  const order = Number(match[2])
+  if (!Number.isFinite(chapter) || !Number.isFinite(order)) return false
+  const file = path.join(CODE_AUDIO_ROOT, `chapitre-${chapter}`, `${order}.mp3`)
+  return fs.existsSync(file)
+}
 
 export async function loadPublishedExamQuestionBank() {
   const chapters = await Chapter.find({ published: true })
     .select('_id name order')
     .sort({ order: 1, createdAt: 1 })
-  const chapterIds = chapters.map((chapter) => chapter._id)
   const chapterNameById = new Map(chapters.map((chapter) => [String(chapter._id), chapter.name]))
 
+  // Examens test : uniquement questions hardcodées avec audio généré (hors-ligne).
   let questions = []
-  if (chapterIds.length > 0) {
-    questions = await Question.find({
-      published: true,
-      chapterId: { $in: chapterIds },
-    }).select('_id chapterId')
-  }
-
-  // Injecte / remplace par les banques en dur (ex. chapitre 20).
   for (const chapter of chapters) {
     const hardcoded = hardcodedAsQuestionDocs(chapter)
     if (!hardcoded?.length) continue
-    const chapterId = String(chapter._id)
-    questions = questions.filter((q) => String(q.chapterId) !== chapterId)
     for (const doc of hardcoded) {
+      if (!hasGeneratedExamAudio(doc.id)) continue
       questions.push({ _id: doc.id, chapterId: chapter._id })
     }
-  }
-
-  // Secours : questions publiées orphelines / chapitres non publiés absents.
-  if (questions.length === 0) {
-    questions = await Question.find({ published: true }).select('_id chapterId')
   }
 
   return { questions, chapters, chapterNameById }

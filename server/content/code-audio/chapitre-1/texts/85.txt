@@ -1,0 +1,1 @@
+À une intersection munie de feux tricolores où un agent de sécurité réglemente la circulation, que faire ? A : je respecte les feux. B : je passe si le feu est au vert. C : je suis les indications de l'agent de sécurité.

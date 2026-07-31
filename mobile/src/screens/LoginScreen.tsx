@@ -5,7 +5,6 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { setStatusBarStyle } from 'expo-status-bar'
 import {
   Animated,
-  Image,
   ImageBackground,
   KeyboardAvoidingView,
   Platform,
@@ -20,6 +19,7 @@ import { loginUser } from '../api/auth'
 import { AuthInput } from '../components/AuthInput'
 import { Bouncy } from '../components/Bouncy'
 import { LegalFooter } from '../components/LegalFooter'
+import { AuthLogoBadge } from '../components/AuthLogoBadge'
 import { BrandName } from '../components/BrandName'
 import { useAuth } from '../context/AuthContext'
 import type { RootStackParamList } from '../navigation/types'
@@ -134,11 +134,7 @@ export function LoginScreen() {
               },
             ]}
           >
-            <Image
-              source={require('../../assets/logo.png')}
-              style={styles.logo}
-              resizeMode="contain"
-            />
+            <AuthLogoBadge size={72} style={styles.logoBadge} />
             <BrandName size={34} mainColor="#ffffff" style={styles.brand} />
             <Text style={styles.tagline}>Code, conduite, confiance — avance à ton rythme.</Text>
           </Animated.View>
@@ -245,10 +241,8 @@ const styles = StyleSheet.create({
   heroCopy: {
     alignItems: 'center',
   },
-  logo: {
-    width: 72,
-    height: 48,
-    marginBottom: 10,
+  logoBadge: {
+    marginBottom: 14,
   },
   brand: {
     marginBottom: 10,

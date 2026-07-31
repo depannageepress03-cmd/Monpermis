@@ -1577,6 +1577,52 @@
   box-sizing: border-box;
 }
 
+/* Accueil fixe : un seul viewport, pas de scroll */
+.home-app.home-app--static {
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
+}
+
+.home-app.home-app--static .home-app-inner {
+  height: 100%;
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 0.75rem 1.15rem calc(0.75rem + var(--safe-bottom));
+  overflow: hidden;
+}
+
+.home-app.home-app--static .home-mobile-stack {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.home-app.home-app--static .home-app-marquee {
+  flex-shrink: 0;
+  max-height: 6.5rem;
+}
+
+.home-app.home-app--static .home-app-paths-block {
+  margin-top: 0.65rem;
+  margin-bottom: 0;
+}
+
+.home-app.home-app--static .home-app-bottom-anim {
+  margin-top: auto;
+  border-radius: 14px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.home-app-access-top {
+  width: 100%;
+  margin-bottom: 0.75rem;
+}
+
 .home-app-inner {
   width: 100%;
   max-width: none !important;

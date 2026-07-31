@@ -23,18 +23,18 @@ export function persistUser(user: AuthUser) {
 
 export function useAuth() {
   const navigate = useNavigate()
-  const [user, setUser] = useState<AuthUser | null>(null)
-  const [loading, setLoading] = useState(true)
+  // Hydratation synchrone : pas d’écran blanc après l’intro.
+  const [user, setUser] = useState<AuthUser | null>(() => getStoredUser())
+  const [loading] = useState(false)
 
   useEffect(() => {
     const stored = getStoredUser()
     if (!stored) {
-      setLoading(false)
+      setUser(null)
       navigate('/', { replace: true })
       return
     }
     setUser(stored)
-    setLoading(false)
   }, [navigate])
 
   useEffect(() => {

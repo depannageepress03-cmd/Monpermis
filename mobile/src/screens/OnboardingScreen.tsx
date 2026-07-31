@@ -1,12 +1,12 @@
 import { useNavigation } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
-import { BookOpen, Car, CreditCard } from 'lucide-react-native'
+import { LinearGradient } from 'expo-linear-gradient'
 import { useRef, useState } from 'react'
 import {
   Dimensions,
   FlatList,
+  ImageBackground,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -23,29 +23,26 @@ import { markOnboardingDone } from '../utils/onboarding'
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'Onboarding'>
 
-const { width } = Dimensions.get('window')
+const { width, height } = Dimensions.get('window')
 
 const SLIDES = [
   {
     key: 'code',
     title: 'Code de la route',
     body: 'Révise les chapitres, entraîne-toi aux QCM, puis passe des sujets test et examens blancs.',
-    icon: BookOpen,
-    accent: dark.green,
+    image: require('../../assets/onboarding/slide-code.jpg'),
   },
   {
     key: 'conduite',
     title: 'Conduite',
     body: 'Cours vidéo gratuits, puis réserve tes heures avec un moniteur près de chez toi.',
-    icon: Car,
-    accent: dark.coral,
+    image: require('../../assets/onboarding/slide-conduite.jpg'),
   },
   {
     key: 'abo',
     title: 'Accès & paiement',
     body: 'Active ton accès en quelques secondes. Progresse à ton rythme, puis réserve ta conduite depuis l’app.',
-    icon: CreditCard,
-    accent: '#F0B429',
+    image: require('../../assets/onboarding/slide-abo.jpg'),
   },
 ] as const
 
@@ -75,14 +72,7 @@ export function OnboardingScreen() {
   }).current
 
   return (
-    <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
-      <View style={styles.top}>
-        <BrandName size={18} mainColor={dark.textPrimary} />
-        <Pressable onPress={() => void finish()} hitSlop={12}>
-          <Text style={styles.skip}>Passer</Text>
-        </Pressable>
-      </View>
-
+    <View style={styles.root}>
       <FlatList
         ref={listRef}
         style={styles.list}
@@ -97,109 +87,139 @@ export function OnboardingScreen() {
           const nextIndex = Math.round(event.nativeEvent.contentOffset.x / width)
           setIndex(nextIndex)
         }}
-        renderItem={({ item }) => {
-          const Icon = item.icon
-          return (
-            <View style={[styles.slide, { width }]}>
-              <ScrollView
-                style={styles.slideScroll}
-                contentContainerStyle={styles.slideScrollContent}
-                showsVerticalScrollIndicator={false}
-                bounces={false}
-                nestedScrollEnabled
-              >
-                <View style={[styles.iconWell, { backgroundColor: `${item.accent}22` }]}>
-                  <Icon size={36} color={item.accent} />
-                </View>
+        renderItem={({ item }) => (
+          <ImageBackground
+            source={item.image}
+            style={[styles.slide, { width, height }]}
+            imageStyle={styles.slideImage}
+          >
+            <LinearGradient
+              colors={['rgba(0,16,48,0.35)', 'rgba(0,16,48,0.55)', 'rgba(0,16,48,0.92)']}
+              locations={[0, 0.45, 1]}
+              style={StyleSheet.absoluteFill}
+            />
+            <SafeAreaView style={styles.slideSafe} edges={['top', 'bottom']}>
+              <View style={styles.slideTop}>
+                <BrandName size={18} mainColor="#ffffff" />
+                <Pressable onPress={() => void finish()} hitSlop={12}>
+                  <Text style={styles.skip}>Passer</Text>
+                </Pressable>
+              </View>
+              <View style={styles.slideCopy}>
+                <Text style={styles.kicker}>Monpermis.bj</Text>
                 <Text style={styles.title}>{item.title}</Text>
                 <Text style={styles.body}>{item.body}</Text>
-              </ScrollView>
-            </View>
-          )
-        }}
+              </View>
+            </SafeAreaView>
+          </ImageBackground>
+        )}
       />
 
-      <View style={styles.footer}>
-        <View style={styles.dots}>
-          {SLIDES.map((slide, slideIndex) => (
-            <View
-              key={slide.key}
-              style={[styles.dot, slideIndex === index && styles.dotActive]}
-            />
-          ))}
+      <SafeAreaView style={styles.footerSafe} edges={['bottom']} pointerEvents="box-none">
+        <View style={styles.footer}>
+          <View style={styles.dots}>
+            {SLIDES.map((slide, slideIndex) => (
+              <View
+                key={slide.key}
+                style={[styles.dot, slideIndex === index && styles.dotActive]}
+              />
+            ))}
+          </View>
+          <Pressable style={styles.cta} onPress={next}>
+            <Text style={styles.ctaText}>
+              {index >= SLIDES.length - 1 ? 'Commencer' : 'Continuer'}
+            </Text>
+          </Pressable>
         </View>
-        <Pressable style={styles.cta} onPress={next}>
-          <Text style={styles.ctaText}>
-            {index >= SLIDES.length - 1 ? 'Commencer' : 'Continuer'}
-          </Text>
-        </Pressable>
-      </View>
-    </SafeAreaView>
+      </SafeAreaView>
+    </View>
   )
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: dark.bg },
-  top: {
-    paddingHorizontal: 22,
+  root: {
+    flex: 1,
+    backgroundColor: '#001030',
+  },
+  list: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  slide: {
+    flex: 1,
+  },
+  slideImage: {
+    resizeMode: 'cover',
+  },
+  slideSafe: {
+    flex: 1,
+    justifyContent: 'space-between',
+    paddingHorizontal: 24,
+  },
+  slideTop: {
     paddingTop: 8,
-    paddingBottom: 4,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  skip: { fontFamily: fonts.bodySemiBold, fontSize: 14, color: dark.textMuted },
-  list: { flex: 1 },
-  slide: {
-    flex: 1,
-    paddingHorizontal: 28,
-    paddingTop: 24,
+  skip: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.85)',
   },
-  slideScroll: { flex: 1 },
-  slideScrollContent: {
-    paddingBottom: 12,
-    alignItems: 'flex-start',
+  slideCopy: {
+    paddingBottom: 140,
   },
-  iconWell: {
-    width: 76,
-    height: 76,
-    borderRadius: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 22,
+  kicker: {
+    fontFamily: fonts.displayBold,
+    fontSize: 12,
+    letterSpacing: 1.1,
+    textTransform: 'uppercase',
+    color: dark.green,
+    marginBottom: 10,
   },
   title: {
     fontFamily: fonts.displayExtraBold,
-    fontSize: 28,
-    lineHeight: 34,
-    color: dark.textPrimary,
+    fontSize: 32,
+    lineHeight: 38,
+    color: '#ffffff',
     marginBottom: 12,
+    letterSpacing: -0.4,
   },
   body: {
     fontFamily: fonts.body,
-    fontSize: 15,
+    fontSize: 15.5,
     lineHeight: 24,
-    color: dark.textMuted,
+    color: 'rgba(255,255,255,0.88)',
     maxWidth: 360,
+  },
+  footerSafe: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
   footer: {
     paddingHorizontal: 22,
-    paddingBottom: 18,
-    gap: 16,
+    paddingBottom: 10,
+    gap: 14,
   },
-  dots: { flexDirection: 'row', gap: 8, justifyContent: 'center' },
+  dots: {
+    flexDirection: 'row',
+    gap: 8,
+    justifyContent: 'center',
+  },
   dot: {
     width: 8,
     height: 8,
     borderRadius: 999,
-    backgroundColor: dark.surfaceRaised,
+    backgroundColor: 'rgba(255,255,255,0.35)',
   },
   dotActive: {
     width: 22,
     backgroundColor: dark.green,
   },
   cta: {
-    borderRadius: 16,
+    borderRadius: 999,
     backgroundColor: dark.green,
     paddingVertical: 16,
     alignItems: 'center',

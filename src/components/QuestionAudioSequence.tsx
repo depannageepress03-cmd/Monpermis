@@ -15,20 +15,38 @@ type Props = {
   questionKey: string
   promptAudioUrl?: string | null
   className?: string
+  /** Examens / hors-ligne : uniquement MP3 générés embarqués. */
+  offlineOnly?: boolean
   /** Après double lecture + décompte 5→0 + sonnerie (sauf si aborté). */
   onSequenceComplete?: () => void
 }
 
 const PAUSE_MS = 600
 
-function cleanUrl(questionKey: string, url?: string | null) {
+function parseCodeAudioRef(url?: string | null) {
+  const value = String(url || '').trim()
+  if (!value) return null
+  const local = value.match(/^local:\/\/code-audio\/(\d+)\/(\d+)\.mp3$/i)
+  if (local) return { chapterOrder: Number(local[1]), questionOrder: Number(local[2]) }
+  const content = value.match(/code-audio\/chapitre-(\d+)\/(\d+)\.mp3/i)
+  if (content) return { chapterOrder: Number(content[1]), questionOrder: Number(content[2]) }
+  return null
+}
+
+function cleanUrl(questionKey: string, url?: string | null, offlineOnly = false) {
   const parsed = parseLocalQuestionId(questionKey)
-  if (parsed) {
-    const bundled = getBundledCodeAudioUrl(parsed.chapterOrder, parsed.questionOrder)
+  const fromUrl = parseCodeAudioRef(url)
+  const chapterOrder = fromUrl?.chapterOrder || parsed?.chapterOrder
+  const questionOrder = fromUrl?.questionOrder || parsed?.questionOrder
+  if (chapterOrder && questionOrder) {
+    const bundled = getBundledCodeAudioUrl(chapterOrder, questionOrder)
     if (bundled) return bundled
+    if (offlineOnly) return ''
   }
+  if (offlineOnly) return ''
   const value = url?.trim() || ''
-  return value ? resolveMediaUrl(value) : ''
+  if (!value || /^(local|asset|file):\/\//i.test(value)) return ''
+  return resolveMediaUrl(value) || ''
 }
 
 function wait(ms: number, isCancelled?: () => boolean) {
@@ -57,6 +75,7 @@ export function QuestionAudioSequence({
   questionKey,
   promptAudioUrl,
   className,
+  offlineOnly = false,
   onSequenceComplete,
 }: Props) {
   const audioRef = useRef<HTMLAudioElement | null>(null)
@@ -66,7 +85,7 @@ export function QuestionAudioSequence({
   const [status, setStatus] = useState('')
   const [countdown, setCountdown] = useState<CountdownValue | null>(null)
 
-  const promptUrl = cleanUrl(questionKey, promptAudioUrl)
+  const promptUrl = cleanUrl(questionKey, promptAudioUrl, offlineOnly)
   const isCancelled = () => cancelledRef.current
 
   useEffect(() => {

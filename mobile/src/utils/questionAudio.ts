@@ -5,15 +5,49 @@ import { resolveMediaUrl } from './mediaUrl'
 
 const uriCache = new Map<string, string>()
 
-/** URI locale (fichier embarqué) ou URL réseau pour l’énoncé. */
+function parseCodeAudioRef(
+  url?: string | null,
+): { chapterOrder: number; questionOrder: number } | null {
+  const value = String(url || '').trim()
+  if (!value) return null
+  const local = value.match(/^local:\/\/code-audio\/(\d+)\/(\d+)\.mp3$/i)
+  if (local) return { chapterOrder: Number(local[1]), questionOrder: Number(local[2]) }
+  const content = value.match(/code-audio\/chapitre-(\d+)\/(\d+)\.mp3/i)
+  if (content) return { chapterOrder: Number(content[1]), questionOrder: Number(content[2]) }
+  return null
+}
+
+export type ResolvePromptAudioOptions = {
+  /** Si true : jamais d’URL réseau (examens / hors-ligne). */
+  offlineOnly?: boolean
+}
+
+/** True si un MP3 embarqué existe pour cette question. */
+export function hasBundledQuestionAudio(
+  questionId?: string | null,
+  audioUrl?: string | null,
+): boolean {
+  const localQ = questionId ? findLocalQuestionById(questionId) : null
+  const parsed = questionId ? parseLocalQuestionId(questionId) : null
+  const fromUrl = parseCodeAudioRef(audioUrl)
+  const chapterOrder = fromUrl?.chapterOrder || localQ?.chapterOrder || parsed?.chapterOrder
+  const questionOrder = fromUrl?.questionOrder || localQ?.order || parsed?.questionOrder
+  if (!chapterOrder || !questionOrder) return false
+  return getCodeAudioModule(chapterOrder, questionOrder) != null
+}
+
+/** URI locale (fichier embarqué) ou, sauf offlineOnly, URL réseau. */
 export async function resolveQuestionPromptUri(
   questionId?: string | null,
   remoteAudioUrl?: string | null,
+  options: ResolvePromptAudioOptions = {},
 ): Promise<string | undefined> {
+  const offlineOnly = Boolean(options.offlineOnly)
   const localQ = questionId ? findLocalQuestionById(questionId) : null
   const parsed = questionId ? parseLocalQuestionId(questionId) : null
-  const chapterOrder = localQ?.chapterOrder || parsed?.chapterOrder
-  const questionOrder = localQ?.order || parsed?.questionOrder
+  const fromUrl = parseCodeAudioRef(remoteAudioUrl)
+  const chapterOrder = fromUrl?.chapterOrder || localQ?.chapterOrder || parsed?.chapterOrder
+  const questionOrder = fromUrl?.questionOrder || localQ?.order || parsed?.questionOrder
 
   if (chapterOrder && questionOrder) {
     const cacheKey = `${chapterOrder}:${questionOrder}`
@@ -31,10 +65,15 @@ export async function resolveQuestionPromptUri(
           return uri
         }
       } catch {
-        // fallback réseau
+        // pas de fallback réseau en mode offline
       }
     }
+
+    if (offlineOnly) return undefined
+    return resolveMediaUrl(`/content/code-audio/chapitre-${chapterOrder}/${questionOrder}.mp3`)
   }
 
+  if (offlineOnly) return undefined
+  if (/^(local|asset|file):\/\//i.test(String(remoteAudioUrl || ''))) return undefined
   return resolveMediaUrl(remoteAudioUrl)
 }

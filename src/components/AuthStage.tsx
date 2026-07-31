@@ -37,14 +37,12 @@ export function AuthStage({
         <div className="auth-stage-hero-glow" aria-hidden="true" />
         <div className="auth-stage-hero-shine" aria-hidden="true" />
         <div className="auth-stage-hero-copy">
-          <img
-            src="/logo.png"
-            alt="Monpermis.bj"
-            className="auth-stage-logo auth-stage-stagger"
-            width={80}
-            height={54}
+          <div
+            className="auth-stage-logo-badge auth-stage-stagger"
             style={{ ['--stagger' as string]: '0' }}
-          />
+          >
+            <img src="/logo-mark.png" alt="" className="auth-stage-logo" width={62} height={62} />
+          </div>
           <BrandName
             as="h1"
             className="auth-stage-brand auth-stage-stagger"
