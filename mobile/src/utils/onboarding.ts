@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
 
-const ONBOARDING_KEY = '@mp/onboarding-done-v1'
+const ONBOARDING_KEY = '@mp/onboarding-done-v2'
 
 export async function hasCompletedOnboarding(): Promise<boolean> {
   try {

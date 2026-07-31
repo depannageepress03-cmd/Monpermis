@@ -17,6 +17,7 @@ import { clearSession } from '../api/auth'
 import { fetchUnreadCount } from '../api/notifications'
 import { fetchAccessMe, type AccessMe } from '../api/accessRequests'
 import { BrandName } from '../components/BrandName'
+import { HomeBottomAnimation } from '../components/HomeBottomAnimation'
 import { PageLoader } from '../components/PageLoader'
 import { PageSkeleton } from '../components/PageSkeleton'
 import { useAuth } from '../hooks/useAuth'
@@ -267,6 +268,9 @@ export function HomePage() {
           <p className="home-app-section-label">Sur la route avec Monpermis</p>
           {marquee}
           {pathsSection}
+          <div className="home-app-bottom-anim">
+            <HomeBottomAnimation />
+          </div>
         </div>
 
         {/* Desktop: intro + visuel, parcours sous le carrousel */}

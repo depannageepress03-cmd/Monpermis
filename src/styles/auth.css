@@ -1607,8 +1607,15 @@
 }
 
 .home-app.home-app--static .home-app-paths-block {
-  margin-top: auto;
+  margin-top: 0.65rem;
   margin-bottom: 0;
+}
+
+.home-app.home-app--static .home-app-bottom-anim {
+  margin-top: auto;
+  border-radius: 14px;
+  overflow: hidden;
+  flex-shrink: 0;
 }
 
 .home-app-access-top {

@@ -28,6 +28,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { fetchAccessMe, type AccessMe } from '../api/accessRequests'
 import { Bouncy } from '../components/Bouncy'
 import { BrandName } from '../components/BrandName'
+import { HomeBottomAnimation } from '../components/HomeBottomAnimation'
 import { InfiniteImageMarquee } from '../components/InfiniteImageMarquee'
 import { HomeSkeleton } from '../components/Skeleton'
 import { ScreenLoader } from '../components/ScreenLoader'
@@ -278,6 +279,10 @@ export function HomeScreen() {
                 <ChevronRight size={20} color={conduiteLocked ? dark.textMuted : dark.coral} />
               </View>
             </Bouncy>
+          </View>
+
+          <View style={styles.bottomAnim}>
+            <HomeBottomAnimation compact />
           </View>
         </View>
       </SafeAreaView>
@@ -534,17 +539,20 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   marqueeLabel: {
-    marginTop: 12,
+    marginTop: 10,
   },
   marqueeWrap: {
     borderRadius: 16,
     overflow: 'hidden',
-    marginBottom: 4,
+    marginBottom: 0,
   },
   pathsBlock: {
-    marginTop: 12,
-    flexGrow: 1,
-    justifyContent: 'flex-end',
+    marginTop: 10,
+  },
+  bottomAnim: {
+    marginTop: 'auto',
+    borderRadius: 14,
+    overflow: 'hidden',
   },
 
   /* Path cards */
