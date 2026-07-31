@@ -1,8 +1,22 @@
-import { NavigationContainer, type LinkingOptions } from '@react-navigation/native'
+import {
+  DefaultTheme,
+  NavigationContainer,
+  type LinkingOptions,
+} from '@react-navigation/native'
 import { createNativeStackNavigator } from '@react-navigation/native-stack'
 import * as Linking from 'expo-linking'
 import { StatusBar } from 'expo-status-bar'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
+
+const BOOT_BG = '#FAF9F6'
+const navTheme = {
+  ...DefaultTheme,
+  colors: {
+    ...DefaultTheme.colors,
+    background: BOOT_BG,
+    card: BOOT_BG,
+  },
+}
 import { AppErrorBoundary } from '../components/AppErrorBoundary'
 import { AppToastHost } from '../components/AppToast'
 import { AuthProvider } from '../context/AuthContext'
@@ -94,7 +108,11 @@ function AppNavigator() {
   return (
     <Stack.Navigator
       initialRouteName="Intro"
-      screenOptions={{ headerShown: false, animation: 'slide_from_right' }}
+      screenOptions={{
+        headerShown: false,
+        animation: 'slide_from_right',
+        contentStyle: { backgroundColor: BOOT_BG },
+      }}
     >
       <Stack.Screen name="Intro" component={IntroScreen} options={{ animation: 'none' }} />
       <Stack.Screen
@@ -253,7 +271,7 @@ export function RootNavigator() {
     <SafeAreaProvider>
       <AppErrorBoundary>
         <AuthProvider>
-          <NavigationContainer linking={linking}>
+          <NavigationContainer linking={linking} theme={navTheme}>
             <StatusBar style="dark" />
             <AppNavigator />
             <AppToastHost />

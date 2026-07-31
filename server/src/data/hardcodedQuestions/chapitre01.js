@@ -1,8 +1,8 @@
 /**
- * Banque questions en dur — Chapitre 1 (signalisation) — partie 1.
+ * Banque questions en dur — Chapitre 1 (signalisation) — parties 1+2.
  * Audio : /content/code-audio/chapitre-1/{n}.mp3
  * Images : /content/code-images/chapitre-1/{n}.png
- * Suite à venir — 2026-07-30.
+ * Mis à jour — 2026-07-31.
  */
 
 export const CHAPITRE_01_KEY = 'chapitre-1'
@@ -25,7 +25,7 @@ function imageUrl(n) {
 }
 
 /** Images disponibles (N.png = question N). */
-const QUESTIONS_WITH_IMAGES = new Set([3, 4, 6, 14, 15, 16, 18, 19, 20, 22, 33, 36])
+const QUESTIONS_WITH_IMAGES = new Set([3, 4, 6, 14, 15, 16, 18, 19, 20, 22, 33, 36, 44, 45, 46, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 63, 64, 66, 68, 70, 72, 73, 74, 76, 77, 78, 80, 81, 96, 97, 98, 99, 100, 101, 102, 104, 106])
 
 function answers(questionIndex, letters, correctLetters) {
   const correct = new Set(correctLetters.map((l) => l.toUpperCase()))
@@ -59,8 +59,8 @@ function question(order, letterOptions, correctLetters) {
 }
 
 /**
- * 42 questions — 1re partie (doublons OCR retirés).
- * Images : 3,4,6,14,15,16,18,19,20,22,33,36.
+ * 106 questions — parties 1+2 (doublons OCR retirés).
+ * Images panneaux sur les questions concernées.
  */
 export const CHAPITRE_01_QUESTIONS = [
   question(1, ['A', 'B', 'C'], ['B']),
@@ -105,4 +105,68 @@ export const CHAPITRE_01_QUESTIONS = [
   question(40, ['A', 'B', 'C'], ['B']),
   question(41, ['A', 'B', 'C', 'D'], ['D']),
   question(42, ['A', 'B', 'C', 'D'], ['A']),
+  question(43, ['A', 'B', 'C', 'D'], ['D']),
+  question(44, ['A', 'B', 'C', 'D'], ['A']),
+  question(45, ['A', 'B', 'C'], ['C']),
+  question(46, ['A', 'B', 'C'], ['B']),
+  question(47, ['A', 'B', 'C'], ['C']),
+  question(48, ['A', 'B', 'C'], ['C']),
+  question(49, ['A', 'B', 'C'], ['B']),
+  question(50, ['A', 'B', 'C'], ['A']),
+  question(51, ['A', 'B', 'C'], ['A']),
+  question(52, ['A', 'B', 'C'], ['C']),
+  question(53, ['A', 'B', 'C'], ['B']),
+  question(54, ['A', 'B', 'C', 'D'], ['A']),
+  question(55, ['A', 'B', 'C', 'D'], ['D']),
+  question(56, ['A', 'B', 'C', 'D'], ['D']),
+  question(57, ['A', 'B', 'C', 'D'], ['B']),
+  question(58, ['A', 'B', 'C', 'D'], ['C']),
+  question(59, ['A', 'B', 'C'], ['C']),
+  question(60, ['A', 'B', 'C', 'D'], ['D']),
+  question(61, ['A', 'B', 'C'], ['C']),
+  question(62, ['A', 'B', 'C'], ['C']),
+  question(63, ['A', 'B', 'C'], ['C']),
+  question(64, ['A', 'B', 'C', 'D'], ['C']),
+  question(65, ['A', 'B', 'C', 'D'], ['D']),
+  question(66, ['A', 'B', 'C'], ['C']),
+  question(67, ['A', 'B', 'C'], ['A']),
+  question(68, ['A', 'B', 'C'], ['B']),
+  question(69, ['A', 'B', 'C'], ['C']),
+  question(70, ['A', 'B', 'C'], ['B']),
+  question(71, ['A', 'B', 'C', 'D'], ['B']),
+  question(72, ['A', 'B', 'C', 'D'], ['D']),
+  question(73, ['A', 'B', 'C', 'D'], ['A']),
+  question(74, ['A', 'B', 'C'], ['A', 'C']),
+  question(75, ['A', 'B', 'C'], ['B']),
+  question(76, ['A', 'B', 'C'], ['C']),
+  question(77, ['A', 'B', 'C', 'D'], ['A', 'C']),
+  question(78, ['A', 'B', 'C'], ['C']),
+  question(79, ['A', 'B', 'C'], ['C']),
+  question(80, ['A', 'B', 'C'], ['C']),
+  question(81, ['A', 'B', 'C'], ['C']),
+  question(82, ['A', 'B', 'C'], ['A']),
+  question(83, ['A', 'B', 'C'], ['C']),
+  question(84, ['A', 'B', 'C'], ['A']),
+  question(85, ['A', 'B', 'C'], ['C']),
+  question(86, ['A', 'B', 'C'], ['C']),
+  question(87, ['A', 'B', 'C'], ['C']),
+  question(88, ['A', 'B', 'C'], ['B']),
+  question(89, ['A', 'B', 'C'], ['C']),
+  question(90, ['A', 'B', 'C'], ['B']),
+  question(91, ['A', 'B', 'C', 'D'], ['C']),
+  question(92, ['A', 'B', 'C', 'D'], ['B']),
+  question(93, ['A', 'B', 'C', 'D'], ['D']),
+  question(94, ['A', 'B', 'C'], ['C']),
+  question(95, ['A', 'B', 'C', 'D'], ['C']),
+  question(96, ['A', 'B', 'C'], ['A']),
+  question(97, ['A', 'B', 'C'], ['C']),
+  question(98, ['A', 'B', 'C'], ['B']),
+  question(99, ['A', 'B', 'C'], ['C']),
+  question(100, ['A', 'B', 'C'], ['B']),
+  question(101, ['A', 'B', 'C'], ['B']),
+  question(102, ['A', 'B', 'C', 'D', 'E'], ['C']),
+  question(103, ['A', 'B', 'C', 'D'], ['A', 'D']),
+  question(104, ['A', 'B', 'C', 'D'], ['D']),
+  question(105, ['A', 'B', 'C', 'D'], ['B']),
+  question(106, ['A', 'B', 'C'], ['B']),
 ]

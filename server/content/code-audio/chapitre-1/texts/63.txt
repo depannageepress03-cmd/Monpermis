@@ -1,0 +1,1 @@
+Que signifie le panneau B13 ? A : accès interdit aux véhicules pesant cinq virgule cinq tonnes. B : accès interdit aux véhicules pesant moins de cinq virgule cinq tonnes. C : accès interdit aux véhicules pesant plus de cinq virgule cinq tonnes.

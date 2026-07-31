@@ -1,1 +1,7 @@
-<resources/>
+<resources>
+  <!-- Même fond clair la nuit : pas de fenêtre noire au cold start. -->
+  <color name="splashscreen_background">#FAF9F6</color>
+  <color name="iconBackground">#FFFFFF</color>
+  <color name="colorPrimary">#00B050</color>
+  <color name="colorPrimaryDark">#001030</color>
+</resources>

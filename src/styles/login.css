@@ -600,13 +600,25 @@
   }
 }
 
+.auth-stage-logo-badge {
+  width: 92px;
+  height: 92px;
+  margin: 0 auto 0.85rem;
+  border-radius: 999px;
+  background: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  display: grid;
+  place-items: center;
+  box-shadow: 0 10px 28px rgba(0, 16, 48, 0.28);
+}
+
 .auth-stage-logo {
-  width: 72px;
-  height: 48px;
+  width: 54px;
+  height: 36px;
   object-fit: contain;
-  margin: 0 auto 0.65rem;
   display: block;
-  filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.35));
+  margin: 0;
+  filter: none;
 }
 
 .auth-stage-brand {
@@ -860,10 +872,15 @@
     max-width: 28rem;
   }
 
-  .auth-stage-logo {
+  .auth-stage-logo-badge {
     margin-left: 0;
-    width: 88px;
-    height: 58px;
+    width: 104px;
+    height: 104px;
+  }
+
+  .auth-stage-logo {
+    width: 62px;
+    height: 42px;
   }
 
   .auth-stage-brand {

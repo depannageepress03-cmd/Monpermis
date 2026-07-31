@@ -1,5 +1,6 @@
 <resources>
-  <color name="splashscreen_background">#FFFFFF</color>
+  <!-- Aligné sur splash Expo / intro (#FAF9F6) -->
+  <color name="splashscreen_background">#FAF9F6</color>
   <color name="iconBackground">#FFFFFF</color>
   <color name="colorPrimary">#00B050</color>
   <color name="colorPrimaryDark">#001030</color>

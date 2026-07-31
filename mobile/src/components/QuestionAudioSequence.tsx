@@ -14,8 +14,10 @@ import {
 
 type Props = {
   questionKey: string
-  /** URL réseau éventuelle ; si questionId local, l’audio embarqué est prioritaire. */
+  /** URL / chemin éventuel ; si questionId local, l’audio embarqué est prioritaire. */
   promptUri?: string | null
+  /** Examens / hors-ligne : uniquement MP3 générés embarqués, jamais le réseau. */
+  offlineOnly?: boolean
   onSequenceComplete?: () => void
 }
 
@@ -118,7 +120,12 @@ async function playUntilEnd(player: Player, isCancelled?: () => boolean) {
  * Lance l’audio automatiquement (×2), puis décompte 5→0.
  * Démonter le composant (Continuer) annule tout sans décompte.
  */
-export function QuestionAudioSequence({ questionKey, promptUri, onSequenceComplete }: Props) {
+export function QuestionAudioSequence({
+  questionKey,
+  promptUri,
+  offlineOnly = false,
+  onSequenceComplete,
+}: Props) {
   const [status, setStatus] = useState('')
   const [countdown, setCountdown] = useState<CountdownValue | null>(null)
   const cancelledRef = useRef(false)
@@ -148,8 +155,12 @@ export function QuestionAudioSequence({ questionKey, promptUri, onSequenceComple
         await ensureAudioSession()
         if (cancelledRef.current) return
 
-        const promptUrl =
-          cleanUri(await resolveQuestionPromptUri(questionKey, promptUri)) || cleanUri(promptUri)
+        const bundled = cleanUri(
+          await resolveQuestionPromptUri(questionKey, promptUri, { offlineOnly }),
+        )
+        const promptUrl = offlineOnly
+          ? bundled
+          : bundled || cleanUri(promptUri?.startsWith('http') ? promptUri : undefined)
 
         if (promptUrl) {
           const audio: AudioModule = await import('expo-audio')
@@ -208,7 +219,7 @@ export function QuestionAudioSequence({ questionKey, promptUri, onSequenceComple
       setCountdown(null)
       setStatus('')
     }
-  }, [questionKey, promptUri])
+  }, [questionKey, promptUri, offlineOnly])
 
   return (
     <View style={styles.wrap}>

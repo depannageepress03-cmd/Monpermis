@@ -17,7 +17,6 @@ import { useAuth } from '../../hooks/useAuth'
 import { useFocusRefresh } from '../../hooks/useFocusRefresh'
 import { useLeaveGuard } from '../../hooks/useLeaveGuard'
 import { playFailSound, playSuccessSound, stopAllQuizAudio } from '../../utils/quizSounds'
-import { resolveMediaUrl } from '../../utils/mediaUrl'
 import { resolveCodeImageUrl } from '../../utils/codeImageUrl'
 import '../../styles/auth.css'
 import '../../styles/learner.css'
@@ -489,6 +488,7 @@ export function ExamensTestTakePage() {
                   key={question.id}
                   questionKey={question.id}
                   promptAudioUrl={question.prompt?.audioUrl}
+                  offlineOnly
                   onSequenceComplete={handleSequenceComplete}
                 />
               ) : null}

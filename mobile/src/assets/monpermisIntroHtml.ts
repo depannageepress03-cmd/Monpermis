@@ -22,6 +22,7 @@ export const MONPERMIS_INTRO_HTML = `<!DOCTYPE html>
     width:100%;
     overflow:hidden;
     background:var(--bg);
+    background-color:var(--bg);
     font-family:system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     display:flex;
     align-items:center;

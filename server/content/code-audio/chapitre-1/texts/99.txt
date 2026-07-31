@@ -1,0 +1,1 @@
+Le panneau B7b : A : interdit le stationnement à tout véhicule à moteur sauf les camions. B : interdit l'accès à tous les véhicules sauf les camions. C : interdit l'accès à tous les véhicules à moteur.

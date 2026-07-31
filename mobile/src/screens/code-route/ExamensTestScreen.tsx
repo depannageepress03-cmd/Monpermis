@@ -34,7 +34,6 @@ import { useRequireAuth } from '../../hooks/useRequireAuth'
 import type { RootStackParamList } from '../../navigation/types'
 import { dark, fonts } from '../../theme'
 import { playFailSound, playSuccessSound, stopAllQuizAudio } from '../../utils/quizSounds'
-import { resolveMediaUrl } from '../../utils/mediaUrl'
 
 function wait(ms: number) {
   return new Promise<void>((resolve) => {
@@ -506,10 +505,11 @@ export function ExamensTestTakeScreen() {
               {question.prompt?.text ? (
                 <QuestionPromptHtml text={question.prompt.text} style={styles.prompt} />
               ) : null}
-              {sequenceLive && !result && question.prompt?.audioUrl ? (
+              {sequenceLive && !result ? (
                 <QuestionAudioSequence
                   questionKey={question.id}
-                  promptUri={resolveMediaUrl(question.prompt?.audioUrl)}
+                  promptUri={question.prompt?.audioUrl}
+                  offlineOnly
                   onSequenceComplete={handleSequenceComplete}
                 />
               ) : null}

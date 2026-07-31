@@ -23,6 +23,7 @@ export function IntroScreen() {
   const userRef = useRef(user)
   const loadingRef = useRef(loading)
   const [useNativeFallback, setUseNativeFallback] = useState(false)
+  const [webReady, setWebReady] = useState(false)
 
   userRef.current = user
   loadingRef.current = loading
@@ -84,7 +85,7 @@ export function IntroScreen() {
             html: MONPERMIS_INTRO_HTML,
             baseUrl: Platform.OS === 'android' ? 'file:///android_asset/' : undefined,
           }}
-          style={styles.webview}
+          style={[styles.webview, !webReady && styles.webviewHidden]}
           containerStyle={styles.webview}
           scrollEnabled={false}
           bounces={false}
@@ -95,6 +96,7 @@ export function IntroScreen() {
           setSupportMultipleWindows={false}
           mediaPlaybackRequiresUserAction
           onMessage={onWebMessage}
+          onLoadEnd={() => setWebReady(true)}
           onError={() => setUseNativeFallback(true)}
           onHttpError={() => setUseNativeFallback(true)}
           androidLayerType="hardware"
@@ -112,6 +114,8 @@ const styles = StyleSheet.create({
   webview: {
     flex: 1,
     backgroundColor: INTRO_BG,
-    opacity: 0.99,
+  },
+  webviewHidden: {
+    opacity: 0,
   },
 })

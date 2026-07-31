@@ -2,7 +2,6 @@ import { useNavigation } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { MessageCircle } from 'lucide-react-native'
 import {
-  Image,
   KeyboardAvoidingView,
   Linking,
   Pressable,
@@ -12,6 +11,7 @@ import {
   View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import { AuthLogoBadge } from '../components/AuthLogoBadge'
 import { LegalFooter } from '../components/LegalFooter'
 import { BrandName } from '../components/BrandName'
 import type { RootStackParamList } from '../navigation/types'
@@ -36,11 +36,7 @@ export function ForgotPasswordScreen() {
             showsVerticalScrollIndicator={false}
           >
             <View style={styles.header}>
-              <Image
-                source={require('../../assets/logo.png')}
-                style={styles.logo}
-                resizeMode="contain"
-              />
+              <AuthLogoBadge size={88} style={styles.logoBadge} />
               <BrandName size={22} style={styles.brand} mainColor={dark.textPrimary} />
               <Text style={styles.title}>Mot de passe oublié</Text>
               <Text style={styles.subtitle}>
@@ -84,7 +80,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 28,
   },
-  logo: { width: 110, height: 74, marginBottom: 12 },
+  logoBadge: { marginBottom: 14 },
   brand: { marginBottom: 16 },
   title: {
     fontFamily: fonts.displayExtraBold,

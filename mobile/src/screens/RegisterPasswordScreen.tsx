@@ -6,7 +6,6 @@ import { ChevronLeft } from 'lucide-react-native'
 import { useEffect, useRef, useState } from 'react'
 import {
   Animated,
-  Image,
   ImageBackground,
   KeyboardAvoidingView,
   Platform,
@@ -21,6 +20,7 @@ import { registerUser } from '../api/auth'
 import { AuthInput } from '../components/AuthInput'
 import { Bouncy } from '../components/Bouncy'
 import { LegalFooter } from '../components/LegalFooter'
+import { AuthLogoBadge } from '../components/AuthLogoBadge'
 import { BrandName } from '../components/BrandName'
 import type { RootStackParamList } from '../navigation/types'
 import { brand, dark, fonts, gradients } from '../theme'
@@ -137,11 +137,7 @@ export function RegisterPasswordScreen() {
               },
             ]}
           >
-            <Image
-              source={require('../../assets/logo.png')}
-              style={styles.logo}
-              resizeMode="contain"
-            />
+            <AuthLogoBadge size={92} style={styles.logoBadge} />
             <BrandName size={34} mainColor="#ffffff" style={styles.brand} />
             <Text style={styles.tagline}>Code, conduite, confiance — avance à ton rythme.</Text>
           </Animated.View>
@@ -249,10 +245,8 @@ const styles = StyleSheet.create({
   heroCopy: {
     alignItems: 'center',
   },
-  logo: {
-    width: 72,
-    height: 48,
-    marginBottom: 10,
+  logoBadge: {
+    marginBottom: 14,
   },
   brand: {
     marginBottom: 10,
