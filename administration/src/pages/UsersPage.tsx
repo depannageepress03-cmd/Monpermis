@@ -5,7 +5,6 @@ import {
   createUser,
   deleteUser,
   fetchUsers,
-  resetUserCode,
   updateUser,
   type AppUser,
 } from '../api/users'
@@ -48,10 +47,6 @@ export function UsersPage() {
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
   const [password, setPassword] = useState('')
-  const [resetTarget, setResetTarget] = useState<AppUser | null>(null)
-  const [resetCode, setResetCode] = useState('')
-  const [resetConfirm, setResetConfirm] = useState('')
-  const [resetBusy, setResetBusy] = useState(false)
 
   useEffect(() => {
     const q = searchParams.get('q')
@@ -176,42 +171,6 @@ export function UsersPage() {
       setError(isAuthError(err) ? err.message : 'Mise à jour impossible')
     } finally {
       setBusyId(null)
-    }
-  }
-
-  const handleResetCode = async (e: FormEvent) => {
-    e.preventDefault()
-    if (!resetTarget) return
-    const pwdError = validatePassword(resetCode)
-    if (pwdError) {
-      setError(pwdError)
-      return
-    }
-    if (resetCode !== resetConfirm) {
-      setError('Les codes ne correspondent pas')
-      return
-    }
-
-    const token = getAdminToken()
-    if (!token) {
-      setError('Session expirée. Reconnectez-vous.')
-      return
-    }
-
-    setResetBusy(true)
-    setError(null)
-    setSuccess(null)
-    try {
-      const { user: updated } = await resetUserCode(token, resetTarget.id, resetCode)
-      setUsers((current) => current.map((item) => (item.id === updated.id ? updated : item)))
-      setSuccess(`Code réinitialisé pour ${updated.firstName} ${updated.lastName}.`)
-      setResetTarget(null)
-      setResetCode('')
-      setResetConfirm('')
-    } catch (err) {
-      setError(isAuthError(err) ? err.message : 'Réinitialisation impossible')
-    } finally {
-      setResetBusy(false)
     }
   }
 
