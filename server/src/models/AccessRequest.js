@@ -12,7 +12,7 @@ export const ACCESS_REQUEST_STATUSES = [
 ]
 
 /** Modules temporels : ont un startAt/endAt et transitent valide -> actif -> expire. */
-export const TIME_BASED_MODULES = ['code', 'conduite_videos', 'ecodepermis', 'aiChat']
+export const TIME_BASED_MODULES = ['code', 'conduite_videos', 'aiChat']
 /** Modules à quantité : créditent un solde à `valide`, pas d'état actif/expire. */
 export const QUANTITY_BASED_MODULES = ['conduite_heures']
 

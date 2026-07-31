@@ -36,6 +36,7 @@ import { hapticError, hapticSelect, hapticSuccess } from '../../utils/haptics'
 import { playFailSound, playSuccessSound, stopAllQuizAudio } from '../../utils/quizSounds'
 import { rememberChapterOrder } from '../../data/codeRoute/chapterIndex'
 import { resolveQuestionImageUri } from '../../utils/questionImages'
+import { tracker } from '../../tracking/tracker'
 
 function wait(ms: number) {
   return new Promise<void>((resolve) => {
@@ -120,13 +121,16 @@ export function ChapterQuestionsScreen() {
     setError(null)
     try {
       rememberChapterOrder(chapterId, chapterOrder, chapterName)
+      let loaded: RevisionQuestion[] = []
       if (isTest) {
         const subject = await fetchChapterTestSubject(chapterId, subjectNumber)
         setSubjectLabel(subject.label || `Sujet ${subjectNumber}`)
-        setQuestions(subject.questions || [])
+        loaded = subject.questions || []
+        setQuestions(loaded)
       } else {
         setSubjectLabel('')
-        setQuestions(await fetchChapterQuestions(chapterId))
+        loaded = await fetchChapterQuestions(chapterId)
+        setQuestions(loaded)
       }
       setIndex(0)
       setSelectedIds(new Set())
@@ -138,6 +142,15 @@ export function ChapterQuestionsScreen() {
       setReviewHistory([])
       setReviewing(false)
       setAudioPaused(false)
+      const startContext = {
+        chapterId,
+        subjectNumber: isTest ? subjectNumber : undefined,
+        mode,
+      }
+      tracker.setActiveSession(startContext)
+      const startEvent = isTest ? 'test_start' : 'practice_start'
+      tracker.track(startEvent, startContext, { count: loaded.length })
+      tracker.markQuestionStart()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Chargement impossible')
       setQuestions([])
@@ -158,7 +171,14 @@ export function ChapterQuestionsScreen() {
     setResult(null)
     setAudioPaused(false)
     stopAllQuizAudio()
+    tracker.markQuestionStart()
   }, [index])
+
+  useEffect(() => {
+    return () => {
+      tracker.setActiveSession(null)
+    }
+  }, [])
 
   useEffect(() => {
     if (finished) stopAllQuizAudio()
@@ -197,6 +217,17 @@ export function ChapterQuestionsScreen() {
         stopAllQuizAudio()
         setSequenceLive(false)
         setFinished(true)
+        const completeEvent = isTest ? 'test_complete' : 'practice_complete'
+        tracker.track(
+          completeEvent,
+          {
+            chapterId,
+            subjectNumber: isTest ? subjectNumber : undefined,
+            mode,
+          },
+          { correct: nextScore.correct, total: nextScore.total },
+        )
+        tracker.setActiveSession(null)
         if (isTest && !testSavedRef.current) {
           setSavingTest(true)
           try {
@@ -226,6 +257,16 @@ export function ChapterQuestionsScreen() {
     stopAllQuizAudio()
     try {
       const currentQuestion = questionsRef.current[indexRef.current]
+      tracker.track(
+        isTest ? 'test_skip' : 'practice_skip',
+        {
+          chapterId,
+          subjectNumber: isTest ? subjectNumber : undefined,
+          mode,
+          questionId: currentQuestion?.id || '',
+        },
+        { index: indexRef.current, elapsedMs: tracker.consumeElapsedMs() },
+      )
       setResult({ isCorrect: false, correctAnswerIds: [] })
       if (currentQuestion) {
         setReviewHistory((prev) => [
@@ -261,6 +302,21 @@ export function ChapterQuestionsScreen() {
       stopAllQuizAudio()
       try {
         const check = await checkQuestionAnswers(chapterId, currentQuestion.id, ids)
+        tracker.track(
+          isTest ? 'test_answer' : 'practice_answer',
+          {
+            chapterId,
+            subjectNumber: isTest ? subjectNumber : undefined,
+            mode,
+            questionId: currentQuestion.id,
+          },
+          {
+            answerIds: ids,
+            isCorrect: check.isCorrect,
+            index: indexRef.current,
+            elapsedMs: tracker.consumeElapsedMs(),
+          },
+        )
         setResult(check)
         setReviewHistory((prev) => [
           ...prev,

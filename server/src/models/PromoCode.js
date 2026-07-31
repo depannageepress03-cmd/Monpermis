@@ -1,8 +1,8 @@
 import mongoose from 'mongoose'
 
-export const PROMO_ELIGIBLE_MODULES = ['code', 'conduite_heures', 'ecodepermis', 'aiChat']
+export const PROMO_ELIGIBLE_MODULES = ['code', 'conduite_heures', 'aiChat']
 /** Modules encore proposés dans les nouveaux codes promo. */
-export const PROMO_CREATABLE_MODULES = ['code', 'conduite_heures', 'ecodepermis']
+export const PROMO_CREATABLE_MODULES = ['code', 'conduite_heures']
 export const PROMO_DURATION_UNITS = ['day', 'week', 'month']
 
 const promoCodeSchema = new mongoose.Schema(
@@ -24,7 +24,7 @@ const promoCodeSchema = new mongoose.Schema(
         message: 'Sélectionnez au moins un module',
       },
     },
-    /** Durée accordée aux modules temporels (code, ecodepermis, aiChat). */
+    /** Durée accordée aux modules temporels (code, aiChat). */
     durationQuantity: { type: Number, default: 1, min: 1 },
     durationUnit: { type: String, enum: PROMO_DURATION_UNITS, default: 'month' },
     /** Heures créditées si 'conduite_heures' fait partie des modules. */

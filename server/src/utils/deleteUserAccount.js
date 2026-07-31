@@ -1,7 +1,6 @@
 import { AccessAuditLog } from '../models/AccessAuditLog.js'
 import { AccessRequest } from '../models/AccessRequest.js'
 import { Creneau } from '../models/Creneau.js'
-import { ECodePermisExamAttempt } from '../models/ECodePermisExamAttempt.js'
 import { Notification } from '../models/Notification.js'
 import { Payment } from '../models/Payment.js'
 import { PracticeExamAttempt } from '../models/PracticeExamAttempt.js'
@@ -85,7 +84,6 @@ export async function deleteUserAccount(userId, { cancelledBy = 'learner' } = {}
 
   await Promise.all([
     PracticeExamAttempt.deleteMany({ userId: id }),
-    ECodePermisExamAttempt.deleteMany({ userId: id }),
     PromoCodeRedemption.deleteMany({ userId: id }),
     Notification.deleteMany({ userId: id }),
     AccessAuditLog.deleteMany({ accessRequestId: { $in: accessRequestIds } }),

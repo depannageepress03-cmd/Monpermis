@@ -1,7 +1,7 @@
 import mongoose from 'mongoose'
 import { computeDrivingAmount, HOURS_DISCOUNT_FCFA } from '../utils/pricing.js'
 
-export const ACCESS_MODULES = ['code', 'conduite_heures', 'conduite_videos', 'ecodepermis', 'aiChat']
+export const ACCESS_MODULES = ['code', 'conduite_heures', 'conduite_videos', 'aiChat']
 export const ACCESS_MODULE_UNITS = ['flat', 'day', 'month', 'hour', 'week']
 
 const accessModulePricingSchema = new mongoose.Schema(

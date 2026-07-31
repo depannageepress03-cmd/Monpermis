@@ -1,6 +1,6 @@
 import { apiFetch } from './client'
 
-export type PromoModuleKey = 'code' | 'conduite_heures' | 'ecodepermis' | 'aiChat'
+export type PromoModuleKey = 'code' | 'conduite_heures' | 'aiChat'
 export type PromoDurationUnit = 'day' | 'week' | 'month'
 
 export interface PromoCode {

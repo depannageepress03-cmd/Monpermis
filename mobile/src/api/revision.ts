@@ -332,41 +332,6 @@ export async function completePracticeExam(attemptId: string) {
   )
 }
 
-export async function fetchECodePermisExams(): Promise<PracticeExamsOverview> {
-  return request<PracticeExamsOverview>('/content/ecodepermis/exams', { auth: true })
-}
-
-export async function startECodePermisExam(examNumber: number) {
-  return request<{ attempt: PracticeExamAttempt }>(
-    `/content/ecodepermis/exams/${examNumber}/start`,
-    { method: 'POST', body: JSON.stringify({}), auth: true },
-  )
-}
-
-export async function checkECodePermisAnswer(
-  attemptId: string,
-  questionId: string,
-  answerIds: string[],
-) {
-  return request<{
-    isCorrect: boolean
-    correctAnswerIds: string[]
-    answeredCount: number
-    total: number
-    liveCorrect: number
-  }>(`/content/ecodepermis/exams/attempts/${attemptId}/check`, {
-    method: 'POST',
-    body: JSON.stringify({ questionId, answerIds }),
-    auth: true,
-  })
-}
-
-export async function completeECodePermisExam(attemptId: string) {
-  return request<{ attempt: PracticeExamScore }>(
-    `/content/ecodepermis/exams/attempts/${attemptId}/complete`,
-    { method: 'POST', body: JSON.stringify({}), auth: true },
-  )
-}
 
 export interface RevisionAnswer {
   id: string

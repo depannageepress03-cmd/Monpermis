@@ -9,7 +9,6 @@ import {
   Gift,
   RefreshCw,
   Search,
-  ShieldCheck,
   Users,
   Video,
   Wallet,
@@ -45,21 +44,20 @@ const moduleOptions: { value: AccessModuleKey | ''; label: string }[] = [
   { value: 'code', label: 'Code de la route' },
   { value: 'conduite_heures', label: 'Heures de conduite' },
   { value: 'conduite_videos', label: 'Vidéos conduite' },
-  { value: 'ecodepermis', label: 'E-Codepermis (inclus Code)' },
 ]
 
 const grantModules: AccessModuleKey[] = [
   'code',
   'conduite_videos',
   'conduite_heures',
-  'ecodepermis',
 ]
 
 /** Modules masqués de l’onglet Tarifs (prix non éditables / inclus ailleurs). */
-const HIDDEN_PRICING_MODULES: AccessModuleKey[] = ['aiChat', 'conduite_videos', 'ecodepermis']
+const HIDDEN_PRICING_MODULES: AccessModuleKey[] = ['aiChat', 'conduite_videos']
 
-function moduleLabel(module: AccessModuleKey) {
+function moduleLabel(module: AccessModuleKey | string) {
   if (module === 'aiChat') return 'Chat IA tuteur (retiré)'
+  if (module === 'ecodepermis') return 'E-Codepermis (retiré)'
   return moduleOptions.find((option) => option.value === module)?.label ?? module
 }
 
@@ -67,7 +65,6 @@ const moduleIcons: Record<AccessModuleKey, typeof BookOpen> = {
   code: BookOpen,
   conduite_heures: Car,
   conduite_videos: Video,
-  ecodepermis: ShieldCheck,
   aiChat: Bot,
 }
 

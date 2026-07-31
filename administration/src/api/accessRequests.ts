@@ -1,7 +1,7 @@
 import { apiFetch } from './client'
 import { getApiOrigin } from '../utils/mediaUrl'
 
-export type AccessModuleKey = 'code' | 'conduite_heures' | 'conduite_videos' | 'ecodepermis' | 'aiChat'
+export type AccessModuleKey = 'code' | 'conduite_heures' | 'conduite_videos' | 'aiChat'
 export type AccessModuleUnit = 'flat' | 'day' | 'month' | 'hour' | 'week'
 export type AccessRequestStatus =
   | 'en_attente'

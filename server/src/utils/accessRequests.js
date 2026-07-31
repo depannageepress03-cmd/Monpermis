@@ -220,7 +220,6 @@ export async function expireDueAccessRequests(userId = null) {
 const MODULE_NOTIFY_LABELS = {
   code: 'Code de la route',
   conduite_videos: 'Vidéos conduite',
-  ecodepermis: 'E-Codepermis',
   aiChat: 'Chat IA tuteur',
 }
 
@@ -296,7 +295,7 @@ export async function getUserModuleAccess(userId) {
   const now = new Date()
 
   const access = {}
-  for (const key of ['code', 'conduite_heures', 'conduite_videos', 'ecodepermis', 'aiChat']) {
+  for (const key of ['code', 'conduite_heures', 'conduite_videos', 'aiChat']) {
     // Les vidéos de conduite sont gratuites pour tous, y compris sans achat du code.
     access[key] =
       key === 'conduite_videos' ||
@@ -307,8 +306,6 @@ export async function getUserModuleAccess(userId) {
         return isTimeBasedAccessLive(r, now)
       })
   }
-  // E-Codepermis est désormais inclus dans l'abonnement Code de la route (plus d'achat séparé).
-  access.ecodepermis = access.ecodepermis || access.code
 
   const pending = requests.find((r) =>
     ['en_attente', 'paiement_declare', 'en_verification'].includes(r.status),
@@ -340,15 +337,13 @@ const DEFAULT_MODULE_PRICING = [
   { key: 'code', label: 'Code de la route', unit: 'month', price: 2000 },
   { key: 'conduite_heures', label: 'Heures de conduite', unit: 'hour', price: 5000 },
   { key: 'conduite_videos', label: 'Vidéos pédagogiques conduite', unit: 'month', price: 0 },
-  /** Inclus dans Code — masqué du catalogue d’achat (active: false). */
-  { key: 'ecodepermis', label: 'E-Codepermis (inclus Code)', unit: 'month', price: 0, active: false },
-]
+  ]
 
 /** Modules retirés de la vente (conservés en base pour l’historique). */
 export const RETIRED_ACCESS_MODULES = ['aiChat']
 
 /** Modules non proposés à l’achat self-service (accès via bundling / autre parcours). */
-export const CATALOG_HIDDEN_MODULES = ['ecodepermis']
+export const CATALOG_HIDDEN_MODULES = []
 
 /** Montant figé pour un module (réduction −1000 FCFA si N≥2 heures de conduite). */
 export function computeModuleAmount(pricingOrKey, quantity = 1, unitPrice = null) {
@@ -384,16 +379,6 @@ export async function ensureAccessModulePricing() {
     migrated += 1
   }
 
-  // Soft migration : E-Codepermis inclus dans Code → retiré du catalogue d’achat.
-  const ecode = await AccessModulePricing.findOne({ key: 'ecodepermis' })
-  if (ecode && (ecode.active !== false || Number(ecode.price) !== 0 || !String(ecode.label).includes('inclus'))) {
-    ecode.active = false
-    ecode.price = 0
-    ecode.label = 'E-Codepermis (inclus Code)'
-    await ecode.save()
-    migrated += 1
-  }
-
   // Chat IA retiré de la vente — garder l’entrée pour l’historique admin.
   const retired = await AccessModulePricing.updateMany(
     { key: { $in: RETIRED_ACCESS_MODULES }, active: { $ne: false } },
@@ -406,7 +391,7 @@ export async function ensureAccessModulePricing() {
 
 export async function getModulePricing(key) {
   if (CATALOG_HIDDEN_MODULES.includes(key)) {
-    const error = new Error('Ce module n’est pas disponible à l’achat séparément (inclus dans Code)')
+    const error = new Error('Ce module n’est pas disponible à l’achat')
     error.status = 404
     throw error
   }

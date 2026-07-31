@@ -13,6 +13,7 @@ import './styles/admin-subscriptions.css'
 import './styles/admin-access-requests.css'
 import './styles/admin-finances.css'
 import './styles/admin-cockpit.css'
+import './styles/admin-tracking.css'
 import './styles/admin-motion.css'
 
 createRoot(document.getElementById('root')!).render(

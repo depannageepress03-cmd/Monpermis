@@ -44,7 +44,6 @@ const categories = [
     label: 'Cours',
     subtitle: 'Cours et modules',
     className: 'category-purple',
-    /** Image conservée (ex-E-Codepermis) pour la carte Cours. */
     image: '/code-route/cards/ecodepermis.jpg',
   },
 ] as const

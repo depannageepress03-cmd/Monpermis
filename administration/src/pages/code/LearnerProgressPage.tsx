@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { ChevronRight, RefreshCw, Search } from 'lucide-react'
+import { ChevronRight, Radar, RefreshCw, Search } from 'lucide-react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
   fetchUserProgress,
@@ -302,7 +302,14 @@ export function LearnerProgressDetailPage() {
 
       {data ? (
         <>
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginBottom: 12 }}>
+            <Link
+              to={`/activite-apprenants?userId=${encodeURIComponent(userId)}`}
+              className="btn-outline"
+            >
+              <Radar size={16} />
+              Activité APK / examens
+            </Link>
             <button type="button" className="btn-outline" onClick={() => void load()}>
               <RefreshCw size={16} />
               Actualiser

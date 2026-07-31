@@ -21,11 +21,9 @@ import adminDashboardRoutes from './routes/adminDashboard.js'
 import contentRoutes from './routes/content.js'
 import practiceExamsRoutes from './routes/practiceExams.js'
 import adminRevisionCoursesRoutes from './routes/adminRevisionCourses.js'
-import ecodepermisExamsRoutes from './routes/ecodepermisExams.js'
 import contentConduiteRoutes from './routes/contentConduite.js'
 import reservationsRoutes from './routes/reservations.js'
 import adminPracticeExamsRoutes from './routes/adminPracticeExams.js'
-import adminEcodepermisExamsRoutes from './routes/adminEcodepermisExams.js'
 import notificationsRoutes from './routes/notifications.js'
 import announcementsRoutes from './routes/announcements.js'
 import adminAnnouncementsRoutes from './routes/adminAnnouncements.js'
@@ -36,6 +34,8 @@ import adminAccessRequestsRoutes from './routes/adminAccessRequests.js'
 import adminFinancesRoutes from './routes/adminFinances.js'
 import promoCodesRoutes from './routes/promoCodes.js'
 import adminPromoCodesRoutes from './routes/adminPromoCodes.js'
+import trackingRoutes from './routes/tracking.js'
+import adminTrackingRoutes from './routes/adminTracking.js'
 import { fedapayKeyFingerprint, isFedaPayConfigured } from './services/fedapay.js'
 import { sendMediaAsset } from './middleware/upload.js'
 import { ensureReservationIndexes } from './models/Reservation.js'
@@ -217,7 +217,6 @@ app.use('/api/admin/revision', adminRevisionCoursesRoutes)
 app.use('/api/admin/revision', adminRevisionRoutes)
 app.use('/api/admin/revision', adminQuestionsRoutes)
 app.use('/api/admin/revision', adminPracticeExamsRoutes)
-app.use('/api/admin/ecodepermis', adminEcodepermisExamsRoutes)
 app.use('/api/admin/conduite', adminConduiteRoutes)
 app.use('/api/admin/conduite', adminReservationsRoutes)
 app.use('/api/admin/users', adminUsersRoutes)
@@ -230,12 +229,13 @@ app.use('/api/admin/promo-codes', adminPromoCodesRoutes)
 app.use('/api/promo-codes', promoCodesRoutes)
 app.use('/api/content/revision', contentRoutes)
 app.use('/api/content/revision', practiceExamsRoutes)
-app.use('/api/content/ecodepermis', ecodepermisExamsRoutes)
 app.use('/api/content/conduite', contentConduiteRoutes)
 app.use('/api/reservations', reservationsRoutes)
 app.use('/api/notifications', notificationsRoutes)
 app.use('/api/content/announcements', announcementsRoutes)
 app.use('/api/admin/announcements', adminAnnouncementsRoutes)
+app.use('/api/tracking', trackingRoutes)
+app.use('/api/admin/tracking', adminTrackingRoutes)
 
 // Hors SW (navigateFallback ignore /api) : purge cache client puis redirige
 app.get('/api/client-reset', (req, res) => {

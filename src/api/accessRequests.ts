@@ -43,7 +43,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   return body.data
 }
 
-export type AccessModuleKey = 'code' | 'conduite_heures' | 'conduite_videos' | 'ecodepermis' | 'aiChat'
+export type AccessModuleKey = 'code' | 'conduite_heures' | 'conduite_videos' | 'aiChat'
 export type AccessModuleUnit = 'flat' | 'day' | 'month' | 'hour' | 'week'
 export type AccessRequestStatus =
   | 'en_attente'

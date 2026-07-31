@@ -12,7 +12,6 @@ import mongoose from 'mongoose'
 import { AccessAuditLog } from '../src/models/AccessAuditLog.js'
 import { AccessRequest } from '../src/models/AccessRequest.js'
 import { Creneau } from '../src/models/Creneau.js'
-import { ECodePermisExamAttempt } from '../src/models/ECodePermisExamAttempt.js'
 import { Moniteur } from '../src/models/Moniteur.js'
 import { Notification } from '../src/models/Notification.js'
 import { Payment } from '../src/models/Payment.js'
@@ -194,14 +193,6 @@ async function main() {
       correct: 30,
       total: 40,
     })
-    await ECodePermisExamAttempt.create({
-      userId: user._id,
-      examId: fakeExamId,
-      examNumber: 1,
-      status: 'completed',
-      correct: 30,
-      total: 40,
-    })
 
     promo = await PromoCode.create({
       code: `DEL${String(Date.now()).slice(-8)}`,
@@ -269,8 +260,6 @@ async function main() {
       (await PracticeExamAttempt.countDocuments({ userId: user._id })) === 0,
     )
     check(
-      'ECodePermisExamAttempt effacés',
-      (await ECodePermisExamAttempt.countDocuments({ userId: user._id })) === 0,
     )
     check(
       'PromoCodeRedemption effacés',
@@ -318,7 +307,6 @@ async function main() {
     if (user?._id) {
       await Promise.all([
         PracticeExamAttempt.deleteMany({ userId: user._id }),
-        ECodePermisExamAttempt.deleteMany({ userId: user._id }),
         PromoCodeRedemption.deleteMany({ userId: user._id }),
         Notification.deleteMany({ userId: user._id }),
         Payment.deleteMany({ userId: user._id }),

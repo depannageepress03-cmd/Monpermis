@@ -16,7 +16,6 @@ import { Button, Drawer, EmptyState, SkeletonBlock } from '../ui'
 const MODULE_OPTIONS: { value: PromoModuleKey; label: string }[] = [
   { value: 'code', label: 'Code de la route' },
   { value: 'conduite_heures', label: 'Heures de conduite' },
-  { value: 'ecodepermis', label: 'E-Codepermis' },
 ]
 
 const ALL_MODULES = MODULE_OPTIONS.map((item) => item.value)

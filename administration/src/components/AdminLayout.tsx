@@ -11,6 +11,7 @@ import {
   LogOut,
   Megaphone,
   Menu,
+  Radar,
   ScrollText,
   Search,
   Shield,
@@ -93,6 +94,12 @@ const navGroups: NavGroup[] = [
     items: [
       { to: '/', label: 'Tableau de bord', end: true, icon: LayoutDashboard },
       { to: '/utilisateurs', label: 'Apprenants', icon: Users },
+      {
+        to: '/activite-apprenants',
+        label: 'Activité apprenants',
+        icon: Radar,
+        match: (pathname) => pathname.startsWith('/activite-apprenants'),
+      },
       { to: '/abonnements', label: 'Abonnés', icon: Wallet, badgeKey: 'access' },
       {
         to: '/conduite/reservations',
@@ -139,6 +146,7 @@ function pageLabel(pathname: string) {
   if (pathname.startsWith('/cockpit')) return 'Cockpit'
   if (pathname === '/') return 'Tableau de bord'
   if (pathname.startsWith('/utilisateurs')) return 'Apprenants'
+  if (pathname.startsWith('/activite-apprenants')) return 'Activité apprenants'
   if (pathname.startsWith('/abonnements') || pathname.startsWith('/demandes-acces')) {
     return 'Abonnés'
   }
@@ -152,7 +160,6 @@ function pageLabel(pathname: string) {
   if (pathname.startsWith('/code/examens-test')) return 'Examens test'
   if (pathname.startsWith('/code/suivi-apprenants')) return 'Suivi apprenants'
   if (pathname.startsWith('/code/mes-notes')) return 'Suivi apprenants'
-  if (pathname.startsWith('/code/e-codepermis')) return 'E-Codepermis'
   if (pathname.startsWith('/code')) return 'Code de la route'
   if (pathname.startsWith('/conduite/lecons')) return 'Leçons de conduite'
   if (pathname.startsWith('/conduite/reservations')) return 'Réservations'

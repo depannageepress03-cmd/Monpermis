@@ -20,8 +20,6 @@ import { AuditLog } from '../src/models/AuditLog.js'
 import { Chapter } from '../src/models/Chapter.js'
 import { ConduiteChapter } from '../src/models/ConduiteChapter.js'
 import { Creneau } from '../src/models/Creneau.js'
-import { ECodePermisExam } from '../src/models/ECodePermisExam.js'
-import { ECodePermisExamAttempt } from '../src/models/ECodePermisExamAttempt.js'
 import { MediaAsset } from '../src/models/MediaAsset.js'
 import { Moniteur } from '../src/models/Moniteur.js'
 import { Notification } from '../src/models/Notification.js'
@@ -57,7 +55,6 @@ async function countAll() {
     ['reservations', Reservation],
     ['notifications', Notification],
     ['practiceExamAttempts', PracticeExamAttempt],
-    ['ecodepermisExamAttempts', ECodePermisExamAttempt],
     ['promoCodeRedemptions', PromoCodeRedemption],
     ['promoCodes', PromoCode],
     ['auditLogs', AuditLog],
@@ -69,7 +66,6 @@ async function countAll() {
     ['conduiteChapters', ConduiteChapter],
     ['questions', Question],
     ['practiceExams', PracticeExam],
-    ['ecodepermisExams', ECodePermisExam],
     ['testSubjects', TestSubject],
     ['accessModulePricing', AccessModulePricing],
     ['announcements', Announcement],
@@ -219,7 +215,6 @@ async function main() {
   // 5) Learner activity
   deleted.notifications = (await Notification.deleteMany({})).deletedCount
   deleted.practiceExamAttempts = (await PracticeExamAttempt.deleteMany({})).deletedCount
-  deleted.ecodepermisExamAttempts = (await ECodePermisExamAttempt.deleteMany({})).deletedCount
   deleted.promoCodeRedemptions = (await PromoCodeRedemption.deleteMany({})).deletedCount
   deleted.auditLogs = (await AuditLog.deleteMany({})).deletedCount
 
@@ -387,7 +382,7 @@ async function main() {
 
   console.log('\n=== KEPT (content / structure) ===')
   console.log('  admins, moniteurs, creneaux (structure), chapters, conduiteChapters,')
-  console.log('  questions, practiceExams, ecodepermisExams, testSubjects,')
+  console.log('  questions, practiceExams, testSubjects,')
   console.log('  accessModulePricing, promoCodes (usesCount=0), announcements, mediaAssets')
   if (keepPaymentId) {
     console.log(`  last payment ${keepPaymentId}`)

@@ -1,7 +1,7 @@
 import { getUserModuleAccess } from '../utils/accessRequests.js'
 
 /**
- * @param {'code' | 'conduite_videos' | 'ecodepermis' | 'aiChat'} module
+ * @param {'code' | 'conduite_videos' | 'aiChat'} module
  */
 export function requireModuleAccess(module) {
   return async function moduleAccessGuard(req, res, next) {

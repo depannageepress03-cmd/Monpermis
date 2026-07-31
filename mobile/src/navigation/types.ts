@@ -25,7 +25,7 @@ export type RootStackParamList = {
   HistoriquePaiements: undefined
   CodeRoute: undefined
   RevisionChapitres: undefined
-  /** Liste des chapitres pour accéder aux cours (remplace E-Codepermis dans le hub). */
+  /** Liste des cours autonomes. */
   CodeCours: undefined
   ChapterCourses: {
     chapterId: string
@@ -100,8 +100,6 @@ export type RootStackParamList = {
   ExamensTest: undefined
   ExamensTestTake: { examNumber: number }
   MesNotes: undefined
-  ECodePermis: undefined
-  ECodePermisTake: { examNumber: number }
   Conduite: undefined
   ReservationFlow: undefined
   MesReservations: undefined

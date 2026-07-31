@@ -34,6 +34,7 @@ import { useRequireAuth } from '../../hooks/useRequireAuth'
 import type { RootStackParamList } from '../../navigation/types'
 import { dark, fonts } from '../../theme'
 import { playFailSound, playSuccessSound, stopAllQuizAudio } from '../../utils/quizSounds'
+import { tracker } from '../../tracking/tracker'
 
 function wait(ms: number) {
   return new Promise<void>((resolve) => {
@@ -281,6 +282,25 @@ export function ExamensTestTakeScreen() {
       setAnsweredCount(answered)
       setFinished(started.status === 'completed')
       setSequenceLive(started.status !== 'completed')
+      const baseContext = {
+        attemptId: started.id,
+        examNumber,
+        examType: 'practice' as const,
+      }
+      if (started.status !== 'completed') {
+        tracker.setActiveSession(baseContext)
+        if (answered > 0) {
+          tracker.track('exam_resume', baseContext, {
+            answeredCount: answered,
+            index: Math.min(answered, Math.max((started.questions?.length || 1) - 1, 0)),
+          })
+        } else {
+          tracker.track('exam_start', baseContext, { answeredCount: 0 })
+        }
+        tracker.markQuestionStart()
+      } else {
+        tracker.setActiveSession(null)
+      }
       if (started.status === 'completed') {
         setFinalScore({
           correct: started.correct,
@@ -306,7 +326,14 @@ export function ExamensTestTakeScreen() {
     setSelectedIds([])
     setResult(null)
     stopAllQuizAudio()
+    tracker.markQuestionStart()
   }, [index])
+
+  useEffect(() => {
+    return () => {
+      tracker.setActiveSession(null)
+    }
+  }, [])
 
   useEffect(() => {
     if (finished) stopAllQuizAudio()
@@ -342,6 +369,21 @@ export function ExamensTestTakeScreen() {
       setSequenceLive(false)
       try {
         const { attempt: score } = await completePracticeExam(currentAttempt.id)
+        tracker.track(
+          'exam_complete',
+          {
+            attemptId: currentAttempt.id,
+            examNumber,
+            examType: 'practice',
+          },
+          {
+            correct: score.correct,
+            total: score.total,
+            passed: score.passed,
+            scoreLabel: score.scoreLabel,
+          },
+        )
+        tracker.setActiveSession(null)
         setFinalScore(score)
         setFinished(true)
       } catch (err) {
@@ -372,6 +414,16 @@ export function ExamensTestTakeScreen() {
     stopAllQuizAudio()
     try {
       const data = await checkPracticeExamAnswer(currentAttempt.id, currentQuestion.id, [])
+      tracker.track(
+        'exam_skip',
+        {
+          attemptId: currentAttempt.id,
+          examNumber,
+          examType: 'practice',
+          questionId: currentQuestion.id,
+        },
+        { index: indexRef.current, elapsedMs: tracker.consumeElapsedMs() },
+      )
       setResult({ isCorrect: false, correctAnswerIds: [] })
       setLiveCorrect(data.liveCorrect)
       setAnsweredCount(data.answeredCount)
@@ -402,6 +454,22 @@ export function ExamensTestTakeScreen() {
       stopAllQuizAudio()
       try {
         const data = await checkPracticeExamAnswer(currentAttempt.id, currentQuestion.id, ids)
+        tracker.track(
+          'exam_answer',
+          {
+            attemptId: currentAttempt.id,
+            examNumber,
+            examType: 'practice',
+            questionId: currentQuestion.id,
+          },
+          {
+            answerIds: ids,
+            isCorrect: data.isCorrect,
+            index: indexRef.current,
+            answeredCount: data.answeredCount,
+            elapsedMs: tracker.consumeElapsedMs(),
+          },
+        )
         setResult({ isCorrect: data.isCorrect, correctAnswerIds: data.correctAnswerIds })
         setLiveCorrect(data.liveCorrect)
         setAnsweredCount(data.answeredCount)
@@ -441,7 +509,23 @@ export function ExamensTestTakeScreen() {
     answeredCount > 0
       ? `Quitter ? Vos ${answeredCount} réponses sont enregistrées — reprenez via Continuer sur la même épreuve.`
       : 'Quitter ? Votre progression en cours sera conservée si vous reprenez le même examen.'
-  useLeaveGuard(Boolean(attempt) && !finished && !loading, leaveMessage)
+  useLeaveGuard(Boolean(attempt) && !finished && !loading, leaveMessage, () => {
+    const currentAttempt = attemptRef.current
+    tracker.track(
+      'exam_quit',
+      {
+        attemptId: currentAttempt?.id || '',
+        examNumber,
+        examType: 'practice',
+      },
+      {
+        answeredCount,
+        index: indexRef.current,
+        elapsedMs: tracker.consumeElapsedMs(),
+      },
+    )
+    tracker.setActiveSession(null)
+  })
 
   if (authLoading || !user) return <ScreenLoader />
 

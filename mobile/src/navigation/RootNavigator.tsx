@@ -1,11 +1,13 @@
 import {
   DefaultTheme,
   NavigationContainer,
+  useNavigationState,
   type LinkingOptions,
 } from '@react-navigation/native'
 import { createNativeStackNavigator } from '@react-navigation/native-stack'
 import * as Linking from 'expo-linking'
 import { StatusBar } from 'expo-status-bar'
+import { useEffect, useRef } from 'react'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 
 const BOOT_BG = '#FAF9F6'
@@ -34,6 +36,7 @@ import { TermsOfUseScreen } from '../screens/TermsOfUseScreen'
 import { PrivacyPolicyScreen } from '../screens/PrivacyPolicyScreen'
 import { MentionsLegalesScreen } from '../screens/MentionsLegalesScreen'
 import { withRequireAuth } from '../components/RequireAuth'
+import { tracker } from '../tracking/tracker'
 import { ProfileScreen } from '../screens/ProfileScreen'
 import { NotificationsScreen } from '../screens/NotificationsScreen'
 import { ActualitesScreen } from '../screens/ActualitesScreen'
@@ -49,7 +52,6 @@ import { ChapterQuestionsListScreen, ChapterTestSubjectScreen } from '../screens
 import { ChapterQuestionsScreen } from '../screens/code-route/ChapterQuestionsScreen'
 import { ExamensTestScreen, ExamensTestTakeScreen } from '../screens/code-route/ExamensTestScreen'
 import { MesNotesScreen } from '../screens/code-route/MesNotesScreen'
-import { ECodePermisScreen, ECodePermisTakeScreen } from '../screens/code-route/ECodePermisScreen'
 import { ConduiteScreen } from '../screens/ConduiteScreen'
 import { ReservationFlowScreen } from '../screens/conduite/ReservationFlowScreen'
 import { MesReservationsScreen } from '../screens/conduite/MesReservationsScreen'
@@ -59,6 +61,22 @@ import { LeconsCoursesScreen } from '../screens/conduite/LeconsCoursesScreen'
 import { LeconDetailScreen } from '../screens/conduite/LeconDetailScreen'
 
 const Stack = createNativeStackNavigator<RootStackParamList>()
+
+/** Trace l'écran affiché (fire-and-forget). */
+function ScreenViewTracker() {
+  const routeName = useNavigationState((state) => {
+    const route = state?.routes?.[state.index]
+    return route?.name ?? ''
+  })
+  const lastRef = useRef('')
+  useEffect(() => {
+    if (!routeName) return
+    if (lastRef.current === routeName) return
+    lastRef.current = routeName
+    tracker.track('screen_view', { screen: routeName })
+  }, [routeName])
+  return null
+}
 
 const linking: LinkingOptions<RootStackParamList> = {
   prefixes: [Linking.createURL('/'), 'monpermis://'],
@@ -93,8 +111,6 @@ const linking: LinkingOptions<RootStackParamList> = {
       ExamensTest: 'code-de-la-route/examens-test',
       ExamensTestTake: 'code-de-la-route/examens-test/passer',
       MesNotes: 'code-de-la-route/mes-notes',
-      ECodePermis: 'code-de-la-route/e-codepermis',
-      ECodePermisTake: 'code-de-la-route/e-codepermis/passer',
       Conduite: 'conduite',
       ReservationFlow: 'conduite/reservation',
       MesReservations: 'conduite/reservations',
@@ -233,14 +249,6 @@ function AppNavigator() {
         component={MesNotesScreen}
       />
       <Stack.Screen
-        name="ECodePermis"
-        component={ECodePermisScreen}
-      />
-      <Stack.Screen
-        name="ECodePermisTake"
-        component={ECodePermisTakeScreen}
-      />
-      <Stack.Screen
         name="Conduite"
         component={ConduiteScreen}
       />
@@ -273,12 +281,20 @@ function AppNavigator() {
 }
 
 export function RootNavigator() {
+  useEffect(() => {
+    tracker.start()
+    return () => {
+      tracker.reset()
+    }
+  }, [])
+
   return (
     <SafeAreaProvider>
       <AppErrorBoundary>
         <AuthProvider>
           <NavigationContainer linking={linking} theme={navTheme}>
             <StatusBar style="dark" />
+            <ScreenViewTracker />
             <AppNavigator />
             <AppToastHost />
           </NavigationContainer>

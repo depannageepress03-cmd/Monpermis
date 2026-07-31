@@ -104,11 +104,6 @@ export default function App() {
       <Route path="/code-de-la-route/mes-notes" element={<MesNotesPage />} />
       <Route path="/code-de-la-route/cours" element={<CodeCoursPage />} />
       <Route path="/code-de-la-route/cours/:courseId" element={<StandaloneCourseDetailPage />} />
-      <Route path="/code-de-la-route/e-codepermis" element={<Navigate to="/code-de-la-route/cours" replace />} />
-      <Route
-        path="/code-de-la-route/e-codepermis/:examNumber"
-        element={<Navigate to="/code-de-la-route/cours" replace />}
-      />
       <Route path="/conduite" element={<ConduitePage />} />
       <Route path="/conduite/reservation" element={<ReservationPage />} />
       <Route path="/conduite/mes-reservations" element={<MesReservationsPage />} />

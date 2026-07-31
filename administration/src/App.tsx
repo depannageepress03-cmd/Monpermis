@@ -23,6 +23,7 @@ import { FinancesPage } from './pages/FinancesPage'
 import { PromoCodesPage } from './pages/PromoCodesPage'
 import { SuperadminCockpitPage } from './pages/SuperadminCockpitPage'
 import { UsersPage } from './pages/UsersPage'
+import { LearnerTrackingPage } from './pages/tracking/LearnerTrackingPage'
 import { LearnerProgressDetailPage, LearnerProgressListPage } from './pages/code/LearnerProgressPage'
 
 export default function App() {
@@ -34,6 +35,7 @@ export default function App() {
         <Route element={<AdminLayout />}>
           <Route path="/" element={<DashboardPage />} />
           <Route path="/utilisateurs" element={<UsersPage />} />
+          <Route path="/activite-apprenants" element={<LearnerTrackingPage />} />
           <Route path="/abonnements" element={<AbonnementsPage />} />
           <Route path="/demandes-acces" element={<Navigate to="/abonnements" replace />} />
           <Route path="/codes-promo" element={<PromoCodesPage />} />
@@ -61,7 +63,6 @@ export default function App() {
           />
           <Route path="/code/suivi-apprenants/:userId" element={<LearnerProgressDetailPage />} />
           <Route path="/code/mes-notes" element={<Navigate to="/code/suivi-apprenants" replace />} />
-          <Route path="/code/e-codepermis" element={<Navigate to="/code/cours" replace />} />
           <Route path="/conduite" element={<ConduiteHubPage />} />
           <Route path="/conduite/lecons" element={<LeconsConduitePage />} />
           <Route path="/conduite/reservations" element={<ReservationsPage />} />

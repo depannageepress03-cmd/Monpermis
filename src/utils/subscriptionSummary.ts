@@ -4,8 +4,19 @@ const MODULE_LABELS: Record<AccessModuleKey, string> = {
   code: 'Code de la route',
   conduite_heures: 'Heures de conduite',
   conduite_videos: 'Vidéos conduite',
-  ecodepermis: 'E-Codepermis',
   aiChat: 'Chat IA',
+}
+
+const LEGACY_MODULE_LABELS: Record<string, string> = {
+  ecodepermis: 'E-Codepermis (retiré)',
+}
+
+function moduleLabel(module: string) {
+  return (
+    MODULE_LABELS[module as AccessModuleKey] ||
+    LEGACY_MODULE_LABELS[module] ||
+    module
+  )
 }
 
 export interface ActiveSubscription {
@@ -49,7 +60,7 @@ export function getActiveSubscriptions(me: AccessMe | null): ActiveSubscription[
     const daysLeft = Math.max(0, Math.ceil((new Date(endAt).getTime() - now) / (24 * 60 * 60 * 1000)))
     result.push({
       module: request.module,
-      label: MODULE_LABELS[request.module] || request.module,
+      label: moduleLabel(request.module),
       endAt,
       daysLeft,
       remainingLabel: remainingLabel(endAt, now),

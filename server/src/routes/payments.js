@@ -14,7 +14,7 @@ const MODULE_FALLBACK_LABELS = {
   code: 'Code de la route',
   conduite_heures: 'Heures de conduite',
   conduite_videos: 'Vidéos conduite',
-  ecodepermis: 'E-Codepermis',
+  ecodepermis: 'E-Codepermis (retiré)',
   aiChat: 'Chat IA tuteur',
 }
 

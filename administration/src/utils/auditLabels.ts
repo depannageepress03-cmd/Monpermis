@@ -43,7 +43,6 @@ const RESOURCE_LABELS: Record<string, string> = {
   question: 'Question',
   test_subject: 'Sujet de test',
   practice_exam: 'Examen blanc',
-  ecodepermis_exam: 'E-Codepermis',
 }
 
 export function actionLabel(action: string) {

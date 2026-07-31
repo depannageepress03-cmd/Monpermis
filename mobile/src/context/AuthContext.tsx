@@ -9,6 +9,7 @@ import {
   saveSession,
 } from '../api/auth'
 import { showAppToast } from '../components/AppToast'
+import { tracker } from '../tracking/tracker'
 
 interface AuthContextValue {
   user: AuthUser | null
@@ -71,6 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = useCallback(async () => {
     await clearSession()
     setUser(null)
+    tracker.reset()
   }, [])
 
   const updateUser = useCallback(async (nextUser: AuthUser) => {

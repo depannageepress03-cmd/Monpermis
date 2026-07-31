@@ -15,7 +15,7 @@ export const BODY_PLAIN_MAX = 4000
  * Audience :
  * - all      → tous les comptes actifs
  * - active   → abonnement/accès en cours (ou solde heures)
- * - code     → accès code / e-codepermis
+ * - code     → accès code
  * - conduite → accès vidéos conduite ou solde heures
  */
 export function normalizeAudience(value) {
@@ -176,7 +176,7 @@ export async function resolveRecipientIds(audience = 'all') {
   }
 
   if (target === 'code') {
-    const ids = await userIdsWithActiveAccess({ modules: ['code', 'ecodepermis'] })
+    const ids = await userIdsWithActiveAccess({ modules: ['code'] })
     return User.find({ _id: { $in: ids }, isActive: true }).distinct('_id')
   }
 
@@ -215,7 +215,7 @@ export async function userMatchesAudience(user, audience = 'all') {
     const hit = await AccessRequest.exists({
       userId: user._id,
       status: 'actif',
-      module: { $in: ['code', 'ecodepermis'] },
+      module: { $in: ['code'] },
       $or: [{ endAt: null }, { endAt: { $gt: new Date() } }],
     })
     return Boolean(hit)

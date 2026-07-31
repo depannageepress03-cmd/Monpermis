@@ -48,7 +48,6 @@ const moduleLabels: Record<AccessModuleKey, string> = {
   code: 'Code de la route',
   conduite_heures: 'Heures de conduite',
   conduite_videos: 'Vidéos conduite',
-  ecodepermis: 'E-Codepermis',
   aiChat: 'Chat IA',
 }
 

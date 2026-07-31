@@ -8,6 +8,7 @@ import { useNavigation } from '@react-navigation/native'
 export function useLeaveGuard(
   when: boolean,
   message = 'Quitter ? Votre progression en cours sera conservée si vous reprenez le même examen.',
+  onQuit?: () => void,
 ) {
   const navigation = useNavigation()
 
@@ -20,22 +21,32 @@ export function useLeaveGuard(
         {
           text: 'Quitter',
           style: 'destructive',
-          onPress: () => navigation.dispatch(event.data.action),
+          onPress: () => {
+            onQuit?.()
+            navigation.dispatch(event.data.action)
+          },
         },
       ])
     })
     return unsubscribe
-  }, [navigation, when, message])
+  }, [navigation, when, message, onQuit])
 
   const confirmLeave = useCallback(() => {
     if (!when) return Promise.resolve(true)
     return new Promise<boolean>((resolve) => {
       Alert.alert('Quitter l’épreuve ?', message, [
         { text: 'Rester', style: 'cancel', onPress: () => resolve(false) },
-        { text: 'Quitter', style: 'destructive', onPress: () => resolve(true) },
+        {
+          text: 'Quitter',
+          style: 'destructive',
+          onPress: () => {
+            onQuit?.()
+            resolve(true)
+          },
+        },
       ])
     })
-  }, [when, message])
+  }, [when, message, onQuit])
 
   return { confirmLeave }
 }
