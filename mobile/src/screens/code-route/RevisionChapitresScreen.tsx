@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from 'react'
-import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native'
+import { useFocusEffect, useNavigation } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
-import { BookOpen, ClipboardList, HelpCircle, Layers } from 'lucide-react-native'
+import { Check, ChevronRight, ClipboardList, HelpCircle, Layers } from 'lucide-react-native'
 import {
   Pressable,
   RefreshControl,
@@ -23,14 +23,12 @@ import { ScreenLoader } from '../../components/ScreenLoader'
 import { SkeletonList } from '../../components/Skeleton'
 import { useRequireAuth } from '../../hooks/useRequireAuth'
 import type { RootStackParamList } from '../../navigation/types'
-import { dark, fonts } from '../../theme'
+import { dark, fonts, radii } from '../../theme'
 
-type Nav = NativeStackNavigationProp<RootStackParamList, 'RevisionChapitres' | 'CodeCours'>
+type Nav = NativeStackNavigationProp<RootStackParamList, 'RevisionChapitres'>
 
 export function RevisionChapitresScreen() {
   const navigation = useNavigation<Nav>()
-  const route = useRoute()
-  const coursOnly = route.name === 'CodeCours'
   const { user, loading: authLoading } = useRequireAuth(navigation)
   const [chapters, setChapters] = useState<RevisionChapter[]>([])
   const [completedTestIds, setCompletedTestIds] = useState<Set<string>>(new Set())
@@ -67,18 +65,6 @@ export function RevisionChapitresScreen() {
     }, [user, loadChapters]),
   )
 
-  const openCourses = (chapter: RevisionChapter, index: number) => {
-    navigation.navigate('ChapterCourses', {
-      chapterId: chapter.id,
-      chapterName: `${index + 1}. ${chapter.name}`,
-      courses: chapter.courses.map((course) => ({
-        id: course.id,
-        title: course.title,
-        modules: course.modules,
-      })),
-    })
-  }
-
   const openQuestions = (chapter: RevisionChapter, index: number) => {
     navigation.navigate('ChapterQuestionsList', {
       chapterId: chapter.id,
@@ -100,8 +86,8 @@ export function RevisionChapitresScreen() {
   return (
     <DarkScreen>
       <PageNavbar
-        title={coursOnly ? 'Cours' : 'Nos chapitres'}
-        icon={coursOnly ? BookOpen : Layers}
+        title="Révision"
+        icon={Layers}
         onBack={() => navigation.navigate('CodeRoute')}
       />
 
@@ -121,13 +107,8 @@ export function RevisionChapitresScreen() {
       >
         <View style={styles.header}>
           <Text style={styles.heroEyebrow}>Code de la route</Text>
-          <Text style={styles.heroTitle}>
-            {coursOnly ? 'Cours par chapitre' : 'Révision par chapitres'}
-          </Text>
           <Text style={styles.subtitle}>
-            {coursOnly
-              ? 'Choisis un chapitre pour accéder à ses cours, à ton rythme.'
-              : 'Questions et sujets test pour chaque chapitre — les cours sont dans le bouton Cours du menu Code.'}
+            Entraînez-vous aux questions, puis validez chaque chapitre avec un sujet test.
           </Text>
         </View>
 
@@ -155,56 +136,59 @@ export function RevisionChapitresScreen() {
 
               return (
                 <View key={chapter.id} style={styles.card}>
-                  <View style={styles.cardTop}>
+                  <Pressable
+                    style={({ pressed }) => [styles.cardTop, pressed && styles.pressed]}
+                    onPress={() => openQuestions(chapter, index)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Chapitre ${index + 1} : ${chapter.name}. Ouvrir les questions.`}
+                  >
                     <View style={styles.iconWrap}>
                       <Text style={styles.cardNumber}>{index + 1}</Text>
                     </View>
                     <View style={styles.cardContent}>
                       <Text style={styles.cardTitle}>{chapter.name}</Text>
-                      <Text style={styles.cardSubtitle}>
-                        {coursOnly
-                          ? `${chapter.courses.length} cours`
-                          : testDone
-                            ? `${chapter.courses.length} cours · Chapitre validé`
-                            : `${chapter.courses.length} cours · Accès libre`}
-                      </Text>
+                      <View style={styles.statusRow}>
+                        {testDone ? (
+                          <View style={styles.statusPillDone}>
+                            <Check size={12} color={dark.green} />
+                            <Text style={styles.statusPillDoneText}>Test validé</Text>
+                          </View>
+                        ) : (
+                          <Text style={styles.cardSubtitle}>Questions + sujet test</Text>
+                        )}
+                      </View>
                     </View>
-                  </View>
+                    <ChevronRight size={18} color={dark.textMuted} />
+                  </Pressable>
+
+                  <View style={styles.actionsDivider} />
 
                   <View style={styles.actions}>
-                    {coursOnly ? (
-                      <Pressable
-                        style={({ pressed }) => [styles.actionBtn, pressed && styles.pressed]}
-                        onPress={() => openCourses(chapter, index)}
-                      >
-                        <View style={[styles.actionIcon, styles.actionCourses]}>
-                          <BookOpen size={15} color={dark.green} />
-                        </View>
-                        <Text style={styles.actionLabel}>Cours</Text>
-                      </Pressable>
-                    ) : (
-                      <>
-                        <Pressable
-                          style={({ pressed }) => [styles.actionBtn, pressed && styles.pressed]}
-                          onPress={() => openQuestions(chapter, index)}
-                        >
-                          <View style={[styles.actionIcon, styles.actionQuestions]}>
-                            <HelpCircle size={15} color={dark.coral} />
-                          </View>
-                          <Text style={styles.actionLabel}>Questions</Text>
-                        </Pressable>
+                    <Pressable
+                      style={({ pressed }) => [
+                        styles.actionBtnPrimary,
+                        pressed && styles.pressedStrong,
+                      ]}
+                      onPress={() => openQuestions(chapter, index)}
+                      accessibilityRole="button"
+                      accessibilityLabel="Questions"
+                    >
+                      <HelpCircle size={16} color="#0B0F1A" />
+                      <Text style={styles.actionLabelPrimary}>Questions</Text>
+                    </Pressable>
 
-                        <Pressable
-                          style={({ pressed }) => [styles.actionBtn, pressed && styles.pressed]}
-                          onPress={() => openTestSubject(chapter, index)}
-                        >
-                          <View style={[styles.actionIcon, styles.actionTest]}>
-                            <ClipboardList size={15} color={dark.textPrimary} />
-                          </View>
-                          <Text style={styles.actionLabel}>Sujet test</Text>
-                        </Pressable>
-                      </>
-                    )}
+                    <Pressable
+                      style={({ pressed }) => [
+                        styles.actionBtnSecondary,
+                        pressed && styles.pressedStrong,
+                      ]}
+                      onPress={() => openTestSubject(chapter, index)}
+                      accessibilityRole="button"
+                      accessibilityLabel="Sujet test"
+                    >
+                      <ClipboardList size={16} color={dark.textPrimary} />
+                      <Text style={styles.actionLabelSecondary}>Sujet test</Text>
+                    </Pressable>
                   </View>
                 </View>
               )
@@ -218,25 +202,18 @@ export function RevisionChapitresScreen() {
 const styles = StyleSheet.create({
   scroll: {
     paddingHorizontal: 22,
-    paddingTop: 12,
+    paddingTop: 8,
     paddingBottom: 28,
   },
   header: {
-    marginBottom: 22,
+    marginBottom: 24,
   },
   heroEyebrow: {
     fontFamily: fonts.bodySemiBold,
     fontSize: 13,
     color: dark.green,
     letterSpacing: 0.3,
-    marginBottom: 2,
-  },
-  heroTitle: {
-    fontFamily: fonts.displayExtraBold,
-    fontSize: 28,
-    lineHeight: 34,
-    color: dark.textPrimary,
-    letterSpacing: -0.5,
+    marginBottom: 4,
   },
   subtitle: {
     marginTop: 8,
@@ -244,10 +221,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
     color: dark.textMuted,
-    maxWidth: 340,
   },
   card: {
-    borderRadius: 18,
+    borderRadius: radii.lg,
     backgroundColor: dark.surface,
     borderWidth: 1,
     borderColor: dark.border,
@@ -262,8 +238,8 @@ const styles = StyleSheet.create({
   iconWrap: {
     width: 44,
     height: 44,
-    borderRadius: 14,
-    backgroundColor: 'rgba(31,168,87,0.12)',
+    borderRadius: radii.md,
+    backgroundColor: dark.greenSoft,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -274,53 +250,88 @@ const styles = StyleSheet.create({
   },
   cardContent: {
     flex: 1,
+    minWidth: 0,
   },
   cardTitle: {
     fontFamily: fonts.bodySemiBold,
     fontSize: 16,
     color: dark.textPrimary,
   },
+  statusRow: {
+    marginTop: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   cardSubtitle: {
-    marginTop: 2,
     fontFamily: fonts.body,
     fontSize: 13,
     color: dark.textMuted,
   },
-  actions: {
-    marginTop: 14,
+  statusPillDone: {
     flexDirection: 'row',
-    gap: 8,
-  },
-  actionBtn: {
-    flex: 1,
     alignItems: 'center',
-    gap: 6,
-    paddingVertical: 10,
-    borderRadius: 14,
-    backgroundColor: dark.surfaceRaised,
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: radii.pill,
+    backgroundColor: dark.greenSoft,
   },
-  pressed: {
-    opacity: 0.85,
-  },
-  actionIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  actionCourses: {
-    backgroundColor: 'rgba(31,168,87,0.15)',
-  },
-  actionQuestions: {
-    backgroundColor: 'rgba(255,107,107,0.15)',
-  },
-  actionTest: {
-    backgroundColor: 'rgba(255,255,255,0.08)',
-  },
-  actionLabel: {
+  statusPillDoneText: {
     fontFamily: fonts.bodySemiBold,
     fontSize: 12,
+    color: dark.green,
+  },
+  actionsDivider: {
+    height: 1,
+    backgroundColor: dark.border,
+    marginTop: 14,
+    marginBottom: 12,
+  },
+  actions: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  actionBtnPrimary: {
+    flex: 1.2,
+    minHeight: 48,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderRadius: radii.md,
+    backgroundColor: dark.green,
+  },
+  actionBtnSecondary: {
+    flex: 1,
+    minHeight: 48,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderRadius: radii.md,
+    backgroundColor: dark.surfaceRaised,
+    borderWidth: 1,
+    borderColor: dark.border,
+  },
+  actionLabelPrimary: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 14,
+    color: '#0B0F1A',
+  },
+  actionLabelSecondary: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 14,
     color: dark.textPrimary,
+  },
+  pressed: {
+    opacity: 0.92,
+  },
+  pressedStrong: {
+    opacity: 0.88,
+    transform: [{ scale: 0.98 }],
   },
 })

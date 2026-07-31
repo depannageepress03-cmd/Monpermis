@@ -1,6 +1,6 @@
 import { useFocusEffect, useNavigation, useRoute, type RouteProp } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
-import { Check, Circle, ClipboardList, HelpCircle, X } from 'lucide-react-native'
+import { Check, ClipboardList, HelpCircle, Square, SquareCheck, X } from 'lucide-react-native'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   ActivityIndicator,
@@ -23,7 +23,6 @@ import { EmptyState } from '../../components/EmptyState'
 import { AnimatedCheckmark } from '../../components/AnimatedCheckmark'
 import { ConfettiBurst } from '../../components/ConfettiBurst'
 import { PageNavbar } from '../../components/PageNavbar'
-import { ProgressBar } from '../../components/ProgressBar'
 import { ScreenLoader } from '../../components/ScreenLoader'
 import { QuestionAudioSequence } from '../../components/QuestionAudioSequence'
 import { QuestionPromptHtml } from '../../components/QuestionPromptHtml'
@@ -38,12 +37,6 @@ import { rememberChapterOrder } from '../../data/codeRoute/chapterIndex'
 import { resolveQuestionImageUri } from '../../utils/questionImages'
 import { tracker } from '../../tracking/tracker'
 
-function wait(ms: number) {
-  return new Promise<void>((resolve) => {
-    setTimeout(resolve, ms)
-  })
-}
-
 type Nav = NativeStackNavigationProp<RootStackParamList, 'ChapterQuestions'>
 type Route = RouteProp<RootStackParamList, 'ChapterQuestions'>
 
@@ -54,11 +47,6 @@ type ReviewEntry = {
   isCorrect: boolean
 }
 
-function progressColor(ratio: number) {
-  if (ratio < 0.34) return dark.coral
-  if (ratio < 0.67) return '#F0B429'
-  return dark.green
-}
 
 export function ChapterQuestionsScreen() {
   const navigation = useNavigation<Nav>()
@@ -90,7 +78,6 @@ export function ChapterQuestionsScreen() {
   const [savingTest, setSavingTest] = useState(false)
   const [testSaved, setTestSaved] = useState(false)
   const [sequenceLive, setSequenceLive] = useState(true)
-  const [audioPaused, setAudioPaused] = useState(false)
   const [reviewHistory, setReviewHistory] = useState<ReviewEntry[]>([])
   const [reviewing, setReviewing] = useState(false)
 
@@ -141,7 +128,6 @@ export function ChapterQuestionsScreen() {
       setSequenceLive(true)
       setReviewHistory([])
       setReviewing(false)
-      setAudioPaused(false)
       const startContext = {
         chapterId,
         subjectNumber: isTest ? subjectNumber : undefined,
@@ -169,7 +155,6 @@ export function ChapterQuestionsScreen() {
     setSequenceLive(true)
     setSelectedIds(new Set())
     setResult(null)
-    setAudioPaused(false)
     stopAllQuizAudio()
     tracker.markQuestionStart()
   }, [index])
@@ -286,11 +271,10 @@ export function ChapterQuestionsScreen() {
       setScore(nextScore)
       void hapticError()
       void playFailSound()
-      await finishOrAdvance(nextScore)
     } finally {
       setChecking(false)
     }
-  }, [finishOrAdvance])
+  }, [])
 
   const resolveSelection = useCallback(
     async (ids: string[]) => {
@@ -339,8 +323,6 @@ export function ChapterQuestionsScreen() {
           void hapticError()
           await playFailSound()
         }
-        await wait(900)
-        await finishOrAdvance(nextScore)
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Vérification impossible')
         setSequenceLive(selectedIdsRef.current.size === 0)
@@ -348,7 +330,7 @@ export function ChapterQuestionsScreen() {
         setChecking(false)
       }
     },
-    [chapterId, finishOrAdvance],
+    [chapterId, isTest, mode, subjectNumber],
   )
 
   const handleSequenceComplete = useCallback(() => {
@@ -389,13 +371,12 @@ export function ChapterQuestionsScreen() {
 
   if (loading || !user) return <ScreenLoader />
 
-  const ratio = questions.length > 0 ? (index + (finished ? 1 : 0)) / questions.length : 0
 
   return (
     <DarkScreen>
         <ConfettiBurst active={finished && score.total > 0 && score.correct / score.total >= 0.7} />
         <PageNavbar
-          title={chapterName}
+          title={isTest ? subjectLabel || 'Sujet test' : 'Questions'}
           icon={isTest ? ClipboardList : HelpCircle}
           onBack={() => navigation.goBack()}
           numberOfLines={2}
@@ -404,26 +385,21 @@ export function ChapterQuestionsScreen() {
         <ScrollView
           contentContainerStyle={styles.scroll}
           showsVerticalScrollIndicator={false}
-          onScrollBeginDrag={() => {
-            if (sequenceLive && !result) {
-              setAudioPaused(true)
-              stopAllQuizAudio()
-            }
-          }}
-          scrollEventThrottle={16}
         >
           <View style={styles.header}>
-            <Text style={styles.kicker}>{isTest ? subjectLabel || 'Sujet test' : 'Questions'}</Text>
-            <View style={styles.accentRow}>
-              <View style={[styles.accent, styles.accentGreen]} />
-              <View style={[styles.accent, styles.accentGold]} />
-              <View style={[styles.accent, styles.accentNavy]} />
-            </View>
+            <Text style={styles.kicker}>{isTest ? 'Sujet test' : 'Entraînement'}</Text>
+            <Text style={styles.modeTitle}>
+              {isTest ? subjectLabel || 'Évaluation' : 'Questions'}
+            </Text>
             {isTest ? (
               <Text style={styles.subtitle}>
-                Évaluation du chapitre — 20 questions tirées au hasard
+                Évaluation du chapitre — répondez à chaque question à votre rythme.
               </Text>
-            ) : null}
+            ) : (
+              <Text style={styles.subtitle}>
+                Cochez la ou les bonnes réponses, puis validez.
+              </Text>
+            )}
           </View>
 
           {loadingQuestions ? (
@@ -518,7 +494,7 @@ export function ChapterQuestionsScreen() {
                   {savingTest
                     ? 'Enregistrement du sujet test…'
                     : testSaved
-                      ? 'Sujet test validé — le chapitre suivant est débloqué.'
+                      ? 'Sujet test enregistré. Vous pouvez recommencer ou passer à un autre chapitre.'
                       : 'Sujet test terminé.'}
                 </Text>
               ) : null}
@@ -539,12 +515,9 @@ export function ChapterQuestionsScreen() {
             </View>
           ) : question ? (
             <View>
-              <View style={styles.progressBlock}>
-                <Text style={styles.progress}>
-                  Question {index + 1} / {questions.length}
-                </Text>
-                <ProgressBar progress={ratio} color={progressColor(ratio)} height={10} />
-              </View>
+              <Text style={styles.progress}>
+                Question {index + 1} / {questions.length}
+              </Text>
 
               <View style={styles.promptCard}>
                 <Text style={styles.promptLabel}>Énonce</Text>
@@ -556,23 +529,12 @@ export function ChapterQuestionsScreen() {
                 {question.prompt.text ? (
                   <QuestionPromptHtml text={question.prompt.text} style={styles.promptText} />
                 ) : null}
-                {sequenceLive && !result && !audioPaused ? (
+                {sequenceLive && !result ? (
                   <QuestionAudioSequence
                     questionKey={question.id}
                     promptUri={question.prompt?.audioUrl}
                     onSequenceComplete={handleSequenceComplete}
                   />
-                ) : null}
-                {audioPaused && sequenceLive && !result ? (
-                  <Pressable
-                    style={styles.secondaryBtn}
-                    onPress={() => {
-                      setAudioPaused(false)
-                      setSequenceLive(true)
-                    }}
-                  >
-                    <Text style={styles.secondaryBtnText}>Reprendre l’audio</Text>
-                  </Pressable>
                 ) : null}
                 {resolvedImages.length > 0 ? (
                   <View style={styles.images}>
@@ -589,6 +551,11 @@ export function ChapterQuestionsScreen() {
               </View>
 
               <Text style={styles.answersTitle}>Choisissez la ou les bonnes réponses</Text>
+              {!result ? (
+                <Text style={styles.hintText}>
+                  Audio : 2 lectures. Vous pouvez cocher pendant la lecture.
+                </Text>
+              ) : null}
 
               {question.answers.map((answer) => {
                 const selected = selectedIds.has(answer.id)
@@ -610,9 +577,12 @@ export function ChapterQuestionsScreen() {
                   >
                     <View style={styles.answerLeft}>
                       {selected ? (
-                        <Check size={18} color={showWrong ? dark.coral : dark.green} />
+                        <SquareCheck
+                          size={20}
+                          color={showWrong ? dark.coral : dark.green}
+                        />
                       ) : (
-                        <Circle size={18} color={dark.textMuted} />
+                        <Square size={20} color={dark.textMuted} />
                       )}
                       <View style={styles.answerCopy}>
                         <Text style={styles.answerLabel}>{answer.label.toUpperCase()}</Text>
@@ -653,16 +623,20 @@ export function ChapterQuestionsScreen() {
                   {checking ? (
                     <ActivityIndicator color={'#0B0F1A'} />
                   ) : (
-                    <Text style={styles.primaryBtnText}>Continuer</Text>
+                    <Text style={styles.primaryBtnText}>Valider</Text>
                   )}
                 </Pressable>
               ) : null}
-              {!result && selectedIds.size === 0 ? (
-                <Text style={styles.awaitingText}>
-                  L’audio lit la question 2 fois. Vous pouvez cocher pendant la lecture ; Continuer valide sans attendre.
-                </Text>
+              {result ? (
+                <Pressable
+                  style={styles.primaryBtn}
+                  onPress={() => void finishOrAdvance(score)}
+                >
+                  <Text style={styles.primaryBtnText}>
+                    {index + 1 >= questions.length ? 'Voir le score' : 'Question suivante'}
+                  </Text>
+                </Pressable>
               ) : null}
-              {result ? <Text style={styles.awaitingText}>Passage automatique…</Text> : null}
             </View>
           ) : null}
         </ScrollView>
@@ -681,38 +655,24 @@ const styles = StyleSheet.create({
   },
   kicker: {
     fontFamily: fonts.bodySemiBold,
-    fontSize: 12,
-    letterSpacing: 1.2,
-    textTransform: 'uppercase',
+    fontSize: 13,
     color: dark.green,
-    marginBottom: 6,
+    letterSpacing: 0.3,
+    marginBottom: 4,
+  },
+  modeTitle: {
+    fontFamily: fonts.displayExtraBold,
+    fontSize: 24,
+    lineHeight: 30,
+    color: dark.textPrimary,
+    letterSpacing: -0.4,
   },
   subtitle: {
     fontFamily: fonts.body,
     fontSize: 14,
     lineHeight: 20,
     color: dark.textMuted,
-    marginTop: 4,
-  },
-  accentRow: {
-    flexDirection: 'row',
-    gap: 6,
-  },
-  accent: {
-    height: 4,
-    borderRadius: 999,
-  },
-  accentGreen: {
-    width: 28,
-    backgroundColor: dark.green,
-  },
-  accentGold: {
-    width: 18,
-    backgroundColor: dark.coral,
-  },
-  accentNavy: {
-    width: 12,
-    backgroundColor: dark.textMuted,
+    marginTop: 8,
   },
   progress: {
     fontFamily: fonts.bodyBold,
@@ -720,10 +680,6 @@ const styles = StyleSheet.create({
     color: dark.textMuted,
     marginBottom: 12,
     letterSpacing: 0.4,
-  },
-  progressBlock: {
-    gap: 10,
-    marginBottom: 16,
   },
   reviewWrap: {
     gap: 12,
@@ -763,8 +719,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 999,
-    backgroundColor: '#eff6ff',
-    color: '#1d4ed8',
+    backgroundColor: dark.greenSoft,
+    color: dark.green,
     fontFamily: fonts.bodyBold,
     fontSize: 12,
     overflow: 'hidden',
@@ -774,7 +730,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     textTransform: 'uppercase',
     letterSpacing: 0.8,
-    color: dark.coral,
+    color: dark.textMuted,
   },
   promptText: {
     fontFamily: fonts.bodySemiBold,
@@ -787,7 +743,7 @@ const styles = StyleSheet.create({
   },
   image: {
     width: '100%',
-    height: 180,
+    aspectRatio: 16 / 10,
     borderRadius: 12,
     backgroundColor: dark.surfaceRaised,
   },
@@ -795,6 +751,13 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bodyBold,
     fontSize: 15,
     color: dark.textPrimary,
+    marginBottom: 6,
+  },
+  hintText: {
+    fontFamily: fonts.body,
+    fontSize: 13,
+    lineHeight: 18,
+    color: dark.textMuted,
     marginBottom: 12,
   },
   answerRow: {
@@ -922,12 +885,5 @@ const styles = StyleSheet.create({
     fontSize: 22,
     color: dark.green,
     marginBottom: 20,
-  },
-  awaitingText: {
-    fontFamily: fonts.bodyMedium,
-    fontSize: 14,
-    color: dark.textMuted,
-    textAlign: 'center',
-    marginTop: 8,
   },
 })

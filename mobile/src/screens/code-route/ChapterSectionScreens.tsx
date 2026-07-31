@@ -3,7 +3,6 @@ import { useFocusEffect, useNavigation, useRoute, type RouteProp } from '@react-
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { ChevronRight, ClipboardList, HelpCircle } from 'lucide-react-native'
 import {
-  ActivityIndicator,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -20,9 +19,10 @@ import { rememberChapterOrder } from '../../data/codeRoute/chapterIndex'
 import { DarkScreen } from '../../components/DarkScreen'
 import { PageNavbar } from '../../components/PageNavbar'
 import { ScreenLoader } from '../../components/ScreenLoader'
+import { SkeletonList } from '../../components/Skeleton'
 import { useRequireAuth } from '../../hooks/useRequireAuth'
 import type { RootStackParamList } from '../../navigation/types'
-import { dark, fonts } from '../../theme'
+import { dark, fonts, radii } from '../../theme'
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'ChapterQuestionsList'>
 type Route = RouteProp<RootStackParamList, 'ChapterQuestionsList'>
@@ -60,75 +60,61 @@ export function ChapterQuestionsListScreen() {
 
   if (loading || !user) return <ScreenLoader />
 
+  const count = questions.length
+
   return (
     <DarkScreen>
-        <PageNavbar
-          title={chapterName}
-          icon={HelpCircle}
-          onBack={() => navigation.navigate('RevisionChapitres')}
-          numberOfLines={2}
-        />
+      <PageNavbar
+        title={chapterName}
+        icon={HelpCircle}
+        onBack={() => navigation.goBack()}
+        numberOfLines={2}
+      />
 
-        <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-          <View style={styles.header}>
-            <Text style={styles.kicker}>Questions</Text>
-            <View style={styles.accentRow}>
-              <View style={[styles.accent, styles.accentGreen]} />
-              <View style={[styles.accent, styles.accentGold]} />
-              <View style={[styles.accent, styles.accentNavy]} />
-            </View>
-            <Text style={styles.subtitle}>
-              {questions.length} question{questions.length !== 1 ? 's' : ''} · entraînement
-            </Text>
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        <View style={styles.header}>
+          <Text style={styles.kicker}>Entraînement</Text>
+          <Text style={styles.title}>Questions</Text>
+          <Text style={styles.subtitle}>
+            {loadingList
+              ? 'Chargement…'
+              : count > 0
+                ? `${count} question${count !== 1 ? 's' : ''} — entraînez-vous à votre rythme.`
+                : 'Aucune question publiée pour ce chapitre.'}
+          </Text>
+        </View>
+
+        {loadingList ? <SkeletonList count={3} /> : null}
+        {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+        {!loadingList && !error && count === 0 ? (
+          <View style={styles.centerBox}>
+            <Text style={styles.emptyTitle}>Aucune question</Text>
+            <Text style={styles.emptyText}>Aucune question publiée pour ce chapitre.</Text>
           </View>
+        ) : null}
 
-          {loadingList ? <ActivityIndicator color={dark.green} style={{ marginBottom: 16 }} /> : null}
-          {error ? <Text style={styles.errorText}>{error}</Text> : null}
-
-          {!loadingList && !error && questions.length === 0 ? (
-            <View style={styles.centerBox}>
-              <Text style={styles.emptyTitle}>Aucune question</Text>
-              <Text style={styles.emptyText}>Aucune question publiée pour ce chapitre.</Text>
-            </View>
-          ) : null}
-
-          {!loadingList && !error && questions.length > 0 ? (
-            <>
-              <Pressable
-                style={({ pressed }) => [styles.startBtn, pressed && styles.pressed]}
-                onPress={() =>
-                  navigation.navigate('ChapterQuestions', {
-                    chapterId,
-                    chapterName,
-                    chapterOrder,
-                    mode: 'practice',
-                  })
-                }
-              >
-                <HelpCircle size={20} color={'#0B0F1A'} />
-                <Text style={styles.startBtnText}>Commencer l’entraînement</Text>
-                <ChevronRight size={20} color={'#0B0F1A'} />
-              </Pressable>
-
-              {questions.map((question, index) => (
-                <View key={question.id} style={styles.card}>
-                  <View style={styles.iconWrap}>
-                    <HelpCircle size={20} color={dark.coral} />
-                  </View>
-                  <View style={styles.cardContent}>
-                    <Text style={styles.cardIndex}>Question {index + 1}</Text>
-                    <Text style={styles.cardTitle}>
-                      {question.answers.length} réponse
-                      {question.answers.length !== 1 ? 's' : ''} possible
-                      {question.answers.length !== 1 ? 's' : ''}
-                    </Text>
-                  </View>
-                </View>
-              ))}
-            </>
-          ) : null}
-        </ScrollView>
-      </DarkScreen>
+        {!loadingList && !error && count > 0 ? (
+          <Pressable
+            style={({ pressed }) => [styles.startBtn, pressed && styles.pressed]}
+            onPress={() =>
+              navigation.navigate('ChapterQuestions', {
+                chapterId,
+                chapterName,
+                chapterOrder,
+                mode: 'practice',
+              })
+            }
+            accessibilityRole="button"
+            accessibilityLabel="Commencer l’entraînement"
+          >
+            <HelpCircle size={20} color="#0B0F1A" />
+            <Text style={styles.startBtnText}>Commencer l’entraînement</Text>
+            <ChevronRight size={20} color="#0B0F1A" />
+          </Pressable>
+        ) : null}
+      </ScrollView>
+    </DarkScreen>
   )
 }
 
@@ -155,9 +141,6 @@ export function ChapterTestSubjectScreen() {
       const data = await fetchChapterTestSubjects(chapterId)
       const list = Array.isArray(data?.subjects) ? data.subjects : []
       setSubjects(list)
-      if (list.length === 0) {
-        setError(null)
-      }
     } catch (err) {
       setError(err instanceof ContentError ? err.message : 'Chargement impossible')
       setSubjects([])
@@ -176,103 +159,108 @@ export function ChapterTestSubjectScreen() {
 
   return (
     <DarkScreen>
-        <PageNavbar
-          title={chapterName}
-          icon={ClipboardList}
-          onBack={() => navigation.navigate('RevisionChapitres')}
-          numberOfLines={2}
-        />
+      <PageNavbar
+        title={chapterName}
+        icon={ClipboardList}
+        onBack={() => navigation.goBack()}
+        numberOfLines={2}
+      />
 
-        <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-          <View style={styles.header}>
-            <Text style={styles.kicker}>Sujets test</Text>
-            <View style={styles.accentRow}>
-              <View style={[styles.accent, styles.accentGreen]} />
-              <View style={[styles.accent, styles.accentGold]} />
-              <View style={[styles.accent, styles.accentNavy]} />
-            </View>
-            <Text style={styles.subtitle}>
-              {subjects.length > 0
-                ? `${subjects.length} sujet${subjects.length > 1 ? 's' : ''} disponible${subjects.length > 1 ? 's' : ''} — choisissez-en un.`
-                : 'Choisissez un sujet. Chaque sujet a un jeu de questions différent.'}
-            </Text>
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        <View style={styles.header}>
+          <Text style={styles.kicker}>Évaluation</Text>
+          <Text style={styles.title}>Sujets test</Text>
+          <Text style={styles.subtitle}>
+            {subjects.length > 0
+              ? `${subjects.length} sujet${subjects.length > 1 ? 's' : ''} — choisissez-en un.`
+              : 'Chaque sujet propose un jeu de questions différent.'}
+          </Text>
+        </View>
+
+        {loadingList ? <SkeletonList count={3} /> : null}
+        {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+        {!loadingList && !error && subjects.length === 0 ? (
+          <View style={styles.centerBox}>
+            <Text style={styles.emptyTitle}>Aucun sujet test</Text>
+            <Text style={styles.emptyText}>Aucune question publiée pour ce chapitre.</Text>
           </View>
+        ) : null}
 
-          {loadingList ? <ActivityIndicator color={dark.green} style={{ marginBottom: 16 }} /> : null}
-          {error ? <Text style={styles.errorText}>{error}</Text> : null}
-
-          {!loadingList && !error && subjects.length === 0 ? (
-            <View style={styles.centerBox}>
-              <Text style={styles.emptyTitle}>Aucun sujet test</Text>
-              <Text style={styles.emptyText}>
-                Aucune question publiée pour ce chapitre.
-              </Text>
-            </View>
-          ) : null}
-
-          {!loadingList && !error
-            ? subjects.map((subject) => (
-                <Pressable
-                  key={subject.id || `sujet-${subject.number}`}
-                  style={({ pressed }) => [styles.startBtn, pressed && styles.pressed, { marginBottom: 12 }]}
-                  onPress={() =>
-                    navigation.navigate('ChapterQuestions', {
-                      chapterId,
-                      chapterName,
-                      chapterOrder,
-                      mode: 'test',
-                      subjectNumber: subject.number,
-                    })
-                  }
-                >
-                  <ClipboardList size={20} color={'#0B0F1A'} />
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.startBtnText}>{subject.label}</Text>
-                    <Text style={[styles.cardIndex, { color: '#0B0F1A', opacity: 0.75 }]}>
-                      {subject.questionCount} question
-                      {subject.questionCount !== 1 ? 's' : ''}
-                    </Text>
-                  </View>
-                  <ChevronRight size={20} color={'#0B0F1A'} />
-                </Pressable>
-              ))
-            : null}
-        </ScrollView>
-      </DarkScreen>
+        {!loadingList && !error
+          ? subjects.map((subject) => (
+              <Pressable
+                key={subject.id || `sujet-${subject.number}`}
+                style={({ pressed }) => [styles.startBtn, pressed && styles.pressed]}
+                onPress={() =>
+                  navigation.navigate('ChapterQuestions', {
+                    chapterId,
+                    chapterName,
+                    chapterOrder,
+                    mode: 'test',
+                    subjectNumber: subject.number,
+                  })
+                }
+                accessibilityRole="button"
+                accessibilityLabel={subject.label}
+              >
+                <ClipboardList size={20} color="#0B0F1A" />
+                <View style={styles.subjectCopy}>
+                  <Text style={styles.startBtnText}>{subject.label}</Text>
+                  <Text style={styles.subjectMeta}>
+                    {subject.questionCount} question
+                    {subject.questionCount !== 1 ? 's' : ''}
+                  </Text>
+                </View>
+                <ChevronRight size={20} color="#0B0F1A" />
+              </Pressable>
+            ))
+          : null}
+      </ScrollView>
+    </DarkScreen>
   )
 }
 
 const styles = StyleSheet.create({
-  scroll: { paddingHorizontal: 22, paddingTop: 8, paddingBottom: 28 },
-  header: { marginBottom: 24 },
+  scroll: {
+    paddingHorizontal: 22,
+    paddingTop: 8,
+    paddingBottom: 28,
+  },
+  header: {
+    marginBottom: 24,
+  },
   kicker: {
     fontFamily: fonts.bodySemiBold,
-    fontSize: 12,
-    letterSpacing: 1.2,
-    textTransform: 'uppercase',
+    fontSize: 13,
     color: dark.green,
-    marginBottom: 6,
+    letterSpacing: 0.3,
+    marginBottom: 4,
   },
-  accentRow: { flexDirection: 'row', gap: 6, marginBottom: 14 },
-  accent: { height: 4, borderRadius: 999 },
-  accentGreen: { width: 28, backgroundColor: dark.green },
-  accentGold: { width: 18, backgroundColor: dark.coral },
-  accentNavy: { width: 12, backgroundColor: dark.textMuted },
+  title: {
+    fontFamily: fonts.displayExtraBold,
+    fontSize: 28,
+    lineHeight: 34,
+    color: dark.textPrimary,
+    letterSpacing: -0.5,
+  },
   subtitle: {
+    marginTop: 8,
     fontFamily: fonts.body,
-    fontSize: 15,
-    lineHeight: 22,
+    fontSize: 14,
+    lineHeight: 20,
     color: dark.textMuted,
   },
   startBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
+    minHeight: 52,
     backgroundColor: dark.green,
-    borderRadius: 16,
+    borderRadius: radii.lg,
     paddingVertical: 14,
     paddingHorizontal: 16,
-    marginBottom: 14,
+    marginBottom: 12,
   },
   startBtnText: {
     flex: 1,
@@ -280,49 +268,19 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bodyBold,
     fontSize: 15,
   },
-  card: {
-    flexDirection: 'row',
+  subjectCopy: {
+    flex: 1,
+    gap: 2,
+  },
+  subjectMeta: {
+    fontFamily: fonts.body,
+    fontSize: 13,
+    color: 'rgba(11,15,26,0.72)',
+  },
+  centerBox: {
     alignItems: 'center',
-    gap: 12,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: dark.border,
-    backgroundColor: dark.surface,
-    padding: 14,
-    marginBottom: 10,
+    paddingVertical: 28,
   },
-  summaryCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: dark.border,
-    backgroundColor: dark.surfaceRaised,
-    padding: 16,
-    marginBottom: 14,
-  },
-  iconWrap: {
-    width: 42,
-    height: 42,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: dark.coralSoft,
-  },
-  cardContent: { flex: 1 },
-  cardIndex: {
-    fontFamily: fonts.bodyBold,
-    fontSize: 12,
-    color: dark.textMuted,
-    marginBottom: 2,
-  },
-  cardTitle: {
-    fontFamily: fonts.displayBold,
-    fontSize: 15,
-    color: dark.textPrimary,
-  },
-  centerBox: { alignItems: 'center', paddingVertical: 28 },
   emptyTitle: {
     fontFamily: fonts.displayBold,
     fontSize: 17,
@@ -341,5 +299,8 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     fontFamily: fonts.bodySemiBold,
   },
-  pressed: { opacity: 0.88 },
+  pressed: {
+    opacity: 0.88,
+    transform: [{ scale: 0.99 }],
+  },
 })

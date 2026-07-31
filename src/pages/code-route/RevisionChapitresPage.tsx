@@ -5,8 +5,8 @@ export function RevisionChapitresPage() {
     <LearnerChapterListPage
       track="revision"
       kicker="Code de la route"
-      title="Révision par chapitres"
-      navTitle="Nos chapitres"
+      title="Révision"
+      navTitle="Révision"
       backTo="/code-de-la-route"
       backLabel="Retour"
       questionsPath={(chapterId) =>

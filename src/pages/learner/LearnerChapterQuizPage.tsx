@@ -23,12 +23,6 @@ import '../../styles/learner.css'
 
 type Mode = 'practice' | 'test'
 
-function wait(ms: number) {
-  return new Promise<void>((resolve) => {
-    window.setTimeout(resolve, ms)
-  })
-}
-
 export function LearnerChapterQuizPage({
   mode,
   backTo,
@@ -193,11 +187,10 @@ export function LearnerChapterQuizPage({
       }
       setScore(nextScore)
       void playFailSound()
-      await finishOrAdvance(nextScore)
     } finally {
       setChecking(false)
     }
-  }, [finishOrAdvance])
+  }, [])
 
   const resolveSelection = useCallback(
     async (ids: string[]) => {
@@ -217,8 +210,6 @@ export function LearnerChapterQuizPage({
         setScore(nextScore)
         if (data.isCorrect) await playSuccessSound()
         else await playFailSound()
-        await wait(900)
-        await finishOrAdvance(nextScore)
       } catch (err) {
         setError(err instanceof ContentError ? err.message : 'Vérification impossible')
         setSequenceLive(selectedIdsRef.current.length === 0)
@@ -226,7 +217,7 @@ export function LearnerChapterQuizPage({
         setChecking(false)
       }
     },
-    [chapterId, finishOrAdvance],
+    [chapterId],
   )
 
   const handleSequenceComplete = useCallback(() => {
@@ -263,11 +254,12 @@ export function LearnerChapterQuizPage({
         />
 
         <header className="auth-header learner-header">
-          <h1>{chapterName}</h1>
+          <p className="learner-kicker">{mode === 'test' ? 'Sujet test' : 'Entraînement'}</p>
+          <h1>{mode === 'test' ? subjectLabel || 'Évaluation' : 'Questions'}</h1>
           <p>
             {mode === 'test'
-              ? `${subjectLabel} · jusqu’à 20 questions.`
-              : 'Entraînez-vous aux questions.'}
+              ? `${chapterName} — répondez à chaque question à votre rythme.`
+              : `${chapterName} — cochez la ou les bonnes réponses, puis validez.`}
           </p>
         </header>
 
@@ -297,7 +289,7 @@ export function LearnerChapterQuizPage({
                   {savingTest
                     ? 'Enregistrement du sujet test…'
                     : testSaved
-                      ? 'Sujet test validé — le chapitre suivant est débloqué.'
+                      ? 'Sujet test enregistré. Vous pouvez recommencer ou passer à un autre chapitre.'
                       : 'Sujet test terminé.'}
                 </p>
               ) : null}
@@ -333,6 +325,13 @@ export function LearnerChapterQuizPage({
                   onSequenceComplete={handleSequenceComplete}
                 />
               ) : null}
+              <p className="learner-quiz-answers-title">Choisissez la ou les bonnes réponses</p>
+              {!result ? (
+                <p className="learner-quiz-audio-status">
+                  Audio : 2 lectures. Vous pouvez cocher pendant la lecture.
+                </p>
+              ) : null}
+
               <div className="learner-quiz-answers">
                 {question.answers.map((answer) => {
                   const selected = selectedIds.includes(answer.id)
@@ -349,6 +348,7 @@ export function LearnerChapterQuizPage({
                       onClick={() => toggleAnswer(answer.id)}
                       disabled={Boolean(result) || checking}
                     >
+                      <span className={`learner-quiz-check ${selected ? 'is-on' : ''}`} aria-hidden />
                       <strong>{answer.label.toUpperCase()}</strong>
                       {answer.text ? <span>{answer.text}</span> : null}
                     </button>
@@ -370,17 +370,17 @@ export function LearnerChapterQuizPage({
                     disabled={checking}
                     onClick={handleContinue}
                   >
-                    {checking ? 'Vérification…' : 'Continuer'}
+                    {checking ? 'Vérification…' : 'Valider'}
                   </button>
                 ) : null}
-                {!result && selectedIds.length === 0 ? (
-                  <p className="learner-quiz-audio-status">
-                    L’audio lit la question 2 fois. Vous pouvez cocher pendant la lecture ; Continuer
-                    valide sans attendre. Sans choix à la fin : question ratée.
-                  </p>
-                ) : null}
                 {result ? (
-                  <p className="learner-quiz-audio-status">Passage automatique…</p>
+                  <button
+                    type="button"
+                    className="btn-primary"
+                    onClick={() => void finishOrAdvance(score)}
+                  >
+                    {index + 1 >= questions.length ? 'Voir le score' : 'Question suivante'}
+                  </button>
                 ) : null}
               </div>
             </div>

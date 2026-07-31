@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { BookOpen, ClipboardList, HelpCircle, Layers } from 'lucide-react'
+import { BookOpen, Check, ClipboardList, HelpCircle, Layers } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   ContentError,
@@ -69,6 +69,7 @@ export function LearnerChapterListPage({
 
   const showQuizActions = Boolean(questionsPath || testSubjectPath)
   const coursesOnly = Boolean(coursesPath) && !showQuizActions
+  const revisionQuiz = track === 'revision' && showQuizActions
 
   return (
     <div className="auth-page">
@@ -86,11 +87,13 @@ export function LearnerChapterListPage({
         <header className="auth-header learner-header">
           <p className="learner-kicker">{kicker}</p>
           <p>
-            {coursesOnly
-              ? 'Choisissez un chapitre pour accéder à ses cours, à votre rythme.'
-              : showQuizActions
-                ? 'Questions et sujets test pour chaque chapitre. Les cours sont accessibles depuis le bouton Cours du menu Code.'
-                : 'Parcourez les leçons dans l’ordre pour avancer dans votre formation. Chaque chapitre regroupe les cours pratiques publiés par l’auto-école.'}
+            {revisionQuiz
+              ? 'Entraînez-vous aux questions, puis validez chaque chapitre avec un sujet test.'
+              : coursesOnly
+                ? 'Choisissez un chapitre pour accéder à ses cours, à votre rythme.'
+                : showQuizActions
+                  ? 'Questions et sujets test pour chaque chapitre.'
+                  : 'Parcourez les leçons dans l’ordre pour avancer dans votre formation. Chaque chapitre regroupe les cours pratiques publiés par l’auto-école.'}
           </p>
         </header>
 
@@ -116,6 +119,60 @@ export function LearnerChapterListPage({
                 const numberedName = `${index + 1}. ${chapter.name}`
                 const testDone = completedTestIds.has(chapter.id)
 
+                if (revisionQuiz) {
+                  const questionsTo = questionsPath?.(chapter.id)
+                  const testTo = testSubjectPath?.(chapter.id)
+                  return (
+                    <div key={chapter.id} className="learner-chapter-card learner-chapter-card--revision">
+                      {questionsTo ? (
+                        <Link
+                          to={questionsTo}
+                          state={{ chapterName: numberedName }}
+                          className="learner-chapter-card-top learner-chapter-card-top--link"
+                        >
+                          <span className="learner-item-icon">{index + 1}</span>
+                          <span className="learner-item-body">
+                            <strong>{chapter.name}</strong>
+                            {testDone ? (
+                              <small className="learner-status-pill">
+                                <Check size={12} aria-hidden />
+                                Test validé
+                              </small>
+                            ) : (
+                              <small>Questions + sujet test</small>
+                            )}
+                          </span>
+                          <span className="learner-chapter-chevron" aria-hidden>
+                            ›
+                          </span>
+                        </Link>
+                      ) : null}
+                      <div className="learner-chapter-actions learner-chapter-actions--revision">
+                        {questionsTo ? (
+                          <Link
+                            to={questionsTo}
+                            state={{ chapterName: numberedName }}
+                            className="learner-chapter-action learner-chapter-action--primary"
+                          >
+                            <HelpCircle size={16} aria-hidden />
+                            <span>Questions</span>
+                          </Link>
+                        ) : null}
+                        {testTo ? (
+                          <Link
+                            to={testTo}
+                            state={{ chapterName: numberedName }}
+                            className="learner-chapter-action learner-chapter-action--secondary"
+                          >
+                            <ClipboardList size={16} aria-hidden />
+                            <span>Sujet test</span>
+                          </Link>
+                        ) : null}
+                      </div>
+                    </div>
+                  )
+                }
+
                 if (showQuizActions) {
                   return (
                     <div key={chapter.id} className="learner-chapter-card">
@@ -124,9 +181,7 @@ export function LearnerChapterListPage({
                         <span className="learner-item-body">
                           <strong>{numberedName}</strong>
                           <small>
-                            {testDone
-                              ? `${chapter.courses.length} cours · Chapitre validé`
-                              : `${chapter.courses.length} cours · Accès libre`}
+                            {testDone ? 'Chapitre validé' : 'Questions + sujet test'}
                           </small>
                         </span>
                       </div>
