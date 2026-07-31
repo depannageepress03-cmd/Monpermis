@@ -11,7 +11,6 @@ import {
 import { MediaContent } from '../../components/MediaContent'
 import { DarkScreen } from '../../components/DarkScreen'
 import { PageNavbar } from '../../components/PageNavbar'
-import { CourseDetailSkeleton } from '../../components/Skeleton'
 import { ScreenLoader } from '../../components/ScreenLoader'
 import { useRequireAuth } from '../../hooks/useRequireAuth'
 import type { RootStackParamList } from '../../navigation/types'
@@ -22,12 +21,16 @@ import { formatSeconds, isCourseUnlocked } from '../../utils/unlock'
 type Nav = NativeStackNavigationProp<RootStackParamList, 'CourseDetail'>
 type Route = RouteProp<RootStackParamList, 'CourseDetail'>
 
+const STANDALONE_CHAPTER = 'standalone'
+
+/** Détail cours code — même UX que LeconDetailScreen (conduite). */
 export function CourseDetailScreen() {
   const navigation = useNavigation<Nav>()
   const route = useRoute<Route>()
   const { user, loading } = useRequireAuth(navigation)
   const { chapterId, chapterName, course, courses: coursesParam } = route.params
   const courses = coursesParam?.length ? coursesParam : [course]
+  const isStandalone = chapterId === STANDALONE_CHAPTER
 
   const [completedIds, setCompletedIds] = useState<Set<string>>(new Set())
   const [progressLoading, setProgressLoading] = useState(true)
@@ -53,11 +56,7 @@ export function CourseDetailScreen() {
       const ids = new Set(entries.map((entry) => entry.courseId))
       setCompletedIds(ids)
 
-      const unlocked = isCourseUnlocked(
-        courseIndex,
-        courses[courseIndex - 1]?.id,
-        ids,
-      )
+      const unlocked = isCourseUnlocked(courseIndex, courses[courseIndex - 1]?.id, ids)
       if (!unlocked) {
         setAccessBlocked(true)
         return
@@ -116,10 +115,9 @@ export function CourseDetailScreen() {
           numberOfLines={2}
         />
         <View style={styles.centerBox}>
-          <Lock size={28} color={dark.textMuted} />
           <Text style={styles.emptyTitle}>Cours verrouillé</Text>
           <Text style={styles.emptyText}>
-            Termine le cours précédent pour accéder à celui-ci.
+            Terminez le cours précédent pour accéder à celui-ci.
           </Text>
         </View>
       </DarkScreen>
@@ -141,128 +139,138 @@ export function CourseDetailScreen() {
         nestedScrollEnabled
         removeClippedSubviews={false}
       >
-          <View style={styles.header}>
-            <Text style={styles.kicker}>{formatChapterHeading(chapterName)}</Text>
+        <View style={styles.header}>
+          <Text style={styles.kicker}>{formatChapterHeading(chapterName)}</Text>
+          <View style={styles.accentRow}>
+            <View style={[styles.accent, styles.accentGreen]} />
+            <View style={[styles.accent, styles.accentGold]} />
+            <View style={[styles.accent, styles.accentNavy]} />
           </View>
+        </View>
 
-          {course.modules.length === 0 ? (
-            <View style={styles.centerBox}>
-              <Text style={styles.emptyTitle}>Contenu à venir</Text>
-              <Text style={styles.emptyText}>
-                Ce cours ne contient pas encore de modules publiés.
-              </Text>
-            </View>
+        {course.modules.length === 0 ? (
+          <View style={styles.centerBox}>
+            <Text style={styles.emptyTitle}>Contenu à venir</Text>
+            <Text style={styles.emptyText}>
+              Ce cours ne contient pas encore de modules publiés.
+            </Text>
+          </View>
+        ) : (
+          course.modules.map((module) => {
+            const moduleTitle = (module.title || module.name || '').trim()
+            const showModuleTitle =
+              moduleTitle.length > 0 &&
+              moduleTitle.toLowerCase() !== course.title.trim().toLowerCase()
+
+            return (
+              <View key={module.id} style={styles.moduleCard}>
+                <MediaContent
+                  title={showModuleTitle ? moduleTitle : undefined}
+                  videoUrl={module.mediaType === 'image' ? '' : module.videoUrl}
+                  imageUrl={module.mediaType === 'video' ? '' : module.imageUrl}
+                  text={module.text}
+                />
+              </View>
+            )
+          })
+        )}
+
+        <View style={styles.completionCard}>
+          <Text style={styles.completionTitle}>Validation du cours</Text>
+          <Text style={styles.completionHint}>
+            {isCompleted
+              ? 'Cours validé. Le cours suivant est débloqué.'
+              : secondsRemaining > 0
+                ? `Restez au moins 5 minutes sur ce cours. Encore ${formatSeconds(secondsRemaining)} avant de pouvoir valider.`
+                : 'Vous pouvez maintenant valider ce cours pour débloquer la suite.'}
+          </Text>
+
+          {progressLoading ? (
+            <ActivityIndicator color={dark.green} style={{ marginTop: 12 }} />
           ) : (
-            course.modules.map((module) => {
-              const moduleTitle = (module.title || module.name || '').trim()
-              const showModuleTitle =
-                moduleTitle.length > 0 &&
-                moduleTitle.toLowerCase() !== course.title.trim().toLowerCase()
-
-              return (
-                <View key={module.id} style={styles.moduleCard}>
-                  <MediaContent
-                    title={showModuleTitle ? moduleTitle : undefined}
-                    videoUrl={module.mediaType === 'image' ? '' : module.videoUrl}
-                    imageUrl={module.mediaType === 'video' ? '' : module.imageUrl}
-                    text={module.text}
-                  />
-                </View>
-              )
-            })
+            <Pressable
+              style={[
+                styles.checkboxRow,
+                isCompleted && styles.checkboxRowDone,
+                !canValidate && !isCompleted && styles.checkboxRowLocked,
+              ]}
+              onPress={() => void handleToggleComplete()}
+              disabled={isCompleted || saving || !canValidate}
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: isCompleted }}
+            >
+              <View style={[styles.checkbox, isCompleted && styles.checkboxChecked]}>
+                {isCompleted ? <Check size={16} color={'#0B0F1A'} strokeWidth={3} /> : null}
+              </View>
+              <Text style={styles.checkboxLabel}>
+                {isCompleted
+                  ? 'Cours validé — vous pouvez continuer'
+                  : !canValidate
+                    ? `Attendez encore ${formatSeconds(secondsRemaining)}`
+                    : 'J’ai terminé ce cours et je suis prêt pour la suite'}
+              </Text>
+              {saving ? <ActivityIndicator size="small" color={dark.green} /> : null}
+            </Pressable>
           )}
 
-          <View style={styles.completionCard}>
-            <Text style={styles.completionTitle}>Validation du cours</Text>
-            <Text style={styles.completionHint}>
-              {isCompleted
-                ? 'Cours validé. Le cours suivant est débloqué.'
-                : secondsRemaining > 0
-                  ? `Restez au moins 5 minutes sur ce cours. Encore ${formatSeconds(secondsRemaining)} avant de pouvoir valider.`
-                  : 'Vous pouvez maintenant valider ce cours pour débloquer la suite.'}
-            </Text>
+          {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-            {progressLoading ? (
-              <ActivityIndicator color={dark.green} style={{ marginTop: 12 }} />
-            ) : (
-              <Pressable
-                style={[
-                  styles.checkboxRow,
-                  isCompleted && styles.checkboxRowDone,
-                  !canValidate && !isCompleted && styles.checkboxRowLocked,
-                ]}
-                onPress={() => void handleToggleComplete()}
-                disabled={isCompleted || saving || !canValidate}
-                accessibilityRole="checkbox"
-                accessibilityState={{ checked: isCompleted }}
-              >
-                <View style={[styles.checkbox, isCompleted && styles.checkboxChecked]}>
-                  {isCompleted ? <Check size={16} color={'#0B0F1A'} strokeWidth={3} /> : null}
-                </View>
-                <Text style={styles.checkboxLabel}>
-                  {isCompleted
-                    ? 'Cours validé — vous pouvez continuer'
-                    : !canValidate
-                      ? `Attendez encore ${formatSeconds(secondsRemaining)}`
-                      : 'J’ai terminé ce cours et je suis prêt pour la suite'}
-                </Text>
-                {saving ? <ActivityIndicator size="small" color={dark.green} /> : null}
-              </Pressable>
-            )}
-
-            {error ? <Text style={styles.errorText}>{error}</Text> : null}
-
-            {isCompleted ? (
-              <View style={styles.actions}>
-                {nextCourse ? (
-                  <Pressable
-                    style={styles.primaryBtn}
-                    onPress={() =>
-                      navigation.replace('CourseDetail', {
-                        chapterId,
-                        chapterName,
-                        course: nextCourse,
-                        courses,
-                      })
-                    }
+          {isCompleted ? (
+            <View style={styles.actions}>
+              {nextCourse ? (
+                <Pressable
+                  style={styles.primaryBtn}
+                  onPress={() =>
+                    navigation.replace('CourseDetail', {
+                      chapterId,
+                      chapterName,
+                      course: nextCourse,
+                      courses,
+                    })
+                  }
+                >
+                  <Text style={styles.primaryBtnText}>Cours suivant</Text>
+                  <ChevronRight size={18} color={'#0B0F1A'} />
+                </Pressable>
+              ) : isStandalone ? (
+                <Pressable
+                  style={styles.secondaryBtn}
+                  onPress={() => navigation.navigate('CodeCours')}
+                >
+                  <Text style={styles.secondaryBtnText}>Retour aux cours</Text>
+                </Pressable>
+              ) : (
+                <Pressable
+                  style={[styles.secondaryBtn, !allCompleted && styles.btnDisabled]}
+                  disabled={!allCompleted}
+                  onPress={() =>
+                    navigation.navigate('ChapterTestSubject', {
+                      chapterId,
+                      chapterName,
+                    })
+                  }
+                >
+                  {allCompleted ? (
+                    <ClipboardList size={18} color={dark.textPrimary} />
+                  ) : (
+                    <Lock size={18} color={dark.textMuted} />
+                  )}
+                  <Text
+                    style={[
+                      styles.secondaryBtnText,
+                      !allCompleted && styles.secondaryBtnTextDisabled,
+                    ]}
                   >
-                    <Text style={styles.primaryBtnText}>Cours suivant</Text>
-                    <ChevronRight size={18} color={'#0B0F1A'} />
-                  </Pressable>
-                ) : null}
-
-                {allCompleted || !nextCourse ? (
-                  <Pressable
-                    style={[styles.secondaryBtn, !allCompleted && styles.btnDisabled]}
-                    disabled={!allCompleted}
-                    onPress={() =>
-                      navigation.navigate('ChapterTestSubject', {
-                        chapterId,
-                        chapterName,
-                      })
-                    }
-                  >
-                    {allCompleted ? (
-                      <ClipboardList size={18} color={dark.textPrimary} />
-                    ) : (
-                      <Lock size={18} color={dark.textMuted} />
-                    )}
-                    <Text
-                      style={[
-                        styles.secondaryBtnText,
-                        !allCompleted && styles.secondaryBtnTextDisabled,
-                      ]}
-                    >
-                      {allCompleted
-                        ? 'Accéder aux sujets test'
-                        : 'Terminez tous les cours pour le test'}
-                    </Text>
-                  </Pressable>
-                ) : null}
-              </View>
-            ) : null}
-          </View>
-        </ScrollView>
+                    {allCompleted
+                      ? 'Accéder aux sujets test'
+                      : 'Terminez tous les cours pour le test'}
+                  </Text>
+                </Pressable>
+              )}
+            </View>
+          ) : null}
+        </View>
+      </ScrollView>
     </DarkScreen>
   )
 }
@@ -274,14 +282,35 @@ const styles = StyleSheet.create({
     paddingBottom: 28,
   },
   header: {
-    marginBottom: 18,
+    marginBottom: 20,
   },
   kicker: {
     fontFamily: fonts.displayExtraBold,
     fontSize: 24,
-    letterSpacing: -0.4,
+    letterSpacing: -0.3,
     color: dark.textPrimary,
+    marginBottom: 6,
     lineHeight: 30,
+  },
+  accentRow: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  accent: {
+    height: 4,
+    borderRadius: 999,
+  },
+  accentGreen: {
+    width: 28,
+    backgroundColor: dark.green,
+  },
+  accentGold: {
+    width: 18,
+    backgroundColor: dark.coral,
+  },
+  accentNavy: {
+    width: 12,
+    backgroundColor: dark.textMuted,
   },
   moduleCard: {
     borderRadius: 18,
@@ -293,18 +322,14 @@ const styles = StyleSheet.create({
   },
   centerBox: {
     alignItems: 'center',
-    justifyContent: 'center',
-    flex: 1,
-    paddingVertical: 40,
-    paddingHorizontal: 24,
-    gap: 6,
+    paddingVertical: 32,
+    paddingHorizontal: 12,
   },
   emptyTitle: {
     fontFamily: fonts.displayBold,
-    fontSize: 18,
+    fontSize: 17,
     color: dark.textPrimary,
-    marginTop: 8,
-    marginBottom: 4,
+    marginBottom: 8,
     textAlign: 'center',
   },
   emptyText: {
@@ -318,8 +343,8 @@ const styles = StyleSheet.create({
     marginTop: 8,
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: 'rgba(34,214,115,0.32)',
-    backgroundColor: dark.surface,
+    borderColor: dark.border,
+    backgroundColor: dark.greenSoft,
     padding: 16,
   },
   completionTitle: {
@@ -327,14 +352,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: dark.textPrimary,
     marginBottom: 6,
-    textAlign: 'left',
   },
   completionHint: {
     fontFamily: fonts.body,
     fontSize: 13,
     lineHeight: 19,
     color: dark.textMuted,
-    textAlign: 'left',
   },
   checkboxRow: {
     marginTop: 14,
@@ -344,15 +367,16 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1,
     borderColor: dark.border,
-    backgroundColor: dark.surfaceRaised,
+    backgroundColor: dark.surface,
     paddingVertical: 12,
     paddingHorizontal: 12,
   },
   checkboxRowDone: {
-    borderColor: 'rgba(34,214,115,0.4)',
+    borderColor: 'rgba(34,214,115,0.45)',
   },
   checkboxRowLocked: {
     opacity: 0.7,
+    backgroundColor: dark.surfaceRaised,
   },
   checkbox: {
     width: 24,
@@ -362,7 +386,7 @@ const styles = StyleSheet.create({
     borderColor: dark.textMuted,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'transparent',
+    backgroundColor: dark.surface,
   },
   checkboxChecked: {
     borderColor: dark.green,
@@ -377,9 +401,9 @@ const styles = StyleSheet.create({
   },
   errorText: {
     marginTop: 10,
-    fontFamily: fonts.body,
     fontSize: 13,
     color: dark.coral,
+    fontFamily: fonts.body,
   },
   actions: {
     marginTop: 14,
@@ -403,12 +427,12 @@ const styles = StyleSheet.create({
   secondaryBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'flex-start',
+    justifyContent: 'center',
     gap: 8,
     borderRadius: 14,
     borderWidth: 1,
     borderColor: dark.border,
-    backgroundColor: dark.surfaceRaised,
+    backgroundColor: dark.surface,
     paddingVertical: 13,
     paddingHorizontal: 16,
   },
@@ -419,7 +443,6 @@ const styles = StyleSheet.create({
     color: dark.textPrimary,
     fontFamily: fonts.bodyBold,
     fontSize: 14,
-    textAlign: 'left',
   },
   secondaryBtnTextDisabled: {
     color: dark.textMuted,

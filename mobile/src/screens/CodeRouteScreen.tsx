@@ -52,7 +52,7 @@ const categories = [
   {
     id: 'CodeCours' as const,
     label: 'Cours',
-    subtitle: '(par chapitre)',
+    subtitle: 'Cours et modules',
     image: require('../../assets/code-route/cards/ecodepermis.jpg'),
     tone: 'purple' as const,
   },

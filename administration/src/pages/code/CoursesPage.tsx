@@ -1,44 +1,105 @@
+import {
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  closestCenter,
+  type DragEndEvent,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core'
+import {
+  SortableContext,
+  arrayMove,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import { FormEvent, useCallback, useEffect, useState } from 'react'
 import {
   BookOpen,
   ChevronDown,
   ChevronRight,
+  Copy,
+  Film,
+  GripVertical,
+  Image,
+  Pencil,
   Plus,
   Trash2,
+  Type,
 } from 'lucide-react'
 import {
   createStandaloneCourse,
   createStandaloneModule,
   deleteStandaloneCourse,
   deleteStandaloneModule,
+  duplicateStandaloneModule,
   fetchStandaloneCourses,
+  reorderStandaloneCourses,
+  reorderStandaloneModules,
   updateStandaloneCourse,
   updateStandaloneModule,
 } from '../../api/courses'
 import { uploadRevisionImage } from '../../api/revision'
+import { AdminSectionHeader } from '../../components/AdminSectionHeader'
+import { MediaPreview } from '../../components/MediaPreview'
 import { PublishSwitch } from '../../components/PublishSwitch'
 import { RichTextEditor } from '../../components/RichTextEditor'
 import { getAdminToken, isAuthError } from '../../context/AdminAuthContext'
+import { EmptyState, SkeletonBlock } from '../../ui'
 import type { ContentModule, Course, MediaType } from '../../types/revision'
-import { Button, EmptyState, SkeletonBlock } from '../../ui'
+import { describeModuleSize } from '../../utils/moduleSize'
+import { stripHtml } from '../../utils/richText'
 
-function stripHtml(html: string) {
-  return html.replace(/<[^>]*>/g, '').trim()
+function useAdminSensors() {
+  return useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  )
 }
 
-function ModuleCard({
-  courseId,
-  courseTitle,
-  module,
-  onUpdated,
-}: {
+interface DragHandleProps {
+  attributes: ReturnType<typeof useSortable>['attributes']
+  listeners: ReturnType<typeof useSortable>['listeners']
+}
+
+function DragHandle({ attributes, listeners }: DragHandleProps) {
+  return (
+    <button
+      type="button"
+      className="drag-handle"
+      aria-label="Réordonner"
+      {...attributes}
+      {...listeners}
+      onClick={(e) => e.stopPropagation()}
+    >
+      <GripVertical size={16} />
+    </button>
+  )
+}
+
+interface ModuleEditorProps {
   courseId: string
   courseTitle: string
   module: ContentModule
   onUpdated: () => void
-}) {
+}
+
+function ModuleEditor({
+  courseId,
+  courseTitle,
+  module,
+  onUpdated,
+}: ModuleEditorProps) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: module.id,
+  })
+
   const inferredType: MediaType =
-    module.mediaType || (module.videoUrl ? 'video' : module.imageUrl ? 'image' : '')
+    module.mediaType ||
+    (module.videoUrl ? 'video' : module.imageUrl ? 'image' : '')
+
   const isEmpty = !stripHtml(module.text) && !module.videoUrl?.trim() && !module.imageUrl?.trim()
 
   const [text, setText] = useState(module.text)
@@ -49,21 +110,66 @@ function ModuleCard({
   const [editing, setEditing] = useState(isEmpty)
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
+  const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [savedNotice, setSavedNotice] = useState(false)
 
   useEffect(() => {
+    const type =
+      module.mediaType ||
+      (module.videoUrl ? 'video' : module.imageUrl ? 'image' : '')
     setText(module.text)
-    setMediaType(
-      module.mediaType || (module.videoUrl ? 'video' : module.imageUrl ? 'image' : ''),
-    )
+    setMediaType(type)
     setVideoUrl(module.videoUrl)
     setImageUrl(module.imageUrl)
     setMediaBytes(module.mediaBytes || 0)
+    if (!stripHtml(module.text) && !module.videoUrl?.trim() && !module.imageUrl?.trim()) {
+      setEditing(true)
+    }
   }, [module])
+
+  useEffect(() => {
+    if (!savedNotice) return
+    const timer = window.setTimeout(() => setSavedNotice(false), 3000)
+    return () => window.clearTimeout(timer)
+  }, [savedNotice])
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.7 : 1,
+  }
+
+  const sizeInfo = describeModuleSize({
+    text,
+    mediaType,
+    videoUrl,
+    imageUrl,
+    mediaBytes,
+  })
+
+  const previewTitle = courseTitle
+  const previewVideo = mediaType === 'video' ? videoUrl : ''
+  const previewImage = mediaType === 'image' ? imageUrl : ''
+
+  const handleMediaTypeChange = (next: MediaType) => {
+    setMediaType(next)
+    if (next === 'video') {
+      setImageUrl('')
+      setMediaBytes(0)
+    } else if (next === 'image') {
+      setVideoUrl('')
+    } else {
+      setVideoUrl('')
+      setImageUrl('')
+      setMediaBytes(0)
+    }
+  }
 
   const handleSave = async () => {
     const token = getAdminToken()
     if (!token) return
+
     setSaving(true)
     setError(null)
     try {
@@ -77,6 +183,7 @@ function ModuleCard({
         mediaBytes: mediaType === 'image' ? mediaBytes : 0,
       })
       setEditing(false)
+      setSavedNotice(true)
       onUpdated()
     } catch (err) {
       setError(isAuthError(err) ? err.message : 'Enregistrement impossible')
@@ -85,22 +192,11 @@ function ModuleCard({
     }
   }
 
-  const handleDelete = async () => {
-    if (!window.confirm('Supprimer ce contenu ?')) return
-    const token = getAdminToken()
-    if (!token) return
-    try {
-      await deleteStandaloneModule(token, courseId, module.id)
-      onUpdated()
-    } catch (err) {
-      setError(isAuthError(err) ? err.message : 'Suppression impossible')
-    }
-  }
-
   const handleImageUpload = async (file: File | undefined) => {
     if (!file) return
     const token = getAdminToken()
     if (!token) return
+
     setUploading(true)
     setError(null)
     try {
@@ -116,119 +212,302 @@ function ModuleCard({
     }
   }
 
+  const handleDuplicate = async () => {
+    const token = getAdminToken()
+    if (!token) return
+
+    setBusy(true)
+    setError(null)
+    try {
+      await duplicateStandaloneModule(token, courseId, module.id)
+      onUpdated()
+    } catch (err) {
+      setError(isAuthError(err) ? err.message : 'Duplication impossible')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!window.confirm('Supprimer ce contenu ?')) return
+    const token = getAdminToken()
+    if (!token) return
+
+    setBusy(true)
+    try {
+      await deleteStandaloneModule(token, courseId, module.id)
+      onUpdated()
+    } catch (err) {
+      setError(isAuthError(err) ? err.message : 'Suppression impossible')
+      setBusy(false)
+    }
+  }
+
   return (
-    <div className={`revision-module${editing ? ' is-editing' : ' is-saved'}`}>
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`revision-module${isDragging ? ' is-dragging' : ''}${editing ? ' is-editing' : ' is-saved'}`}
+    >
       <div className="revision-module-header">
+        <DragHandle attributes={attributes} listeners={listeners} />
         <div className="revision-module-title-wrap">
           <span className="revision-module-title">{courseTitle}</span>
           {editing ? <span className="revision-tag revision-tag-edit">Édition</span> : null}
+          {!editing && savedNotice ? <span className="revision-tag revision-tag-ok">Enregistré</span> : null}
         </div>
         <div className="revision-item-actions">
           {!editing ? (
-            <button type="button" className="btn-outline-sm" onClick={() => setEditing(true)}>
+            <button
+              type="button"
+              className="btn-outline-sm"
+              onClick={() => setEditing(true)}
+              title="Modifier"
+            >
+              <Pencil size={16} />
               Modifier
             </button>
           ) : null}
-          <button type="button" className="btn-icon-danger" onClick={() => void handleDelete()}>
+          <button
+            type="button"
+            className="btn-icon-muted"
+            onClick={handleDuplicate}
+            disabled={busy}
+            aria-label="Dupliquer le contenu"
+            title="Dupliquer"
+          >
+            <Copy size={16} />
+          </button>
+          <button
+            type="button"
+            className="btn-icon-danger"
+            onClick={handleDelete}
+            disabled={busy}
+            aria-label="Supprimer le contenu"
+          >
             <Trash2 size={16} />
           </button>
         </div>
       </div>
 
       {editing ? (
-        <div className="revision-module-editor">
-          <label>Texte</label>
-          <RichTextEditor value={text} onChange={setText} />
-          <div className="revision-media-type">
-            <button
-              type="button"
-              className={mediaType === '' ? 'is-active' : ''}
-              onClick={() => {
-                setMediaType('')
-                setVideoUrl('')
-                setImageUrl('')
-              }}
-            >
-              Texte seul
-            </button>
-            <button
-              type="button"
-              className={mediaType === 'image' ? 'is-active' : ''}
-              onClick={() => setMediaType('image')}
-            >
-              Image
-            </button>
-            <button
-              type="button"
-              className={mediaType === 'video' ? 'is-active' : ''}
-              onClick={() => setMediaType('video')}
-            >
-              Vidéo
-            </button>
+        <div className="revision-module-workspace">
+          <div className="revision-module-form">
+            <section className="revision-form-section">
+              <h4 className="revision-form-section-title">Taille du contenu</h4>
+              <div className={`revision-size-meter${sizeInfo.warning ? ' is-warning' : ''}`}>
+                <strong>{sizeInfo.label}</strong>
+                <span>{sizeInfo.detail}</span>
+              </div>
+            </section>
+
+            <section className="revision-form-section">
+              <h4 className="revision-form-section-title">Configuration des éléments</h4>
+
+              <div className="revision-field">
+                <span>Support média</span>
+                <div className="revision-media-switch" role="group" aria-label="Type de média">
+                  <button
+                    type="button"
+                    className={`revision-media-option${mediaType === 'video' ? ' active' : ''}`}
+                    onClick={() => handleMediaTypeChange(mediaType === 'video' ? '' : 'video')}
+                  >
+                    <Film size={16} />
+                    Vidéo
+                  </button>
+                  <button
+                    type="button"
+                    className={`revision-media-option${mediaType === 'image' ? ' active' : ''}`}
+                    onClick={() => handleMediaTypeChange(mediaType === 'image' ? '' : 'image')}
+                  >
+                    <Image size={16} />
+                    Image
+                  </button>
+                </div>
+              </div>
+
+              {mediaType === 'video' ? (
+                <label className="revision-field">
+                  <span>
+                    <Film size={16} /> Lien vidéo (YouTube / Vimeo)
+                  </span>
+                  <input
+                    type="url"
+                    value={videoUrl}
+                    onChange={(e) => {
+                      setVideoUrl(e.target.value)
+                      setMediaBytes(0)
+                      setImageUrl('')
+                    }}
+                    placeholder="https://www.youtube.com/watch?v=… ou https://vimeo.com/…"
+                  />
+                  {videoUrl.trim() ? (
+                    <button
+                      type="button"
+                      className="btn-text-danger"
+                      onClick={() => {
+                        setVideoUrl('')
+                        setMediaBytes(0)
+                      }}
+                    >
+                      Retirer la vidéo
+                    </button>
+                  ) : null}
+                </label>
+              ) : null}
+
+              {mediaType === 'image' ? (
+                <label className="revision-field">
+                  <span>
+                    <Image size={16} /> Image
+                  </span>
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    onChange={(e) => handleImageUpload(e.target.files?.[0])}
+                    disabled={uploading}
+                  />
+                  {imageUrl ? (
+                    <button
+                      type="button"
+                      className="btn-text-danger"
+                      onClick={() => {
+                        setImageUrl('')
+                        setMediaBytes(0)
+                      }}
+                    >
+                      Retirer l'image
+                    </button>
+                  ) : null}
+                </label>
+              ) : null}
+
+              <div className="revision-field">
+                <span>
+                  <Type size={16} /> Bloc texte
+                </span>
+                <RichTextEditor
+                  value={text}
+                  onChange={setText}
+                  placeholder="Explications ou cours théorique — gras, titres, listes, liens…"
+                />
+              </div>
+            </section>
+
+            {error ? <p className="form-error">{error}</p> : null}
+
+            <div className="revision-actions">
+              <button
+                type="button"
+                className="btn-primary btn-primary-inline"
+                onClick={handleSave}
+                disabled={saving}
+              >
+                {saving ? 'Enregistrement…' : 'Enregistrer'}
+              </button>
+              {!isEmpty ? (
+                <button type="button" className="btn-outline-sm" onClick={() => setEditing(false)}>
+                  Annuler
+                </button>
+              ) : null}
+            </div>
           </div>
-          {mediaType === 'image' ? (
-            <input
-              type="file"
-              accept="image/*"
-              disabled={uploading}
-              onChange={(e) => void handleImageUpload(e.target.files?.[0])}
-            />
-          ) : null}
-          {mediaType === 'video' ? (
-            <label className="revision-field">
-              <span>Lien vidéo (YouTube / Vimeo)</span>
-              <input
-                type="url"
-                value={videoUrl}
-                onChange={(e) => {
-                  setVideoUrl(e.target.value)
-                  setMediaBytes(0)
-                  setImageUrl('')
-                }}
-                placeholder="https://www.youtube.com/watch?v=… ou https://vimeo.com/…"
-              />
-            </label>
-          ) : null}
-          {imageUrl && mediaType === 'image' ? (
-            <img src={imageUrl} alt="" className="revision-media-preview" />
-          ) : null}
-          {videoUrl.trim() && mediaType === 'video' ? (
-            <p className="revision-field-hint" style={{ marginTop: 8 }}>
-              Lien enregistré : {videoUrl.trim()}
-            </p>
-          ) : null}
-          <div className="revision-actions">
-            <Button variant="primary" disabled={saving || uploading} onClick={() => void handleSave()}>
-              {saving ? 'Enregistrement…' : 'Enregistrer'}
-            </Button>
-            <Button variant="ghost" onClick={() => setEditing(false)}>
-              Annuler
-            </Button>
-          </div>
-          {error ? <p className="form-error">{error}</p> : null}
+
+          <aside className="revision-module-preview" aria-label="Aperçu téléphone">
+            <div className="revision-preview-banner">
+              <p className="revision-preview-kicker">Aperçu téléphone</p>
+              <p className="revision-preview-note">Rendu élève en temps réel</p>
+            </div>
+            <div className="phone-shell">
+              <span className="phone-btn phone-btn-silent" aria-hidden="true" />
+              <span className="phone-btn phone-btn-volume-up" aria-hidden="true" />
+              <span className="phone-btn phone-btn-volume-down" aria-hidden="true" />
+              <span className="phone-btn phone-btn-power" aria-hidden="true" />
+              <div className="phone-frame">
+                <div className="phone-island" aria-hidden="true">
+                  <span className="phone-island-camera" />
+                </div>
+                <div className="phone-screen">
+                  <div className="phone-status" aria-hidden="true">
+                    <span>9:41</span>
+                    <span className="phone-status-icons">▮▮▮</span>
+                  </div>
+                  <div className="phone-content">
+                    <MediaPreview
+                      title={previewTitle}
+                      hideTitle
+                      layout="stack"
+                      videoUrl={previewVideo}
+                      imageUrl={previewImage}
+                      text={text}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </aside>
         </div>
       ) : (
-        <div className="revision-module-preview">
-          {stripHtml(module.text) ? (
-            <div dangerouslySetInnerHTML={{ __html: module.text }} />
-          ) : (
-            <p className="revision-empty">Pas de texte</p>
-          )}
+        <div className="revision-module-saved">
+          <MediaPreview
+            title={courseTitle}
+            hideTitle
+            layout="stack"
+            videoUrl={module.mediaType === 'image' ? '' : module.videoUrl}
+            imageUrl={module.mediaType === 'video' ? '' : module.imageUrl}
+            text={module.text}
+          />
         </div>
       )}
     </div>
   )
 }
 
-function CourseCard({ course, onUpdated }: { course: Course; onUpdated: () => void }) {
-  const [expanded, setExpanded] = useState(false)
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+interface CoursePanelProps {
+  course: Course
+  onUpdated: () => void
+}
 
-  const handlePublish = async (published: boolean) => {
+function CoursePanel({ course, onUpdated }: CoursePanelProps) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: course.id,
+  })
+  const sensors = useAdminSensors()
+  const [expanded, setExpanded] = useState(false)
+  const [modules, setModules] = useState(course.modules)
+  const [error, setError] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+
+  useEffect(() => {
+    setModules(course.modules)
+  }, [course.modules])
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.7 : 1,
+  }
+
+  const handleAddModule = async () => {
     const token = getAdminToken()
     if (!token) return
+
+    setError(null)
+    try {
+      await createStandaloneModule(token, course.id)
+      onUpdated()
+      setExpanded(true)
+    } catch (err) {
+      setError(isAuthError(err) ? err.message : 'Ajout impossible')
+    }
+  }
+
+  const handlePublishToggle = async (published: boolean) => {
+    const token = getAdminToken()
+    if (!token) return
+
     setBusy(true)
+    setError(null)
     try {
       await updateStandaloneCourse(token, course.id, { published })
       onUpdated()
@@ -239,10 +518,11 @@ function CourseCard({ course, onUpdated }: { course: Course; onUpdated: () => vo
     }
   }
 
-  const handleDelete = async () => {
+  const handleDeleteCourse = async () => {
     if (!window.confirm(`Supprimer le cours « ${course.title} » et tous ses modules ?`)) return
     const token = getAdminToken()
     if (!token) return
+
     try {
       await deleteStandaloneCourse(token, course.id)
       onUpdated()
@@ -251,21 +531,37 @@ function CourseCard({ course, onUpdated }: { course: Course; onUpdated: () => vo
     }
   }
 
-  const handleAddModule = async () => {
+  const handleModuleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+
+    const oldIndex = modules.findIndex((item) => item.id === active.id)
+    const newIndex = modules.findIndex((item) => item.id === over.id)
+    if (oldIndex < 0 || newIndex < 0) return
+
+    const next = arrayMove(modules, oldIndex, newIndex)
+    setModules(next)
+
     const token = getAdminToken()
     if (!token) return
+
     try {
-      await createStandaloneModule(token, course.id)
-      setExpanded(true)
+      await reorderStandaloneModules(
+        token,
+        course.id,
+        next.map((item) => item.id),
+      )
       onUpdated()
     } catch (err) {
-      setError(isAuthError(err) ? err.message : 'Ajout impossible')
+      setModules(course.modules)
+      setError(isAuthError(err) ? err.message : 'Réordonnancement impossible')
     }
   }
 
   return (
-    <div className="revision-course">
+    <div ref={setNodeRef} style={style} className={`revision-course${isDragging ? ' is-dragging' : ''}`}>
       <div className="revision-course-header">
+        <DragHandle attributes={attributes} listeners={listeners} />
         <button
           type="button"
           className="revision-course-toggle"
@@ -274,13 +570,19 @@ function CourseCard({ course, onUpdated }: { course: Course; onUpdated: () => vo
           {expanded ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
           <BookOpen size={18} />
           <span>{course.title}</span>
-          <span className="revision-count">
-            {course.modules.length} contenu{course.modules.length !== 1 ? 's' : ''}
-          </span>
+            <span className="revision-count">
+              {modules.length} contenu{modules.length !== 1 ? 's' : ''}
+            </span>
         </button>
         <div className="revision-item-actions">
-          <PublishSwitch checked={course.published} onChange={handlePublish} disabled={busy} />
-          <button type="button" className="btn-text-danger" onClick={() => void handleDelete()}>
+          <PublishSwitch checked={course.published} onChange={handlePublishToggle} disabled={busy} />
+          <button
+            type="button"
+            className="btn-text-danger"
+            onClick={handleDeleteCourse}
+            aria-label={`Supprimer le cours ${course.title}`}
+            title="Supprimer le cours"
+          >
             <Trash2 size={16} />
             Supprimer
           </button>
@@ -289,27 +591,37 @@ function CourseCard({ course, onUpdated }: { course: Course; onUpdated: () => vo
 
       {expanded ? (
         <div className="revision-course-body">
-          {course.modules.length === 0 ? (
+          {modules.length === 0 ? (
             <p className="revision-empty">Aucun contenu. Ajoutez une vidéo, une image ou du texte.</p>
           ) : (
-            <div className="revision-modules-list">
-              {course.modules.map((module) => (
-                <ModuleCard
-                  key={module.id}
-                  courseId={course.id}
-                  courseTitle={course.title}
-                  module={module}
-                  onUpdated={onUpdated}
-                />
-              ))}
-            </div>
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleModuleDragEnd}
+            >
+              <SortableContext items={modules.map((item) => item.id)} strategy={verticalListSortingStrategy}>
+                <div className="revision-modules-list">
+                  {modules.map((module) => (
+                    <ModuleEditor
+                      key={module.id}
+                      courseId={course.id}
+                      courseTitle={course.title}
+                      module={module}
+                      onUpdated={onUpdated}
+                    />
+                  ))}
+                </div>
+              </SortableContext>
+            </DndContext>
           )}
+
           <div className="revision-actions revision-actions-footer">
-            <button type="button" className="btn-outline-sm" onClick={() => void handleAddModule()}>
+            <button type="button" className="btn-outline-sm" onClick={handleAddModule}>
               <Plus size={16} />
               Ajouter un contenu
             </button>
           </div>
+
           {error ? <p className="form-error">{error}</p> : null}
         </div>
       ) : null}
@@ -317,21 +629,20 @@ function CourseCard({ course, onUpdated }: { course: Course; onUpdated: () => vo
   )
 }
 
-export function CoursesPage() {
-  const [courses, setCourses] = useState<Course[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [title, setTitle] = useState('')
-  const [adding, setAdding] = useState(false)
 
-  const load = useCallback(async () => {
+export function CoursesPage() {
+  const sensors = useAdminSensors()
+  const [courses, setCourses] = useState<Course[]>([])
+  const [courseTitle, setCourseTitle] = useState('')
+  const [loading, setLoading] = useState(true)
+  const [addingCourse, setAddingCourse] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
+
+  const loadCourses = useCallback(async (silent = false) => {
     const token = getAdminToken()
-    if (!token) {
-      setError('Session expirée. Reconnectez-vous.')
-      setLoading(false)
-      return
-    }
-    setLoading(true)
+    if (!token) return
+    if (!silent) setLoading(true)
     setError(null)
     try {
       const { courses: data } = await fetchStandaloneCourses(token)
@@ -339,83 +650,133 @@ export function CoursesPage() {
     } catch (err) {
       setError(isAuthError(err) ? err.message : 'Chargement impossible')
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }, [])
 
   useEffect(() => {
-    void load()
-  }, [load])
+    void loadCourses()
+  }, [loadCourses])
 
-  const handleCreate = async (e: FormEvent) => {
+  useEffect(() => {
+    if (!success) return
+    const timer = window.setTimeout(() => setSuccess(null), 4000)
+    return () => window.clearTimeout(timer)
+  }, [success])
+
+  const refresh = useCallback(() => loadCourses(true), [loadCourses])
+
+  const handleAddCourse = async (e: FormEvent) => {
     e.preventDefault()
+    const title = courseTitle.trim()
+    if (!title) return
     const token = getAdminToken()
     if (!token) return
-    const value = title.trim()
-    if (value.length < 2) return
-    setAdding(true)
+    setAddingCourse(true)
     setError(null)
+    setSuccess(null)
     try {
-      await createStandaloneCourse(token, value)
-      setTitle('')
-      await load()
+      const { course } = await createStandaloneCourse(token, title)
+      setCourseTitle('')
+      setSuccess(`Création finie — le cours « ${course.title} » a été ajouté.`)
+      await loadCourses(true)
     } catch (err) {
-      setError(isAuthError(err) ? err.message : 'Création impossible')
+      setError(isAuthError(err) ? err.message : 'Ajout impossible')
     } finally {
-      setAdding(false)
+      setAddingCourse(false)
+    }
+  }
+
+  const handleCourseDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    const oldIndex = courses.findIndex((item) => item.id === active.id)
+    const newIndex = courses.findIndex((item) => item.id === over.id)
+    if (oldIndex < 0 || newIndex < 0) return
+    const next = arrayMove(courses, oldIndex, newIndex)
+    setCourses(next)
+    const token = getAdminToken()
+    if (!token) return
+    try {
+      await reorderStandaloneCourses(
+        token,
+        next.map((item) => item.id),
+      )
+      await refresh()
+    } catch (err) {
+      await loadCourses(true)
+      setError(isAuthError(err) ? err.message : 'Réordonnancement impossible')
     }
   }
 
   return (
-    <div className="admin-page">
-      <header className="admin-module-header">
-        <p className="admin-module-kicker">Code de la route</p>
-        <h1 className="admin-module-title">Cours</h1>
-        <p className="subtitle" style={{ marginTop: 6 }}>
-          Créez des cours et leurs modules (texte, image, vidéo). Les cours ne sont plus liés aux
-          chapitres.
-        </p>
+    <div className="revision-shell">
+      <header className="revision-page-header">
+        <AdminSectionHeader
+          backTo="/code"
+          backLabel="Code de la route"
+          kicker="Formation"
+          title="Cours"
+          subtitle="Même éditeur que les leçons de conduite : cours, modules, aperçu téléphone. Vidéos via lien YouTube / Vimeo."
+        />
       </header>
 
-      <section className="revision-workspace" style={{ marginTop: 18 }}>
-        <form onSubmit={handleCreate} className="revision-inline-form revision-add-course">
-          <input
-            type="text"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="Titre du nouveau cours"
-            required
-            minLength={2}
-          />
-          <button type="submit" className="btn-primary btn-primary-inline" disabled={adding}>
-            <Plus size={16} />
-            {adding ? 'Création…' : 'Créer un cours'}
-          </button>
-        </form>
+      <form onSubmit={handleAddCourse} className="revision-inline-form revision-add-course">
+        <input
+          type="text"
+          value={courseTitle}
+          onChange={(e) => setCourseTitle(e.target.value)}
+          placeholder="Titre du nouveau cours"
+          required
+          minLength={2}
+        />
+        <button type="submit" className="btn-primary btn-primary-inline" disabled={addingCourse}>
+          <Plus size={16} />
+          {addingCourse ? 'Ajout…' : 'Ajouter un cours'}
+        </button>
+      </form>
 
-        {error ? (
-          <p className="form-error" role="alert" style={{ marginTop: 12 }}>
-            {error}
-          </p>
-        ) : null}
+      {loading ? (
+        <div style={{ padding: 8 }}>
+          <SkeletonBlock rows={5} />
+        </div>
+      ) : null}
+      {error ? <p className="form-error" role="alert">{error}</p> : null}
+      {success ? (
+        <p className="form-success" role="status">
+          {success}
+        </p>
+      ) : null}
 
-        {loading ? (
-          <div style={{ marginTop: 16 }}>
-            <SkeletonBlock rows={5} />
+      {!loading && courses.length === 0 ? (
+        <EmptyState
+          title="Aucun cours"
+          description="Commencez par ajouter votre premier cours, puis ses contenus."
+        />
+      ) : null}
+
+      {!loading && courses.length > 0 ? (
+        <div className="revision-chapter selected revision-chapter-workspace">
+          <div className="revision-chapter-body">
+            <div className="revision-courses-stack">
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleCourseDragEnd}
+              >
+                <SortableContext
+                  items={courses.map((item) => item.id)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  {courses.map((course) => (
+                    <CoursePanel key={course.id} course={course} onUpdated={refresh} />
+                  ))}
+                </SortableContext>
+              </DndContext>
+            </div>
           </div>
-        ) : courses.length === 0 ? (
-          <EmptyState
-            title="Aucun cours"
-            description="Créez un premier cours, puis ajoutez ses contenus (modules)."
-          />
-        ) : (
-          <div className="revision-courses-stack" style={{ marginTop: 16 }}>
-            {courses.map((course) => (
-              <CourseCard key={course.id} course={course} onUpdated={() => void load()} />
-            ))}
-          </div>
-        )}
-      </section>
+        </div>
+      ) : null}
     </div>
   )
 }

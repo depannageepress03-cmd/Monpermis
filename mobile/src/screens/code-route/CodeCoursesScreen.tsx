@@ -1,24 +1,16 @@
-import { useCallback, useRef, useState } from 'react'
 import { useFocusEffect, useNavigation } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
-import { BookOpen } from 'lucide-react-native'
-import {
-  Pressable,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native'
-import { ContentError, fetchRevisionCourses } from '../../api/revision'
+import { BookOpen, Check, ChevronRight, Lock } from 'lucide-react-native'
+import { useCallback, useState } from 'react'
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { fetchCourseProgress, fetchRevisionCourses } from '../../api/revision'
 import { DarkScreen } from '../../components/DarkScreen'
-import { EmptyState } from '../../components/EmptyState'
 import { PageNavbar } from '../../components/PageNavbar'
 import { ScreenLoader } from '../../components/ScreenLoader'
-import { SkeletonList } from '../../components/Skeleton'
 import { useRequireAuth } from '../../hooks/useRequireAuth'
 import type { RootStackParamList } from '../../navigation/types'
 import { dark, fonts } from '../../theme'
+import { formatCourseHeading } from '../../utils/chapterLabel'
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'CodeCours'>
 
@@ -26,29 +18,28 @@ const STANDALONE_CHAPTER = 'standalone'
 
 type StandaloneCourse = Awaited<ReturnType<typeof fetchRevisionCourses>>[number]
 
+/** Liste cours code — même UX que LeconsCoursesScreen (conduite). */
 export function CodeCoursesScreen() {
   const navigation = useNavigation<Nav>()
-  const { user, loading: authLoading } = useRequireAuth(navigation)
+  const { user, loading } = useRequireAuth(navigation)
   const [courses, setCourses] = useState<StandaloneCourse[]>([])
-  const [loading, setLoading] = useState(true)
-  const [refreshing, setRefreshing] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const hasDataRef = useRef(false)
+  const [completedIds, setCompletedIds] = useState<Set<string>>(new Set())
+  const [progressLoading, setProgressLoading] = useState(true)
 
-  const load = useCallback(async (silent = false) => {
-    if (!silent && !hasDataRef.current) setLoading(true)
-    setError(null)
+  const load = useCallback(async () => {
+    setProgressLoading(true)
     try {
-      const data = await fetchRevisionCourses()
-      setCourses(data)
-      if (data.length > 0) hasDataRef.current = true
-    } catch (err) {
-      if (!hasDataRef.current) {
-        setError(err instanceof ContentError ? err.message : 'Chargement impossible')
-      }
+      const [list, entries] = await Promise.all([
+        fetchRevisionCourses(),
+        fetchCourseProgress(STANDALONE_CHAPTER),
+      ])
+      setCourses(list)
+      setCompletedIds(new Set(entries.map((entry) => entry.courseId)))
+    } catch {
+      setCourses([])
+      setCompletedIds(new Set())
     } finally {
-      setLoading(false)
-      setRefreshing(false)
+      setProgressLoading(false)
     }
   }, [])
 
@@ -58,24 +49,9 @@ export function CodeCoursesScreen() {
     }, [user, load]),
   )
 
-  const openCourse = (course: StandaloneCourse) => {
-    navigation.navigate('CourseDetail', {
-      chapterId: STANDALONE_CHAPTER,
-      chapterName: 'Cours',
-      course: {
-        id: course.id,
-        title: course.title,
-        modules: course.modules,
-      },
-      courses: courses.map((item) => ({
-        id: item.id,
-        title: item.title,
-        modules: item.modules,
-      })),
-    })
-  }
+  const isCourseUnlocked = (_index: number) => true
 
-  if (authLoading || !user) return <ScreenLoader />
+  if (loading || !user) return <ScreenLoader />
 
   return (
     <DarkScreen>
@@ -83,65 +59,95 @@ export function CodeCoursesScreen() {
         title="Cours"
         icon={BookOpen}
         onBack={() => navigation.navigate('CodeRoute')}
+        numberOfLines={2}
       />
 
-      <ScrollView
-        contentContainerStyle={styles.scroll}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={() => {
-              setRefreshing(true)
-              void load(true)
-            }}
-            tintColor={dark.green}
-          />
-        }
-      >
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
-          <Text style={styles.heroEyebrow}>Code de la route</Text>
-          <Text style={styles.heroTitle}>Cours</Text>
-          <Text style={styles.subtitle}>
-            Choisis un cours pour accéder à ses modules. Les cours ne sont plus liés aux chapitres.
-          </Text>
+          <View style={styles.accentRow}>
+            <View style={[styles.accent, styles.accentGreen]} />
+            <View style={[styles.accent, styles.accentGold]} />
+            <View style={[styles.accent, styles.accentNavy]} />
+          </View>
+          <Text style={styles.subtitle}>Accède aux cours librement, à ton rythme.</Text>
         </View>
 
-        {loading ? <SkeletonList count={4} /> : null}
-
-        {error && courses.length === 0 ? (
-          <EmptyState
-            icon={<BookOpen size={30} color={dark.textMuted} />}
-            title="Chargement impossible"
-            message={error}
-          />
+        {progressLoading ? (
+          <ActivityIndicator color={dark.green} style={{ marginBottom: 16 }} />
         ) : null}
 
-        {!loading && !error && courses.length === 0 ? (
-          <EmptyState
-            icon={<BookOpen size={30} color={dark.textMuted} />}
-            title="Aucun cours publié"
-            message="Les cours publiés par l’administration apparaîtront ici."
-          />
-        ) : null}
+        {courses.length === 0 && !progressLoading ? (
+          <View style={styles.centerBox}>
+            <Text style={styles.emptyTitle}>Aucun cours</Text>
+            <Text style={styles.emptyText}>Aucun cours publié pour le moment.</Text>
+          </View>
+        ) : (
+          courses.map((course, index) => {
+            const unlocked = isCourseUnlocked(index)
+            const completed = completedIds.has(course.id)
 
-        {courses.map((course, index) => (
-          <Pressable
-            key={course.id}
-            style={({ pressed }) => [styles.card, pressed && styles.pressed]}
-            onPress={() => openCourse(course)}
-          >
-            <View style={styles.iconWrap}>
-              <Text style={styles.cardNumber}>{index + 1}</Text>
-            </View>
-            <View style={styles.cardContent}>
-              <Text style={styles.cardTitle}>{course.title}</Text>
-              <Text style={styles.cardSubtitle}>
-                {course.modules.length} module{course.modules.length !== 1 ? 's' : ''}
-              </Text>
-            </View>
-          </Pressable>
-        ))}
+            return (
+              <Pressable
+                key={course.id}
+                style={({ pressed }) => [
+                  styles.card,
+                  !unlocked && styles.cardLocked,
+                  completed && styles.cardDone,
+                  pressed && unlocked && styles.pressed,
+                ]}
+                disabled={!unlocked}
+                onPress={() =>
+                  navigation.navigate('CourseDetail', {
+                    chapterId: STANDALONE_CHAPTER,
+                    chapterName: 'Cours',
+                    course: {
+                      id: course.id,
+                      title: course.title,
+                      modules: course.modules,
+                    },
+                    courses: courses.map((item) => ({
+                      id: item.id,
+                      title: item.title,
+                      modules: item.modules,
+                    })),
+                  })
+                }
+              >
+                <View style={[styles.iconWrap, !unlocked && styles.iconWrapLocked]}>
+                  {!unlocked ? (
+                    <Lock size={20} color={dark.textMuted} />
+                  ) : completed ? (
+                    <Check size={22} color={dark.green} />
+                  ) : (
+                    <BookOpen size={22} color={dark.coral} />
+                  )}
+                </View>
+                <View style={styles.cardContent}>
+                  <Text style={[styles.cardTitle, !unlocked && styles.textMuted]}>
+                    {formatCourseHeading(index, course.title)}
+                  </Text>
+                  <Text style={[styles.cardIndex, !unlocked && styles.textMuted]}>
+                    {completed
+                      ? 'Terminé'
+                      : !unlocked
+                        ? 'Verrouillé'
+                        : `${course.modules.length} module${course.modules.length > 1 ? 's' : ''}`}
+                  </Text>
+                  {!unlocked ? (
+                    <Text style={styles.lockHint}>
+                      Terminez le cours précédent pour débloquer.
+                    </Text>
+                  ) : null}
+                </View>
+                {unlocked ? (
+                  <ChevronRight size={20} color={dark.textMuted} />
+                ) : (
+                  <Lock size={18} color={dark.textMuted} />
+                )}
+              </Pressable>
+            )
+          })
+        )}
       </ScrollView>
     </DarkScreen>
   )
@@ -150,73 +156,120 @@ export function CodeCoursesScreen() {
 const styles = StyleSheet.create({
   scroll: {
     paddingHorizontal: 22,
-    paddingTop: 12,
+    paddingTop: 8,
     paddingBottom: 28,
   },
   header: {
-    marginBottom: 22,
+    marginBottom: 24,
   },
-  heroEyebrow: {
-    fontFamily: fonts.bodySemiBold,
-    fontSize: 13,
-    color: dark.green,
-    letterSpacing: 0.3,
-    marginBottom: 2,
+  accentRow: {
+    flexDirection: 'row',
+    gap: 6,
+    marginBottom: 14,
   },
-  heroTitle: {
-    fontFamily: fonts.displayExtraBold,
-    fontSize: 28,
-    lineHeight: 34,
-    color: dark.textPrimary,
-    letterSpacing: -0.5,
+  accent: {
+    height: 4,
+    borderRadius: 999,
+  },
+  accentGreen: {
+    width: 28,
+    backgroundColor: dark.green,
+  },
+  accentGold: {
+    width: 18,
+    backgroundColor: dark.coral,
+  },
+  accentNavy: {
+    width: 12,
+    backgroundColor: dark.textMuted,
   },
   subtitle: {
-    marginTop: 8,
     fontFamily: fonts.body,
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 15,
+    lineHeight: 22,
     color: dark.textMuted,
     maxWidth: 340,
   },
   card: {
-    borderRadius: 18,
-    backgroundColor: dark.surface,
-    borderWidth: 1,
-    borderColor: dark.border,
-    padding: 16,
-    marginBottom: 12,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 14,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: dark.border,
+    backgroundColor: dark.surface,
+    padding: 16,
+    marginBottom: 12,
   },
-  pressed: {
-    opacity: 0.88,
+  cardLocked: {
+    borderColor: dark.border,
+    backgroundColor: dark.surfaceRaised,
+    opacity: 0.65,
+  },
+  cardDone: {
+    borderColor: 'rgba(34,214,115,0.35)',
+    backgroundColor: dark.greenSoft,
   },
   iconWrap: {
-    width: 44,
-    height: 44,
+    width: 48,
+    height: 48,
     borderRadius: 14,
-    backgroundColor: 'rgba(31,168,87,0.12)',
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: dark.coralSoft,
+    borderWidth: 1,
+    borderColor: dark.border,
   },
-  cardNumber: {
-    fontFamily: fonts.displayBold,
-    fontSize: 18,
-    color: dark.green,
+  iconWrapLocked: {
+    backgroundColor: dark.surfaceRaised,
+    borderColor: dark.border,
   },
   cardContent: {
     flex: 1,
   },
+  cardIndex: {
+    fontFamily: fonts.bodyBold,
+    fontSize: 12,
+    color: dark.coral,
+    marginBottom: 2,
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+  },
   cardTitle: {
-    fontFamily: fonts.bodySemiBold,
+    fontFamily: fonts.displayBold,
     fontSize: 16,
     color: dark.textPrimary,
   },
-  cardSubtitle: {
-    marginTop: 2,
+  lockHint: {
+    marginTop: 4,
     fontFamily: fonts.body,
-    fontSize: 13,
+    fontSize: 12,
+    lineHeight: 16,
     color: dark.textMuted,
+  },
+  textMuted: {
+    color: dark.textMuted,
+  },
+  centerBox: {
+    alignItems: 'center',
+    paddingVertical: 32,
+    paddingHorizontal: 12,
+  },
+  emptyTitle: {
+    fontFamily: fonts.displayBold,
+    fontSize: 17,
+    color: dark.textPrimary,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  emptyText: {
+    fontFamily: fonts.body,
+    fontSize: 14,
+    lineHeight: 20,
+    color: dark.textMuted,
+    textAlign: 'center',
+  },
+  pressed: {
+    opacity: 0.88,
   },
 })
