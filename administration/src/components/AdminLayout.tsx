@@ -1,4 +1,5 @@
 import {
+  Activity,
   Bell,
   BookOpen,
   CalendarDays,
@@ -10,17 +11,16 @@ import {
   LogOut,
   Megaphone,
   Menu,
-  Plus,
   ScrollText,
   Search,
   Shield,
-  UserPlus,
+  UserCog,
   Users,
   Wallet,
   X,
 } from 'lucide-react'
 import { FormEvent, useEffect, useState } from 'react'
-import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import logoUrl from '../assets/logo.png'
 import { fetchDashboardSummary } from '../api/dashboard'
 import { useAdminAuth } from '../context/AdminAuthContext'
@@ -41,58 +41,112 @@ type NavItem = {
   badgeKey?: 'reservations' | 'access' | 'refunds'
 }
 
+type NavGroup = {
+  id: string
+  label: string
+  items: NavItem[]
+}
+
 type OpsBadges = {
   reservations: number
   access: number
   refunds: number
 }
 
-const navItems: NavItem[] = [
-  { to: '/', label: 'Tableau de bord', end: true, icon: LayoutDashboard },
+const navGroups: NavGroup[] = [
   {
-    to: '/code',
-    label: 'Code de la route',
-    icon: BookOpen,
-    match: (pathname) => pathname === '/code' || pathname.startsWith('/code/'),
+    id: 'control',
+    label: 'Contrôle',
+    items: [
+      {
+        to: '/cockpit',
+        label: 'Cockpit',
+        icon: Activity,
+        superadminOnly: true,
+        match: (pathname) => pathname.startsWith('/cockpit'),
+      },
+      {
+        to: '/administrateurs',
+        label: 'Admins',
+        icon: Shield,
+        superadminOnly: true,
+        match: (pathname) => pathname.startsWith('/administrateurs'),
+      },
+      {
+        to: '/journal-audit',
+        label: 'Journal',
+        icon: ScrollText,
+        superadminOnly: true,
+      },
+      {
+        to: '/finances',
+        label: 'Compta',
+        icon: Landmark,
+        superadminOnly: true,
+        badgeKey: 'refunds',
+      },
+    ],
   },
   {
-    to: '/conduite',
-    label: 'Conduite',
-    icon: Car,
-    match: (pathname) =>
-      (pathname === '/conduite' || pathname.startsWith('/conduite/')) &&
-      !pathname.startsWith('/conduite/reservations') &&
-      !pathname.startsWith('/conduite/moniteurs'),
+    id: 'ops',
+    label: 'Exploitation',
+    items: [
+      { to: '/', label: 'Tableau de bord', end: true, icon: LayoutDashboard },
+      { to: '/utilisateurs', label: 'Apprenants', icon: Users },
+      { to: '/abonnements', label: 'Abonnés', icon: Wallet, badgeKey: 'access' },
+      {
+        to: '/conduite/reservations',
+        label: 'Réservations',
+        icon: CalendarDays,
+        match: (pathname) => pathname.startsWith('/conduite/reservations'),
+        badgeKey: 'reservations',
+      },
+      {
+        to: '/conduite/moniteurs',
+        label: 'Moniteurs',
+        icon: UserCog,
+        match: (pathname) => pathname.startsWith('/conduite/moniteurs'),
+      },
+    ],
   },
   {
-    to: '/conduite/reservations',
-    label: 'Réservations',
-    icon: CalendarDays,
-    match: (pathname) =>
-      pathname.startsWith('/conduite/reservations') || pathname.startsWith('/conduite/moniteurs'),
-    badgeKey: 'reservations',
+    id: 'content',
+    label: 'Contenu',
+    items: [
+      {
+        to: '/code',
+        label: 'Code de la route',
+        icon: BookOpen,
+        match: (pathname) => pathname === '/code' || pathname.startsWith('/code/'),
+      },
+      {
+        to: '/conduite',
+        label: 'Conduite',
+        icon: Car,
+        match: (pathname) =>
+          pathname === '/conduite' ||
+          (pathname.startsWith('/conduite/') &&
+            !pathname.startsWith('/conduite/reservations') &&
+            !pathname.startsWith('/conduite/moniteurs')),
+      },
+      { to: '/codes-promo', label: 'Codes promo', icon: Gift },
+      { to: '/annonces', label: 'Annonces', icon: Megaphone },
+    ],
   },
-  { to: '/utilisateurs', label: 'Utilisateurs', icon: Users },
-  { to: '/abonnements', label: 'Abonnés', icon: Wallet, badgeKey: 'access' },
-  { to: '/finances', label: 'Finances', icon: Landmark, superadminOnly: true, badgeKey: 'refunds' },
-  { to: '/codes-promo', label: 'Codes promo', icon: Gift },
-  { to: '/annonces', label: 'Annonces', icon: Megaphone },
-  { to: '/administrateurs', label: 'Administrateurs', icon: Shield, superadminOnly: true },
-  { to: '/journal-audit', label: 'Journal d’audit', icon: ScrollText, superadminOnly: true },
-  { to: '/creer-admin', label: 'Créer un admin', icon: UserPlus, superadminOnly: true },
 ]
 
 function pageLabel(pathname: string) {
+  if (pathname.startsWith('/cockpit')) return 'Cockpit'
   if (pathname === '/') return 'Tableau de bord'
-  if (pathname.startsWith('/utilisateurs')) return 'Utilisateurs'
+  if (pathname.startsWith('/utilisateurs')) return 'Apprenants'
   if (pathname.startsWith('/abonnements') || pathname.startsWith('/demandes-acces')) {
     return 'Abonnés'
   }
   if (pathname.startsWith('/codes-promo')) return 'Codes promo'
-  if (pathname.startsWith('/administrateurs')) return 'Administrateurs'
+  if (pathname.startsWith('/administrateurs')) return 'Admins'
   if (pathname.startsWith('/journal-audit')) return 'Journal d’audit'
   if (pathname.startsWith('/creer-admin')) return 'Créer un admin'
-  if (pathname.startsWith('/finances')) return 'Finances'
+  if (pathname.startsWith('/finances')) return 'Comptabilité'
   if (pathname.includes('/questions')) return 'Questions'
   if (pathname.startsWith('/code/revision-chapitres')) return 'Révision par chapitres'
   if (pathname.startsWith('/code/examens-test')) return 'Examens test'
@@ -101,9 +155,8 @@ function pageLabel(pathname: string) {
   if (pathname.startsWith('/code/e-codepermis')) return 'E-Codepermis'
   if (pathname.startsWith('/code')) return 'Code de la route'
   if (pathname.startsWith('/conduite/lecons')) return 'Leçons de conduite'
-  if (pathname.startsWith('/conduite/reservations') || pathname.startsWith('/conduite/moniteurs')) {
-    return 'Réservations'
-  }
+  if (pathname.startsWith('/conduite/reservations')) return 'Réservations'
+  if (pathname.startsWith('/conduite/moniteurs')) return 'Moniteurs'
   if (pathname.startsWith('/conduite')) return 'Conduite'
   return 'Administration'
 }
@@ -202,6 +255,14 @@ export function AdminLayout() {
     }
   }, [canManageAdmins, healthDismissed])
 
+  // Superadmin : atterrir sur le cockpit par défaut
+  useEffect(() => {
+    if (!canManageAdmins) return
+    if (location.pathname === '/' && !sessionStorage.getItem('mp_ops_home')) {
+      navigate('/cockpit', { replace: true })
+    }
+  }, [canManageAdmins, location.pathname, navigate])
+
   const isMobile = width < 640
   const isTablet = width >= 640 && width < 1080
   const closeMobile = () => setMobileOpen(false)
@@ -214,7 +275,12 @@ export function AdminLayout() {
   }
 
   const initials = adminInitials(admin?.fullName)
-  const visibleNavItems = navItems.filter((item) => !item.superadminOnly || canManageAdmins)
+  const visibleGroups = navGroups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => !item.superadminOnly || canManageAdmins),
+    }))
+    .filter((group) => group.items.length > 0)
   const refundBadge = canManageAdmins ? badges.refunds : 0
   const notifCount = badges.reservations + badges.access + refundBadge
 
@@ -270,60 +336,59 @@ export function AdminLayout() {
           ) : null}
         </div>
 
-        <div className="sidebar-cta-wrap">
-          <Link
-            to="/conduite/reservations"
-            className="sidebar-cta"
-            onClick={closeMobile}
-            title="Gérer réservations"
-          >
-            <Plus size={14} strokeWidth={2.5} />
-            <span className="sidebar-cta-label">Gérer réservations</span>
-          </Link>
-        </div>
-
         <nav className="sidebar-nav">
-          <ul className="sidebar-list">
-            {visibleNavItems.map((item) => {
-              const Icon = item.icon
-              const badgeCount =
-                item.badgeKey === 'reservations'
-                  ? badges.reservations
-                  : item.badgeKey === 'access'
-                    ? badges.access
-                    : item.badgeKey === 'refunds'
-                      ? refundBadge
-                      : 0
-              const badgeLabel = formatBadge(badgeCount)
-              return (
-                <li key={item.to}>
-                  <NavLink
-                    to={
-                      item.badgeKey === 'refunds' && badgeCount > 0
-                        ? '/finances?tab=refunds'
-                        : item.to
-                    }
-                    end={item.end}
-                    onClick={closeMobile}
-                    title={item.label}
-                    className={({ isActive }) => {
-                      const active = item.match ? item.match(location.pathname) : isActive
-                      return `sidebar-link${active ? ' active' : ''}${badgeLabel ? ' has-badge' : ''}`
-                    }}
-                    data-count={badgeLabel}
-                  >
-                    <Icon size={16} strokeWidth={2} />
-                    <span className="sidebar-link-label">{item.label}</span>
-                    {badgeLabel ? (
-                      <span className="sidebar-link-badge" aria-label={`${badgeCount} en attente`}>
-                        {badgeLabel}
-                      </span>
-                    ) : null}
-                  </NavLink>
-                </li>
-              )
-            })}
-          </ul>
+          {visibleGroups.map((group) => (
+            <div key={group.id} className="sidebar-group">
+              <p className="sidebar-group-label">{group.label}</p>
+              <ul className="sidebar-list">
+                {group.items.map((item) => {
+                  const Icon = item.icon
+                  const badgeCount =
+                    item.badgeKey === 'reservations'
+                      ? badges.reservations
+                      : item.badgeKey === 'access'
+                        ? badges.access
+                        : item.badgeKey === 'refunds'
+                          ? refundBadge
+                          : 0
+                  const badgeLabel = formatBadge(badgeCount)
+                  return (
+                    <li key={item.to}>
+                      <NavLink
+                        to={
+                          item.badgeKey === 'refunds' && badgeCount > 0
+                            ? '/finances?tab=refunds'
+                            : item.to
+                        }
+                        end={item.end}
+                        onClick={() => {
+                          if (item.to === '/') sessionStorage.setItem('mp_ops_home', '1')
+                          closeMobile()
+                        }}
+                        title={item.label}
+                        className={({ isActive }) => {
+                          const active = item.match ? item.match(location.pathname) : isActive
+                          return `sidebar-link${active ? ' active' : ''}${badgeLabel ? ' has-badge' : ''}`
+                        }}
+                        data-count={badgeLabel}
+                      >
+                        <Icon size={16} strokeWidth={2} />
+                        <span className="sidebar-link-label">{item.label}</span>
+                        {badgeLabel ? (
+                          <span
+                            className="sidebar-link-badge"
+                            aria-label={`${badgeCount} en attente`}
+                          >
+                            {badgeLabel}
+                          </span>
+                        ) : null}
+                      </NavLink>
+                    </li>
+                  )
+                })}
+              </ul>
+            </div>
+          ))}
         </nav>
 
         <div className="sidebar-profile">
@@ -333,7 +398,7 @@ export function AdminLayout() {
           <div className="sidebar-profile-meta">
             <p className="sidebar-profile-name">{admin?.fullName || 'Administrateur'}</p>
             <p className="sidebar-profile-email">
-              {admin?.role === 'superadmin' ? 'Superadmin' : 'Admin'}
+              {admin?.role === 'superadmin' ? 'Direction' : 'Équipe'}
               {admin?.phone ? ` · ${admin.phone}` : ''}
             </p>
           </div>
@@ -396,18 +461,21 @@ export function AdminLayout() {
             role="search"
           >
             <Search size={14} strokeWidth={2} aria-hidden />
-            {!isMobile ? (
-              <input
-                type="search"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onFocus={() => setSearchFocused(true)}
-                onBlur={() => setSearchFocused(false)}
-                placeholder="Rechercher…"
-                aria-label="Recherche globale"
-              />
-            ) : null}
+            <input
+              type="search"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onFocus={() => setSearchFocused(true)}
+              onBlur={() => setSearchFocused(false)}
+              placeholder={isMobile ? 'Apprenant…' : 'Rechercher un apprenant…'}
+              aria-label="Recherche apprenant"
+            />
           </form>
+          {canManageAdmins ? (
+            <span className="admin-role-chip" title="Accès Direction">
+              Direction
+            </span>
+          ) : null}
 
           <button
             type="button"

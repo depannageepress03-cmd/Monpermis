@@ -5,7 +5,6 @@ import {
   ArrowUpRight,
   Car,
   CreditCard,
-  Filter,
   RefreshCw,
   TrendingUp,
   Wallet,
@@ -23,7 +22,7 @@ import {
 import type { AccessModuleKey } from '../api/accessRequests'
 import { paymentChannelLabel } from '../api/accessRequests'
 import { getAdminToken, isAuthError, useAdminAuth } from '../context/AdminAuthContext'
-import { Skeleton, SkeletonBlock } from '../ui'
+import { Reveal, Skeleton, SkeletonBlock } from '../ui'
 
 const emptySummary: DashboardSummary = {
   users: { total: 0, active: 0, suspended: 0 },
@@ -75,7 +74,7 @@ function learnerName(payment: DashboardPayment) {
 }
 
 export function DashboardPage() {
-  const { admin } = useAdminAuth()
+  const { admin, canManageAdmins } = useAdminAuth()
   const [summary, setSummary] = useState<DashboardSummary>(emptySummary)
   const [payments, setPayments] = useState<DashboardPayment[]>([])
   const [loading, setLoading] = useState(true)
@@ -208,12 +207,13 @@ export function DashboardPage() {
 
   return (
     <div className="dash-overview">
-      <div className="dash-page-head">
+      <Reveal variant="blur" delay={0} className="dash-page-head">
         <header className="admin-module-header">
-          <p className="admin-module-kicker">Aperçu général</p>
+          <p className="admin-module-kicker">Exploitation</p>
           <h1 className="admin-module-title">Tableau de bord</h1>
           <p className="admin-module-subtitle" style={{ marginTop: 4 }}>
-            Suivi live des paiements Mobile Money réussis et des abonnements actifs.
+            {admin?.fullName ? `Bonjour ${admin.fullName.split(' ')[0]} — ` : ''}
+            paiements live, abonnements et file ops.
           </p>
         </header>
         <div className="dash-page-actions">
@@ -229,12 +229,12 @@ export function DashboardPage() {
             Actualiser
           </button>
         </div>
-      </div>
+      </Reveal>
 
       {error ? <p className="form-error">{error}</p> : null}
 
       <section className="dash-stats" aria-label="Indicateurs">
-        <div className="dash-hero-card">
+        <Reveal variant="scale" delay={0} className="dash-hero-card">
           <div className="dash-hero-top">
             <div>
               <p className="dash-hero-label">Apprenants actifs</p>
@@ -257,28 +257,50 @@ export function DashboardPage() {
               <p className="dash-hero-meta-value is-gold">{activationPct} %</p>
             </div>
           </div>
-        </div>
+        </Reveal>
 
-        <div className="dash-stat-card">
-          <div className="dash-stat-head">
-            <p className="dash-stat-label">Chiffre d&apos;affaires</p>
-            <div className="dash-stat-icon is-green">
-              <CreditCard size={14} strokeWidth={2} />
-            </div>
-          </div>
-          <p className="dash-stat-num">
-            {loading ? <Skeleton height={28} width={120} /> : formatXof(summary.revenue.total)}
-          </p>
-          <div className="dash-stat-foot is-green">
-            <TrendingUp size={12} strokeWidth={2} />
-            {formatXof(summary.revenue.month)} ce mois · {summary.revenue.transactions} paiements
-          </div>
-        </div>
+        <Reveal variant="scale" delay={60} className="dash-stat-card">
+          {canManageAdmins ? (
+            <>
+              <div className="dash-stat-head">
+                <p className="dash-stat-label">Chiffre d&apos;affaires</p>
+                <div className="dash-stat-icon is-green">
+                  <CreditCard size={14} strokeWidth={2} />
+                </div>
+              </div>
+              <p className="dash-stat-num">
+                {loading ? <Skeleton height={28} width={120} /> : formatXof(summary.revenue.total)}
+              </p>
+              <div className="dash-stat-foot is-green">
+                <TrendingUp size={12} strokeWidth={2} />
+                {formatXof(summary.revenue.month)} ce mois · {summary.revenue.transactions} paiements
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="dash-stat-head">
+                <p className="dash-stat-label">À traiter</p>
+                <div className="dash-stat-icon is-gold">
+                  <Wallet size={14} strokeWidth={2} />
+                </div>
+              </div>
+              <p className="dash-stat-num">
+                {loading ? (
+                  <Skeleton height={28} width={48} />
+                ) : (
+                  (summary.accessRequests?.pending ?? 0) +
+                  (summary.conduite?.reservationsPending ?? 0)
+                )}
+              </p>
+              <div className="dash-stat-foot is-green">Abonnés + réservations en attente</div>
+            </>
+          )}
+        </Reveal>
 
-        <div className="dash-stat-card">
+        <Reveal variant="scale" delay={120} className="dash-stat-card">
           <div className="dash-stat-head">
             <p className="dash-stat-label">Paiements réussis</p>
-            <div className="dash-stat-icon is-violet">
+            <div className="dash-stat-icon is-green">
               <Wallet size={14} strokeWidth={2} />
             </div>
           </div>
@@ -289,12 +311,12 @@ export function DashboardPage() {
             <TrendingUp size={12} strokeWidth={2} />
             {formatXof(summary.revenue.month)} ce mois
           </div>
-        </div>
+        </Reveal>
 
-        <div className="dash-stat-card">
+        <Reveal variant="scale" delay={180} className="dash-stat-card">
           <div className="dash-stat-head">
             <p className="dash-stat-label">Abonnements actifs</p>
-            <div className="dash-stat-icon is-violet">
+            <div className="dash-stat-icon is-gold">
               <CreditCard size={14} strokeWidth={2} />
             </div>
           </div>
@@ -305,9 +327,9 @@ export function DashboardPage() {
             <TrendingUp size={12} strokeWidth={2} />
             {summary.accessRequests.expired} expirés
           </div>
-        </div>
+        </Reveal>
 
-        <div className="dash-stat-card">
+        <Reveal variant="scale" delay={240} className="dash-stat-card">
           <div className="dash-stat-head">
             <p className="dash-stat-label">Leçons conduite</p>
             <div className="dash-stat-icon is-gold">
@@ -321,10 +343,10 @@ export function DashboardPage() {
             <TrendingUp size={12} strokeWidth={2} />
             {summary.conduite.moniteursActive} moniteurs actifs
           </div>
-        </div>
+        </Reveal>
       </section>
 
-      <section className="dash-secondary" aria-label="Compléments">
+      <Reveal as="section" className="dash-secondary" delay={100}>
         <div className="dash-secondary-card">
           <div className="dash-donut-wrap">
             <MiniDonut pct={codePct} color="#00B050" />
@@ -359,18 +381,15 @@ export function DashboardPage() {
             <p className="dash-secondary-hint">disponibles</p>
           </div>
         </div>
-      </section>
+      </Reveal>
 
       <section className="dash-bottom dash-bottom-live">
-        <div className="dash-panel">
+        <Reveal delay={140} className="dash-panel">
           <div className="dash-panel-head">
             <div>
               <h3>Vue d&apos;ensemble</h3>
               <p>État de chaque espace</p>
             </div>
-            <button type="button" className="dash-filter-btn">
-              <Filter size={11} strokeWidth={2} /> Filtrer
-            </button>
           </div>
           <div className="admin-data-table-wrap">
             <table className="admin-data-table">
@@ -402,9 +421,9 @@ export function DashboardPage() {
               </tbody>
             </table>
           </div>
-        </div>
+        </Reveal>
 
-        <div className="dash-panel dash-payments-panel">
+        <Reveal delay={200} className="dash-panel dash-payments-panel">
           <div className="dash-panel-head">
             <div className="dash-payments-head-title">
               <Activity size={14} color="#00B050" strokeWidth={2} />
@@ -472,10 +491,10 @@ export function DashboardPage() {
               })
             )}
           </div>
-        </div>
+        </Reveal>
       </section>
 
-      <div className="dash-quick-links">
+      <Reveal delay={260} className="dash-quick-links">
         {[
           { to: '/abonnements', label: 'Abonnés' },
           { to: '/abonnements?tab=payments', label: 'Paiements réussis' },
@@ -490,7 +509,7 @@ export function DashboardPage() {
             {item.label}
           </Link>
         ))}
-      </div>
+      </Reveal>
     </div>
   )
 }

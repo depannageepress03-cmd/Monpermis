@@ -1,5 +1,6 @@
 const ACTION_LABELS: Record<string, string> = {
   login: 'Connexion',
+  register: 'Inscription',
   create: 'Création',
   update: 'Modification',
   delete: 'Suppression',
@@ -13,6 +14,14 @@ const ACTION_LABELS: Record<string, string> = {
   reorder: 'Réorganisation',
   duplicate: 'Duplication',
   resolve_refund: 'Remboursement traité',
+  'payment.approved': 'Paiement validé',
+  'payment.pending': 'Paiement en attente',
+  'payment.failed': 'Paiement échoué',
+  'payment.updated': 'Paiement mis à jour',
+  'access.actif': 'Abonnement actif',
+  'access.pending': 'Abonnement en attente',
+  'access.expired': 'Abonnement expiré',
+  'access.updated': 'Abonnement mis à jour',
 }
 
 const RESOURCE_LABELS: Record<string, string> = {
@@ -38,7 +47,10 @@ const RESOURCE_LABELS: Record<string, string> = {
 }
 
 export function actionLabel(action: string) {
-  return ACTION_LABELS[action] || action
+  if (ACTION_LABELS[action]) return ACTION_LABELS[action]
+  if (action.startsWith('payment.')) return `Paiement (${action.slice(8)})`
+  if (action.startsWith('access.')) return `Abonnement (${action.slice(7)})`
+  return action
 }
 
 export function resourceLabel(resource: string) {

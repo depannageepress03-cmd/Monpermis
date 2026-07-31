@@ -9,6 +9,7 @@ import {
   requireSuperAdmin,
 } from '../middleware/adminAuth.js'
 import { audit, logAdminAction } from '../middleware/audit.js'
+import { requireSuperadminAccessKey } from '../utils/superadminSecret.js'
 import { logger } from '../utils/logger.js'
 
 const router = Router()
@@ -24,11 +25,19 @@ function normalizePhone(phone) {
   return local.slice(0, 10)
 }
 
-function createAdminToken(adminId) {
-  return jwt.sign({ adminId, scope: 'admin' }, process.env.JWT_SECRET, {
-    expiresIn: '8h',
-    algorithm: 'HS256',
-  })
+function createAdminToken(adminId, role) {
+  return jwt.sign(
+    {
+      adminId,
+      scope: 'admin',
+      role: role === 'superadmin' ? 'superadmin' : 'admin',
+    },
+    process.env.JWT_SECRET,
+    {
+      expiresIn: '8h',
+      algorithm: 'HS256',
+    },
+  )
 }
 
 function isRegistrationAllowed() {
@@ -68,10 +77,18 @@ router.post(
         })
       }
 
-      const { fullName, phone, password, confirmPassword, role } = req.body
+      const { fullName, phone, password, confirmPassword, role, accessKey } = req.body
 
       if (!fullName?.trim() || !phone || !password) {
         return res.status(400).json({ success: false, error: 'Nom, téléphone et mot de passe requis' })
+      }
+
+      // Créer un superadmin exige la clé Direction (jamais connue des admins simples).
+      if (role === 'superadmin') {
+        const gate = requireSuperadminAccessKey(accessKey)
+        if (!gate.ok) {
+          return res.status(gate.status).json({ success: false, error: gate.error })
+        }
       }
 
       if (fullName.trim().length < 2) {
@@ -146,7 +163,7 @@ router.post(
 
 router.post('/login', async (req, res) => {
   try {
-    const { phone, password } = req.body
+    const { phone, password, accessKey, portal } = req.body
 
     if (!phone || !password) {
       return res.status(400).json({ success: false, error: 'Téléphone et mot de passe requis' })
@@ -172,15 +189,41 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ success: false, error: 'Identifiants incorrects' })
     }
 
+    const wantsDirection =
+      portal === 'direction' ||
+      (typeof accessKey === 'string' && accessKey.length > 0)
+
+    // Compte superadmin : clé Direction obligatoire (inconnue des admins simples).
+    if (admin.role === 'superadmin') {
+      const gate = requireSuperadminAccessKey(accessKey)
+      if (!gate.ok) {
+        await admin.registerFailedLogin()
+        return res.status(gate.status).json({
+          success: false,
+          error:
+            gate.status === 503
+              ? gate.error
+              : 'Identifiants incorrects',
+        })
+      }
+    } else if (wantsDirection) {
+      // Un admin simple qui tente le portail Direction → échec générique.
+      await admin.registerFailedLogin()
+      return res.status(401).json({ success: false, error: 'Identifiants incorrects' })
+    }
+
     await admin.resetFailedLogins()
-    const token = createAdminToken(admin._id)
+    const token = createAdminToken(admin._id, admin.role)
 
     logAdminAction(req, {
       action: 'login',
       resource: 'admin',
       resourceId: String(admin._id),
       admin,
-      metadata: { phone: admin.phone },
+      metadata: {
+        phone: admin.phone,
+        portal: admin.role === 'superadmin' ? 'direction' : 'ops',
+      },
     })
 
     res.json({
@@ -188,6 +231,7 @@ router.post('/login', async (req, res) => {
       data: {
         admin: admin.toPublicJSON(),
         token,
+        homePath: admin.role === 'superadmin' ? '/cockpit' : '/',
       },
     })
   } catch (error) {
@@ -215,17 +259,26 @@ router.get('/me', requireAdminAuth, async (req, res) => {
       data: {
         admin: req.admin.toPublicJSON(),
         capabilities: {
-          /** Gestion admins, journal d’audit, finances */
+          /** Gestion admins, journal d’audit, finances, activité live */
           manageAdmins,
+          viewFinances: manageAdmins,
+          viewActivity: manageAdmins,
+          manageRefunds: manageAdmins,
         },
       },
     })
   } catch {
+    const manageAdmins = req.admin.role === 'superadmin'
     res.json({
       success: true,
       data: {
         admin: req.admin.toPublicJSON(),
-        capabilities: { manageAdmins: req.admin.role === 'superadmin' },
+        capabilities: {
+          manageAdmins,
+          viewFinances: manageAdmins,
+          viewActivity: manageAdmins,
+          manageRefunds: manageAdmins,
+        },
       },
     })
   }

@@ -201,7 +201,7 @@
   place-items: center;
 }
 .dash-stat-icon.is-gold { background: var(--gold-light); color: #8a6400; }
-.dash-stat-icon.is-violet { background: #f2eef7; color: #7c3aed; }
+.dash-stat-icon.is-navy { background: #e8eef5; color: #001030; }
 
 .dash-stat-num {
   margin: 0;
@@ -571,7 +571,7 @@
 }
 .users-kpi.is-muted { background: #f7f8f6; }
 .users-kpi.is-success { background: var(--green-light); }
-.users-kpi.is-violet { background: #f2eef7; }
+.users-kpi.is-navy { background: #e8eef5; }
 .users-kpi-dot {
   width: 6px; height: 6px;
   border-radius: var(--r-pill);
@@ -579,7 +579,7 @@
 }
 .users-kpi.is-muted .users-kpi-dot { background: var(--navy-muted); }
 .users-kpi.is-success .users-kpi-dot { background: var(--green); }
-.users-kpi.is-violet .users-kpi-dot { background: #7c3aed; }
+.users-kpi.is-navy .users-kpi-dot { background: #001030; }
 .users-kpi-label {
   margin: 0;
   font-size: 15.5px;

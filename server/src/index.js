@@ -11,6 +11,7 @@ import authRoutes from './routes/auth.js'
 import adminAuthRoutes from './routes/adminAuth.js'
 import adminAdminsRoutes from './routes/adminAdmins.js'
 import adminAuditLogsRoutes from './routes/adminAuditLogs.js'
+import adminActivityRoutes from './routes/adminActivity.js'
 import adminRevisionRoutes from './routes/adminRevision.js'
 import adminQuestionsRoutes from './routes/adminQuestions.js'
 import adminConduiteRoutes from './routes/adminConduite.js'
@@ -210,6 +211,7 @@ app.use('/api/auth', authLimiter, authRoutes)
 app.use('/api/admin/auth', authLimiter, adminAuthRoutes)
 app.use('/api/admin/admins', adminAdminsRoutes)
 app.use('/api/admin/audit-logs', adminAuditLogsRoutes)
+app.use('/api/admin/activity', adminActivityRoutes)
 app.use('/api/admin/revision', adminRevisionRoutes)
 app.use('/api/admin/revision', adminQuestionsRoutes)
 app.use('/api/admin/revision', adminPracticeExamsRoutes)

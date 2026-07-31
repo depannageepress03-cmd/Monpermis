@@ -13,8 +13,8 @@ export function ConduiteHubPage() {
         subtitle="Leçons pratiques, moniteurs et réservations."
       />
       <div className="module-grid">
-        {conduiteModules.map((module) => (
-          <ModuleCard key={module.id} item={module} />
+        {conduiteModules.map((module, index) => (
+          <ModuleCard key={module.id} item={module} delay={index * 70} />
         ))}
       </div>
     </section>

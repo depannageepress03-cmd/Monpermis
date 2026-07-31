@@ -21,6 +21,7 @@ import { LoginPage } from './pages/LoginPage'
 import { AbonnementsPage } from './pages/AbonnementsPage'
 import { FinancesPage } from './pages/FinancesPage'
 import { PromoCodesPage } from './pages/PromoCodesPage'
+import { SuperadminCockpitPage } from './pages/SuperadminCockpitPage'
 import { UsersPage } from './pages/UsersPage'
 import { LearnerProgressDetailPage, LearnerProgressListPage } from './pages/code/LearnerProgressPage'
 
@@ -38,6 +39,7 @@ export default function App() {
           <Route path="/codes-promo" element={<PromoCodesPage />} />
           <Route path="/annonces" element={<AnnouncementsPage />} />
           <Route element={<SuperAdminRoute />}>
+            <Route path="/cockpit" element={<SuperadminCockpitPage />} />
             <Route path="/finances" element={<FinancesPage />} />
             <Route path="/administrateurs" element={<AdminsPage />} />
             <Route path="/administrateurs/:adminId" element={<AdminDetailPage />} />

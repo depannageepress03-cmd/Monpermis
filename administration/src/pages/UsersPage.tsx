@@ -273,7 +273,7 @@ export function UsersPage() {
             <p className="users-kpi-sub">Accès actif</p>
           </div>
         </div>
-        <div className="users-kpi is-violet">
+        <div className="users-kpi is-navy">
           <span className="users-kpi-dot" />
           <div>
             <p className="users-kpi-label">Suspendus</p>

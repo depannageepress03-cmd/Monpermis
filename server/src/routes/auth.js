@@ -11,6 +11,7 @@ import { generateVerificationToken, getVerificationExpiry } from '../utils/token
 import { requireUserAuth } from '../middleware/userAuth.js'
 import { AccountDeleteBlockedError, deleteUserAccount } from '../utils/deleteUserAccount.js'
 import { logger } from '../utils/logger.js'
+import { logUserActivity } from '../utils/activityLog.js'
 
 const router = Router()
 
@@ -122,6 +123,16 @@ router.post('/register', async (req, res) => {
       })
     }
 
+    logUserActivity(req, {
+      user,
+      action: 'register',
+      resource: 'user',
+      resourceId: String(user._id),
+      summary: `Inscription · ${user.firstName} ${user.lastName}`,
+      severity: 'success',
+      metadata: { phone: user.phone, hasEmail },
+    })
+
     res.status(201).json({
       success: true,
       data: {
@@ -230,6 +241,16 @@ error: 'Téléphone ou mot de passe incorrect',
     }
 
     const token = createToken(user._id)
+
+    logUserActivity(req, {
+      user,
+      action: 'login',
+      resource: 'user',
+      resourceId: String(user._id),
+      summary: `Connexion · ${user.firstName} ${user.lastName}`,
+      severity: 'info',
+      metadata: { client: isMobileClient ? 'mobile' : 'web' },
+    })
 
     res.json({
       success: true,

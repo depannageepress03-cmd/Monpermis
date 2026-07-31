@@ -75,6 +75,8 @@ export interface UpdateAdminPayload {
   isActive?: boolean
   role?: 'admin' | 'superadmin'
   password?: string
+  /** Requis pour promouvoir en superadmin (clé Direction serveur). */
+  accessKey?: string
 }
 
 export function updateAdmin(token: string, adminId: string, payload: UpdateAdminPayload) {

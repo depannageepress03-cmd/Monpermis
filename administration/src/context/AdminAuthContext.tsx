@@ -13,10 +13,16 @@ import {
   loginAdmin,
   type AdminCapabilities,
   type AdminUser,
+  type LoginOptions,
 } from '../api/auth'
 import { isSuperAdminRole } from '../utils/roles'
 
 const TOKEN_KEY = 'monpermis_admin_token'
+
+export type SignInResult = {
+  homePath: string
+  admin: AdminUser
+}
 
 interface AdminAuthContextValue {
   admin: AdminUser | null
@@ -24,7 +30,7 @@ interface AdminAuthContextValue {
   loading: boolean
   /** Accès gestion admins / audit / finances (superadmin, ou migration). */
   canManageAdmins: boolean
-  signIn: (phone: string, password: string) => Promise<void>
+  signIn: (phone: string, password: string, options?: LoginOptions) => Promise<SignInResult>
   signOut: () => void
 }
 
@@ -37,7 +43,13 @@ function resolveCapabilities(
   capabilities?: AdminCapabilities,
 ): AdminCapabilities {
   if (capabilities) return capabilities
-  return { manageAdmins: isSuperAdminRole(admin?.role) }
+  const manageAdmins = isSuperAdminRole(admin?.role)
+  return {
+    manageAdmins,
+    viewFinances: manageAdmins,
+    viewActivity: manageAdmins,
+    manageRefunds: manageAdmins,
+  }
 }
 
 export function AdminAuthProvider({ children }: { children: ReactNode }) {
@@ -63,25 +75,37 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
         setAdmin(me)
         setCapabilities(resolveCapabilities(me, caps))
       })
-      .catch(() => localStorage.removeItem(TOKEN_KEY))
+      .catch(() => {
+        localStorage.removeItem(TOKEN_KEY)
+        setAdmin(null)
+        setCapabilities(defaultCapabilities)
+      })
       .finally(() => setLoading(false))
   }, [])
 
-  const signIn = useCallback(async (phone: string, password: string) => {
-    const { admin: loggedIn, token } = await loginAdmin(phone, password)
+  const signIn = useCallback(async (phone: string, password: string, options: LoginOptions = {}) => {
+    const { admin: loggedIn, token, homePath } = await loginAdmin(phone, password, options)
     localStorage.setItem(TOKEN_KEY, token)
     setAdmin(loggedIn)
-    // Capacités à jour via /me (soft-gate migration)
+
+    let resolved = resolveCapabilities(loggedIn)
     try {
       const me = await fetchAdminMe(token)
       setAdmin(me.admin)
-      setCapabilities(resolveCapabilities(me.admin, me.capabilities))
+      resolved = resolveCapabilities(me.admin, me.capabilities)
+      setCapabilities(resolved)
     } catch {
-      setCapabilities(resolveCapabilities(loggedIn))
+      setCapabilities(resolved)
     }
+
+    const path =
+      homePath ||
+      (resolved.manageAdmins || isSuperAdminRole(loggedIn.role) ? '/cockpit' : '/')
+
+    return { homePath: path, admin: loggedIn }
   }, [])
 
-  const canManageAdmins = capabilities.manageAdmins
+  const canManageAdmins = Boolean(capabilities.manageAdmins)
 
   const value = useMemo(
     () => ({ admin, capabilities, loading, canManageAdmins, signIn, signOut }),

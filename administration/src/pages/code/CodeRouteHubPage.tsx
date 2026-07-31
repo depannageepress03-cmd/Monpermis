@@ -13,8 +13,8 @@ export function CodeRouteHubPage() {
         subtitle="Révision, examens, notes et examen blanc."
       />
       <div className="module-grid">
-        {codeModules.map((module) => (
-          <ModuleCard key={module.id} item={module} />
+        {codeModules.map((module, index) => (
+          <ModuleCard key={module.id} item={module} delay={index * 70} />
         ))}
       </div>
     </section>

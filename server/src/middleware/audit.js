@@ -1,4 +1,5 @@
 import { AuditLog } from '../models/AuditLog.js'
+import { logAdminActivity } from '../utils/activityLog.js'
 
 const SECRET_KEYS = new Set([
   'password',
@@ -93,17 +94,39 @@ export function logAdminAction(req, options = {}) {
     path: req.originalUrl || req.url,
   })
 
-  return AuditLog.create({
+  const action = String(options.action || 'unknown')
+  const resource = String(options.resource || 'unknown')
+  const resourceId = resolveResourceId(req, options.resourceId)
+
+  const promise = AuditLog.create({
     adminId: admin._id,
     adminName: admin.fullName || 'Admin',
-    action: String(options.action || 'unknown'),
-    resource: String(options.resource || 'unknown'),
-    resourceId: resolveResourceId(req, options.resourceId),
+    action,
+    resource,
+    resourceId,
     metadata,
     details: metadata,
     ip: clientIp(req),
     userAgent: clientUserAgent(req),
   }).catch(() => null)
+
+  // Miroir temps réel pour le cockpit superadmin (ne bloque pas l’audit).
+  logAdminActivity(req, {
+    admin,
+    action,
+    resource,
+    resourceId,
+    summary: `${admin.fullName || 'Admin'} · ${action} · ${resource}`,
+    severity:
+      action.includes('delete') || action.includes('suspend')
+        ? 'warning'
+        : action.includes('create') || action.includes('approve')
+          ? 'success'
+          : 'info',
+    metadata: options.metadata,
+  })
+
+  return promise
 }
 
 /**

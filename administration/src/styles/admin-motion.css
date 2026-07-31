@@ -1,0 +1,503 @@
+/* Motion admin — inspiration Apple (révélations, spring, glass, stagger) */
+
+:root {
+  --admin-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --admin-ease-spring: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* ── Reveal ─────────────────────────────────────────── */
+.admin-reveal {
+  opacity: 0;
+  transform: translate3d(0, 22px, 0);
+  transition:
+    opacity 700ms var(--admin-ease-out),
+    transform 700ms var(--admin-ease-out),
+    filter 700ms var(--admin-ease-out);
+  transition-delay: var(--reveal-delay, 0ms);
+  will-change: opacity, transform;
+}
+
+.admin-reveal--fade {
+  transform: none;
+}
+
+.admin-reveal--scale {
+  transform: scale(0.97) translate3d(0, 10px, 0);
+}
+
+.admin-reveal--blur {
+  transform: translate3d(0, 14px, 0);
+  filter: blur(6px);
+}
+
+.admin-reveal.is-revealed {
+  opacity: 1;
+  transform: none;
+  filter: none;
+}
+
+.module-grid > .admin-reveal,
+.cockpit-kpi-grid > .admin-reveal {
+  min-width: 0;
+  height: 100%;
+}
+
+.module-grid > .admin-reveal > .module-card,
+.cockpit-kpi-grid > .admin-reveal > .cockpit-kpi {
+  height: 100%;
+}
+
+/* ── Login shell ────────────────────────────────────── */
+.login-shell {
+  animation: admin-shell-in 720ms var(--admin-ease-out) both;
+}
+
+@keyframes admin-shell-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 18px, 0) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.login-aside {
+  position: relative;
+  overflow: hidden;
+}
+
+.login-aside::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    115deg,
+    transparent 42%,
+    rgba(255, 255, 255, 0.07) 50%,
+    transparent 58%
+  );
+  background-size: 220% 100%;
+  animation: admin-shine 8s var(--admin-ease-out) infinite;
+  pointer-events: none;
+  mix-blend-mode: soft-light;
+}
+
+@keyframes admin-shine {
+  0%,
+  60% {
+    background-position: 130% 0;
+    opacity: 0;
+  }
+  72% {
+    opacity: 1;
+  }
+  100% {
+    background-position: -30% 0;
+    opacity: 0;
+  }
+}
+
+.login-aside-logo,
+.login-aside-brand,
+.login-aside-text,
+.login-aside-points {
+  opacity: 0;
+  animation: admin-stagger-in 800ms var(--admin-ease-out) both;
+}
+
+.login-aside-logo {
+  animation-delay: 120ms;
+}
+.login-aside-brand {
+  animation-delay: 200ms;
+}
+.login-aside-text {
+  animation-delay: 280ms;
+}
+.login-aside-points {
+  animation-delay: 360ms;
+}
+
+.login-card-top,
+.login-portal-tabs,
+.login-form > * {
+  opacity: 0;
+  animation: admin-stagger-in 700ms var(--admin-ease-out) both;
+}
+
+.login-card-top {
+  animation-delay: 160ms;
+}
+.login-portal-tabs {
+  animation-delay: 240ms;
+}
+.login-form > *:nth-child(1) {
+  animation-delay: 300ms;
+}
+.login-form > *:nth-child(2) {
+  animation-delay: 360ms;
+}
+.login-form > *:nth-child(3) {
+  animation-delay: 420ms;
+}
+.login-form > *:nth-child(4) {
+  animation-delay: 480ms;
+}
+.login-form > *:nth-child(5) {
+  animation-delay: 540ms;
+}
+.login-form > *:nth-child(n + 6) {
+  animation-delay: 600ms;
+}
+
+@keyframes admin-stagger-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 16px, 0);
+    filter: blur(5px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+
+.login-portal-tabs button {
+  transition:
+    background 220ms ease,
+    color 220ms ease,
+    box-shadow 280ms var(--admin-ease-spring),
+    transform 280ms var(--admin-ease-spring);
+}
+
+.login-portal-tabs button:hover {
+  transform: translateY(-1px);
+}
+
+.login-submit,
+.btn-primary.login-submit {
+  transition:
+    transform 420ms var(--admin-ease-spring),
+    box-shadow 420ms var(--admin-ease-spring),
+    background 180ms ease,
+    opacity 180ms ease !important;
+}
+
+.login-submit:hover:not(:disabled),
+.btn-primary.login-submit:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px -12px rgba(0, 176, 80, 0.55);
+}
+
+.login-submit:active:not(:disabled) {
+  transform: translateY(0) scale(0.985);
+}
+
+/* ── Shell / sidebar ────────────────────────────────── */
+.admin-sidebar {
+  animation: admin-sidebar-in 560ms var(--admin-ease-out) both;
+}
+
+@keyframes admin-sidebar-in {
+  from {
+    opacity: 0;
+    transform: translate3d(-12px, 0, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.sidebar-link {
+  transition:
+    background 180ms ease,
+    color 180ms ease,
+    transform 280ms var(--admin-ease-spring),
+    box-shadow 280ms var(--admin-ease-spring);
+}
+
+.sidebar-link:hover {
+  transform: translateX(2px);
+}
+
+.sidebar-link.active {
+  box-shadow: inset 3px 0 0 var(--green);
+}
+
+.admin-stage {
+  animation: admin-stage-in 640ms var(--admin-ease-out) 60ms both;
+}
+
+@keyframes admin-stage-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 10px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.admin-global-topbar {
+  backdrop-filter: blur(14px) saturate(1.1);
+  -webkit-backdrop-filter: blur(14px) saturate(1.1);
+  background: rgba(243, 245, 247, 0.82) !important;
+}
+
+.admin-notif-btn,
+.admin-menu-btn,
+.sidebar-logout-icon {
+  transition:
+    transform 280ms var(--admin-ease-spring),
+    color 160ms ease,
+    border-color 160ms ease,
+    background 160ms ease;
+}
+
+.admin-notif-btn:hover,
+.admin-menu-btn:hover,
+.sidebar-logout-icon:hover {
+  transform: scale(1.05);
+}
+
+.admin-notif-btn:active,
+.admin-menu-btn:active {
+  transform: scale(0.96);
+}
+
+.admin-role-chip {
+  animation: admin-stagger-in 560ms var(--admin-ease-out) 200ms both;
+}
+
+/* ── Cards / stats / panels ─────────────────────────── */
+.ui-stat-card,
+.cockpit-kpi,
+.dash-stat-card,
+.dash-hero-card,
+.dash-live-card,
+.module-card,
+.ui-panel,
+.cockpit-panel {
+  transition:
+    transform 420ms var(--admin-ease-spring),
+    box-shadow 420ms var(--admin-ease-spring),
+    border-color 220ms ease;
+}
+
+.ui-stat-card.is-link:hover,
+.cockpit-kpi:hover,
+.dash-stat-card:hover,
+.module-card:hover {
+  transform: translateY(-3px);
+}
+
+.ui-btn,
+.dash-filter-btn,
+.dash-export-btn {
+  transition:
+    transform 280ms var(--admin-ease-spring),
+    background 160ms ease,
+    border-color 160ms ease,
+    box-shadow 280ms var(--admin-ease-spring),
+    color 160ms ease;
+}
+
+.ui-btn:hover:not(:disabled),
+.dash-filter-btn:hover,
+.dash-export-btn:hover {
+  transform: translateY(-1px);
+}
+
+.ui-btn:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.ui-btn-primary {
+  transition:
+    transform 360ms var(--admin-ease-spring),
+    box-shadow 360ms var(--admin-ease-spring),
+    background 160ms ease !important;
+}
+
+.ui-btn-primary:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 22px -10px rgba(0, 176, 80, 0.55);
+}
+
+/* Cockpit feed items */
+.cockpit-feed-item {
+  transition:
+    transform 320ms var(--admin-ease-spring),
+    background 200ms ease,
+    border-color 200ms ease;
+}
+
+.cockpit-feed-item:hover {
+  transform: translateX(3px);
+  background: #fff;
+}
+
+.cockpit-admin-row {
+  transition:
+    transform 280ms var(--admin-ease-spring),
+    background 180ms ease;
+}
+
+.cockpit-admin-row:hover {
+  transform: translateX(2px);
+}
+
+.cockpit-live-pill.is-on,
+.dash-live-pill.is-live {
+  animation: admin-live-pulse 2.4s ease-in-out infinite;
+}
+
+.dash-activity-item {
+  transition:
+    transform 320ms var(--admin-ease-spring),
+    background 200ms ease;
+}
+
+.dash-activity-item:hover {
+  transform: translateX(3px);
+}
+
+.dash-quick-link {
+  transition:
+    transform 320ms var(--admin-ease-spring),
+    border-color 200ms ease,
+    box-shadow 320ms var(--admin-ease-spring);
+}
+
+.dash-quick-link:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 18px -12px rgba(0, 16, 48, 0.3);
+}
+
+.dash-secondary-card,
+.dash-live-card,
+.dash-panel {
+  transition:
+    transform 420ms var(--admin-ease-spring),
+    box-shadow 420ms var(--admin-ease-spring);
+}
+
+@keyframes admin-live-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(0, 176, 80, 0.25);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(0, 176, 80, 0);
+  }
+}
+
+.cockpit-shortcut {
+  transition:
+    transform 320ms var(--admin-ease-spring),
+    border-color 200ms ease,
+    color 200ms ease,
+    box-shadow 320ms var(--admin-ease-spring);
+}
+
+.cockpit-shortcut:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 18px -12px rgba(0, 16, 48, 0.35);
+}
+
+/* Tables rows */
+.admin-data-table tbody tr {
+  transition: background 180ms ease, transform 240ms var(--admin-ease-spring);
+}
+
+.admin-data-table tbody tr:hover {
+  background: #f7faf8;
+}
+
+/* Drawer */
+.ui-drawer-panel {
+  animation: admin-drawer-in 280ms var(--admin-ease-out) both;
+}
+
+@keyframes admin-drawer-in {
+  from {
+    transform: translateX(24px);
+    opacity: 0.7;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+.ui-drawer-backdrop {
+  animation: admin-fade-in 220ms ease both;
+}
+
+@keyframes admin-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Page enter */
+.admin-page,
+.dash-overview,
+.cockpit-page {
+  animation: admin-page-in 520ms var(--admin-ease-out) both;
+}
+
+@keyframes admin-page-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 12px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-reveal,
+  .admin-reveal--fade,
+  .admin-reveal--scale,
+  .admin-reveal--blur {
+    opacity: 1 !important;
+    transform: none !important;
+    filter: none !important;
+    transition: none !important;
+  }
+
+  .login-shell,
+  .login-aside-logo,
+  .login-aside-brand,
+  .login-aside-text,
+  .login-aside-points,
+  .login-card-top,
+  .login-portal-tabs,
+  .login-form > *,
+  .admin-sidebar,
+  .admin-stage,
+  .admin-role-chip,
+  .admin-page,
+  .dash-overview,
+  .cockpit-page,
+  .login-aside::after,
+  .cockpit-live-pill.is-on,
+  .ui-drawer-panel,
+  .ui-drawer-backdrop {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+    filter: none !important;
+  }
+}

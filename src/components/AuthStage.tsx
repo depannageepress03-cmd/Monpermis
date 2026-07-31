@@ -1,5 +1,6 @@
-import type { ReactNode } from 'react'
+import { useRef, type ReactNode } from 'react'
 import { BrandName } from './BrandName'
+import { useHeroParallax } from '../hooks/useHeroParallax'
 
 type AuthStageProps = {
   /** Ligne d’aspiration sous la marque (hero). */
@@ -11,32 +12,55 @@ type AuthStageProps = {
 
 /**
  * Scène d’auth premium : photo route full-bleed + marque hero + panneau formulaire.
- * Inspiration edtech populaire, palette logo Monpermis (navy / vert / blanc).
+ * Motion type Apple : ken burns, parallaxe pointeur, entrées staggered.
  */
 export function AuthStage({
   tagline = 'Ton permis, une route claire.',
   imageSrc = '/home/i2.jpg',
   children,
 }: AuthStageProps) {
+  const mediaRef = useRef<HTMLImageElement>(null)
+  useHeroParallax(mediaRef)
+
   return (
     <div className="auth-stage">
       <aside className="auth-stage-hero">
         <img
+          ref={mediaRef}
           src={imageSrc}
           alt=""
           className="auth-stage-hero-media"
           draggable={false}
+          fetchPriority="high"
         />
         <div className="auth-stage-hero-veil" aria-hidden="true" />
         <div className="auth-stage-hero-glow" aria-hidden="true" />
+        <div className="auth-stage-hero-shine" aria-hidden="true" />
         <div className="auth-stage-hero-copy">
-          <img src="/logo.png" alt="" className="auth-stage-logo" width={80} height={54} />
-          <BrandName as="h1" className="auth-stage-brand" />
-          <p className="auth-stage-tagline">{tagline}</p>
+          <img
+            src="/logo.png"
+            alt="Monpermis.bj"
+            className="auth-stage-logo auth-stage-stagger"
+            width={80}
+            height={54}
+            style={{ ['--stagger' as string]: '0' }}
+          />
+          <BrandName
+            as="h1"
+            className="auth-stage-brand auth-stage-stagger"
+            style={{ ['--stagger' as string]: '1' }}
+          />
+          <p
+            className="auth-stage-tagline auth-stage-stagger"
+            style={{ ['--stagger' as string]: '2' }}
+          >
+            {tagline}
+          </p>
         </div>
       </aside>
 
-      <main className="auth-stage-panel">
+      <main className="auth-stage-panel" id="auth-form">
+        <div className="auth-stage-panel-glass" aria-hidden="true" />
         <div className="auth-stage-panel-inner">{children}</div>
       </main>
     </div>
