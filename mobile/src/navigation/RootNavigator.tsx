@@ -1,7 +1,7 @@
 import {
   DefaultTheme,
   NavigationContainer,
-  useNavigationState,
+  createNavigationContainerRef,
   type LinkingOptions,
 } from '@react-navigation/native'
 import { createNativeStackNavigator } from '@react-navigation/native-stack'
@@ -61,22 +61,7 @@ import { LeconsCoursesScreen } from '../screens/conduite/LeconsCoursesScreen'
 import { LeconDetailScreen } from '../screens/conduite/LeconDetailScreen'
 
 const Stack = createNativeStackNavigator<RootStackParamList>()
-
-/** Trace l'écran affiché (fire-and-forget). */
-function ScreenViewTracker() {
-  const routeName = useNavigationState((state) => {
-    const route = state?.routes?.[state.index]
-    return route?.name ?? ''
-  })
-  const lastRef = useRef('')
-  useEffect(() => {
-    if (!routeName) return
-    if (lastRef.current === routeName) return
-    lastRef.current = routeName
-    tracker.track('screen_view', { screen: routeName })
-  }, [routeName])
-  return null
-}
+const navigationRef = createNavigationContainerRef<RootStackParamList>()
 
 const linking: LinkingOptions<RootStackParamList> = {
   prefixes: [Linking.createURL('/'), 'monpermis://'],
@@ -281,6 +266,8 @@ function AppNavigator() {
 }
 
 export function RootNavigator() {
+  const lastScreenRef = useRef('')
+
   useEffect(() => {
     tracker.start()
     return () => {
@@ -292,9 +279,25 @@ export function RootNavigator() {
     <SafeAreaProvider>
       <AppErrorBoundary>
         <AuthProvider>
-          <NavigationContainer linking={linking} theme={navTheme}>
+          <NavigationContainer
+            ref={navigationRef}
+            linking={linking}
+            theme={navTheme}
+            onReady={() => {
+              const name = navigationRef.getCurrentRoute()?.name
+              if (name && name !== lastScreenRef.current) {
+                lastScreenRef.current = name
+                tracker.track('screen_view', { screen: name })
+              }
+            }}
+            onStateChange={() => {
+              const name = navigationRef.getCurrentRoute()?.name
+              if (!name || name === lastScreenRef.current) return
+              lastScreenRef.current = name
+              tracker.track('screen_view', { screen: name })
+            }}
+          >
             <StatusBar style="dark" />
-            <ScreenViewTracker />
             <AppNavigator />
             <AppToastHost />
           </NavigationContainer>
