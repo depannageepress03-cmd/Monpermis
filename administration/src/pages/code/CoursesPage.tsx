@@ -15,7 +15,7 @@ import {
   updateStandaloneCourse,
   updateStandaloneModule,
 } from '../../api/courses'
-import { uploadRevisionImage, uploadRevisionVideo } from '../../api/revision'
+import { uploadRevisionImage } from '../../api/revision'
 import { PublishSwitch } from '../../components/PublishSwitch'
 import { RichTextEditor } from '../../components/RichTextEditor'
 import { getAdminToken, isAuthError } from '../../context/AdminAuthContext'
@@ -72,9 +72,9 @@ function ModuleCard({
         title: courseTitle,
         text,
         mediaType,
-        videoUrl: mediaType === 'video' ? videoUrl : '',
+        videoUrl: mediaType === 'video' ? videoUrl.trim() : '',
         imageUrl: mediaType === 'image' ? imageUrl : '',
-        mediaBytes: mediaType === 'image' || mediaType === 'video' ? mediaBytes : 0,
+        mediaBytes: mediaType === 'image' ? mediaBytes : 0,
       })
       setEditing(false)
       onUpdated()
@@ -111,25 +111,6 @@ function ModuleCard({
       setVideoUrl('')
     } catch (err) {
       setError(isAuthError(err) ? err.message : 'Import image impossible')
-    } finally {
-      setUploading(false)
-    }
-  }
-
-  const handleVideoUpload = async (file: File | undefined) => {
-    if (!file) return
-    const token = getAdminToken()
-    if (!token) return
-    setUploading(true)
-    setError(null)
-    try {
-      const uploaded = await uploadRevisionVideo(token, file)
-      setVideoUrl(uploaded.videoUrl)
-      setMediaBytes(uploaded.mediaBytes || file.size || 0)
-      setMediaType('video')
-      setImageUrl('')
-    } catch (err) {
-      setError(isAuthError(err) ? err.message : 'Import vidéo impossible')
     } finally {
       setUploading(false)
     }
@@ -194,18 +175,27 @@ function ModuleCard({
             />
           ) : null}
           {mediaType === 'video' ? (
-            <input
-              type="file"
-              accept="video/*"
-              disabled={uploading}
-              onChange={(e) => void handleVideoUpload(e.target.files?.[0])}
-            />
+            <label className="revision-field">
+              <span>Lien vidéo (YouTube / Vimeo)</span>
+              <input
+                type="url"
+                value={videoUrl}
+                onChange={(e) => {
+                  setVideoUrl(e.target.value)
+                  setMediaBytes(0)
+                  setImageUrl('')
+                }}
+                placeholder="https://www.youtube.com/watch?v=… ou https://vimeo.com/…"
+              />
+            </label>
           ) : null}
           {imageUrl && mediaType === 'image' ? (
             <img src={imageUrl} alt="" className="revision-media-preview" />
           ) : null}
-          {videoUrl && mediaType === 'video' ? (
-            <video src={videoUrl} controls className="revision-media-preview" />
+          {videoUrl.trim() && mediaType === 'video' ? (
+            <p className="revision-field-hint" style={{ marginTop: 8 }}>
+              Lien enregistré : {videoUrl.trim()}
+            </p>
           ) : null}
           <div className="revision-actions">
             <Button variant="primary" disabled={saving || uploading} onClick={() => void handleSave()}>

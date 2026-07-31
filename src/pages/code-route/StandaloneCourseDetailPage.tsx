@@ -117,7 +117,9 @@ export function StandaloneCourseDetailPage() {
 
             <div className="learner-modules">
               {course.modules.map((module: LearnerModule) => {
-                const embed = module.mediaType === 'video' ? resolveVideoEmbed(module.videoUrl) : null
+                const hasVideoLink =
+                  module.mediaType === 'video' && Boolean(module.videoUrl?.trim())
+                const video = hasVideoLink ? resolveVideoEmbed(module.videoUrl) : null
                 return (
                   <article key={module.id} className="learner-module-block">
                     {module.title || module.name ? (
@@ -132,16 +134,24 @@ export function StandaloneCourseDetailPage() {
                     {module.mediaType === 'image' && module.imageUrl ? (
                       <img src={mediaSrc(module.imageUrl)} alt="" />
                     ) : null}
-                    {module.mediaType === 'video' && module.videoUrl ? (
-                      embed ? (
+                    {video ? (
+                      video.kind === 'iframe' ? (
                         <iframe
-                          src={embed}
+                          src={video.src}
                           title={module.title || 'Vidéo'}
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
                           allowFullScreen
+                          loading="eager"
+                          referrerPolicy="strict-origin-when-cross-origin"
                         />
                       ) : (
-                        <video src={mediaSrc(module.videoUrl)} controls playsInline />
+                        <video src={mediaSrc(video.src)} controls playsInline />
                       )
+                    ) : null}
+                    {hasVideoLink && !video ? (
+                      <p className="form-error">
+                        Vidéo indisponible : le lien doit être un YouTube ou Vimeo valide.
+                      </p>
                     ) : null}
                   </article>
                 )
