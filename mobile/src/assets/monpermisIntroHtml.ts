@@ -210,11 +210,8 @@ export const MONPERMIS_INTRO_HTML = `<!DOCTYPE html>
     }
 
     var doneAt = 1600 + i * 40 + 1100;
-    setTimeout(function () {
-      document.body.style.transition = 'opacity .4s ease';
-      document.body.style.opacity = '0';
-      setTimeout(notifyDone, 400);
-    }, doneAt);
+    // Pas de fade-out : évite l’écran crème/blanc avant la navigation RN.
+    setTimeout(notifyDone, doneAt);
 
     // Filet de sécurité si les timers sont ralentis
     setTimeout(notifyDone, doneAt + 2000);

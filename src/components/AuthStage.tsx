@@ -31,7 +31,7 @@ export function AuthStage({
         <div className="auth-stage-hero-glow" aria-hidden="true" />
         <div className="auth-stage-hero-copy">
           <div className="auth-stage-logo-badge">
-            <img src="/logo.png" alt="" className="auth-stage-logo" width={80} height={54} />
+            <img src="/logo-mark.png" alt="" className="auth-stage-logo" width={62} height={62} />
           </div>
           <BrandName as="h1" className="auth-stage-brand" />
           <p className="auth-stage-tagline">{tagline}</p>

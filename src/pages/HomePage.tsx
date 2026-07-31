@@ -18,12 +18,12 @@ import { fetchUnreadCount } from '../api/notifications'
 import { fetchAccessMe, type AccessMe } from '../api/accessRequests'
 import { BrandName } from '../components/BrandName'
 import { HomeBottomAnimation } from '../components/HomeBottomAnimation'
-import { PageLoader } from '../components/PageLoader'
 import { PageSkeleton } from '../components/PageSkeleton'
 import { useAuth } from '../hooks/useAuth'
 import { useFocusRefresh } from '../hooks/useFocusRefresh'
 import { getActiveSubscriptions } from '../utils/subscriptionSummary'
 import '../styles/auth.css'
+import '../styles/learner.css'
 
 function greetingWord() {
   const hour = new Date().getHours()
@@ -61,8 +61,7 @@ export function HomePage() {
     navigate('/intro', { replace: true })
   }
 
-  if (loading || !user) return <PageLoader />
-  if (!accessReady) {
+  if (loading || !user || !accessReady) {
     return (
       <div className="home-app" data-home-layout="fullbleed-v3">
         <div className="home-app-inner">

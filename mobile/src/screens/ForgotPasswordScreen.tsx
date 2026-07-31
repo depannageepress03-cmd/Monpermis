@@ -36,7 +36,7 @@ export function ForgotPasswordScreen() {
             showsVerticalScrollIndicator={false}
           >
             <View style={styles.header}>
-              <AuthLogoBadge size={88} style={styles.logoBadge} />
+              <AuthLogoBadge size={72} style={styles.logoBadge} />
               <BrandName size={22} style={styles.brand} mainColor={dark.textPrimary} />
               <Text style={styles.title}>Mot de passe oublié</Text>
               <Text style={styles.subtitle}>

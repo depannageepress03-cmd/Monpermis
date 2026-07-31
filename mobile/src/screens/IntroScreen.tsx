@@ -2,10 +2,11 @@ import { useNavigation } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { setStatusBarStyle } from 'expo-status-bar'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Platform, StyleSheet, View } from 'react-native'
+import { Image, Platform, StyleSheet, View } from 'react-native'
 import { WebView, type WebViewMessageEvent } from 'react-native-webview'
 import { IntroLogoMark } from '../components/IntroLogoMark'
 import { MONPERMIS_INTRO_HTML } from '../assets/monpermisIntroHtml'
+import { getStoredUser } from '../api/auth'
 import { useAuth } from '../context/AuthContext'
 import type { RootStackParamList } from '../navigation/types'
 import { hasCompletedOnboarding } from '../utils/onboarding'
@@ -17,16 +18,14 @@ const MAX_INTRO_MS = 5500
 
 export function IntroScreen() {
   const navigation = useNavigation<Nav>()
-  const { user, loading } = useAuth()
+  const { user } = useAuth()
   const navigatedRef = useRef(false)
   const revealDoneRef = useRef(false)
   const userRef = useRef(user)
-  const loadingRef = useRef(loading)
   const [useNativeFallback, setUseNativeFallback] = useState(false)
   const [webReady, setWebReady] = useState(false)
 
   userRef.current = user
-  loadingRef.current = loading
 
   useEffect(() => {
     setStatusBarStyle('dark')
@@ -35,10 +34,11 @@ export function IntroScreen() {
   const goNext = useCallback(async () => {
     if (navigatedRef.current) return
     if (!revealDoneRef.current) return
-    if (loadingRef.current) return
     navigatedRef.current = true
 
-    if (userRef.current) {
+    // Ne jamais bloquer sur le probe réseau : session locale suffit pour sortir de l’intro.
+    const sessionUser = userRef.current || (await getStoredUser())
+    if (sessionUser) {
       navigation.replace('Home')
       return
     }
@@ -52,10 +52,6 @@ export function IntroScreen() {
     revealDoneRef.current = true
     void goNext()
   }, [goNext])
-
-  useEffect(() => {
-    if (!loading) void goNext()
-  }, [loading, goNext])
 
   useEffect(() => {
     const safety = setTimeout(() => {
@@ -76,6 +72,16 @@ export function IntroScreen() {
 
   return (
     <View style={styles.root}>
+      {/* Placeholder pendant le chargement WebView : pas d’écran vide. */}
+      {!useNativeFallback && !webReady ? (
+        <View style={styles.placeholder} pointerEvents="none">
+          <Image
+            source={require('../../assets/logo-mark.png')}
+            style={styles.placeholderLogo}
+            resizeMode="contain"
+          />
+        </View>
+      ) : null}
       {useNativeFallback ? (
         <IntroLogoMark onRevealComplete={markRevealDone} />
       ) : (
@@ -117,5 +123,15 @@ const styles = StyleSheet.create({
   },
   webviewHidden: {
     opacity: 0,
+  },
+  placeholder: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: INTRO_BG,
+  },
+  placeholderLogo: {
+    width: 120,
+    height: 120,
   },
 })

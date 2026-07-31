@@ -6,14 +6,14 @@ type Props = {
   style?: StyleProp<ViewStyle>
 }
 
-/** Logo Monpermis dans un cercle fond blanc (pages d’authentification). */
-export function AuthLogoBadge({ size = 88, style }: Props) {
-  const logo = Math.round(size * 0.58)
+/** Logo Monpermis (marque détourée) dans un cercle fond blanc. */
+export function AuthLogoBadge({ size = 72, style }: Props) {
+  const logo = Math.round(size * 0.9)
   return (
     <View style={[styles.badge, { width: size, height: size, borderRadius: size / 2 }, style]}>
       <Image
-        source={require('../../assets/logo.png')}
-        style={{ width: logo, height: Math.round(logo * 0.68) }}
+        source={require('../../assets/logo-mark.png')}
+        style={{ width: logo, height: logo }}
         resizeMode="contain"
       />
     </View>
@@ -32,5 +32,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.22,
     shadowRadius: 16,
     elevation: 6,
+    overflow: 'hidden',
   },
 })

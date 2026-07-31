@@ -601,8 +601,8 @@
 }
 
 .auth-stage-logo-badge {
-  width: 92px;
-  height: 92px;
+  width: 72px;
+  height: 72px;
   margin: 0 auto 0.85rem;
   border-radius: 999px;
   background: #fff;
@@ -613,8 +613,8 @@
 }
 
 .auth-stage-logo {
-  width: 54px;
-  height: 36px;
+  width: 62px;
+  height: 62px;
   object-fit: contain;
   display: block;
   margin: 0;
@@ -874,13 +874,13 @@
 
   .auth-stage-logo-badge {
     margin-left: 0;
-    width: 104px;
-    height: 104px;
+    width: 80px;
+    height: 80px;
   }
 
   .auth-stage-logo {
-    width: 62px;
-    height: 42px;
+    width: 70px;
+    height: 70px;
   }
 
   .auth-stage-brand {

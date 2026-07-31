@@ -134,7 +134,7 @@ export function LoginScreen() {
               },
             ]}
           >
-            <AuthLogoBadge size={92} style={styles.logoBadge} />
+            <AuthLogoBadge size={72} style={styles.logoBadge} />
             <BrandName size={34} mainColor="#ffffff" style={styles.brand} />
             <Text style={styles.tagline}>Code, conduite, confiance — avance à ton rythme.</Text>
           </Animated.View>
