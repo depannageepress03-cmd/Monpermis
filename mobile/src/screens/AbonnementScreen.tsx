@@ -1,7 +1,22 @@
 import { useCallback, useState } from 'react'
 import { useFocusEffect, useNavigation } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
-import { Check, Clock, CreditCard, History, Lock } from 'lucide-react-native'
+import { setStatusBarStyle } from 'expo-status-bar'
+import { LinearGradient } from 'expo-linear-gradient'
+import {
+  BookOpen,
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  CircleAlert,
+  Clock,
+  CreditCard,
+  History,
+  Lock,
+  Ticket,
+  TriangleAlert,
+  Wallet,
+} from 'lucide-react-native'
 import {
   ActivityIndicator,
   Pressable,
@@ -11,6 +26,7 @@ import {
   TextInput,
   View,
 } from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
 import {
   AccessRequestError,
   computeModuleAmount,
@@ -22,17 +38,19 @@ import {
   type AccessModuleKey,
   type CheckoutCartItem,
 } from '../api/accessRequests'
-import { DarkScreen } from '../components/DarkScreen'
+import { Bouncy } from '../components/Bouncy'
+import { FadeUp } from '../components/FadeUp'
+import { LegalFooter } from '../components/LegalFooter'
 import { MobileMoneyCheckout } from '../components/MobileMoneyCheckout'
-import { PageNavbar } from '../components/PageNavbar'
 import { ScreenLoader } from '../components/ScreenLoader'
+import { SkeletonList } from '../components/Skeleton'
 import { useRequireAuth } from '../hooks/useRequireAuth'
 import type { RootStackParamList } from '../navigation/types'
 import {
   formatSubscriptionEndDate,
   getActiveSubscriptions,
 } from '../utils/subscriptionSummary'
-import { dark, fonts } from '../theme'
+import { brand, colors, dark, fonts, shadows } from '../theme'
 import {
   clearPendingCheckoutCart,
   loadPendingCheckoutCart,
@@ -52,6 +70,9 @@ const unitSuffix: Record<AccessModule['unit'], string> = {
 
 /** Offres self-service sur cet écran (heures conduite = espace Conduite). */
 const PRIMARY_KEYS: AccessModuleKey[] = ['code']
+
+const INTRO_COPY =
+  'Achète l’accès Code par Mobile Money (MTN, Moov, Celtiis). Les cours vidéo de conduite sont gratuits dans l’espace Conduite ; les heures moniteur s’achètent aussi là-bas.'
 
 export function AbonnementScreen() {
   const navigation = useNavigation<Nav>()
@@ -91,7 +112,9 @@ export function AbonnementScreen() {
 
   useFocusEffect(
     useCallback(() => {
+      setStatusBarStyle('dark')
       if (user) void load()
+      return () => setStatusBarStyle('dark')
     }, [user, load]),
   )
 
@@ -143,82 +166,135 @@ export function AbonnementScreen() {
   })
 
   const activeSubscriptions = getActiveSubscriptions(me)
+  const primaryOffers = sortedModules.filter((module) => PRIMARY_KEYS.includes(module.key))
+  const canPay = cartItems.length > 0
 
   return (
-    <DarkScreen>
-      <PageNavbar title="Mes accès" icon={CreditCard} onBack={() => navigation.navigate('Home')} />
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        <View style={styles.introRow}>
-          <Text style={styles.intro}>
-            Achète l’accès Code par Mobile Money (MTN, Moov, Celtiis). Les cours vidéo de
-            conduite sont gratuits dans l’espace Conduite ; les heures moniteur s’achètent
-            aussi là-bas.
-          </Text>
+    <View style={styles.root}>
+      <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+        <View style={styles.topBar}>
           <Pressable
-            style={({ pressed }) => [styles.historyBtn, pressed && styles.pressed]}
-            onPress={() => navigation.navigate('HistoriquePaiements')}
+            style={({ pressed }) => [styles.roundBtn, pressed && styles.pressed]}
+            onPress={() => navigation.navigate('Home')}
+            accessibilityLabel="Retour"
+            hitSlop={8}
           >
-            <History size={16} color={dark.textPrimary} />
-            <Text style={styles.historyBtnText}>Historique</Text>
+            <ChevronLeft size={22} color={dark.textPrimary} />
+          </Pressable>
+          <View style={styles.topBarCenter}>
+            <View style={styles.topBarIcon}>
+              <CreditCard size={15} color={dark.green} />
+            </View>
+            <Text style={styles.topBarTitle}>Mes accès</Text>
+          </View>
+          <Pressable
+            style={({ pressed }) => [styles.roundBtn, pressed && styles.pressed]}
+            onPress={() => navigation.navigate('HistoriquePaiements')}
+            accessibilityLabel="Historique"
+            hitSlop={8}
+          >
+            <History size={19} color={dark.textMuted} />
           </Pressable>
         </View>
 
-        {loading ? (
-          <View style={styles.empty}>
-            <ActivityIndicator color={dark.green} />
-            <Text style={styles.emptyText}>Chargement…</Text>
-          </View>
-        ) : (
-          <>
-            {error ? <Text style={styles.error}>{error}</Text> : null}
-
-            {pendingCart ? (
-              <View style={styles.resumeCard}>
-                <Text style={styles.kicker}>Paiement interrompu</Text>
-                <Text style={styles.statusCopy}>
-                  Tu as un panier en cours. Reprends là où tu t’étais arrêté.
-                </Text>
-                <View style={styles.resumeActions}>
-                  <Pressable
-                    style={styles.payBtn}
-                    onPress={() => {
-                      const next: Partial<Record<AccessModuleKey, boolean>> = {}
-                      for (const item of pendingCart.items) next[item.module] = true
-                      setSelected(next)
-                      setQuantityByModule(
-                        Object.fromEntries(
-                          pendingCart.items.map((item) => [item.module, String(item.quantity)]),
-                        ),
-                      )
-                      setCheckoutOpen(true)
-                    }}
-                  >
-                    <Text style={styles.payText}>Reprendre le paiement</Text>
-                  </Pressable>
-                  <Pressable
-                    onPress={() => {
-                      void clearPendingCheckoutCart()
-                      setPendingCart(null)
-                    }}
-                  >
-                    <Text style={styles.selectHint}>Ignorer</Text>
-                  </Pressable>
+        <ScrollView
+          contentContainerStyle={[styles.scroll, !loading && styles.scrollWithSticky]}
+          showsVerticalScrollIndicator={false}
+        >
+          <FadeUp delay={40}>
+            <LinearGradient
+              colors={['#E8F8EF', '#F0FDF4', '#FFFFFF']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.hero}
+            >
+              <View style={styles.heroCopy}>
+                <Text style={styles.heroTitle}>Débloquez toute l’expérience Monpermis.bj</Text>
+                <Text style={styles.heroText}>{INTRO_COPY}</Text>
+              </View>
+              <View style={styles.heroArt} accessibilityElementsHidden>
+                <View style={styles.heroArtCircle}>
+                  <Wallet size={32} color={dark.green} />
+                </View>
+                <View style={styles.heroArtBadge}>
+                  <CreditCard size={14} color={colors.white} />
                 </View>
               </View>
-            ) : null}
+            </LinearGradient>
+          </FadeUp>
 
-            {me ? (
-              <View style={styles.statusCardOutline}>
-                <Text style={styles.kicker}>
-                  <Clock size={13} color={dark.green} /> Solde heures de conduite
-                </Text>
-                <Text style={styles.statusTitle}>{me.user.soldeHeures} h</Text>
-                {activeSubscriptions.map((sub) => (
-                  <View key={sub.module} style={styles.subRow}>
+          {loading ? (
+            <View style={styles.loadingBox}>
+              <SkeletonList count={3} />
+              <ActivityIndicator color={dark.green} style={{ marginTop: 8 }} />
+            </View>
+          ) : (
+            <>
+              {error ? (
+                <FadeUp delay={60}>
+                  <View style={styles.errorCard}>
+                    <CircleAlert size={18} color={dark.coral} />
+                    <Text style={styles.errorText}>{error}</Text>
+                  </View>
+                </FadeUp>
+              ) : null}
+
+              {pendingCart ? (
+                <FadeUp delay={70}>
+                  <View style={styles.resumeCard}>
+                    <Text style={styles.kicker}>Paiement interrompu</Text>
                     <Text style={styles.statusCopy}>
-                      {sub.label} — expire le {formatSubscriptionEndDate(sub.endAt)} (
-                      {sub.remainingLabel})
+                      Tu as un panier en cours. Reprends là où tu t’étais arrêté.
                     </Text>
+                    <View style={styles.resumeActions}>
+                      <Bouncy
+                        scaleTo={0.98}
+                        onPress={() => {
+                          const next: Partial<Record<AccessModuleKey, boolean>> = {}
+                          for (const item of pendingCart.items) next[item.module] = true
+                          setSelected(next)
+                          setQuantityByModule(
+                            Object.fromEntries(
+                              pendingCart.items.map((item) => [item.module, String(item.quantity)]),
+                            ),
+                          )
+                          setCheckoutOpen(true)
+                        }}
+                      >
+                        <View style={styles.resumePayBtn}>
+                          <Text style={styles.resumePayText}>Reprendre le paiement</Text>
+                        </View>
+                      </Bouncy>
+                      <Pressable
+                        onPress={() => {
+                          void clearPendingCheckoutCart()
+                          setPendingCart(null)
+                        }}
+                        hitSlop={8}
+                      >
+                        <Text style={styles.selectHint}>Ignorer</Text>
+                      </Pressable>
+                    </View>
+                  </View>
+                </FadeUp>
+              ) : null}
+
+              {activeSubscriptions.map((sub, index) => (
+                <FadeUp key={sub.module} delay={80 + index * 30}>
+                  <View style={styles.accessCard}>
+                    <View style={styles.accessIcon}>
+                      <BookOpen size={20} color={dark.green} />
+                    </View>
+                    <View style={styles.accessCopy}>
+                      <Text style={styles.accessLabel}>Mon accès</Text>
+                      <Text style={styles.accessName}>{sub.label}</Text>
+                      <Text style={styles.accessMeta}>
+                        Expire le {formatSubscriptionEndDate(sub.endAt)} · {sub.remainingLabel}
+                      </Text>
+                    </View>
+                    <View style={styles.statusBadge}>
+                      <Text style={styles.statusBadgeText}>Actif</Text>
+                    </View>
                     {sub.daysLeft <= 7 ? (
                       <Pressable
                         style={styles.renewBtn}
@@ -228,135 +304,260 @@ export function AbonnementScreen() {
                       </Pressable>
                     ) : null}
                   </View>
-                ))}
-                {me.pendingRequest ? (
-                  <Text style={styles.statusCopy}>
-                    Paiement en confirmation… Valide la demande sur ton téléphone puis reviens ici.
-                  </Text>
-                ) : null}
-              </View>
-            ) : null}
+                </FadeUp>
+              ))}
 
-            <Text style={styles.catalogTitle}>Offres disponibles</Text>
-            <View style={styles.planList}>
-              {sortedModules
-                .filter((module) => PRIMARY_KEYS.includes(module.key))
-                .map((module) => {
-                const isActive = Boolean(me?.access[module.key]) && module.key !== 'conduite_heures'
-                const showsQuantity = module.unit === 'hour'
-                const quantity = Math.max(1, Number(quantityByModule[module.key]) || 1)
-                const amount = computeModuleAmount(module.key, module.price, showsQuantity ? quantity : 1)
-                const checked = Boolean(selected[module.key])
-
-                return (
-                  <Pressable
-                    key={module.key}
-                    disabled={isActive}
-                    onPress={() => setSelected((current) => ({ ...current, [module.key]: !current[module.key] }))}
-                    style={[styles.plan, checked && styles.planSelected, isActive && styles.planDisabled]}
-                  >
-                    <View style={styles.planHeader}>
-                      <View style={styles.planCopy}>
-                        <Text style={styles.planName}>
-                          {module.label}
-                          {isActive ? ' · Actif' : ''}
-                        </Text>
-                        <Text style={styles.duration}>
-                          {formatPrice(module.price)}
-                          {unitSuffix[module.unit]}
-                        </Text>
-                      </View>
-                      <Text style={styles.price}>{formatPrice(amount)}</Text>
+              {me ? (
+                <FadeUp delay={100}>
+                  <View style={styles.soldeCard}>
+                    <View style={styles.soldeIcon}>
+                      <Clock size={20} color={dark.green} />
                     </View>
+                    <View style={styles.soldeCopy}>
+                      <Text style={styles.soldeLabel}>Solde heures de conduite</Text>
+                      <Text style={styles.soldeValue}>{me.user.soldeHeures} h</Text>
+                    </View>
+                    <Pressable
+                      style={({ pressed }) => [styles.soldeHistoryBtn, pressed && styles.pressed]}
+                      onPress={() => navigation.navigate('HistoriquePaiements')}
+                    >
+                      <Clock size={14} color={dark.green} />
+                      <Text style={styles.soldeHistoryText}>Historique</Text>
+                    </Pressable>
+                  </View>
+                </FadeUp>
+              ) : null}
 
-                    {module.key === 'conduite_heures' && quantity >= 2 ? (
-                      <Text style={styles.discount}>Remise −1 000 FCFA appliquée</Text>
-                    ) : null}
+              {me?.pendingRequest ? (
+                <FadeUp delay={110}>
+                  <View style={styles.infoCard}>
+                    <TriangleAlert size={18} color={dark.green} />
+                    <Text style={styles.infoCardText}>
+                      Paiement en confirmation… Valide la demande sur ton téléphone puis reviens
+                      ici.
+                    </Text>
+                  </View>
+                </FadeUp>
+              ) : null}
 
-                    {showsQuantity && !isActive ? (
-                      <View style={styles.quantityField}>
-                        <Text style={styles.fieldLabel}>Nombre d’heures</Text>
-                        <TextInput
-                          style={styles.input}
-                          keyboardType="number-pad"
-                          value={quantityByModule[module.key] ?? '1'}
-                          onChangeText={(text) =>
-                            setQuantityByModule((current) => ({ ...current, [module.key]: text }))
-                          }
-                        />
-                      </View>
-                    ) : null}
+              <FadeUp delay={120}>
+                <View style={styles.catalogHead}>
+                  <Text style={styles.catalogTitle}>Offres disponibles</Text>
+                  <Text style={styles.catalogSub}>
+                    Choisissez la formule adaptée à vos besoins.
+                  </Text>
+                </View>
+              </FadeUp>
 
-                    {isActive ? (
-                      <View style={styles.activeRow}>
-                        <Check size={16} color={dark.green} />
-                        <Text style={styles.activeText}>Accès actif</Text>
-                      </View>
-                    ) : (
-                      <Text style={styles.selectHint}>{checked ? 'Sélectionné' : 'Appuyer pour sélectionner'}</Text>
-                    )}
-                  </Pressable>
-                )
-              })}
-            </View>
+              {primaryOffers.length === 0 ? (
+                <FadeUp delay={130}>
+                  <View style={styles.emptyOffers}>
+                    <Lock size={26} color={dark.textMuted} />
+                    <Text style={styles.emptyOffersTitle}>Aucune offre disponible</Text>
+                    <Text style={styles.statusCopy}>
+                      Reviens plus tard ou contacte le support si le problème persiste.
+                    </Text>
+                  </View>
+                </FadeUp>
+              ) : (
+                primaryOffers.map((module, index) => {
+                  const isActive =
+                    Boolean(me?.access[module.key]) && module.key !== 'conduite_heures'
+                  const showsQuantity = module.unit === 'hour'
+                  const quantity = Math.max(1, Number(quantityByModule[module.key]) || 1)
+                  const amount = computeModuleAmount(
+                    module.key,
+                    module.price,
+                    showsQuantity ? quantity : 1,
+                  )
+                  const checked = Boolean(selected[module.key])
 
-            <Pressable
-              style={({ pressed }) => [styles.conduiteLink, pressed && styles.pressed]}
-              onPress={() => navigation.navigate('Conduite')}
-            >
-              <Text style={styles.conduiteLinkTitle}>Espace conduite</Text>
-              <Text style={styles.conduiteLinkCopy}>
-                Cours vidéo gratuits · réserver / acheter des heures avec moniteur
-              </Text>
-            </Pressable>
+                  return (
+                    <FadeUp key={module.key} delay={130 + index * 40}>
+                      <Pressable
+                        disabled={isActive}
+                        onPress={() =>
+                          setSelected((current) => ({
+                            ...current,
+                            [module.key]: !current[module.key],
+                          }))
+                        }
+                        style={[
+                          styles.plan,
+                          checked && styles.planSelected,
+                          isActive && styles.planActive,
+                        ]}
+                      >
+                        <View style={styles.planTop}>
+                          <View style={[styles.planIcon, isActive && styles.planIconActive]}>
+                            {module.key === 'code' ? (
+                              <TriangleAlert size={20} color={dark.green} />
+                            ) : (
+                              <BookOpen size={20} color={dark.green} />
+                            )}
+                          </View>
+                          <View style={styles.planCopy}>
+                            <Text style={styles.planName}>{module.label}</Text>
+                            <Text style={styles.duration}>
+                              {formatPrice(module.price)}
+                              {unitSuffix[module.unit]}
+                            </Text>
+                          </View>
+                          <View style={styles.priceCol}>
+                            {isActive ? (
+                              <View style={styles.activeBadge}>
+                                <Check size={12} color={dark.green} strokeWidth={3} />
+                                <Text style={styles.activeBadgeText}>Active</Text>
+                              </View>
+                            ) : (
+                              <Text style={styles.price}>{formatPrice(amount)}</Text>
+                            )}
+                            <ChevronRight
+                              size={18}
+                              color={checked || isActive ? dark.green : dark.textMuted}
+                            />
+                          </View>
+                        </View>
 
-            <Pressable
-              style={[styles.payBtn, cartItems.length === 0 && styles.disabled]}
-              disabled={cartItems.length === 0}
-              onPress={() => setCheckoutOpen(true)}
-            >
-              <Text style={styles.payText}>Payer {formatPrice(cartTotal)}</Text>
-            </Pressable>
+                        {module.key === 'conduite_heures' && quantity >= 2 ? (
+                          <Text style={styles.discount}>Remise −1 000 FCFA appliquée</Text>
+                        ) : null}
 
-            <View style={styles.statusCardOutline}>
-              <Text style={styles.kicker}>Vous avez un code promo ?</Text>
-              <View style={styles.promoRow}>
-                <TextInput
-                  style={[styles.input, styles.promoInput]}
-                  autoCapitalize="characters"
-                  placeholder="CODE PROMO"
-                  placeholderTextColor={dark.textMuted}
-                  value={promoCode}
-                  editable={!promoBusy}
-                  onChangeText={(text) => setPromoCode(text.toUpperCase())}
-                />
+                        {showsQuantity && !isActive ? (
+                          <View style={styles.quantityField}>
+                            <Text style={styles.fieldLabel}>Nombre d’heures</Text>
+                            <TextInput
+                              style={styles.input}
+                              keyboardType="number-pad"
+                              value={quantityByModule[module.key] ?? '1'}
+                              onChangeText={(text) =>
+                                setQuantityByModule((current) => ({
+                                  ...current,
+                                  [module.key]: text,
+                                }))
+                              }
+                            />
+                          </View>
+                        ) : null}
+
+                        {isActive ? (
+                          <View style={styles.activeRow}>
+                            <Check size={16} color={dark.green} />
+                            <Text style={styles.activeText}>Accès actif</Text>
+                          </View>
+                        ) : (
+                          <View style={styles.selectRow}>
+                            <View style={[styles.checkbox, checked && styles.checkboxChecked]}>
+                              {checked ? (
+                                <Check size={12} color={colors.white} strokeWidth={3} />
+                              ) : null}
+                            </View>
+                            <Text style={styles.selectHint}>
+                              {checked ? 'Sélectionné' : 'Sélectionner cette offre'}
+                            </Text>
+                          </View>
+                        )}
+                      </Pressable>
+                    </FadeUp>
+                  )
+                })
+              )}
+
+              <FadeUp delay={180}>
                 <Pressable
-                  style={({ pressed }) => [
-                    styles.promoBtn,
-                    (promoBusy || !promoCode.trim()) && styles.disabled,
-                    pressed && styles.pressed,
-                  ]}
-                  disabled={promoBusy || !promoCode.trim()}
-                  onPress={() => void handleRedeemPromo()}
+                  style={({ pressed }) => [styles.conduiteLink, pressed && styles.pressed]}
+                  onPress={() => navigation.navigate('Conduite')}
                 >
-                  <Text style={styles.promoBtnText}>{promoBusy ? 'Vérification…' : 'Valider'}</Text>
+                  <View style={styles.conduiteIcon}>
+                    <BookOpen size={18} color="#2E93E6" />
+                  </View>
+                  <View style={styles.conduiteCopy}>
+                    <Text style={styles.conduiteLinkTitle}>Espace conduite</Text>
+                    <Text style={styles.conduiteLinkCopy}>
+                      Cours vidéo gratuits · réserver / acheter des heures avec moniteur
+                    </Text>
+                  </View>
+                  <View style={styles.gratuitBadge}>
+                    <Text style={styles.gratuitBadgeText}>Gratuit</Text>
+                  </View>
+                  <ChevronRight size={18} color={dark.textMuted} />
                 </Pressable>
-              </View>
-              {promoError ? <Text style={styles.error}>{promoError}</Text> : null}
-              {promoSuccess ? <Text style={styles.discount}>{promoSuccess}</Text> : null}
-            </View>
+              </FadeUp>
 
-            {!modules.some((m) => me?.access[m.key]) && !(me && me.user.soldeHeures > 0) ? (
-              <View style={styles.statusCardOutline}>
-                <Lock size={26} color={dark.textMuted} />
-                <Text style={styles.statusCopy}>
-                  Sélectionne au moins une offre ci-dessus pour débloquer tes parcours.
+              <FadeUp delay={200}>
+                <View style={styles.promoCard}>
+                  <Text style={styles.kicker}>Vous avez un code promo ?</Text>
+                  <View style={styles.promoRow}>
+                    <View style={styles.promoInputWrap}>
+                      <Ticket size={16} color={dark.green} />
+                      <TextInput
+                        style={styles.promoInput}
+                        autoCapitalize="characters"
+                        placeholder="CODE PROMO"
+                        placeholderTextColor={dark.textMuted}
+                        value={promoCode}
+                        editable={!promoBusy}
+                        onChangeText={(text) => setPromoCode(text.toUpperCase())}
+                      />
+                    </View>
+                    <Pressable
+                      style={({ pressed }) => [
+                        styles.promoBtn,
+                        (promoBusy || !promoCode.trim()) && styles.disabled,
+                        pressed && styles.pressed,
+                      ]}
+                      disabled={promoBusy || !promoCode.trim()}
+                      onPress={() => void handleRedeemPromo()}
+                    >
+                      <Text style={styles.promoBtnText}>
+                        {promoBusy ? 'Vérification…' : 'Valider'}
+                      </Text>
+                    </Pressable>
+                  </View>
+                  {promoError ? <Text style={styles.errorInline}>{promoError}</Text> : null}
+                  {promoSuccess ? <Text style={styles.discount}>{promoSuccess}</Text> : null}
+                </View>
+              </FadeUp>
+
+              {!modules.some((m) => me?.access[m.key]) && !(me && me.user.soldeHeures > 0) ? (
+                <FadeUp delay={220}>
+                  <View style={styles.lockCard}>
+                    <Lock size={20} color={dark.textMuted} />
+                    <View style={styles.lockCopy}>
+                      <Text style={styles.lockTitle}>Aucune offre sélectionnée</Text>
+                      <Text style={styles.statusCopy}>
+                        Sélectionne au moins une offre ci-dessus pour débloquer tes parcours.
+                      </Text>
+                    </View>
+                  </View>
+                </FadeUp>
+              ) : null}
+
+              <LegalFooter />
+            </>
+          )}
+        </ScrollView>
+
+        {!loading ? (
+          <View style={styles.stickyBar}>
+            <View style={styles.stickyCopy}>
+              <CreditCard size={18} color={dark.green} />
+              <View style={styles.stickyTextCol}>
+                <Text style={styles.stickyTitle} numberOfLines={2}>
+                  {canPay
+                    ? `${cartItems.length} offre${cartItems.length > 1 ? 's' : ''} · ${formatPrice(cartTotal)}`
+                    : 'Sélectionne au moins une offre pour débloquer le paiement.'}
                 </Text>
               </View>
-            ) : null}
-          </>
-        )}
-      </ScrollView>
+            </View>
+            <Bouncy scaleTo={0.98} disabled={!canPay} onPress={() => setCheckoutOpen(true)}>
+              <View style={[styles.payBtn, !canPay && styles.disabled]}>
+                <Text style={styles.payText}>Payer {formatPrice(cartTotal)}</Text>
+              </View>
+            </Bouncy>
+          </View>
+        ) : null}
+      </SafeAreaView>
 
       <MobileMoneyCheckout
         visible={checkoutOpen}
@@ -372,48 +573,514 @@ export function AbonnementScreen() {
           void clearPendingCheckoutCart()
         }}
       />
-    </DarkScreen>
+    </View>
   )
 }
 
 const styles = StyleSheet.create({
-  scroll: { paddingHorizontal: 22, paddingBottom: 40, paddingTop: 8 },
-  introRow: { gap: 12, marginBottom: 20 },
-  intro: { fontFamily: fonts.body, fontSize: 15, lineHeight: 22, color: dark.textMuted },
-  historyBtn: {
-    alignSelf: 'flex-start',
+  root: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+  },
+  safe: {
+    flex: 1,
+  },
+  topBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    borderWidth: 1,
-    borderColor: dark.border,
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    backgroundColor: dark.surface,
+    justifyContent: 'space-between',
+    paddingHorizontal: 24,
+    paddingTop: 10,
+    paddingBottom: 14,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,16,48,0.05)',
+    ...shadows.sm,
   },
-  historyBtnText: { fontFamily: fonts.bodyBold, fontSize: 13, color: dark.textPrimary },
-  empty: { alignItems: 'center', gap: 12, paddingVertical: 44 },
-  emptyText: { color: dark.textMuted, fontSize: 15, fontFamily: fonts.body },
-  error: { color: dark.coral, marginBottom: 12, fontFamily: fonts.body },
+  roundBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F1F5F9',
+  },
+  topBarCenter: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  topBarIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 9,
+    backgroundColor: brand.greenPale,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  topBarTitle: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 18,
+    color: dark.textPrimary,
+  },
+  scroll: {
+    paddingHorizontal: 24,
+    paddingTop: 16,
+    paddingBottom: 28,
+    gap: 14,
+  },
+  scrollWithSticky: {
+    paddingBottom: 120,
+  },
+  hero: {
+    borderRadius: 28,
+    padding: 24,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    overflow: 'hidden',
+    ...shadows.sm,
+  },
+  heroCopy: {
+    flex: 1,
+    minWidth: 0,
+    gap: 8,
+  },
+  heroTitle: {
+    fontFamily: fonts.displayBold,
+    fontSize: 20,
+    lineHeight: 26,
+    letterSpacing: -0.3,
+    color: dark.textPrimary,
+  },
+  heroText: {
+    fontFamily: fonts.body,
+    fontSize: 13,
+    lineHeight: 20,
+    color: dark.textMuted,
+  },
+  heroArt: {
+    width: 72,
+    height: 72,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  heroArtCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 999,
+    backgroundColor: 'rgba(0,176,80,0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  heroArtBadge: {
+    position: 'absolute',
+    right: 0,
+    bottom: 2,
+    width: 26,
+    height: 26,
+    borderRadius: 999,
+    backgroundColor: dark.green,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...shadows.sm,
+  },
+  loadingBox: {
+    gap: 8,
+    paddingVertical: 12,
+  },
+  errorCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    borderRadius: 20,
+    backgroundColor: dark.coralSoft,
+    padding: 16,
+  },
+  errorText: {
+    flex: 1,
+    fontFamily: fonts.body,
+    fontSize: 14,
+    lineHeight: 20,
+    color: dark.coral,
+  },
+  errorInline: {
+    color: dark.coral,
+    fontFamily: fonts.body,
+    fontSize: 13,
+    marginTop: 8,
+  },
   resumeCard: {
-    borderRadius: 18,
+    borderRadius: 20,
     borderWidth: 1,
     borderColor: 'rgba(240,180,41,0.45)',
     backgroundColor: 'rgba(240,180,41,0.10)',
-    padding: 16,
-    marginBottom: 16,
+    padding: 18,
     gap: 8,
   },
   resumeActions: { gap: 10, marginTop: 4 },
-  statusCardOutline: {
-    borderRadius: 18,
+  resumePayBtn: {
+    borderRadius: 16,
+    backgroundColor: dark.green,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  resumePayText: {
+    color: colors.white,
+    fontFamily: fonts.bodyBold,
+    fontSize: 15,
+  },
+  accessCard: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: brand.greenPale,
+    borderRadius: 24,
+    borderWidth: 1.5,
+    borderColor: 'rgba(0,176,80,0.28)',
+    padding: 20,
+    ...shadows.sm,
+  },
+  accessIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  accessCopy: {
+    flex: 1,
+    minWidth: 120,
+    gap: 2,
+  },
+  accessLabel: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: 11,
+    color: dark.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
+  accessName: {
+    fontFamily: fonts.displayBold,
+    fontSize: 17,
+    color: dark.textPrimary,
+  },
+  accessMeta: {
+    fontFamily: fonts.body,
+    fontSize: 13,
+    color: dark.textMuted,
+    marginTop: 2,
+  },
+  statusBadge: {
+    borderRadius: 999,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
     borderWidth: 1,
-    borderColor: dark.border,
-    backgroundColor: dark.surface,
-    padding: 18,
-    marginBottom: 16,
+    borderColor: 'rgba(0,176,80,0.3)',
+  },
+  statusBadgeText: {
+    fontFamily: fonts.bodyBold,
+    fontSize: 12,
+    color: dark.green,
+  },
+  renewBtn: {
+    width: '100%',
+    backgroundColor: dark.green,
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
+  renewBtnText: {
+    fontFamily: fonts.bodyBold,
+    fontSize: 13,
+    color: colors.white,
+  },
+  soldeCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(0,16,48,0.08)',
+    padding: 20,
+    ...shadows.sm,
+  },
+  soldeIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 999,
+    backgroundColor: brand.greenPale,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  soldeCopy: {
+    flex: 1,
+    minWidth: 0,
+    gap: 2,
+  },
+  soldeLabel: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: 11,
+    color: dark.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  soldeValue: {
+    fontFamily: fonts.displayExtraBold,
+    fontSize: 26,
+    color: dark.textPrimary,
+  },
+  soldeHistoryBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 6,
+    borderRadius: 999,
+    borderWidth: 1.5,
+    borderColor: 'rgba(0,176,80,0.35)',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: brand.greenPale,
+  },
+  soldeHistoryText: {
+    fontFamily: fonts.bodyBold,
+    fontSize: 12,
+    color: dark.green,
+  },
+  infoCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+    borderRadius: 20,
+    backgroundColor: brand.greenPale,
+    padding: 16,
+  },
+  infoCardText: {
+    flex: 1,
+    fontFamily: fonts.body,
+    fontSize: 14,
+    lineHeight: 20,
+    color: dark.textMuted,
+  },
+  catalogHead: {
+    gap: 4,
+    marginTop: 4,
+  },
+  catalogTitle: {
+    fontFamily: fonts.displayExtraBold,
+    fontSize: 22,
+    color: dark.textPrimary,
+  },
+  catalogSub: {
+    fontFamily: fonts.body,
+    fontSize: 14,
+    color: dark.textMuted,
+  },
+  emptyOffers: {
+    alignItems: 'center',
+    gap: 8,
+    borderRadius: 24,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: 'rgba(0,16,48,0.08)',
+    padding: 24,
+  },
+  emptyOffersTitle: {
+    fontFamily: fonts.displayBold,
+    fontSize: 16,
+    color: dark.textPrimary,
+  },
+  plan: {
+    borderRadius: 24,
+    borderWidth: 1.5,
+    borderColor: 'rgba(0,16,48,0.08)',
+    padding: 20,
+    backgroundColor: '#FFFFFF',
+    gap: 12,
+    ...shadows.sm,
+  },
+  planSelected: {
+    borderColor: dark.green,
+    backgroundColor: brand.greenPale,
+  },
+  planActive: {
+    borderColor: 'rgba(0,176,80,0.35)',
+    backgroundColor: brand.greenPale,
+  },
+  planTop: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  planIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    backgroundColor: brand.greenPale,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  planIconActive: {
+    backgroundColor: '#FFFFFF',
+  },
+  planCopy: {
+    flex: 1,
+    minWidth: 0,
+    gap: 6,
+  },
+  planName: {
+    color: dark.textPrimary,
+    fontFamily: fonts.displayBold,
+    fontSize: 17,
+  },
+  duration: {
+    alignSelf: 'flex-start',
+    color: dark.textMuted,
+    fontFamily: fonts.bodyBold,
+    fontSize: 12,
+    backgroundColor: '#F1F5F9',
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    overflow: 'hidden',
+  },
+  priceCol: {
+    alignItems: 'flex-end',
+    gap: 6,
+  },
+  price: {
+    color: dark.green,
+    fontFamily: fonts.displayExtraBold,
+    fontSize: 16,
+  },
+  activeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    borderRadius: 999,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  activeBadgeText: {
+    fontFamily: fonts.bodyBold,
+    fontSize: 12,
+    color: dark.green,
+  },
+  discount: {
+    color: dark.green,
+    fontFamily: fonts.body,
+    fontSize: 13,
+  },
+  activeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  activeText: {
+    color: dark.green,
+    fontFamily: fonts.bodyBold,
+    fontSize: 14,
+  },
+  selectRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 7,
+    borderWidth: 2,
+    borderColor: 'rgba(0,16,48,0.22)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+  },
+  checkboxChecked: {
+    borderColor: dark.green,
+    backgroundColor: dark.green,
+  },
+  selectHint: {
+    color: dark.textMuted,
+    fontFamily: fonts.body,
+    fontSize: 13,
+  },
+  quantityField: { gap: 6 },
+  fieldLabel: {
+    color: dark.textMuted,
+    fontFamily: fonts.bodyBold,
+    fontSize: 13,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: 'rgba(0,16,48,0.1)',
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    color: dark.textPrimary,
+    fontFamily: fonts.body,
+    backgroundColor: '#F8FAFC',
+  },
+  conduiteLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(0,16,48,0.08)',
+    backgroundColor: '#FFFFFF',
+    padding: 16,
+    ...shadows.sm,
+  },
+  conduiteIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: 'rgba(46,147,230,0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  conduiteCopy: {
+    flex: 1,
+    minWidth: 0,
+    gap: 2,
+  },
+  conduiteLinkTitle: {
+    fontFamily: fonts.displayBold,
+    fontSize: 16,
+    color: dark.textPrimary,
+  },
+  conduiteLinkCopy: {
+    fontFamily: fonts.body,
+    fontSize: 12,
+    lineHeight: 18,
+    color: dark.textMuted,
+  },
+  gratuitBadge: {
+    borderRadius: 999,
+    backgroundColor: brand.greenPale,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  gratuitBadgeText: {
+    fontFamily: fonts.bodyBold,
+    fontSize: 11,
+    color: dark.green,
+  },
+  promoCard: {
+    borderRadius: 24,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: 'rgba(0,16,48,0.08)',
+    padding: 20,
+    ...shadows.sm,
   },
   kicker: {
     fontFamily: fonts.displayBold,
@@ -421,94 +1088,119 @@ const styles = StyleSheet.create({
     color: dark.green,
     textTransform: 'uppercase',
     letterSpacing: 0.6,
+    marginBottom: 12,
   },
-  statusTitle: { fontFamily: fonts.displayExtraBold, fontSize: 22, color: dark.textPrimary, marginTop: 4 },
-  statusCopy: { fontFamily: fonts.body, fontSize: 15, lineHeight: 22, color: dark.textMuted },
-  subRow: { gap: 8, marginTop: 6 },
-  renewBtn: {
-    alignSelf: 'flex-start',
-    backgroundColor: dark.green,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  renewBtnText: {
-    fontFamily: fonts.bodyBold,
-    fontSize: 13,
-    color: '#0B0F1A',
-  },
-  catalogTitle: { fontFamily: fonts.displayExtraBold, fontSize: 22, color: dark.textPrimary, marginBottom: 14 },
-  planList: { gap: 14 },
-  plan: {
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: dark.border,
-    padding: 16,
-    backgroundColor: dark.surface,
-    gap: 10,
-  },
-  planSelected: { borderColor: dark.green },
-  planDisabled: { opacity: 0.7 },
-  planHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
-  planCopy: { flex: 1 },
-  planName: { color: dark.textPrimary, fontFamily: fonts.displayBold, fontSize: 18 },
-  duration: {
-    alignSelf: 'flex-start',
-    color: dark.textMuted,
-    fontFamily: fonts.bodyBold,
-    fontSize: 12,
-    backgroundColor: dark.surfaceRaised,
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    marginTop: 6,
-    overflow: 'hidden',
-  },
-  price: { color: dark.green, fontFamily: fonts.displayExtraBold, fontSize: 18 },
-  discount: { color: dark.green, fontFamily: fonts.body, fontSize: 13 },
-  activeRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  activeText: { color: dark.green, fontFamily: fonts.bodyBold, fontSize: 14 },
-  selectHint: { color: dark.textMuted, fontFamily: fonts.body, fontSize: 13 },
-  quantityField: { gap: 6 },
-  fieldLabel: { color: dark.textMuted, fontFamily: fonts.bodyBold, fontSize: 13 },
-  input: {
-    borderWidth: 1,
-    borderColor: dark.border,
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    color: dark.textPrimary,
+  statusCopy: {
     fontFamily: fonts.body,
-    backgroundColor: dark.surfaceRaised,
+    fontSize: 14,
+    lineHeight: 21,
+    color: dark.textMuted,
   },
-  promoRow: { flexDirection: 'row', gap: 10, marginTop: 8, alignItems: 'center' },
-  promoInput: { flex: 1 },
-  promoBtn: {
-    borderRadius: 12,
-    backgroundColor: dark.green,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  promoBtnText: { color: '#fff', fontFamily: fonts.displayBold, fontSize: 14 },
-  payBtn: {
-    marginTop: 18,
-    borderRadius: 14,
-    backgroundColor: dark.green,
-    paddingVertical: 14,
+  promoRow: {
+    flexDirection: 'row',
+    gap: 10,
     alignItems: 'center',
   },
-  payText: { color: '#fff', fontFamily: fonts.displayBold, fontSize: 15 },
-  conduiteLink: {
-    marginTop: 16,
-    borderRadius: 18,
+  promoInputWrap: {
+    flex: 1,
+    minWidth: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
     borderWidth: 1,
-    borderColor: dark.border,
-    backgroundColor: dark.surface,
-    padding: 16,
+    borderColor: 'rgba(0,16,48,0.1)',
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    backgroundColor: '#F8FAFC',
+  },
+  promoInput: {
+    flex: 1,
+    paddingVertical: 12,
+    color: dark.textPrimary,
+    fontFamily: fonts.bodyBold,
+    fontSize: 14,
+    letterSpacing: 0.5,
+  },
+  promoBtn: {
+    borderRadius: 14,
+    backgroundColor: brand.greenPale,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(0,176,80,0.25)',
+  },
+  promoBtnText: {
+    color: dark.green,
+    fontFamily: fonts.bodyBold,
+    fontSize: 14,
+  },
+  lockCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+    borderRadius: 20,
+    backgroundColor: 'rgba(0,16,48,0.04)',
+    padding: 18,
+  },
+  lockCopy: {
+    flex: 1,
+    minWidth: 0,
     gap: 4,
   },
-  conduiteLinkTitle: { fontFamily: fonts.displayBold, fontSize: 16, color: dark.textPrimary },
-  conduiteLinkCopy: { fontFamily: fonts.body, fontSize: 13, lineHeight: 20, color: dark.textMuted },
+  lockTitle: {
+    fontFamily: fonts.bodyBold,
+    fontSize: 15,
+    color: dark.textPrimary,
+  },
+  stickyBar: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 20,
+    paddingTop: 14,
+    paddingBottom: 16,
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0,16,48,0.06)',
+    ...shadows.md,
+  },
+  stickyCopy: {
+    flex: 1,
+    minWidth: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  stickyTextCol: {
+    flex: 1,
+    minWidth: 0,
+  },
+  stickyTitle: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 13,
+    lineHeight: 18,
+    color: dark.textMuted,
+  },
+  payBtn: {
+    minHeight: 56,
+    minWidth: 120,
+    borderRadius: 20,
+    backgroundColor: dark.green,
+    paddingHorizontal: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  payText: {
+    color: colors.white,
+    fontFamily: fonts.bodyBold,
+    fontSize: 15,
+  },
   disabled: { opacity: 0.5 },
   pressed: { opacity: 0.85 },
 })

@@ -1,6 +1,18 @@
 import { FormEvent, useMemo, useState } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
-import { Eye, EyeOff, LockKeyhole, Shield, Users } from 'lucide-react'
+import {
+  Code2,
+  CreditCard,
+  Eye,
+  EyeOff,
+  History,
+  LockKeyhole,
+  Phone,
+  Shield,
+  ShieldCheck,
+  UserRound,
+  Users,
+} from 'lucide-react'
 import logoUrl from '../assets/logo.png'
 import { BrandName } from '../components/BrandName'
 import { isAuthError, useAdminAuth } from '../context/AdminAuthContext'
@@ -54,18 +66,49 @@ export function LoginPage() {
 
   return (
     <div className={`login-page${portal === 'direction' ? ' is-direction' : ''}`}>
+      <div className="login-bg" aria-hidden="true">
+        <span className="login-bg-halo login-bg-halo--green" />
+        <span className="login-bg-halo login-bg-halo--blue" />
+        <span className="login-bg-dots login-bg-dots--tr" />
+        <span className="login-bg-dots login-bg-dots--bl" />
+      </div>
+
       <div className="login-shell">
-        <aside className="login-aside" aria-hidden={false}>
+        <aside className="login-aside" aria-label="Présentation Monpermis">
+          <div className="login-aside-glow" aria-hidden="true" />
           <img src={logoUrl} alt="" className="login-aside-logo" />
           <BrandName as="p" className="login-aside-brand" onDark />
           <p className="login-aside-text">
             Espace admin Monpermis — pilotage des apprenants, du contenu et des opérations.
           </p>
           <ul className="login-aside-points">
-            <li>Suivi des abonnements et paiements</li>
-            <li>Gestion du code et de la conduite</li>
-            <li>Accès réservé au personnel autorisé</li>
+            <li>
+              <span className="login-aside-point-icon" aria-hidden="true">
+                <CreditCard size={16} />
+              </span>
+              <span>Suivi des abonnements et paiements</span>
+            </li>
+            <li>
+              <span className="login-aside-point-icon" aria-hidden="true">
+                <Code2 size={16} />
+              </span>
+              <span>Gestion du code et de la conduite</span>
+            </li>
+            <li>
+              <span className="login-aside-point-icon" aria-hidden="true">
+                <Shield size={16} />
+              </span>
+              <span>Accès réservé au personnel autorisé</span>
+            </li>
           </ul>
+          <div className="login-aside-skyline" aria-hidden="true">
+            <svg viewBox="0 0 360 72" preserveAspectRatio="none">
+              <path
+                d="M0 72V48h18V28h10v20h14V18h8v10h12V8h16v20h10V32h22V14h12v18h18V24h14v24h20V36h10v12h16V20h12v28h18V40h14v32H0z"
+                fill="currentColor"
+              />
+            </svg>
+          </div>
         </aside>
 
         <div className="login-card">
@@ -73,9 +116,18 @@ export function LoginPage() {
             <img src={logoUrl} alt={SITE_NAME} className="login-logo" />
             <BrandName as="p" className="login-brand-name" />
             <p className="login-badge-text">
-              {portal === 'direction'
-                ? 'Portail Direction · Accès superadmin'
-                : 'Espace sécurisé · Administration'}
+              <ShieldCheck size={16} aria-hidden="true" />
+              <span>
+                {portal === 'direction' ? (
+                  <>
+                    Portail Direction · <strong>Accès superadmin</strong>
+                  </>
+                ) : (
+                  <>
+                    Espace sécurisé · <strong>Administration</strong>
+                  </>
+                )}
+              </span>
             </p>
           </div>
 
@@ -91,7 +143,7 @@ export function LoginPage() {
                 setError(null)
               }}
             >
-              <Users size={14} />
+              <Users size={16} />
               Équipe
             </button>
             <button
@@ -104,26 +156,36 @@ export function LoginPage() {
                 setError(null)
               }}
             >
-              <Shield size={14} />
+              <Shield size={16} />
               Direction
             </button>
           </div>
 
           <form onSubmit={handleSubmit} className="login-form" autoComplete="on">
             <label htmlFor="phone">Téléphone</label>
-            <input
-              id="phone"
-              type="tel"
-              inputMode="numeric"
-              autoComplete="username"
-              required
-              value={phone}
-              onChange={(e) => setPhone(normalizePhone(e.target.value))}
-              placeholder={PHONE_PLACEHOLDER}
-            />
+            <div className="login-phone-field">
+              <span className="login-phone-prefix" aria-hidden="true">
+                <span className="login-flag" title="Bénin">
+                  🇧🇯
+                </span>
+                <span className="login-phone-cc">+229</span>
+              </span>
+              <input
+                id="phone"
+                type="tel"
+                inputMode="numeric"
+                autoComplete="username"
+                required
+                value={phone}
+                onChange={(e) => setPhone(normalizePhone(e.target.value))}
+                placeholder={PHONE_PLACEHOLDER}
+              />
+              <Phone className="login-phone-icon" size={16} aria-hidden="true" />
+            </div>
 
             <label htmlFor="password">Mot de passe</label>
             <div className="login-input-wrap">
+              <LockKeyhole className="login-input-leading" size={16} aria-hidden="true" />
               <input
                 id="password"
                 type={showPassword ? 'text' : 'password'}
@@ -148,6 +210,7 @@ export function LoginPage() {
               <>
                 <label htmlFor="accessKey">Clé Direction</label>
                 <div className="login-input-wrap">
+                  <Shield className="login-input-leading" size={16} aria-hidden="true" />
                   <input
                     id="accessKey"
                     type={showKey ? 'text' : 'password'}
@@ -168,14 +231,20 @@ export function LoginPage() {
                   </button>
                 </div>
                 <p className="login-hint">
-                  Clé secrète Direction — connue uniquement de la direction, jamais des admins
-                  ops ni du public.
+                  <LockKeyhole size={13} aria-hidden="true" />
+                  <span>
+                    Clé secrète Direction — connue uniquement de la direction, jamais des admins
+                    ops ni du public.
+                  </span>
                 </p>
               </>
             ) : (
               <p className="login-hint">
-                Compte ops : téléphone + mot de passe. Les fonctions Direction (compta, admins,
-                journal) restent inaccessibles.
+                <LockKeyhole size={13} aria-hidden="true" />
+                <span>
+                  Compte ops : téléphone + mot de passe. Les fonctions Direction (compta, admins,
+                  journal) restent inaccessibles.
+                </span>
               </p>
             )}
 
@@ -194,6 +263,30 @@ export function LoginPage() {
                   : 'Se connecter'}
             </button>
           </form>
+
+          <div className="login-card-footer">
+            <p className="login-footer-label">Sécurité et confidentialité</p>
+            <ul className="login-trust">
+              <li>
+                <span className="login-trust-icon" aria-hidden="true">
+                  <ShieldCheck size={14} />
+                </span>
+                Connexion sécurisée
+              </li>
+              <li>
+                <span className="login-trust-icon" aria-hidden="true">
+                  <UserRound size={14} />
+                </span>
+                Accès réservé et contrôlé
+              </li>
+              <li>
+                <span className="login-trust-icon" aria-hidden="true">
+                  <History size={14} />
+                </span>
+                Activité tracée
+              </li>
+            </ul>
+          </div>
         </div>
       </div>
     </div>

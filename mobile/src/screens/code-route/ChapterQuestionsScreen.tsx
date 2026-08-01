@@ -1,7 +1,18 @@
 import { useFocusEffect, useNavigation, useRoute, type RouteProp } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
-import { Check, ClipboardList, HelpCircle, Square, SquareCheck, X } from 'lucide-react-native'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { setStatusBarStyle } from 'expo-status-bar'
+import {
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  ClipboardList,
+  HelpCircle,
+  Square,
+  SquareCheck,
+  Trophy,
+  X,
+} from 'lucide-react-native'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ActivityIndicator,
   Image,
@@ -11,6 +22,8 @@ import {
   Text,
   View,
 } from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
+import Svg, { Circle } from 'react-native-svg'
 import {
   checkQuestionAnswers,
   fetchChapterQuestions,
@@ -18,11 +31,12 @@ import {
   markChapterTestCompleted,
   type RevisionQuestion,
 } from '../../api/revision'
-import { DarkScreen } from '../../components/DarkScreen'
 import { EmptyState } from '../../components/EmptyState'
 import { AnimatedCheckmark } from '../../components/AnimatedCheckmark'
+import { Bouncy } from '../../components/Bouncy'
 import { ConfettiBurst } from '../../components/ConfettiBurst'
-import { PageNavbar } from '../../components/PageNavbar'
+import { FadeUp } from '../../components/FadeUp'
+import { LegalFooter } from '../../components/LegalFooter'
 import { ScreenLoader } from '../../components/ScreenLoader'
 import { QuestionAudioSequence } from '../../components/QuestionAudioSequence'
 import { QuestionPromptHtml } from '../../components/QuestionPromptHtml'
@@ -30,7 +44,7 @@ import { SkeletonList } from '../../components/Skeleton'
 import { useLeaveGuard } from '../../hooks/useLeaveGuard'
 import { useRequireAuth } from '../../hooks/useRequireAuth'
 import type { RootStackParamList } from '../../navigation/types'
-import { dark, fonts } from '../../theme'
+import { brand, dark, fonts, shadows } from '../../theme'
 import { hapticError, hapticSelect, hapticSuccess } from '../../utils/haptics'
 import { playFailSound, playSuccessSound, stopAllQuizAudio } from '../../utils/quizSounds'
 import { rememberChapterOrder } from '../../data/codeRoute/chapterIndex'
@@ -47,6 +61,50 @@ type ReviewEntry = {
   isCorrect: boolean
 }
 
+function ProgressRing({
+  current,
+  total,
+}: {
+  current: number
+  total: number
+}) {
+  const size = 44
+  const stroke = 3.5
+  const r = (size - stroke) / 2
+  const c = 2 * Math.PI * r
+  const ratio = total > 0 ? Math.min(1, Math.max(0, current / total)) : 0
+  const offset = c * (1 - ratio)
+
+  return (
+    <View style={styles.progressRing} accessibilityLabel={`Question ${current} sur ${total}`}>
+      <Svg width={size} height={size}>
+        <Circle
+          cx={size / 2}
+          cy={size / 2}
+          r={r}
+          stroke="rgba(0,176,80,0.18)"
+          strokeWidth={stroke}
+          fill="#FFFFFF"
+        />
+        <Circle
+          cx={size / 2}
+          cy={size / 2}
+          r={r}
+          stroke={dark.green}
+          strokeWidth={stroke}
+          fill="none"
+          strokeDasharray={`${c} ${c}`}
+          strokeDashoffset={offset}
+          strokeLinecap="round"
+          transform={`rotate(-90 ${size / 2} ${size / 2})`}
+        />
+      </Svg>
+      <Text style={styles.progressRingText} numberOfLines={1}>
+        {current}/{total}
+      </Text>
+    </View>
+  )
+}
 
 export function ChapterQuestionsScreen() {
   const navigation = useNavigation<Nav>()
@@ -143,11 +201,13 @@ export function ChapterQuestionsScreen() {
     } finally {
       setLoadingQuestions(false)
     }
-  }, [chapterId, chapterOrder, chapterName, isTest, subjectNumber])
+  }, [chapterId, chapterOrder, chapterName, isTest, subjectNumber, mode])
 
   useFocusEffect(
     useCallback(() => {
+      setStatusBarStyle('dark')
       if (user) void loadQuestions()
+      return () => setStatusBarStyle('dark')
     }, [user, loadQuestions]),
   )
 
@@ -232,7 +292,7 @@ export function ChapterQuestionsScreen() {
       setResult(null)
       setSequenceLive(true)
     },
-    [chapterId, isTest],
+    [chapterId, isTest, mode, subjectNumber],
   )
 
   const skipMissed = useCallback(async () => {
@@ -274,7 +334,7 @@ export function ChapterQuestionsScreen() {
     } finally {
       setChecking(false)
     }
-  }, [])
+  }, [chapterId, isTest, mode, subjectNumber])
 
   const resolveSelection = useCallback(
     async (ids: string[]) => {
@@ -369,38 +429,83 @@ export function ChapterQuestionsScreen() {
       : 'Quitter ? Votre progression de cette session ne sera pas conservée.',
   )
 
+  const progressPct = useMemo(() => {
+    if (questions.length === 0) return 0
+    return Math.round(((index + 1) / questions.length) * 100)
+  }, [index, questions.length])
+
+  const showQuizChrome =
+    !loadingQuestions && !error && questions.length > 0 && !finished && !reviewing && Boolean(question)
+
+  const canValidate = showQuizChrome && !result && selectedIds.size > 0 && !checking
+  const canAdvance = showQuizChrome && Boolean(result)
+
   if (loading || !user) return <ScreenLoader />
 
-
   return (
-    <DarkScreen>
+    <View style={styles.root}>
+      <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
         <ConfettiBurst active={finished && score.total > 0 && score.correct / score.total >= 0.7} />
-        <PageNavbar
-          title={isTest ? subjectLabel || 'Sujet test' : 'Questions'}
-          icon={isTest ? ClipboardList : HelpCircle}
-          onBack={() => navigation.goBack()}
-          numberOfLines={2}
-        />
+
+        <View style={styles.topBar}>
+          <Pressable
+            style={({ pressed }) => [styles.roundBtn, pressed && styles.pressed]}
+            onPress={() => navigation.goBack()}
+            accessibilityLabel="Retour"
+            hitSlop={8}
+          >
+            <ChevronLeft size={22} color={dark.textPrimary} />
+          </Pressable>
+
+          <View style={styles.topBarCenter}>
+            <View style={styles.topBarIcon}>
+              {isTest ? (
+                <ClipboardList size={15} color={dark.green} />
+              ) : (
+                <HelpCircle size={15} color={dark.green} />
+              )}
+            </View>
+            <Text style={styles.topBarTitle} numberOfLines={1}>
+              {isTest ? subjectLabel || 'Sujet test' : 'Questions'}
+            </Text>
+          </View>
+
+          {showQuizChrome ? (
+            <ProgressRing current={index + 1} total={questions.length} />
+          ) : finished ? (
+            <View style={styles.roundBtn}>
+              <Trophy size={18} color={dark.green} />
+            </View>
+          ) : (
+            <View style={styles.roundBtnSpacer} />
+          )}
+        </View>
 
         <ScrollView
-          contentContainerStyle={styles.scroll}
+          contentContainerStyle={[
+            styles.scroll,
+            showQuizChrome && styles.scrollWithBar,
+          ]}
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
         >
-          <View style={styles.header}>
-            <Text style={styles.kicker}>{isTest ? 'Sujet test' : 'Entraînement'}</Text>
-            <Text style={styles.modeTitle}>
-              {isTest ? subjectLabel || 'Évaluation' : 'Questions'}
-            </Text>
-            {isTest ? (
-              <Text style={styles.subtitle}>
-                Évaluation du chapitre — répondez à chaque question à votre rythme.
+          <FadeUp delay={40}>
+            <View style={styles.header}>
+              <Text style={styles.kicker}>{isTest ? 'Sujet test' : 'Entraînement'}</Text>
+              <Text style={styles.modeTitle}>
+                {isTest ? subjectLabel || 'Évaluation' : 'Questions'}
               </Text>
-            ) : (
-              <Text style={styles.subtitle}>
-                Cochez la ou les bonnes réponses, puis validez.
-              </Text>
-            )}
-          </View>
+              {isTest ? (
+                <Text style={styles.subtitle}>
+                  Évaluation du chapitre — répondez à chaque question à votre rythme.
+                </Text>
+              ) : (
+                <Text style={styles.subtitle}>
+                  Cochez la ou les bonnes réponses, puis validez.
+                </Text>
+              )}
+            </View>
+          </FadeUp>
 
           {loadingQuestions ? (
             <SkeletonList count={3} />
@@ -408,8 +513,8 @@ export function ChapterQuestionsScreen() {
             <View style={styles.centerBox}>
               <Text style={styles.emptyTitle}>Erreur</Text>
               <Text style={styles.emptyText}>{error}</Text>
-              <Pressable style={styles.primaryBtn} onPress={() => void loadQuestions()}>
-                <Text style={styles.primaryBtnText}>Réessayer</Text>
+              <Pressable style={styles.inlinePrimary} onPress={() => void loadQuestions()}>
+                <Text style={styles.inlinePrimaryText}>Réessayer</Text>
               </Pressable>
             </View>
           ) : questions.length === 0 ? (
@@ -431,7 +536,7 @@ export function ChapterQuestionsScreen() {
               {reviewHistory.map((entry, reviewIndex) => (
                 <View key={`${entry.question.id}-${reviewIndex}`} style={styles.reviewCard}>
                   <View style={styles.reviewHead}>
-                    <Text style={styles.progress}>
+                    <Text style={styles.progressLabel}>
                       Q{reviewIndex + 1}
                       {entry.isCorrect ? ' · Correct' : ' · Incorrect'}
                     </Text>
@@ -466,8 +571,8 @@ export function ChapterQuestionsScreen() {
                   })}
                 </View>
               ))}
-              <Pressable style={styles.primaryBtn} onPress={() => setReviewing(false)}>
-                <Text style={styles.primaryBtnText}>Retour au score</Text>
+              <Pressable style={styles.inlinePrimary} onPress={() => setReviewing(false)}>
+                <Text style={styles.inlinePrimaryText}>Retour au score</Text>
               </Pressable>
             </View>
           ) : finished ? (
@@ -499,8 +604,8 @@ export function ChapterQuestionsScreen() {
                 </Text>
               ) : null}
               {reviewHistory.length > 0 ? (
-                <Pressable style={styles.primaryBtn} onPress={() => setReviewing(true)}>
-                  <Text style={styles.primaryBtnText}>Mode correction</Text>
+                <Pressable style={styles.inlinePrimary} onPress={() => setReviewing(true)}>
+                  <Text style={styles.inlinePrimaryText}>Mode correction</Text>
                 </Pressable>
               ) : null}
               <Pressable style={styles.secondaryBtn} onPress={() => void loadQuestions()}>
@@ -514,41 +619,53 @@ export function ChapterQuestionsScreen() {
               </Pressable>
             </View>
           ) : question ? (
-            <View>
-              <Text style={styles.progress}>
-                Question {index + 1} / {questions.length}
-              </Text>
+            <FadeUp delay={80}>
+              <View style={styles.progressBlock}>
+                <Text style={styles.progressLabel}>
+                  Question {index + 1} / {questions.length}
+                </Text>
+                <View style={styles.progressRow}>
+                  <View style={styles.progressTrack}>
+                    <View style={[styles.progressFill, { width: `${progressPct}%` }]} />
+                  </View>
+                  <Text style={styles.progressPct}>{progressPct} %</Text>
+                </View>
+              </View>
 
-              <View style={styles.promptCard}>
-                <Text style={styles.promptLabel}>Énonce</Text>
-                {(question.correctCount ?? 1) > 1 ? (
-                  <Text style={styles.multiBadge}>
-                    {question.correctCount} bonnes réponses à cocher
-                  </Text>
-                ) : null}
-                {question.prompt.text ? (
+              {(question.correctCount ?? 1) > 1 ? (
+                <Text style={styles.multiBadge}>
+                  {question.correctCount} bonnes réponses à cocher
+                </Text>
+              ) : null}
+
+              {question.prompt.text ? (
+                <View style={styles.promptTextCard}>
                   <QuestionPromptHtml text={question.prompt.text} style={styles.promptText} />
-                ) : null}
-                {sequenceLive && !result ? (
+                </View>
+              ) : null}
+
+              {sequenceLive && !result ? (
+                <View style={styles.audioWrap}>
                   <QuestionAudioSequence
                     questionKey={question.id}
                     promptUri={question.prompt?.audioUrl}
                     onSequenceComplete={handleSequenceComplete}
                   />
-                ) : null}
-                {resolvedImages.length > 0 ? (
-                  <View style={styles.images}>
-                    {resolvedImages.map((img) => (
-                      <Image
-                        key={img.key}
-                        source={{ uri: img.uri }}
-                        style={styles.image}
-                        resizeMode="contain"
-                      />
-                    ))}
-                  </View>
-                ) : null}
-              </View>
+                </View>
+              ) : null}
+
+              {resolvedImages.length > 0 ? (
+                <View style={styles.images}>
+                  {resolvedImages.map((img) => (
+                    <Image
+                      key={img.key}
+                      source={{ uri: img.uri }}
+                      style={styles.image}
+                      resizeMode="contain"
+                    />
+                  ))}
+                </View>
+              ) : null}
 
               <Text style={styles.answersTitle}>Choisissez la ou les bonnes réponses</Text>
               {!result ? (
@@ -566,23 +683,26 @@ export function ChapterQuestionsScreen() {
                 return (
                   <Pressable
                     key={answer.id}
-                    style={[
+                    style={({ pressed }) => [
                       styles.answerRow,
                       selected && !result && styles.answerSelected,
                       showCorrect && styles.answerCorrect,
                       showWrong && styles.answerWrong,
+                      pressed && !result && !checking && styles.answerPressed,
                     ]}
                     onPress={() => toggleAnswer(answer.id)}
                     disabled={Boolean(result) || checking}
+                    accessibilityRole="checkbox"
+                    accessibilityState={{ checked: selected }}
                   >
                     <View style={styles.answerLeft}>
                       {selected ? (
                         <SquareCheck
-                          size={20}
+                          size={24}
                           color={showWrong ? dark.coral : dark.green}
                         />
                       ) : (
-                        <Square size={20} color={dark.textMuted} />
+                        <Square size={24} color="rgba(0,16,48,0.28)" />
                       )}
                       <View style={styles.answerCopy}>
                         <Text style={styles.answerLabel}>{answer.label.toUpperCase()}</Text>
@@ -613,73 +733,278 @@ export function ChapterQuestionsScreen() {
                   </Text>
                 </View>
               ) : null}
+            </FadeUp>
+          ) : null}
 
-              {!result && selectedIds.size > 0 ? (
-                <Pressable
-                  style={[styles.primaryBtn, checking && styles.primaryBtnDisabled]}
-                  disabled={checking}
-                  onPress={handleContinue}
-                >
-                  {checking ? (
-                    <ActivityIndicator color={'#0B0F1A'} />
-                  ) : (
-                    <Text style={styles.primaryBtnText}>Valider</Text>
-                  )}
-                </Pressable>
-              ) : null}
-              {result ? (
-                <Pressable
-                  style={styles.primaryBtn}
-                  onPress={() => void finishOrAdvance(score)}
-                >
-                  <Text style={styles.primaryBtnText}>
+          <LegalFooter />
+        </ScrollView>
+
+        {showQuizChrome ? (
+          <View style={styles.bottomBar}>
+            {canAdvance ? (
+              <Bouncy
+                scaleTo={0.98}
+                style={styles.validateFlex}
+                onPress={() => void finishOrAdvance(score)}
+              >
+                <View style={styles.validateBtn}>
+                  <Text style={styles.validateBtnText}>
                     {index + 1 >= questions.length ? 'Voir le score' : 'Question suivante'}
                   </Text>
-                </Pressable>
-              ) : null}
-            </View>
-          ) : null}
-        </ScrollView>
-      </DarkScreen>
+                  <ChevronRight size={20} color="#FFFFFF" />
+                </View>
+              </Bouncy>
+            ) : (
+              <Bouncy
+                scaleTo={0.98}
+                style={styles.validateFlex}
+                disabled={!canValidate}
+                onPress={handleContinue}
+              >
+                <View style={[styles.validateBtn, !canValidate && styles.validateBtnDisabled]}>
+                  {checking ? (
+                    <ActivityIndicator color="#FFFFFF" />
+                  ) : (
+                    <Text style={styles.validateBtnText}>Valider</Text>
+                  )}
+                </View>
+              </Bouncy>
+            )}
+          </View>
+        ) : null}
+      </SafeAreaView>
+    </View>
   )
 }
 
 const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+  },
+  safe: {
+    flex: 1,
+  },
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingTop: 4,
+    paddingBottom: 8,
+  },
+  roundBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 999,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+    ...shadows.sm,
+  },
+  roundBtnSpacer: {
+    width: 44,
+    height: 44,
+  },
+  topBarCenter: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingHorizontal: 8,
+  },
+  topBarIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 9,
+    backgroundColor: brand.greenPale,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  topBarTitle: {
+    flexShrink: 1,
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 17,
+    color: dark.textPrimary,
+  },
+  progressRing: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  progressRingText: {
+    position: 'absolute',
+    fontFamily: fonts.bodyBold,
+    fontSize: 10,
+    color: dark.textPrimary,
+  },
   scroll: {
-    paddingHorizontal: 22,
+    paddingHorizontal: 20,
     paddingTop: 8,
-    paddingBottom: 36,
+    paddingBottom: 24,
+  },
+  scrollWithBar: {
+    paddingBottom: 110,
   },
   header: {
-    marginBottom: 20,
+    marginBottom: 24,
   },
   kicker: {
     fontFamily: fonts.bodySemiBold,
-    fontSize: 13,
+    fontSize: 16,
     color: dark.green,
-    letterSpacing: 0.3,
-    marginBottom: 4,
+    marginBottom: 6,
   },
   modeTitle: {
     fontFamily: fonts.displayExtraBold,
-    fontSize: 24,
-    lineHeight: 30,
+    fontSize: 32,
+    lineHeight: 38,
     color: dark.textPrimary,
-    letterSpacing: -0.4,
+    letterSpacing: -0.6,
   },
   subtitle: {
+    fontFamily: fonts.body,
+    fontSize: 16,
+    lineHeight: 22,
+    color: dark.textMuted,
+    marginTop: 8,
+  },
+  progressBlock: {
+    marginBottom: 16,
+    gap: 8,
+  },
+  progressLabel: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: 14,
+    color: dark.textMuted,
+  },
+  progressRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  progressTrack: {
+    flex: 1,
+    height: 6,
+    borderRadius: 999,
+    backgroundColor: 'rgba(0,16,48,0.08)',
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    borderRadius: 999,
+    backgroundColor: dark.green,
+  },
+  progressPct: {
+    minWidth: 40,
+    textAlign: 'right',
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 13,
+    color: dark.textMuted,
+  },
+  multiBadge: {
+    alignSelf: 'flex-start',
+    marginBottom: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+    backgroundColor: dark.greenSoft,
+    color: dark.green,
+    fontFamily: fonts.bodyBold,
+    fontSize: 12,
+    overflow: 'hidden',
+  },
+  promptTextCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
+    ...shadows.sm,
+  },
+  promptText: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 16,
+    lineHeight: 24,
+    color: dark.textPrimary,
+  },
+  audioWrap: {
+    marginBottom: 16,
+  },
+  images: {
+    gap: 10,
+    marginBottom: 16,
+  },
+  image: {
+    width: '100%',
+    aspectRatio: 16 / 10,
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+  },
+  answersTitle: {
+    fontFamily: fonts.bodyBold,
+    fontSize: 17,
+    color: dark.textPrimary,
+    marginBottom: 6,
+  },
+  hintText: {
     fontFamily: fonts.body,
     fontSize: 14,
     lineHeight: 20,
     color: dark.textMuted,
-    marginTop: 8,
+    marginBottom: 16,
   },
-  progress: {
-    fontFamily: fonts.bodyBold,
-    fontSize: 13,
-    color: dark.textMuted,
+  answerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: 'transparent',
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 16,
+    paddingHorizontal: 16,
     marginBottom: 12,
-    letterSpacing: 0.4,
+    minHeight: 56,
+    ...shadows.sm,
+  },
+  answerSelected: {
+    borderColor: dark.green,
+    backgroundColor: brand.greenPale,
+  },
+  answerCorrect: {
+    borderColor: dark.green,
+    backgroundColor: brand.greenPale,
+  },
+  answerWrong: {
+    borderColor: dark.coral,
+    backgroundColor: dark.coralSoft,
+  },
+  answerPressed: {
+    opacity: 0.92,
+    transform: [{ scale: 0.99 }],
+  },
+  answerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  answerCopy: {
+    flex: 1,
+    gap: 2,
+  },
+  answerLabel: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 16,
+    color: dark.textPrimary,
+  },
+  answerText: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: 14,
+    lineHeight: 20,
+    color: dark.textPrimary,
   },
   reviewWrap: {
     gap: 12,
@@ -687,11 +1012,10 @@ const styles = StyleSheet.create({
   },
   reviewCard: {
     borderRadius: 16,
-    borderWidth: 1,
-    borderColor: dark.border,
-    backgroundColor: dark.surface,
+    backgroundColor: '#FFFFFF',
     padding: 14,
     gap: 8,
+    ...shadows.sm,
   },
   reviewHead: {
     flexDirection: 'row',
@@ -704,113 +1028,12 @@ const styles = StyleSheet.create({
     color: dark.textMuted,
     marginTop: 4,
   },
-  promptCard: {
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: dark.border,
-    backgroundColor: dark.surface,
-    padding: 16,
-    marginBottom: 20,
-    gap: 12,
-  },
-  multiBadge: {
-    alignSelf: 'flex-start',
-    marginBottom: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 999,
-    backgroundColor: dark.greenSoft,
-    color: dark.green,
-    fontFamily: fonts.bodyBold,
-    fontSize: 12,
-    overflow: 'hidden',
-  },
-  promptLabel: {
-    fontFamily: fonts.bodyBold,
-    fontSize: 12,
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-    color: dark.textMuted,
-  },
-  promptText: {
-    fontFamily: fonts.bodySemiBold,
-    fontSize: 16,
-    lineHeight: 24,
-    color: dark.textPrimary,
-  },
-  images: {
-    gap: 10,
-  },
-  image: {
-    width: '100%',
-    aspectRatio: 16 / 10,
-    borderRadius: 12,
-    backgroundColor: dark.surfaceRaised,
-  },
-  answersTitle: {
-    fontFamily: fonts.bodyBold,
-    fontSize: 15,
-    color: dark.textPrimary,
-    marginBottom: 6,
-  },
-  hintText: {
-    fontFamily: fonts.body,
-    fontSize: 13,
-    lineHeight: 18,
-    color: dark.textMuted,
-    marginBottom: 12,
-  },
-  answerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: dark.border,
-    backgroundColor: dark.surfaceRaised,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    marginBottom: 10,
-  },
-  answerSelected: {
-    borderColor: 'rgba(34,214,115,0.45)',
-    backgroundColor: dark.greenSoft,
-  },
-  answerCorrect: {
-    borderColor: 'rgba(34,214,115,0.55)',
-    backgroundColor: dark.greenSoft,
-  },
-  answerWrong: {
-    borderColor: dark.coral,
-    backgroundColor: dark.coralSoft,
-  },
-  answerLeft: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 8,
-    flex: 1,
-  },
-  answerCopy: {
-    flex: 1,
-    gap: 2,
-  },
-  answerLabel: {
-    fontFamily: fonts.displayBold,
-    fontSize: 16,
-    color: dark.textPrimary,
-  },
-  answerText: {
-    fontFamily: fonts.bodyMedium,
-    fontSize: 14,
-    lineHeight: 20,
-    color: dark.textPrimary,
-  },
   feedback: {
-    borderRadius: 12,
+    borderRadius: 14,
     paddingVertical: 12,
     paddingHorizontal: 14,
     marginTop: 4,
-    marginBottom: 12,
+    marginBottom: 8,
   },
   feedbackOk: {
     backgroundColor: dark.greenSoft,
@@ -829,31 +1052,67 @@ const styles = StyleSheet.create({
   feedbackTextKo: {
     color: dark.coral,
   },
-  primaryBtn: {
+  bottomBar: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 12,
+    backgroundColor: '#FFFFFF',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0,16,48,0.06)',
+    ...shadows.md,
+  },
+  validateFlex: {
+    flex: 1,
+  },
+  validateBtn: {
+    minHeight: 52,
+    borderRadius: 16,
+    backgroundColor: dark.green,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingHorizontal: 16,
+  },
+  validateBtnDisabled: {
+    opacity: 0.4,
+  },
+  validateBtnText: {
+    color: '#FFFFFF',
+    fontFamily: fonts.bodyBold,
+    fontSize: 16,
+  },
+  inlinePrimary: {
     marginTop: 8,
-    borderRadius: 14,
+    borderRadius: 16,
     backgroundColor: dark.green,
     paddingVertical: 14,
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: 48,
+    paddingHorizontal: 20,
   },
-  primaryBtnDisabled: {
-    opacity: 0.45,
-  },
-  primaryBtnText: {
-    color: '#0B0F1A',
-    fontFamily: fonts.displayBold,
+  inlinePrimaryText: {
+    color: '#FFFFFF',
+    fontFamily: fonts.bodyBold,
     fontSize: 16,
   },
   secondaryBtn: {
     marginTop: 10,
-    borderRadius: 14,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: dark.border,
     paddingVertical: 14,
     alignItems: 'center',
-    backgroundColor: dark.surface,
+    backgroundColor: '#FFFFFF',
+    alignSelf: 'stretch',
   },
   secondaryBtnText: {
     color: dark.textPrimary,
@@ -885,5 +1144,8 @@ const styles = StyleSheet.create({
     fontSize: 22,
     color: dark.green,
     marginBottom: 20,
+  },
+  pressed: {
+    opacity: 0.9,
   },
 })

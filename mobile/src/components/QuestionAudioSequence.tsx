@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from 'react'
-import { StyleSheet, Text, View } from 'react-native'
-import { dark, fonts } from '../theme'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Animated, Easing, StyleSheet, Text, View } from 'react-native'
+import { Mic, Pause, Play } from 'lucide-react-native'
+import { brand, dark, fonts, shadows } from '../theme'
 import { ensureAudioSession } from '../utils/audioSession'
 import { resolveQuestionPromptUri } from '../utils/questionAudio'
 import {
@@ -37,6 +38,7 @@ type Player = {
 type AudioModule = typeof import('expo-audio')
 
 const PAUSE_MS = 600
+const WAVE_BARS = [0.35, 0.7, 0.5, 0.95, 0.45, 0.8, 0.55, 0.9, 0.4, 0.75, 0.6, 0.85, 0.5, 0.7, 0.4]
 
 function cleanUri(uri?: string | null) {
   return uri?.trim() || ''
@@ -116,6 +118,65 @@ async function playUntilEnd(player: Player, isCancelled?: () => boolean) {
   })
 }
 
+function AudioWaveform({ active }: { active: boolean }) {
+  const anims = useMemo(
+    () => WAVE_BARS.map(() => new Animated.Value(0.35)),
+    [],
+  )
+
+  useEffect(() => {
+    if (!active) {
+      anims.forEach((v) => v.setValue(0.35))
+      return
+    }
+    const loops = anims.map((value, i) =>
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(value, {
+            toValue: 1,
+            duration: 320 + (i % 5) * 40,
+            easing: Easing.inOut(Easing.quad),
+            useNativeDriver: true,
+          }),
+          Animated.timing(value, {
+            toValue: 0.28,
+            duration: 280 + (i % 4) * 35,
+            easing: Easing.inOut(Easing.quad),
+            useNativeDriver: true,
+          }),
+        ]),
+      ),
+    )
+    loops.forEach((loop, i) => {
+      setTimeout(() => loop.start(), i * 45)
+    })
+    return () => {
+      loops.forEach((loop) => loop.stop())
+    }
+  }, [active, anims])
+
+  return (
+    <View style={styles.waveRow} accessibilityElementsHidden>
+      {WAVE_BARS.map((base, i) => (
+        <Animated.View
+          key={`bar-${i}`}
+          style={[
+            styles.waveBar,
+            {
+              height: 28 * base,
+              transform: [
+                {
+                  scaleY: anims[i],
+                },
+              ],
+            },
+          ]}
+        />
+      ))}
+    </View>
+  )
+}
+
 /**
  * Lance l’audio automatiquement (×2), puis décompte 5→0.
  * Démonter le composant (Continuer / fin) annule tout.
@@ -133,6 +194,10 @@ export function QuestionAudioSequence({
   const completeRef = useRef(onSequenceComplete)
   completeRef.current = onSequenceComplete
   const isCancelled = () => cancelledRef.current
+
+  const listening =
+    status.includes('écoute') || status.includes('Chargement') || status.includes('Décompte')
+  const playing = status.includes('écoute')
 
   useEffect(() => {
     cancelledRef.current = false
@@ -223,26 +288,102 @@ export function QuestionAudioSequence({
   }, [questionKey, promptUri, offlineOnly])
 
   return (
-    <View style={styles.wrap}>
-      {countdown !== null ? <Text style={styles.countdown}>{countdown}</Text> : null}
-      {status ? <Text style={styles.status}>{status}</Text> : null}
+    <View style={styles.card}>
+      <View style={styles.cardHead}>
+        <View style={styles.micCircle}>
+          <Mic size={16} color="#FFFFFF" />
+        </View>
+        <Text style={styles.enonce}>ÉNONCÉ</Text>
+      </View>
+
+      {countdown !== null ? (
+        <Text style={styles.countdown}>{countdown}</Text>
+      ) : (
+        <Text style={styles.status}>{status || 'Préparation…'}</Text>
+      )}
+
+      <View style={styles.controls}>
+        <AudioWaveform active={listening && countdown === null} />
+        <View style={styles.playBtn} accessibilityElementsHidden>
+          {playing ? (
+            <Pause size={18} color="#FFFFFF" fill="#FFFFFF" />
+          ) : (
+            <Play size={18} color="#FFFFFF" fill="#FFFFFF" />
+          )}
+        </View>
+      </View>
     </View>
   )
 }
 
 const styles = StyleSheet.create({
-  wrap: { gap: 8, marginBottom: 8, alignItems: 'center' },
+  card: {
+    backgroundColor: brand.greenPale,
+    borderRadius: 16,
+    padding: 16,
+    gap: 12,
+    ...shadows.sm,
+  },
+  cardHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  micCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 999,
+    backgroundColor: dark.green,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  enonce: {
+    fontFamily: fonts.bodyBold,
+    fontSize: 12,
+    letterSpacing: 1,
+    color: dark.green,
+    textTransform: 'uppercase',
+  },
+  status: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 15,
+    color: dark.textPrimary,
+    textAlign: 'center',
+  },
   countdown: {
     fontFamily: fonts.displayExtraBold,
-    fontSize: 72,
-    lineHeight: 80,
+    fontSize: 56,
+    lineHeight: 64,
     color: dark.green,
     textAlign: 'center',
   },
-  status: {
-    fontSize: 13,
-    color: dark.textMuted,
-    fontFamily: fonts.bodySemiBold,
-    textAlign: 'center',
+  controls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    minHeight: 48,
+  },
+  waveRow: {
+    flex: 1,
+    height: 36,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 3,
+  },
+  waveBar: {
+    width: 3.5,
+    borderRadius: 999,
+    backgroundColor: dark.green,
+    opacity: 0.85,
+  },
+  playBtn: {
+    width: 48,
+    height: 48,
+    borderRadius: 999,
+    backgroundColor: dark.green,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...shadows.sm,
   },
 })

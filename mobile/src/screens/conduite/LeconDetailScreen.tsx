@@ -1,25 +1,83 @@
-import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native'
+import { useFocusEffect, useNavigation, useRoute, type RouteProp } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
-import { BookOpen, Check, ChevronRight } from 'lucide-react-native'
+import { setStatusBarStyle } from 'expo-status-bar'
+import {
+  BookOpen,
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  Lock,
+  User,
+} from 'lucide-react-native'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
 import {
   fetchCourseProgress,
   markCourseCompleted,
   startCourseSession,
 } from '../../api/conduite'
+import { Bouncy } from '../../components/Bouncy'
+import { EmptyState } from '../../components/EmptyState'
+import { FadeUp } from '../../components/FadeUp'
+import { LegalFooter } from '../../components/LegalFooter'
 import { MediaContent } from '../../components/MediaContent'
-import { DarkScreen } from '../../components/DarkScreen'
-import { PageNavbar } from '../../components/PageNavbar'
 import { ScreenLoader } from '../../components/ScreenLoader'
+import { CourseDetailSkeleton } from '../../components/Skeleton'
 import { useRequireAuth } from '../../hooks/useRequireAuth'
 import type { RootStackParamList } from '../../navigation/types'
-import { dark, fonts } from '../../theme'
+import { brand, dark, fonts, shadows } from '../../theme'
 import { formatChapterHeading, formatCourseHeading } from '../../utils/chapterLabel'
 import { formatSeconds, isCourseUnlocked } from '../../utils/unlock'
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'LeconDetail'>
 type Route = RouteProp<RootStackParamList, 'LeconDetail'>
+
+const ORANGE = '#F97316'
+const ORANGE_SOFT = '#FFF7ED'
+
+function CourseProgressSteps({
+  courses,
+  currentId,
+  completedIds,
+}: {
+  courses: { id: string }[]
+  currentId: string
+  completedIds: Set<string>
+}) {
+  if (courses.length === 0) return null
+
+  return (
+    <View
+      style={styles.stepsRow}
+      accessibilityRole="progressbar"
+      accessibilityLabel={`Cours ${courses.findIndex((c) => c.id === currentId) + 1} sur ${courses.length}`}
+    >
+      {courses.map((item) => {
+        const done = completedIds.has(item.id)
+        const current = item.id === currentId && !done
+        return (
+          <View
+            key={item.id}
+            style={[
+              styles.step,
+              done && styles.stepDone,
+              current && styles.stepCurrent,
+              !done && !current && styles.stepUpcoming,
+            ]}
+          />
+        )
+      })}
+    </View>
+  )
+}
 
 export function LeconDetailScreen() {
   const navigation = useNavigation<Nav>()
@@ -84,6 +142,13 @@ export function LeconDetailScreen() {
     return () => clearInterval(timer)
   }, [isCompleted, progressLoading, accessBlocked, course.id])
 
+  useFocusEffect(
+    useCallback(() => {
+      setStatusBarStyle('dark')
+      return () => setStatusBarStyle('dark')
+    }, []),
+  )
+
   const handleToggleComplete = async () => {
     if (isCompleted || saving || !canValidate) return
     setSaving(true)
@@ -100,35 +165,61 @@ export function LeconDetailScreen() {
 
   if (loading || !user) return <ScreenLoader />
 
+  const headerTitle = formatCourseHeading(courseIndex, course.title)
+
+  const topBar = (
+    <View style={styles.topBar}>
+      <Pressable
+        style={({ pressed }) => [styles.roundBtn, pressed && styles.pressed]}
+        onPress={() => navigation.goBack()}
+        accessibilityLabel="Retour"
+        hitSlop={8}
+      >
+        <ChevronLeft size={22} color={dark.textPrimary} />
+      </Pressable>
+      <View style={styles.topBarCenter}>
+        <View style={styles.topBarIcon}>
+          <BookOpen size={15} color={ORANGE} />
+        </View>
+        <Text style={styles.topBarTitle} numberOfLines={2}>
+          {headerTitle}
+        </Text>
+      </View>
+      <Pressable
+        style={({ pressed }) => [styles.roundBtn, pressed && styles.pressed]}
+        onPress={() => navigation.navigate('Profile')}
+        accessibilityLabel="Profil"
+        hitSlop={8}
+      >
+        <User size={19} color={dark.textMuted} />
+      </Pressable>
+    </View>
+  )
+
   if (accessBlocked) {
     return (
-      <DarkScreen>
-          <PageNavbar
-            title={formatCourseHeading(courseIndex, course.title)}
-            icon={BookOpen}
-            onBack={() => navigation.goBack()}
-            tone="drive"
-            numberOfLines={2}
-          />
+      <View style={styles.root}>
+        <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+          {topBar}
           <View style={styles.centerBox}>
-            <Text style={styles.emptyTitle}>Cours verrouillé</Text>
-            <Text style={styles.emptyText}>
-              Terminez le cours précédent pour accéder à celui-ci.
-            </Text>
+            <EmptyState
+              icon={<Lock size={30} color={dark.textMuted} />}
+              title="Cours verrouillé"
+              message="Terminez le cours précédent pour accéder à celui-ci."
+            />
           </View>
-        </DarkScreen>
+          <View style={styles.footerPad}>
+            <LegalFooter />
+          </View>
+        </SafeAreaView>
+      </View>
     )
   }
 
   return (
-    <DarkScreen>
-        <PageNavbar
-          title={formatCourseHeading(courseIndex, course.title)}
-          icon={BookOpen}
-          onBack={() => navigation.goBack()}
-          tone="drive"
-          numberOfLines={2}
-        />
+    <View style={styles.root}>
+      <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+        {topBar}
 
         <ScrollView
           contentContainerStyle={styles.scroll}
@@ -136,227 +227,340 @@ export function LeconDetailScreen() {
           nestedScrollEnabled
           removeClippedSubviews={false}
         >
-          <View style={styles.header}>
-            <Text style={styles.kicker}>{formatChapterHeading(chapterName)}</Text>
-            <View style={styles.accentRow}>
-              <View style={[styles.accent, styles.accentGreen]} />
-              <View style={[styles.accent, styles.accentGold]} />
-              <View style={[styles.accent, styles.accentNavy]} />
+          <FadeUp delay={40}>
+            <View style={styles.header}>
+              <Text style={styles.heroTitle}>{formatChapterHeading(chapterName)}</Text>
+              <CourseProgressSteps
+                courses={courses}
+                currentId={course.id}
+                completedIds={completedIds}
+              />
             </View>
-          </View>
+          </FadeUp>
 
           {course.modules.length === 0 ? (
-            <View style={styles.centerBox}>
-              <Text style={styles.emptyTitle}>Contenu à venir</Text>
-              <Text style={styles.emptyText}>
-                Ce cours ne contient pas encore de modules publiés.
-              </Text>
-            </View>
+            <EmptyState
+              icon={<BookOpen size={30} color={ORANGE} />}
+              title="Contenu à venir"
+              message="Ce cours ne contient pas encore de modules publiés."
+            />
           ) : (
-            course.modules.map((module) => {
+            course.modules.map((module, index) => {
               const moduleTitle = (module.title || module.name || '').trim()
               const showModuleTitle =
                 moduleTitle.length > 0 &&
                 moduleTitle.toLowerCase() !== course.title.trim().toLowerCase()
 
               return (
-                <View key={module.id} style={styles.moduleCard}>
-                  <MediaContent
-                    title={showModuleTitle ? moduleTitle : undefined}
-                    videoUrl={module.mediaType === 'image' ? '' : module.videoUrl}
-                    imageUrl={module.mediaType === 'video' ? '' : module.imageUrl}
-                    text={module.text}
-                  />
-                </View>
+                <FadeUp key={module.id} delay={80 + index * 40}>
+                  <View style={styles.moduleCard}>
+                    <MediaContent
+                      title={showModuleTitle ? moduleTitle : undefined}
+                      videoUrl={module.mediaType === 'image' ? '' : module.videoUrl}
+                      imageUrl={module.mediaType === 'video' ? '' : module.imageUrl}
+                      text={module.text}
+                    />
+                  </View>
+                </FadeUp>
               )
             })
           )}
 
-          <View style={styles.completionCard}>
-            <Text style={styles.completionTitle}>Validation du cours</Text>
-            <Text style={styles.completionHint}>
-              {isCompleted
-                ? 'Cours validé. Le cours suivant est débloqué.'
-                : secondsRemaining > 0
-                  ? `Restez au moins 5 minutes sur ce cours. Encore ${formatSeconds(secondsRemaining)} avant de pouvoir valider.`
-                  : 'Vous pouvez maintenant valider ce cours pour débloquer la suite.'}
-            </Text>
-
-            {progressLoading ? (
-              <ActivityIndicator color={dark.green} style={{ marginTop: 12 }} />
-            ) : (
-              <Pressable
-                style={[
-                  styles.checkboxRow,
-                  isCompleted && styles.checkboxRowDone,
-                  !canValidate && !isCompleted && styles.checkboxRowLocked,
-                ]}
-                onPress={() => void handleToggleComplete()}
-                disabled={isCompleted || saving || !canValidate}
-                accessibilityRole="checkbox"
-                accessibilityState={{ checked: isCompleted }}
-              >
-                <View style={[styles.checkbox, isCompleted && styles.checkboxChecked]}>
-                  {isCompleted ? <Check size={16} color={'#0B0F1A'} strokeWidth={3} /> : null}
+          {progressLoading ? (
+            <View style={styles.validationSkeleton}>
+              <CourseDetailSkeleton />
+            </View>
+          ) : (
+            <FadeUp delay={160}>
+              <View style={styles.completionCard}>
+                <View style={styles.completionHead}>
+                  <View style={styles.completionIcon}>
+                    <Check size={18} color={dark.green} strokeWidth={3} />
+                  </View>
+                  <View style={styles.completionHeadCopy}>
+                    <Text style={styles.completionTitle}>Validation du cours</Text>
+                    <Text style={styles.completionHint}>
+                      {isCompleted
+                        ? 'Cours validé. Le cours suivant est débloqué.'
+                        : secondsRemaining > 0
+                          ? `Restez au moins 5 minutes sur ce cours. Encore ${formatSeconds(secondsRemaining)} avant de pouvoir valider.`
+                          : 'Vous pouvez maintenant valider ce cours pour débloquer la suite.'}
+                    </Text>
+                  </View>
                 </View>
-                <Text style={styles.checkboxLabel}>
-                  {isCompleted
-                    ? 'Cours validé — vous pouvez continuer'
-                    : !canValidate
-                      ? `Attendez encore ${formatSeconds(secondsRemaining)}`
-                      : 'J’ai terminé ce cours et je suis prêt pour la suite'}
-                </Text>
-                {saving ? <ActivityIndicator size="small" color={dark.green} /> : null}
-              </Pressable>
-            )}
 
-            {error ? <Text style={styles.errorText}>{error}</Text> : null}
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.checkboxRow,
+                    isCompleted && styles.checkboxRowDone,
+                    !canValidate && !isCompleted && styles.checkboxRowLocked,
+                    pressed && !isCompleted && canValidate && styles.checkboxPressed,
+                  ]}
+                  onPress={() => void handleToggleComplete()}
+                  disabled={isCompleted || saving || !canValidate}
+                  accessibilityRole="checkbox"
+                  accessibilityState={{ checked: isCompleted }}
+                >
+                  <View style={[styles.checkbox, isCompleted && styles.checkboxChecked]}>
+                    {isCompleted ? <Check size={14} color="#FFFFFF" strokeWidth={3} /> : null}
+                  </View>
+                  <Text style={styles.checkboxLabel}>
+                    {isCompleted
+                      ? 'Cours validé — vous pouvez continuer'
+                      : !canValidate
+                        ? `Attendez encore ${formatSeconds(secondsRemaining)}`
+                        : 'J’ai terminé ce cours et je suis prêt à passer au suivant.'}
+                  </Text>
+                  {saving ? (
+                    <ActivityIndicator size="small" color={dark.green} />
+                  ) : (
+                    <ChevronRight size={18} color={dark.green} />
+                  )}
+                </Pressable>
 
-            {isCompleted ? (
-              <View style={styles.actions}>
-                {nextCourse ? (
-                  <Pressable
-                    style={styles.primaryBtn}
-                    onPress={() =>
-                      navigation.replace('LeconDetail', {
-                        chapterId,
-                        chapterName,
-                        course: nextCourse,
-                        courses,
-                      })
-                    }
+                {error ? (
+                  <View style={styles.errorBox}>
+                    <Text style={styles.errorText}>{error}</Text>
+                    <Pressable onPress={() => void loadProgress()} hitSlop={8}>
+                      <Text style={styles.errorRetry}>Réessayer</Text>
+                    </Pressable>
+                  </View>
+                ) : null}
+
+                {!isCompleted ? (
+                  <Bouncy
+                    scaleTo={0.98}
+                    disabled={saving || !canValidate}
+                    onPress={() => void handleToggleComplete()}
                   >
-                    <Text style={styles.primaryBtnText}>Cours suivant</Text>
-                    <ChevronRight size={18} color={'#0B0F1A'} />
-                  </Pressable>
+                    <View
+                      style={[
+                        styles.primaryBtn,
+                        (saving || !canValidate) && styles.primaryBtnDisabled,
+                      ]}
+                    >
+                      <View style={styles.primaryBtnIcon}>
+                        {saving ? (
+                          <ActivityIndicator size="small" color={dark.green} />
+                        ) : (
+                          <Check size={16} color={dark.green} strokeWidth={3} />
+                        )}
+                      </View>
+                      <Text style={styles.primaryBtnText}>Valider ce cours</Text>
+                    </View>
+                  </Bouncy>
                 ) : (
-                  <Pressable
-                    style={styles.secondaryBtn}
-                    onPress={() => navigation.navigate('LeconsChapitres')}
-                  >
-                    <Text style={styles.secondaryBtnText}>Retour aux chapitres</Text>
-                  </Pressable>
+                  <View style={styles.actions}>
+                    {nextCourse ? (
+                      <Bouncy
+                        scaleTo={0.98}
+                        onPress={() =>
+                          navigation.replace('LeconDetail', {
+                            chapterId,
+                            chapterName,
+                            course: nextCourse,
+                            courses,
+                          })
+                        }
+                      >
+                        <View style={styles.primaryBtn}>
+                          <Text style={styles.primaryBtnText}>Cours suivant</Text>
+                          <ChevronRight size={20} color="#FFFFFF" />
+                        </View>
+                      </Bouncy>
+                    ) : (
+                      <Pressable
+                        style={styles.secondaryBtn}
+                        onPress={() => navigation.navigate('LeconsChapitres')}
+                      >
+                        <Text style={styles.secondaryBtnText}>Retour aux chapitres</Text>
+                      </Pressable>
+                    )}
+                  </View>
                 )}
               </View>
-            ) : null}
-          </View>
+            </FadeUp>
+          )}
+
+          <LegalFooter />
         </ScrollView>
-      </DarkScreen>
+      </SafeAreaView>
+    </View>
   )
 }
 
 const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+  },
+  safe: {
+    flex: 1,
+  },
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingTop: 4,
+    paddingBottom: 8,
+    gap: 8,
+  },
+  roundBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 999,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+    ...shadows.sm,
+  },
+  topBarCenter: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingHorizontal: 4,
+    minWidth: 0,
+  },
+  topBarIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 9,
+    backgroundColor: ORANGE_SOFT,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  topBarTitle: {
+    flexShrink: 1,
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 16,
+    lineHeight: 20,
+    color: dark.textPrimary,
+  },
   scroll: {
-    paddingHorizontal: 22,
+    paddingHorizontal: 24,
     paddingTop: 8,
     paddingBottom: 28,
   },
+  footerPad: {
+    paddingHorizontal: 24,
+    paddingBottom: 8,
+  },
   header: {
-    marginBottom: 20,
+    marginBottom: 24,
   },
-  kicker: {
+  heroTitle: {
     fontFamily: fonts.displayExtraBold,
-    fontSize: 24,
-    letterSpacing: -0.3,
+    fontSize: 28,
+    lineHeight: 34,
+    letterSpacing: -0.5,
     color: dark.textPrimary,
-    marginBottom: 6,
-    lineHeight: 30,
+    marginBottom: 16,
+    maxWidth: 360,
   },
-  accentRow: {
+  stepsRow: {
     flexDirection: 'row',
     gap: 6,
   },
-  accent: {
-    height: 4,
+  step: {
+    flex: 1,
+    height: 6,
     borderRadius: 999,
+    maxWidth: 56,
   },
-  accentGreen: {
-    width: 28,
+  stepDone: {
     backgroundColor: dark.green,
   },
-  accentGold: {
-    width: 18,
-    backgroundColor: dark.coral,
+  stepCurrent: {
+    backgroundColor: ORANGE,
   },
-  accentNavy: {
-    width: 12,
-    backgroundColor: dark.textMuted,
+  stepUpcoming: {
+    backgroundColor: 'rgba(0,16,48,0.12)',
   },
   moduleCard: {
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: dark.border,
-    backgroundColor: dark.surface,
-    padding: 16,
-    marginBottom: 14,
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    padding: 20,
+    marginBottom: 20,
+    ...shadows.card,
   },
   centerBox: {
-    alignItems: 'center',
-    paddingVertical: 32,
-    paddingHorizontal: 12,
-  },
-  emptyTitle: {
-    fontFamily: fonts.displayBold,
-    fontSize: 17,
-    color: dark.textPrimary,
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  emptyText: {
-    fontFamily: fonts.body,
-    fontSize: 14,
-    lineHeight: 20,
-    color: dark.textMuted,
-    textAlign: 'center',
+    flex: 1,
+    justifyContent: 'center',
   },
   completionCard: {
-    marginTop: 8,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: dark.border,
-    backgroundColor: dark.greenSoft,
-    padding: 16,
+    marginTop: 4,
+    borderRadius: 20,
+    backgroundColor: brand.greenPale,
+    padding: 24,
+    marginBottom: 8,
+    gap: 16,
+    ...shadows.sm,
+  },
+  completionHead: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  completionIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 999,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...shadows.sm,
+  },
+  completionHeadCopy: {
+    flex: 1,
+    minWidth: 0,
+    gap: 4,
   },
   completionTitle: {
     fontFamily: fonts.displayBold,
-    fontSize: 16,
+    fontSize: 17,
     color: dark.textPrimary,
-    marginBottom: 6,
   },
   completionHint: {
     fontFamily: fonts.body,
-    fontSize: 13,
-    lineHeight: 19,
+    fontSize: 14,
+    lineHeight: 21,
     color: dark.textMuted,
   },
   checkboxRow: {
-    marginTop: 14,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: dark.border,
-    backgroundColor: dark.surface,
-    paddingVertical: 12,
-    paddingHorizontal: 12,
+    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    minHeight: 56,
+    ...shadows.sm,
   },
   checkboxRowDone: {
-    borderColor: 'rgba(34,214,115,0.45)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(0,176,80,0.35)',
   },
   checkboxRowLocked: {
     opacity: 0.7,
-    backgroundColor: dark.surfaceRaised,
+  },
+  checkboxPressed: {
+    transform: [{ scale: 0.99 }],
+    opacity: 0.95,
   },
   checkbox: {
     width: 24,
     height: 24,
     borderRadius: 7,
     borderWidth: 2,
-    borderColor: dark.textMuted,
+    borderColor: 'rgba(0,16,48,0.28)',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: dark.surface,
+    backgroundColor: '#FFFFFF',
   },
   checkboxChecked: {
     borderColor: dark.green,
@@ -369,46 +573,72 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     color: dark.textPrimary,
   },
+  validationSkeleton: {
+    marginTop: 4,
+    marginHorizontal: -24,
+  },
+  errorBox: {
+    gap: 6,
+  },
   errorText: {
-    marginTop: 10,
     fontSize: 13,
     color: dark.coral,
     fontFamily: fonts.body,
   },
+  errorRetry: {
+    fontSize: 13,
+    color: dark.green,
+    fontFamily: fonts.bodyBold,
+  },
   actions: {
-    marginTop: 14,
     gap: 10,
   },
   primaryBtn: {
+    minHeight: 56,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    borderRadius: 14,
+    gap: 10,
+    borderRadius: 16,
     backgroundColor: dark.green,
     paddingVertical: 14,
     paddingHorizontal: 16,
   },
+  primaryBtnDisabled: {
+    opacity: 0.45,
+  },
+  primaryBtnIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 999,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   primaryBtnText: {
-    color: '#0B0F1A',
+    color: '#FFFFFF',
     fontFamily: fonts.bodyBold,
-    fontSize: 15,
+    fontSize: 16,
   },
   secondaryBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    borderRadius: 14,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: dark.border,
-    backgroundColor: dark.surface,
-    paddingVertical: 13,
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 14,
     paddingHorizontal: 16,
+    minHeight: 52,
   },
   secondaryBtnText: {
     color: dark.textPrimary,
     fontFamily: fonts.bodyBold,
-    fontSize: 14,
+    fontSize: 15,
+  },
+  pressed: {
+    opacity: 0.9,
   },
 })
