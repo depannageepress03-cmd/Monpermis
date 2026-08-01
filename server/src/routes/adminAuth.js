@@ -9,7 +9,6 @@ import {
   requireSuperAdmin,
 } from '../middleware/adminAuth.js'
 import { audit, logAdminAction } from '../middleware/audit.js'
-import { requireSuperadminAccessKey } from '../utils/superadminSecret.js'
 import { logger } from '../utils/logger.js'
 
 const router = Router()
@@ -77,18 +76,10 @@ router.post(
         })
       }
 
-      const { fullName, phone, password, confirmPassword, role, accessKey } = req.body
+      const { fullName, phone, password, confirmPassword, role } = req.body
 
       if (!fullName?.trim() || !phone || !password) {
         return res.status(400).json({ success: false, error: 'Nom, téléphone et mot de passe requis' })
-      }
-
-      // Créer un superadmin exige la clé Direction (jamais connue des admins simples).
-      if (role === 'superadmin') {
-        const gate = requireSuperadminAccessKey(accessKey)
-        if (!gate.ok) {
-          return res.status(gate.status).json({ success: false, error: gate.error })
-        }
       }
 
       if (fullName.trim().length < 2) {
@@ -163,7 +154,7 @@ router.post(
 
 router.post('/login', async (req, res) => {
   try {
-    const { phone, password, accessKey, portal } = req.body
+    const { phone, password } = req.body
 
     if (!phone || !password) {
       return res.status(400).json({ success: false, error: 'Téléphone et mot de passe requis' })
@@ -189,29 +180,6 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ success: false, error: 'Identifiants incorrects' })
     }
 
-    const wantsDirection =
-      portal === 'direction' ||
-      (typeof accessKey === 'string' && accessKey.length > 0)
-
-    // Compte superadmin : clé Direction obligatoire (inconnue des admins simples).
-    if (admin.role === 'superadmin') {
-      const gate = requireSuperadminAccessKey(accessKey)
-      if (!gate.ok) {
-        await admin.registerFailedLogin()
-        return res.status(gate.status).json({
-          success: false,
-          error:
-            gate.status === 503
-              ? gate.error
-              : 'Identifiants incorrects',
-        })
-      }
-    } else if (wantsDirection) {
-      // Un admin simple qui tente le portail Direction → échec générique.
-      await admin.registerFailedLogin()
-      return res.status(401).json({ success: false, error: 'Identifiants incorrects' })
-    }
-
     await admin.resetFailedLogins()
     const token = createAdminToken(admin._id, admin.role)
 
@@ -222,7 +190,7 @@ router.post('/login', async (req, res) => {
       admin,
       metadata: {
         phone: admin.phone,
-        portal: admin.role === 'superadmin' ? 'direction' : 'ops',
+        role: admin.role === 'superadmin' ? 'superadmin' : 'admin',
       },
     })
 

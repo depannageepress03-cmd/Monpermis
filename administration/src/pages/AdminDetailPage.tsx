@@ -18,7 +18,6 @@ export function AdminDetailPage() {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [role, setRole] = useState<'admin' | 'superadmin'>('admin')
-  const [accessKey, setAccessKey] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
 
@@ -86,19 +85,6 @@ export function AdminDetailPage() {
   const handleRoleSave = (e: FormEvent) => {
     e.preventDefault()
     if (!admin || role === admin.role) return
-    if (role === 'superadmin' && admin.role !== 'superadmin') {
-      if (accessKey.trim().length < 12) {
-        setError('Clé Direction requise pour promouvoir en superadmin.')
-        return
-      }
-      void applyUpdate(
-        { role, accessKey: accessKey.trim() },
-        `Rôle mis à jour : ${roleLabel(role)}.`,
-      ).then((ok) => {
-        if (ok) setAccessKey('')
-      })
-      return
-    }
     void applyUpdate({ role }, `Rôle mis à jour : ${roleLabel(role)}.`)
   }
 
@@ -217,26 +203,6 @@ export function AdminDetailPage() {
                   <option value="admin">Admin</option>
                   <option value="superadmin">Superadmin</option>
                 </select>
-                {role === 'superadmin' && admin.role !== 'superadmin' ? (
-                  <div style={{ marginBottom: 12 }}>
-                    <label
-                      htmlFor="promote-access-key"
-                      className="muted"
-                      style={{ display: 'block', marginBottom: 6 }}
-                    >
-                      Clé Direction (promotion)
-                    </label>
-                    <input
-                      id="promote-access-key"
-                      type="password"
-                      autoComplete="off"
-                      value={accessKey}
-                      onChange={(e) => setAccessKey(e.target.value)}
-                      placeholder="SUPERADMIN_ACCESS_KEY"
-                      style={{ display: 'block', width: '100%', padding: '8px 10px' }}
-                    />
-                  </div>
-                ) : null}
                 <button
                   type="submit"
                   className="btn-primary btn-primary-inline"

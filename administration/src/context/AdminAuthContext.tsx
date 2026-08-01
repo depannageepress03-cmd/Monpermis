@@ -13,7 +13,6 @@ import {
   loginAdmin,
   type AdminCapabilities,
   type AdminUser,
-  type LoginOptions,
 } from '../api/auth'
 import { isSuperAdminRole } from '../utils/roles'
 
@@ -30,7 +29,7 @@ interface AdminAuthContextValue {
   loading: boolean
   /** Accès gestion admins / audit / finances (superadmin, ou migration). */
   canManageAdmins: boolean
-  signIn: (phone: string, password: string, options?: LoginOptions) => Promise<SignInResult>
+  signIn: (phone: string, password: string) => Promise<SignInResult>
   signOut: () => void
 }
 
@@ -83,8 +82,8 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
       .finally(() => setLoading(false))
   }, [])
 
-  const signIn = useCallback(async (phone: string, password: string, options: LoginOptions = {}) => {
-    const { admin: loggedIn, token, homePath } = await loginAdmin(phone, password, options)
+  const signIn = useCallback(async (phone: string, password: string) => {
+    const { admin: loggedIn, token, homePath } = await loginAdmin(phone, password)
     localStorage.setItem(TOKEN_KEY, token)
     setAdmin(loggedIn)
 

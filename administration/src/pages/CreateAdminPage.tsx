@@ -16,7 +16,6 @@ export function CreateAdminPage() {
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [role, setRole] = useState<'admin' | 'superadmin'>('admin')
-  const [accessKey, setAccessKey] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -49,11 +48,6 @@ export function CreateAdminPage() {
       return
     }
 
-    if (role === 'superadmin' && accessKey.trim().length < 12) {
-      setError('Clé Direction requise (min. 12 caractères) pour créer un superadmin.')
-      return
-    }
-
     const token = getAdminToken()
     if (!token) {
       setError('Session expirée. Reconnectez-vous.')
@@ -70,7 +64,6 @@ export function CreateAdminPage() {
         password,
         confirmPassword,
         role,
-        role === 'superadmin' ? accessKey.trim() : undefined,
       )
       setSuccess(
         `Administrateur « ${admin.fullName} » créé (${role === 'superadmin' ? 'superadmin' : 'admin'}).`,
@@ -80,7 +73,6 @@ export function CreateAdminPage() {
       setPassword('')
       setConfirmPassword('')
       setRole('admin')
-      setAccessKey('')
     } catch (err) {
       if (isAuthError(err)) {
         setError(err.message)
@@ -167,25 +159,6 @@ export function CreateAdminPage() {
                 </select>
               </div>
 
-              {role === 'superadmin' ? (
-                <div className="create-admin-field">
-                  <label htmlFor="accessKey">
-                    <KeyRound size={14} />
-                    Clé Direction
-                  </label>
-                  <input
-                    id="accessKey"
-                    type="password"
-                    autoComplete="off"
-                    required
-                    minLength={12}
-                    value={accessKey}
-                    onChange={(e) => setAccessKey(e.target.value)}
-                    placeholder="SUPERADMIN_ACCESS_KEY"
-                  />
-                </div>
-              ) : null}
-
               <div className="create-admin-field">
                 <label htmlFor="password">
                   <KeyRound size={14} />
@@ -246,7 +219,7 @@ export function CreateAdminPage() {
             <li>Choisissez un mot de passe d’au moins 8 caractères.</li>
             <li>Ne partagez jamais les identifiants admin.</li>
             <li>Réservez le rôle superadmin aux personnes qui gèrent l’équipe.</li>
-            <li>La clé Direction n’est jamais partagée avec les admins ops.</li>
+            <li>Seul un superadmin peut créer un admin ou un autre superadmin.</li>
             <li>Créez uniquement les comptes nécessaires à l’équipe.</li>
           </ul>
         </div>

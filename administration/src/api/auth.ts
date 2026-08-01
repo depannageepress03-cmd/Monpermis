@@ -10,11 +10,6 @@ export interface AdminUser {
   createdAt: string
 }
 
-export interface LoginOptions {
-  portal?: 'ops' | 'direction'
-  accessKey?: string
-}
-
 interface AuthResponse {
   admin: AdminUser
   token: string
@@ -28,7 +23,6 @@ export function createAdmin(
   password: string,
   confirmPassword: string,
   role: 'admin' | 'superadmin' = 'admin',
-  accessKey?: string,
 ) {
   return apiFetch<{ admin: AdminUser }>(
     '/api/admin/auth/register',
@@ -40,21 +34,18 @@ export function createAdmin(
         password,
         confirmPassword,
         role,
-        ...(role === 'superadmin' && accessKey ? { accessKey } : {}),
       }),
     },
     token,
   )
 }
 
-export function loginAdmin(phone: string, password: string, options: LoginOptions = {}) {
+export function loginAdmin(phone: string, password: string) {
   return apiFetch<AuthResponse>('/api/admin/auth/login', {
     method: 'POST',
     body: JSON.stringify({
       phone,
       password,
-      portal: options.portal || 'ops',
-      ...(options.accessKey ? { accessKey: options.accessKey } : {}),
     }),
   })
 }

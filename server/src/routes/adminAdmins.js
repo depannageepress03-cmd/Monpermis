@@ -8,7 +8,6 @@ import {
 } from '../middleware/adminAuth.js'
 import { audit } from '../middleware/audit.js'
 import { assertNotLastActiveSuperAdmin } from '../utils/bootstrapSuperAdmin.js'
-import { requireSuperadminAccessKey } from '../utils/superadminSecret.js'
 import { logger } from '../utils/logger.js'
 
 const router = Router()
@@ -90,7 +89,7 @@ router.patch('/:adminId', audit('update', 'admin'), async (req, res) => {
       return res.status(404).json({ success: false, error: 'Administrateur introuvable' })
     }
 
-    const { isActive, role, password, accessKey } = req.body ?? {}
+    const { isActive, role, password } = req.body ?? {}
     const before = {
       isActive: admin.isActive,
       role: admin.role,
@@ -107,19 +106,7 @@ router.patch('/:adminId', audit('update', 'admin'), async (req, res) => {
           error: 'Rôle invalide (admin ou superadmin)',
         })
       }
-      // Promotion superadmin : clé Direction obligatoire.
-      if (role === 'superadmin' && admin.role !== 'superadmin') {
-        const gate = requireSuperadminAccessKey(accessKey)
-        if (!gate.ok) {
-          return res.status(gate.status).json({
-            success: false,
-            error:
-              gate.status === 503
-                ? gate.error
-                : 'Clé Direction invalide — promotion refusée',
-          })
-        }
-      }
+      // Promotion / démotion : réservée aux superadmins (middleware requireSuperAdmin).
       nextRole = role
     }
 

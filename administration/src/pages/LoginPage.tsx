@@ -1,17 +1,13 @@
 import { FormEvent, useMemo, useState } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
 import {
-  Code2,
-  CreditCard,
   Eye,
   EyeOff,
   History,
   LockKeyhole,
   Phone,
-  Shield,
   ShieldCheck,
   UserRound,
-  Users,
 } from 'lucide-react'
 import logoUrl from '../assets/logo.png'
 import { BrandName } from '../components/BrandName'
@@ -19,17 +15,12 @@ import { isAuthError, useAdminAuth } from '../context/AdminAuthContext'
 import { SITE_NAME } from '../theme/brand'
 import { normalizePhone, PHONE_PLACEHOLDER } from '../utils/validation'
 
-type Portal = 'ops' | 'direction'
-
 export function LoginPage() {
   const { admin, loading, signIn, canManageAdmins } = useAdminAuth()
   const navigate = useNavigate()
-  const [portal, setPortal] = useState<Portal>('ops')
   const [phone, setPhone] = useState('')
   const [password, setPassword] = useState('')
-  const [accessKey, setAccessKey] = useState('')
   const [showPassword, setShowPassword] = useState(false)
-  const [showKey, setShowKey] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
@@ -48,11 +39,8 @@ export function LoginPage() {
     setSubmitting(true)
 
     try {
-      const result = await signIn(normalizePhone(phone), password, {
-        portal,
-        accessKey: portal === 'direction' ? accessKey : undefined,
-      })
-      navigate(result.homePath || (portal === 'direction' ? '/cockpit' : '/'), { replace: true })
+      const result = await signIn(normalizePhone(phone), password)
+      navigate(result.homePath || '/', { replace: true })
     } catch (err) {
       if (isAuthError(err)) {
         setError(err.message)
@@ -65,7 +53,7 @@ export function LoginPage() {
   }
 
   return (
-    <div className={`login-page${portal === 'direction' ? ' is-direction' : ''}`}>
+    <div className="login-page">
       <div className="login-bg" aria-hidden="true">
         <span className="login-bg-halo login-bg-halo--green" />
         <span className="login-bg-halo login-bg-halo--blue" />
@@ -84,21 +72,21 @@ export function LoginPage() {
           <ul className="login-aside-points">
             <li>
               <span className="login-aside-point-icon" aria-hidden="true">
-                <CreditCard size={16} />
+                <UserRound size={16} />
               </span>
-              <span>Suivi des abonnements et paiements</span>
+              <span>Admin : opérations quotidiennes (contenu, abonnements, conduite)</span>
             </li>
             <li>
               <span className="login-aside-point-icon" aria-hidden="true">
-                <Code2 size={16} />
+                <ShieldCheck size={16} />
               </span>
-              <span>Gestion du code et de la conduite</span>
+              <span>Superadmin : crée les comptes admin et gère finances / audit</span>
             </li>
             <li>
               <span className="login-aside-point-icon" aria-hidden="true">
-                <Shield size={16} />
+                <LockKeyhole size={16} />
               </span>
-              <span>Accès réservé au personnel autorisé</span>
+              <span>Un seul formulaire — les droits dépendent du rôle du compte</span>
             </li>
           </ul>
           <div className="login-aside-skyline" aria-hidden="true">
@@ -118,47 +106,9 @@ export function LoginPage() {
             <p className="login-badge-text">
               <ShieldCheck size={16} aria-hidden="true" />
               <span>
-                {portal === 'direction' ? (
-                  <>
-                    Portail Direction · <strong>Accès superadmin</strong>
-                  </>
-                ) : (
-                  <>
-                    Espace sécurisé · <strong>Administration</strong>
-                  </>
-                )}
+                Espace sécurisé · <strong>Administration</strong>
               </span>
             </p>
-          </div>
-
-          <div className="login-portal-tabs" role="tablist" aria-label="Type d’accès">
-            <button
-              type="button"
-              role="tab"
-              aria-selected={portal === 'ops'}
-              className={portal === 'ops' ? 'is-active' : undefined}
-              onClick={() => {
-                setPortal('ops')
-                setAccessKey('')
-                setError(null)
-              }}
-            >
-              <Users size={16} />
-              Équipe
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={portal === 'direction'}
-              className={portal === 'direction' ? 'is-active' : undefined}
-              onClick={() => {
-                setPortal('direction')
-                setError(null)
-              }}
-            >
-              <Shield size={16} />
-              Direction
-            </button>
           </div>
 
           <form onSubmit={handleSubmit} className="login-form" autoComplete="on">
@@ -206,47 +156,13 @@ export function LoginPage() {
               </button>
             </div>
 
-            {portal === 'direction' ? (
-              <>
-                <label htmlFor="accessKey">Clé Direction</label>
-                <div className="login-input-wrap">
-                  <Shield className="login-input-leading" size={16} aria-hidden="true" />
-                  <input
-                    id="accessKey"
-                    type={showKey ? 'text' : 'password'}
-                    autoComplete="off"
-                    required
-                    minLength={12}
-                    value={accessKey}
-                    onChange={(e) => setAccessKey(e.target.value)}
-                    placeholder="Clé secrète (serveur)"
-                  />
-                  <button
-                    type="button"
-                    className="login-input-toggle"
-                    onClick={() => setShowKey((v) => !v)}
-                    aria-label={showKey ? 'Masquer la clé' : 'Afficher la clé'}
-                  >
-                    {showKey ? <EyeOff size={16} /> : <Eye size={16} />}
-                  </button>
-                </div>
-                <p className="login-hint">
-                  <LockKeyhole size={13} aria-hidden="true" />
-                  <span>
-                    Clé secrète Direction — connue uniquement de la direction, jamais des admins
-                    ops ni du public.
-                  </span>
-                </p>
-              </>
-            ) : (
-              <p className="login-hint">
-                <LockKeyhole size={13} aria-hidden="true" />
-                <span>
-                  Compte ops : téléphone + mot de passe. Les fonctions Direction (compta, admins,
-                  journal) restent inaccessibles.
-                </span>
-              </p>
-            )}
+            <p className="login-hint">
+              <LockKeyhole size={13} aria-hidden="true" />
+              <span>
+                Connectez-vous avec votre téléphone et mot de passe. Vos droits (admin ou
+                superadmin) sont appliqués automatiquement.
+              </span>
+            </p>
 
             {error ? (
               <p className="form-error" role="alert">
@@ -256,11 +172,7 @@ export function LoginPage() {
 
             <button type="submit" className="btn-primary login-submit" disabled={submitting}>
               <LockKeyhole size={18} />
-              {submitting
-                ? 'Connexion…'
-                : portal === 'direction'
-                  ? 'Entrer dans le cockpit'
-                  : 'Se connecter'}
+              {submitting ? 'Connexion…' : 'Se connecter'}
             </button>
           </form>
 
