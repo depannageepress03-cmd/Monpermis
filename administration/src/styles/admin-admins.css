@@ -1,0 +1,265 @@
+/* Page Administrateurs — habillage premium (rendu uniquement, scopé à .admins-page) */
+
+.admins-page {
+  max-width: 1280px;
+}
+
+/* ---- Hero ---- */
+.admins-hero {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 22px 26px;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  position: relative;
+  overflow: hidden;
+}
+
+.admins-hero-icon {
+  flex-shrink: 0;
+  width: 56px;
+  height: 56px;
+  border-radius: var(--r-pill);
+  background: var(--green-light);
+  color: var(--green-deep);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.admins-hero .admin-page-intro {
+  position: relative;
+  z-index: 1;
+}
+
+.admins-hero-art {
+  position: absolute;
+  right: 18px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 200px;
+  height: 160px;
+  color: var(--green);
+  opacity: 0.16;
+  pointer-events: none;
+}
+
+@media (max-width: 900px) {
+  .admins-hero-art {
+    display: none;
+  }
+}
+
+/* ---- Barre d'actions ---- */
+.admins-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: 18px 0;
+}
+
+.admins-cta {
+  height: 48px;
+  border-radius: 14px;
+  padding: 0 18px;
+  font-weight: 700;
+  background: linear-gradient(180deg, var(--green) 0%, var(--green-deep) 100%);
+  box-shadow: 0 8px 18px -8px rgba(0, 134, 60, 0.45);
+  transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out, background 0.3s ease-in-out;
+}
+.admins-cta:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 22px -8px rgba(0, 134, 60, 0.55);
+}
+.admins-cta:active {
+  transform: translateY(0);
+}
+
+/* ---- Carte table ---- */
+.admins-table-card {
+  border-radius: 20px;
+  transition: box-shadow 0.3s ease-in-out;
+}
+.admins-table-card .admin-section-head {
+  padding: 18px 20px 0;
+  align-items: center;
+}
+.admins-table-card .admin-section-body {
+  padding-bottom: 6px;
+}
+
+/* ---- Tableau ---- */
+.admins-table thead th {
+  background: var(--surface);
+  font-size: 12px;
+}
+.admins-table tbody td {
+  height: 72px;
+  transition: background 0.3s ease-in-out;
+}
+.admins-table tbody tr:hover td {
+  background: var(--surface);
+}
+
+.admins-identity {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.admins-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: var(--r-pill);
+  font-size: 12px;
+}
+
+.admins-phone-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--navy-muted);
+}
+
+.admins-date-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--navy-muted);
+}
+.admins-date-icon {
+  flex-shrink: 0;
+}
+.admins-date-lines {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.35;
+}
+.admins-date-day {
+  color: var(--navy);
+  font-weight: 500;
+}
+.admins-date-time {
+  font-size: 0.85em;
+  color: var(--navy-muted);
+}
+
+.admins-table .admin-status-badge {
+  border-radius: var(--r-pill);
+  padding: 4px 10px;
+}
+
+.admins-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--r-pill);
+  background: currentColor;
+  flex-shrink: 0;
+  animation: admins-pulse 1.8s ease-in-out infinite;
+}
+@keyframes admins-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+.admins-manage-btn {
+  height: 32px;
+  padding: 0 12px;
+  font-size: 13px;
+  transition: background 0.3s ease-in-out, border-color 0.3s ease-in-out, color 0.3s ease-in-out;
+}
+.admins-manage-btn:hover {
+  background: var(--green-light);
+  border-color: rgba(0, 176, 80, 0.35);
+  color: var(--green-deep);
+}
+
+/* ---- Cartes KPI ---- */
+.admins-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 4px;
+}
+.admins-kpi-grid .ui-stat-card {
+  border-radius: 18px;
+  padding: 24px;
+  transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
+}
+.admins-kpi-grid .ui-stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+@media (max-width: 1080px) {
+  .admins-kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* ---- Responsive : tableau -> cartes ---- */
+@media (max-width: 720px) {
+  .admins-hero {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 18px;
+  }
+  .admins-toolbar {
+    gap: 8px;
+  }
+  .admins-toolbar > * {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+  .admins-kpi-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .admins-table thead {
+    display: none;
+  }
+  .admins-table,
+  .admins-table tbody,
+  .admins-table tr,
+  .admins-table td {
+    display: block;
+    width: 100%;
+  }
+  .admins-table tr {
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    margin: 10px 12px;
+    overflow: hidden;
+  }
+  .admins-table tbody td {
+    height: auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 10px 14px;
+    border-top: 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .admins-table tbody tr td:last-child {
+    border-bottom: 0;
+  }
+  .admins-table td[data-label]::before {
+    content: attr(data-label);
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--navy-soft);
+    flex-shrink: 0;
+  }
+  .admins-table td[data-label="Actions"] {
+    justify-content: flex-end;
+  }
+  .admins-manage-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}

@@ -15,6 +15,7 @@ import './styles/admin-finances.css'
 import './styles/admin-cockpit.css'
 import './styles/admin-tracking.css'
 import './styles/admin-motion.css'
+import './styles/admin-admins.css'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
