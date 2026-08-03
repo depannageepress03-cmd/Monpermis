@@ -71,9 +71,9 @@ export function ChapterCoursesScreen() {
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
           <FadeUp delay={100} style={styles.header}>
-            <Text style={styles.heroEyebrow}>Cours du chapitre</Text>
+            <Text style={styles.heroEyebrow}>Notions du chapitre</Text>
             <Text style={styles.subtitle}>
-              Accède aux cours librement, à ton rythme.
+              Accède aux notions librement, à ton rythme.
             </Text>
           </FadeUp>
 
@@ -83,9 +83,9 @@ export function ChapterCoursesScreen() {
 
           {courses.length === 0 ? (
             <View style={styles.centerBox}>
-              <Text style={styles.emptyTitle}>Aucun cours</Text>
+              <Text style={styles.emptyTitle}>Aucune notion</Text>
               <Text style={styles.emptyText}>
-                Ce chapitre ne contient pas encore de cours publiés.
+                Ce chapitre ne contient pas encore de notion publiée.
               </Text>
             </View>
           ) : (

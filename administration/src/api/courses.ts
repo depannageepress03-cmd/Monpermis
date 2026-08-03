@@ -1,14 +1,19 @@
 import { apiFetch } from './client'
-import type { ContentModule, Course, ModulePayload } from '../types/revision'
+import type { ChapterRef, ContentModule, Course, ModulePayload } from '../types/revision'
 
-export function fetchStandaloneCourses(token: string) {
-  return apiFetch<{ courses: Course[] }>('/api/admin/revision/courses', {}, token)
+export function fetchStandaloneCourses(token: string, chapterId?: string) {
+  const query = chapterId ? `?chapterId=${encodeURIComponent(chapterId)}` : ''
+  return apiFetch<{ courses: Course[]; chapters: ChapterRef[] }>(
+    `/api/admin/revision/courses${query}`,
+    {},
+    token,
+  )
 }
 
-export function createStandaloneCourse(token: string, title: string) {
+export function createStandaloneCourse(token: string, title: string, chapterId: string) {
   return apiFetch<{ course: Course }>(
     '/api/admin/revision/courses',
-    { method: 'POST', body: JSON.stringify({ title }) },
+    { method: 'POST', body: JSON.stringify({ title, chapterId }) },
     token,
   )
 }
@@ -16,7 +21,7 @@ export function createStandaloneCourse(token: string, title: string) {
 export function updateStandaloneCourse(
   token: string,
   courseId: string,
-  payload: { title?: string; published?: boolean },
+  payload: { title?: string; published?: boolean; chapterId?: string },
 ) {
   return apiFetch<{ course: Course }>(
     `/api/admin/revision/courses/${courseId}`,
@@ -25,10 +30,14 @@ export function updateStandaloneCourse(
   )
 }
 
-export function reorderStandaloneCourses(token: string, orderedIds: string[]) {
+export function reorderStandaloneCourses(
+  token: string,
+  orderedIds: string[],
+  chapterId: string,
+) {
   return apiFetch<{ courses: Course[] }>(
     '/api/admin/revision/courses/reorder',
-    { method: 'POST', body: JSON.stringify({ orderedIds }) },
+    { method: 'POST', body: JSON.stringify({ orderedIds, chapterId }) },
     token,
   )
 }

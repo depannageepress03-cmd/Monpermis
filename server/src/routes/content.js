@@ -10,7 +10,10 @@ import {
   serializeProgress,
 } from '../utils/progress.js'
 import { buildLearnerJourney } from '../utils/learnerJourney.js'
-import { ensureStandaloneRevisionCourses } from '../services/migrateRevisionCourses.js'
+import {
+  ensureNotionsHaveChapter,
+  ensureStandaloneRevisionCourses,
+} from '../services/migrateRevisionCourses.js'
 
 /** Clé de progression pour les cours hors chapitre. */
 const STANDALONE_COURSE_CHAPTER = 'standalone'
@@ -28,6 +31,15 @@ import { ensureStandardRevisionChapters } from '../services/standardRevisionChap
 
 const router = Router()
 const withCodeAccess = [requireUserAuth, requireModuleAccess('code')]
+
+/** Retrouve une notion par id, en tolérant un id qui n'est pas un ObjectId. */
+async function findNotion(courseId) {
+  try {
+    return await RevisionCourse.findById(courseId)
+  } catch {
+    return null
+  }
+}
 
 async function loadChapterQuestionBank(chapter) {
   const hardcoded = hardcodedAsQuestionDocs(chapter)
@@ -56,10 +68,48 @@ router.get('/chapters', ...withCodeAccess, async (_req, res) => {
   }
 })
 
-/** Cours autonomes (plus liés aux chapitres). */
+/** Chapitres du parcours Cours, avec les notions publiées de chacun. */
+router.get('/course-chapters', ...withCodeAccess, async (_req, res) => {
+  try {
+    await ensureStandardRevisionChapters()
+    await ensureStandaloneRevisionCourses()
+    await ensureNotionsHaveChapter()
+
+    const [chapters, notions] = await Promise.all([
+      Chapter.find({ order: { $gte: 1, $lte: 20 } }).sort({ order: 1, createdAt: 1 }),
+      RevisionCourse.find({ published: true }).sort({ order: 1, createdAt: 1 }),
+    ])
+
+    const byChapter = new Map()
+    for (const notion of notions) {
+      const key = notion.chapter ? String(notion.chapter) : ''
+      if (!key) continue
+      if (!byChapter.has(key)) byChapter.set(key, [])
+      byChapter.get(key).push(notion.toPublicJSON())
+    }
+
+    // Un chapitre sans notion publiée n'a rien à montrer à l'élève.
+    const data = chapters
+      .map((chapter) => ({
+        id: String(chapter._id),
+        name: chapter.name,
+        order: chapter.order,
+        courses: byChapter.get(String(chapter._id)) || [],
+      }))
+      .filter((chapter) => chapter.courses.length > 0)
+
+    res.json({ success: true, data: { chapters: data } })
+  } catch (error) {
+    console.error('Erreur chapitres de cours:', error)
+    res.status(500).json({ success: false, error: 'Cours indisponibles' })
+  }
+})
+
+/** Liste plate de toutes les notions publiées (chaque item porte son chapterId). */
 router.get('/courses', ...withCodeAccess, async (_req, res) => {
   try {
     await ensureStandaloneRevisionCourses()
+    await ensureNotionsHaveChapter()
     const courses = await RevisionCourse.find({ published: true }).sort({ order: 1, createdAt: 1 })
     res.json({
       success: true,
@@ -314,11 +364,12 @@ router.post('/progress/start', ...withCodeAccess, async (req, res) => {
       })
     }
 
-    // Cours autonome (plus de lien chapitre).
-    if (!chapterId || chapterId === STANDALONE_COURSE_CHAPTER) {
-      await ensureStandaloneRevisionCourses()
-      const course = await RevisionCourse.findById(courseId)
-      if (!course || !course.published) {
+    // Notion : la progression reste indexée sur STANDALONE_COURSE_CHAPTER,
+    // quel que soit le chapitre de rattachement, pour ne pas perdre l'historique.
+    await ensureStandaloneRevisionCourses()
+    const notion = await findNotion(courseId)
+    if (notion) {
+      if (!notion.published) {
         return res.status(404).json({ success: false, error: 'Cours introuvable' })
       }
       const progressChapterId = STANDALONE_COURSE_CHAPTER
@@ -378,10 +429,10 @@ router.post('/progress', ...withCodeAccess, async (req, res) => {
       })
     }
 
-    if (!chapterId || chapterId === STANDALONE_COURSE_CHAPTER) {
-      await ensureStandaloneRevisionCourses()
-      const course = await RevisionCourse.findById(courseId)
-      if (!course || !course.published) {
+    await ensureStandaloneRevisionCourses()
+    const notion = await findNotion(courseId)
+    if (notion) {
+      if (!notion.published) {
         return res.status(404).json({ success: false, error: 'Cours introuvable' })
       }
       const progressChapterId = STANDALONE_COURSE_CHAPTER

@@ -617,6 +617,28 @@
   border: 1px dashed rgba(0, 176, 80, 0.35);
 }
 
+/* Déplacement d'une notion vers un autre chapitre. */
+.revision-move-chapter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(0, 16, 48, 0.6);
+}
+
+.revision-move-chapter select {
+  flex: 1;
+  min-width: 0;
+  padding: 7px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(0, 16, 48, 0.12);
+  background: var(--white);
+  font-size: 13px;
+  color: var(--navy);
+}
+
 .revision-chapter-header,
 .revision-course-header,
 .revision-module-header {

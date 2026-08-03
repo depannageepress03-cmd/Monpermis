@@ -10,7 +10,6 @@ import {
   Clock3,
   GraduationCap,
   LineChart,
-  Lock,
   ShieldCheck,
 } from 'lucide-react-native'
 import { useCallback, useMemo, useState } from 'react'
@@ -24,7 +23,7 @@ import {
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import Svg, { Circle, Ellipse, Path, Rect } from 'react-native-svg'
-import { fetchCourseProgress, fetchRevisionCourses } from '../../api/revision'
+import { fetchCourseChapters, fetchCourseProgress, type CourseChapter } from '../../api/revision'
 import { Bouncy } from '../../components/Bouncy'
 import { FadeUp } from '../../components/FadeUp'
 import { LegalFooter } from '../../components/LegalFooter'
@@ -34,7 +33,6 @@ import { useRequireAuth } from '../../hooks/useRequireAuth'
 import { useUnreadNotifications } from '../../hooks/useUnreadNotifications'
 import type { RootStackParamList } from '../../navigation/types'
 import { brand, dark, fonts, shadows } from '../../theme'
-import { formatCourseHeading } from '../../utils/chapterLabel'
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'CodeCours'>
 
@@ -42,7 +40,7 @@ const STANDALONE_CHAPTER = 'standalone'
 const ORANGE = '#F97316'
 const ORANGE_SOFT = '#FFF7ED'
 
-type StandaloneCourse = Awaited<ReturnType<typeof fetchRevisionCourses>>[number]
+
 
 function CoursesHeroArt() {
   return (
@@ -73,7 +71,7 @@ export function CodeCoursesScreen() {
   const navigation = useNavigation<Nav>()
   const { user, loading } = useRequireAuth(navigation)
   const unreadCount = useUnreadNotifications(Boolean(user))
-  const [courses, setCourses] = useState<StandaloneCourse[]>([])
+  const [chapters, setChapters] = useState<CourseChapter[]>([])
   const [completedIds, setCompletedIds] = useState<Set<string>>(new Set())
   const [progressLoading, setProgressLoading] = useState(true)
 
@@ -81,13 +79,13 @@ export function CodeCoursesScreen() {
     setProgressLoading(true)
     try {
       const [list, entries] = await Promise.all([
-        fetchRevisionCourses(),
+        fetchCourseChapters(),
         fetchCourseProgress(STANDALONE_CHAPTER),
       ])
-      setCourses(list)
+      setChapters(list)
       setCompletedIds(new Set(entries.map((entry) => entry.courseId)))
     } catch {
-      setCourses([])
+      setChapters([])
       setCompletedIds(new Set())
     } finally {
       setProgressLoading(false)
@@ -102,14 +100,16 @@ export function CodeCoursesScreen() {
     }, [user, load]),
   )
 
-  const isCourseUnlocked = (_index: number) => true
-
+  const allCourses = useMemo(
+    () => chapters.flatMap((chapter) => chapter.courses),
+    [chapters],
+  )
   const completedCount = useMemo(
-    () => courses.filter((course) => completedIds.has(course.id)).length,
-    [courses, completedIds],
+    () => allCourses.filter((course) => completedIds.has(course.id)).length,
+    [allCourses, completedIds],
   )
   const progressRatio =
-    courses.length > 0 ? Math.max(0, Math.min(1, completedCount / courses.length)) : 0
+    allCourses.length > 0 ? Math.max(0, Math.min(1, completedCount / allCourses.length)) : 0
 
   if (loading || !user) return <ScreenLoader />
 
@@ -167,12 +167,12 @@ export function CodeCoursesScreen() {
             <ActivityIndicator color={dark.green} style={{ marginBottom: 16 }} />
           ) : null}
 
-          {!progressLoading && courses.length > 0 ? (
+          {!progressLoading && allCourses.length > 0 ? (
             <FadeUp delay={80}>
               <View style={styles.progressCard}>
                 <Text style={styles.progressLabel}>
-                  {completedCount} cours sur {courses.length} terminé
-                  {completedCount > 1 ? 's' : ''}
+                  {completedCount} notion{completedCount > 1 ? 's' : ''} sur {allCourses.length}{' '}
+                  terminée{completedCount > 1 ? 's' : ''}
                 </Text>
                 <ProgressBar
                   progress={progressRatio}
@@ -184,99 +184,65 @@ export function CodeCoursesScreen() {
             </FadeUp>
           ) : null}
 
-          {courses.length === 0 && !progressLoading ? (
+          {chapters.length === 0 && !progressLoading ? (
             <View style={styles.centerBox}>
               <Text style={styles.emptyTitle}>Aucun cours</Text>
-              <Text style={styles.emptyText}>Aucun cours publié pour le moment.</Text>
+              <Text style={styles.emptyText}>Aucune notion publiée pour le moment.</Text>
             </View>
           ) : (
-            courses.map((course, index) => {
-              const unlocked = isCourseUnlocked(index)
-              const completed = completedIds.has(course.id)
-              const moduleCount = course.modules.length
+            chapters.map((chapter, index) => {
+              const total = chapter.courses.length
+              const done = chapter.courses.filter((course) => completedIds.has(course.id)).length
+              const chapterDone = total > 0 && done === total
 
               return (
-                <FadeUp key={course.id} delay={100 + index * 50}>
+                <FadeUp key={chapter.id} delay={100 + index * 50}>
                   <Bouncy
                     scaleTo={0.98}
-                    disabled={!unlocked}
                     onPress={() =>
-                      navigation.navigate('CourseDetail', {
+                      navigation.navigate('ChapterCourses', {
+                        // La progression des notions reste indexée sur « standalone ».
                         chapterId: STANDALONE_CHAPTER,
-                        chapterName: 'Cours',
-                        course: {
+                        chapterName: chapter.name,
+                        courses: chapter.courses.map((course) => ({
                           id: course.id,
                           title: course.title,
                           modules: course.modules,
-                        },
-                        courses: courses.map((item) => ({
-                          id: item.id,
-                          title: item.title,
-                          modules: item.modules,
                         })),
                       })
                     }
                   >
                     <View
-                      style={[
-                        styles.card,
-                        !unlocked && styles.cardLocked,
-                        completed && styles.cardDone,
-                      ]}
+                      style={[styles.card, chapterDone && styles.cardDone]}
                       accessibilityRole="button"
-                      accessibilityState={{ disabled: !unlocked }}
                     >
                       <View style={styles.cardAccent} />
-                      <View
-                        style={[
-                          styles.iconWrap,
-                          !unlocked && styles.iconWrapLocked,
-                          completed && styles.iconWrapDone,
-                        ]}
-                      >
-                        {!unlocked ? (
-                          <Lock size={22} color={dark.textMuted} />
-                        ) : completed ? (
+                      <View style={[styles.iconWrap, chapterDone && styles.iconWrapDone]}>
+                        {chapterDone ? (
                           <Check size={22} color={dark.green} strokeWidth={3} />
                         ) : (
                           <BookOpen size={22} color={ORANGE} />
                         )}
                       </View>
                       <View style={styles.cardContent}>
-                        <Text style={[styles.cardTitle, !unlocked && styles.textMuted]}>
-                          {formatCourseHeading(index, course.title)}
-                        </Text>
+                        <Text style={styles.cardTitle}>{chapter.name}</Text>
                         <View style={styles.badgeRow}>
-                          {completed ? (
+                          {chapterDone ? (
                             <View style={[styles.badge, styles.badgeDone]}>
                               <Check size={11} color={dark.green} strokeWidth={3} />
                               <Text style={[styles.badgeText, styles.badgeTextDone]}>Terminé</Text>
                             </View>
-                          ) : !unlocked ? (
-                            <View style={[styles.badge, styles.badgeLocked]}>
-                              <Lock size={11} color={dark.textMuted} />
-                              <Text style={[styles.badgeText, styles.textMuted]}>Verrouillé</Text>
-                            </View>
                           ) : (
                             <View style={styles.badge}>
                               <Text style={styles.badgeText}>
-                                {moduleCount} MODULE{moduleCount > 1 ? 'S' : ''}
+                                {done}/{total} NOTION{total > 1 ? 'S' : ''}
                               </Text>
                             </View>
                           )}
                         </View>
-                        {!unlocked ? (
-                          <Text style={styles.lockHint}>
-                            Terminez le cours précédent pour débloquer.
-                          </Text>
-                        ) : null}
                       </View>
-                      <View style={[styles.arrowBtn, completed && styles.arrowBtnDone]}>
-                        {unlocked ? (
-                          <ChevronRight size={18} color={completed ? dark.green : ORANGE} />
-                        ) : (
-                          <Lock size={16} color={dark.textMuted} />
-                        )}
+                      <View style={[styles.arrowBtn, chapterDone && styles.arrowBtnDone]}>
+                        <ChevronRight size={18} color={chapterDone ? dark.green : ORANGE} />
                       </View>
                     </View>
                   </Bouncy>
