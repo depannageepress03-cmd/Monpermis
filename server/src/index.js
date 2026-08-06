@@ -53,7 +53,7 @@ import { ensureStandardRevisionChaptersSafe } from './services/standardRevisionC
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const app = express()
 const PORT = process.env.PORT || 5000
-/** Build web Vite copié ici au deploy Render (voir render.yaml). */
+/** Build portail moniteur Vite copié ici au deploy Render (voir render.yaml). */
 const webDistPath = path.join(__dirname, '../web-dist')
 const serveWebApp = fs.existsSync(path.join(webDistPath, 'index.html'))
 
@@ -292,9 +292,9 @@ app.get('/api/client-reset', (req, res) => {
 </body></html>`)
 })
 
-// App web apprenant (SPA) — filet si monpermis-web static est indisponible
+// Portail moniteur (SPA) — servi à la racine de monpermis-api.onrender.com
 if (serveWebApp) {
-  logger.info('SPA web servie depuis web-dist', { path: webDistPath })
+  logger.info('SPA moniteur servie depuis web-dist', { path: webDistPath })
 
   // Tue les anciens SW : 404 + Clear-Site-Data (ne jamais renvoyer index.html pour /sw.js)
   app.get(['/sw.js', '/registerSW.js', '/manifest.webmanifest'], (req, res) => {
@@ -347,7 +347,7 @@ if (serveWebApp) {
     })
   })
 } else {
-  logger.info('SPA web absente (web-dist) — API seule')
+  logger.info('SPA moniteur absente (web-dist) — API seule')
 }
 
 async function connectMongo() {
