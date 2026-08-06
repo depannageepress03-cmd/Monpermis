@@ -36,6 +36,8 @@ import promoCodesRoutes from './routes/promoCodes.js'
 import adminPromoCodesRoutes from './routes/adminPromoCodes.js'
 import trackingRoutes from './routes/tracking.js'
 import adminTrackingRoutes from './routes/adminTracking.js'
+import moniteurAuthRoutes from './routes/moniteurAuth.js'
+import moniteurPortalRoutes from './routes/moniteurPortal.js'
 import { fedapayKeyFingerprint, isFedaPayConfigured } from './services/fedapay.js'
 import { sendMediaAsset } from './middleware/upload.js'
 import { ensureReservationIndexes } from './models/Reservation.js'
@@ -65,12 +67,19 @@ function parseAllowedOrigins() {
     .split(',')
     .map(clean)
     .filter(Boolean)
-  const singles = [process.env.CLIENT_URL, process.env.ADMIN_CLIENT_URL].map(clean).filter(Boolean)
+  const singles = [
+    process.env.CLIENT_URL,
+    process.env.ADMIN_CLIENT_URL,
+    process.env.MONITEUR_CLIENT_URL,
+  ]
+    .map(clean)
+    .filter(Boolean)
   // Origines de prod connues (filet de sécurité si env incomplet)
   const defaults = [
     'https://monpermis-admin.onrender.com',
     'https://monpermis-web.onrender.com',
     'https://monpermis-api.onrender.com',
+    'http://localhost:5175',
   ]
   return [...new Set([...fromList, ...singles, ...defaults])]
 }
@@ -210,6 +219,8 @@ app.use('/api', (req, res, next) => {
 
 app.use('/api/auth', authLimiter, authRoutes)
 app.use('/api/admin/auth', authLimiter, adminAuthRoutes)
+app.use('/api/moniteur/auth', authLimiter, moniteurAuthRoutes)
+app.use('/api/moniteur', moniteurPortalRoutes)
 app.use('/api/admin/admins', adminAdminsRoutes)
 app.use('/api/admin/audit-logs', adminAuditLogsRoutes)
 app.use('/api/admin/activity', adminActivityRoutes)

@@ -1,4 +1,5 @@
 import mongoose from 'mongoose'
+import bcrypt from 'bcryptjs'
 
 const availabilitySlotSchema = new mongoose.Schema(
   {
@@ -18,6 +19,17 @@ const moniteurSchema = new mongoose.Schema(
     firstName: { type: String, required: true, trim: true },
     lastName: { type: String, required: true, trim: true },
     phone: { type: String, default: '', trim: true },
+    /** Identifiants portail moniteur (optionnels tant que activeLogin=false). */
+    email: {
+      type: String,
+      default: '',
+      trim: true,
+      lowercase: true,
+      index: true,
+    },
+    passwordHash: { type: String, default: '', select: false },
+    activeLogin: { type: Boolean, default: false },
+    lastLoginAt: { type: Date },
     specialties: { type: [String], default: [] },
     vehicleTypes: {
       type: [String],
@@ -44,7 +56,24 @@ const moniteurSchema = new mongoose.Schema(
   { timestamps: true },
 )
 
-/** Admin only — includes phone and full scheduling data. */
+moniteurSchema.index(
+  { email: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { email: { $type: 'string', $gt: '' } },
+  },
+)
+
+moniteurSchema.methods.setPassword = async function setPassword(plain) {
+  this.passwordHash = await bcrypt.hash(String(plain), 12)
+}
+
+moniteurSchema.methods.comparePassword = function comparePassword(candidate) {
+  if (!this.passwordHash) return Promise.resolve(false)
+  return bcrypt.compare(String(candidate || ''), this.passwordHash)
+}
+
+/** Admin only — includes phone, login flags and full scheduling data (never passwordHash). */
 moniteurSchema.methods.toJSONSafe = function toJSONSafe() {
   return {
     id: String(this._id),
@@ -52,6 +81,10 @@ moniteurSchema.methods.toJSONSafe = function toJSONSafe() {
     lastName: this.lastName,
     fullName: `${this.firstName} ${this.lastName}`.trim(),
     phone: this.phone || '',
+    email: this.email || '',
+    activeLogin: Boolean(this.activeLogin),
+    hasPassword: Boolean(this.passwordHash),
+    lastLoginAt: this.lastLoginAt || null,
     specialties: this.specialties || [],
     vehicleTypes: this.vehicleTypes || [],
     weeklyAvailability: this.weeklyAvailability || [],
@@ -66,6 +99,21 @@ moniteurSchema.methods.toJSONSafe = function toJSONSafe() {
     videos: this.videos || [],
     createdAt: this.createdAt,
     updatedAt: this.updatedAt,
+  }
+}
+
+/** Session portail moniteur. */
+moniteurSchema.methods.toAuthJSON = function toAuthJSON() {
+  return {
+    id: String(this._id),
+    firstName: this.firstName,
+    lastName: this.lastName,
+    fullName: `${this.firstName} ${this.lastName}`.trim(),
+    email: this.email || '',
+    phone: this.phone || '',
+    activeLogin: Boolean(this.activeLogin),
+    photoUrl: this.photoUrl || '',
+    city: this.city || '',
   }
 }
 

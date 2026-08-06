@@ -25,9 +25,11 @@ import {
 } from '../utils/pricing.js'
 import {
   BOOKING_LEAD_MINUTES,
+  clipWindowsToLeadTime,
   intervalsOverlap,
   isValidHhMm,
   isWithinWindows,
+  mergeWindows,
   normalizeTime,
   subtractBusy,
   windowsForDate,
@@ -161,7 +163,7 @@ router.get('/mine', ...withConduiteAccess, async (req, res) => {
 
     const rows = await Reservation.find({
       userId: req.user._id,
-      status: { $in: ['pending_payment', 'confirmed'] },
+      status: { $in: ['pending_payment', 'pending_moniteur', 'confirmed'] },
     })
       .populate('creneauId')
       .populate('moniteurId', 'firstName lastName phone vehicleBrand vehiclePhotoUrl photoUrl')
@@ -196,7 +198,7 @@ router.get('/dashboard', ...withConduiteAccess, async (req, res) => {
 
     const upcoming = await Reservation.find({
       userId: req.user._id,
-      status: { $in: ['pending_payment', 'confirmed'] },
+      status: { $in: ['pending_payment', 'pending_moniteur', 'confirmed'] },
     })
       .populate('creneauId')
       .populate('moniteurId', 'firstName lastName phone vehicleBrand vehiclePhotoUrl photoUrl')
@@ -305,16 +307,34 @@ router.get('/availability', ...withConduiteAccess, async (req, res) => {
       ...busySlotFilter(req.user._id),
     }).select('date startTime endTime status')
 
+    const publishedLibre = await Creneau.find({
+      moniteurId,
+      date: { $gte: from, $lte: to },
+      status: 'libre',
+      $or: [{ lockedUntil: null }, { lockedUntil: { $lte: new Date() } }],
+    }).select('date startTime endTime')
+
     const busyByDate = {}
     for (const slot of busyCreneaux) {
       if (!busyByDate[slot.date]) busyByDate[slot.date] = []
       busyByDate[slot.date].push(slot)
     }
 
+    const publishedByDate = {}
+    for (const slot of publishedLibre) {
+      if (!publishedByDate[slot.date]) publishedByDate[slot.date] = []
+      publishedByDate[slot.date].push({
+        start: slot.startTime,
+        end: slot.endTime,
+      })
+    }
+
     const days = []
     let cursor = from
     for (let i = 0; i < daysCount; i += 1) {
-      const windows = windowsForDate(moniteur.weeklyAvailability, cursor)
+      const weekly = windowsForDate(moniteur.weeklyAvailability, cursor)
+      const published = clipWindowsToLeadTime(publishedByDate[cursor] || [], cursor)
+      const windows = mergeWindows([...weekly, ...published])
       const freeWindows = subtractBusy(windows, busyByDate[cursor] || [])
       if (freeWindows.length > 0) {
         days.push({ date: cursor, windows: freeWindows })
@@ -374,7 +394,18 @@ router.post('/request-slot', ...withConduiteAccess, async (req, res) => {
       })
     }
 
-    const windows = windowsForDate(moniteur.weeklyAvailability, date)
+    const weekly = windowsForDate(moniteur.weeklyAvailability, date)
+    const publishedLibre = await Creneau.find({
+      moniteurId,
+      date,
+      status: 'libre',
+      $or: [{ lockedUntil: null }, { lockedUntil: { $lte: new Date() } }],
+    }).select('startTime endTime')
+    const published = clipWindowsToLeadTime(
+      publishedLibre.map((slot) => ({ start: slot.startTime, end: slot.endTime })),
+      date,
+    )
+    const windows = mergeWindows([...weekly, ...published])
     if (!windows.length) {
       return res.status(400).json({
         success: false,
@@ -417,6 +448,20 @@ router.post('/request-slot', ...withConduiteAccess, async (req, res) => {
       })
     }
 
+    // Évite de chevaucher un créneau libre publié (sauf correspondance exacte qu’on verrouille).
+    const overlappingPublished = publishedLibre.find(
+      (slot) =>
+        intervalsOverlap(startTime, endTime, slot.startTime, slot.endTime) &&
+        !(slot.startTime === startTime && slot.endTime === endTime),
+    )
+    if (overlappingPublished) {
+      return res.status(409).json({
+        success: false,
+        error:
+          'Cette plage chevauche un créneau publié. Choisissez exactement ce créneau ou un autre horaire.',
+      })
+    }
+
     // Libère un éventuel créneau encore verrouillé par cet élève (même moniteur/date)
     await Creneau.deleteMany({
       moniteurId,
@@ -438,17 +483,41 @@ router.post('/request-slot', ...withConduiteAccess, async (req, res) => {
 
     let creneau
     try {
-      creneau = await Creneau.create({
-        moniteurId: moniteur._id,
+      const exactPublished = await Creneau.findOne({
+        moniteurId,
         date,
         startTime,
         endTime,
-        vehicleType,
         status: 'libre',
-        priceFcfa,
-        lockedUntil,
-        lockedBy: req.user._id,
+        $or: [{ lockedUntil: null }, { lockedUntil: { $lte: new Date() } }],
       })
+      if (exactPublished) {
+        creneau = await Creneau.findOneAndUpdate(
+          { _id: exactPublished._id, status: 'libre' },
+          {
+            $set: {
+              lockedUntil,
+              lockedBy: req.user._id,
+              priceFcfa,
+              vehicleType,
+            },
+          },
+          { new: true },
+        )
+      }
+      if (!creneau) {
+        creneau = await Creneau.create({
+          moniteurId: moniteur._id,
+          date,
+          startTime,
+          endTime,
+          vehicleType,
+          status: 'libre',
+          priceFcfa,
+          lockedUntil,
+          lockedBy: req.user._id,
+        })
+      }
     } catch (error) {
       if (error?.code === 11000) {
         return res.status(409).json({
@@ -855,7 +924,7 @@ router.post('/reservations', ...withConduiteAccess, async (req, res) => {
               moniteurId: assignedMoniteurId,
               creneauId: creneau._id,
               vehicleType: creneau.vehicleType || vehicleType,
-              status: 'confirmed',
+              status: 'pending_moniteur',
               paymentStatus: 'paid',
               paymentRef: 'solde_heures',
               bookingGroupId,
@@ -1092,7 +1161,10 @@ router.get('/checkout/:groupId/sync', ...withConduiteAccess, async (req, res) =>
     const refreshedReservations = await Reservation.find({ bookingGroupId: groupId })
     const hydrated = await hydrateReservationGroup(refreshedReservations)
     const allConfirmed =
-      hydrated.length > 0 && hydrated.every((item) => item.status === 'confirmed')
+      hydrated.length > 0 &&
+      hydrated.every(
+        (item) => item.status === 'confirmed' || item.status === 'pending_moniteur',
+      )
 
     res.json({
       success: true,
@@ -1207,6 +1279,22 @@ router.post('/reservations/:id/cancel', ...withConduiteAccess, async (req, res) 
 
     if (reservation.heuresDebitees > 0) {
       await User.findByIdAndUpdate(req.user._id, { $inc: { soldeHeures: reservation.heuresDebitees } })
+    } else if (
+      reservation.paymentStatus === 'paid' &&
+      reservation.bookingGroupId &&
+      String(reservation.paymentRef || '') !== 'solde_heures'
+    ) {
+      const payment = await Payment.findOne({
+        reservationGroupId: reservation.bookingGroupId,
+        method: 'fedapay',
+      }).sort({ createdAt: -1 })
+      if (payment && !payment.needsRefund) {
+        payment.needsRefund = true
+        payment.errorMessage =
+          payment.errorMessage ||
+          'Annulation élève après paiement — remboursement Mobile Money requis'
+        await payment.save()
+      }
     }
 
     await Creneau.findByIdAndUpdate(reservation.creneauId._id, {

@@ -170,6 +170,39 @@ const CHAPITRE_1: LocalQuestion[] = [
   question(1, 106, ['A', 'B', 'C'], ['B'], [106]),
 ]
 
+const CHAPITRE_2: LocalQuestion[] = [
+  question(2, 1, ['A', 'B', 'C'], ['C']),
+  question(2, 2, ['A', 'B', 'C'], ['C']),
+  question(2, 3, ['A', 'B', 'C'], ['B']),
+  question(2, 4, ['A', 'B', 'C'], ['B']),
+  question(2, 5, ['A', 'B', 'C'], ['B']),
+  question(2, 6, ['A', 'B', 'C'], ['B']),
+  question(2, 7, ['A', 'B', 'C'], ['B']),
+  question(2, 8, ['A', 'B', 'C', 'D'], ['A', 'B']),
+  question(2, 9, ['A', 'B', 'C'], ['C']),
+  question(2, 10, ['A', 'B', 'C'], ['C']),
+  question(2, 11, ['A', 'B', 'C', 'D'], ['B']),
+  question(2, 12, ['A', 'B', 'C', 'D'], ['C']),
+  question(2, 13, ['A', 'B', 'C'], ['A'], [13]),
+  question(2, 14, ['A', 'B', 'C'], ['B']),
+  question(2, 15, ['A', 'B', 'C'], ['B']),
+  question(2, 16, ['A', 'B', 'C'], ['C']),
+  question(2, 17, ['A', 'B', 'C', 'D'], ['B']),
+  question(2, 18, ['A', 'B', 'C'], ['C'], [18]),
+  question(2, 19, ['A', 'B', 'C', 'D'], ['B'], [19]),
+  question(2, 20, ['A', 'B', 'C'], ['B'], [20]),
+  question(2, 21, ['A', 'B', 'C', 'D'], ['C'], [21]),
+  question(2, 22, ['A', 'B', 'C'], ['C'], [22]),
+  question(2, 23, ['A', 'B'], ['B'], [23]),
+  question(2, 24, ['A', 'B', 'C', 'D'], ['A'], [24]),
+  question(2, 25, ['A', 'B', 'C'], ['C']),
+  question(2, 26, ['A', 'B'], ['A'], [26]),
+  question(2, 27, ['A', 'B', 'C'], ['C'], [27]),
+  question(2, 28, ['A', 'B', 'C'], ['C'], [28]),
+  question(2, 29, ['A', 'B', 'C'], ['C'], [29]),
+  question(2, 30, ['A', 'B', 'C'], ['C']),
+]
+
 const CHAPITRE_3: LocalQuestion[] = [
   question(3, 1, ['A', 'B', 'C'], ['A']),
   question(3, 2, ['A', 'B', 'C', 'D'], ['A'], [2]),
@@ -472,6 +505,7 @@ const CHAPITRE_20: LocalQuestion[] = [
 
 const BANKS_BY_ORDER: Record<number, LocalQuestion[]> = {
   1: CHAPITRE_1,
+  2: CHAPITRE_2,
   3: CHAPITRE_3,
   6: CHAPITRE_6,
   7: CHAPITRE_7,

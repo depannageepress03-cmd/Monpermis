@@ -47,7 +47,8 @@ function estimateHours(start: string, end: string) {
 }
 
 function statusLabel(item: ReservationItem) {
-  if (item.status === 'confirmed' && item.paymentStatus === 'paid') return 'Confirmée'
+  if (item.status === 'pending_moniteur') return 'En attente du moniteur'
+  if (item.status === 'confirmed') return 'Confirmée'
   if (item.status === 'pending_payment') return 'Paiement en cours'
   return item.status
 }
@@ -104,9 +105,8 @@ export function MesReservationsScreen() {
 
   if (loading || !user) return <ScreenLoader />
 
-  const confirmed = items.filter(
-    (item) => item.status === 'confirmed' || item.paymentStatus === 'paid',
-  )
+  const confirmed = items.filter((item) => item.status === 'confirmed')
+  const awaitingMoniteur = items.filter((item) => item.status === 'pending_moniteur')
   const pending = items.filter(
     (item) => item.status === 'pending_payment' && item.paymentStatus !== 'paid',
   )
@@ -177,26 +177,54 @@ export function MesReservationsScreen() {
                         : '—'}
                       {hours > 0 ? ` · ${hours} h` : ''}
                     </Text>
-                    <Text style={styles.cardMeta}>
-                      {item.moniteur?.fullName || 'Moniteur'}
-                      {item.moniteur?.vehicleBrand ? ` · ${item.moniteur.vehicleBrand}` : ''}
-                    </Text>
+                    <Text style={styles.cardLine}>{item.moniteur?.fullName || 'Moniteur'}</Text>
                   </Pressable>
                   {item.canCancel ? (
                     <Pressable
-                      style={styles.cancelLink}
+                      style={styles.cancelBtn}
                       onPress={() => {
                         setError(null)
                         setCancelReason('')
                         setCancelTarget(item)
                       }}
                     >
-                      <Text style={styles.cancelLinkText}>Annuler</Text>
+                      <Text style={styles.cancelBtnText}>Annuler</Text>
                     </Pressable>
                   ) : null}
                 </View>
               )
             })}
+          </View>
+        ) : null}
+
+        {awaitingMoniteur.length > 0 ? (
+          <View style={{ marginTop: 18 }}>
+            <Text style={styles.section}>En attente du moniteur</Text>
+            {awaitingMoniteur.map((item) => (
+              <View key={item.id} style={styles.card}>
+                <Text style={styles.cardTitle}>
+                  {item.creneau ? formatDateLabel(item.creneau.date) : 'Séance'}
+                </Text>
+                <Text style={styles.cardLine}>
+                  {item.creneau ? `${item.creneau.startTime} – ${item.creneau.endTime}` : '—'}
+                </Text>
+                <Text style={styles.cardLine}>
+                  {item.moniteur?.fullName || 'Moniteur'} · {statusLabel(item)}
+                </Text>
+                {item.canCancel ? (
+                  <Pressable
+                    style={styles.cancelBtn}
+                    onPress={() => {
+                      setError(null)
+                      setCancelReason('')
+                      setCancelTarget(item)
+                    }}
+                  >
+                    <Text style={styles.cancelBtnText}>Annuler</Text>
+                  </Pressable>
+                ) : null}
+              </View>
+            ))}
           </View>
         ) : null}
 

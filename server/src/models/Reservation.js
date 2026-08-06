@@ -26,7 +26,7 @@ const reservationSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['pending_payment', 'confirmed', 'cancelled', 'completed'],
+      enum: ['pending_payment', 'pending_moniteur', 'confirmed', 'cancelled', 'completed'],
       default: 'pending_payment',
       index: true,
     },
@@ -51,7 +51,7 @@ const reservationSchema = new mongoose.Schema(
     cancellationReason: { type: String, default: '', trim: true },
     cancelledBy: {
       type: String,
-      enum: ['', 'learner', 'admin'],
+      enum: ['', 'learner', 'admin', 'moniteur'],
       default: '',
     },
   },
@@ -65,7 +65,7 @@ reservationSchema.index(
     unique: true,
     name: 'creneauId_active_unique',
     partialFilterExpression: {
-      status: { $in: ['pending_payment', 'confirmed'] },
+      status: { $in: ['pending_payment', 'pending_moniteur', 'confirmed'] },
     },
   },
 )

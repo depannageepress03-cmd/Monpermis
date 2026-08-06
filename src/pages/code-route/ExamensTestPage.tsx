@@ -16,16 +16,10 @@ import { PageNavbar } from '../../components/PageNavbar'
 import { useAuth } from '../../hooks/useAuth'
 import { useFocusRefresh } from '../../hooks/useFocusRefresh'
 import { useLeaveGuard } from '../../hooks/useLeaveGuard'
-import { playFailSound, playSuccessSound, stopAllQuizAudio } from '../../utils/quizSounds'
+import { stopAllQuizAudio } from '../../utils/quizSounds'
 import { resolveCodeImageUrl } from '../../utils/codeImageUrl'
 import '../../styles/auth.css'
 import '../../styles/learner.css'
-
-function wait(ms: number) {
-  return new Promise<void>((resolve) => {
-    window.setTimeout(resolve, ms)
-  })
-}
 
 export function ExamensTestPage() {
   const navigate = useNavigate()
@@ -182,11 +176,7 @@ export function ExamensTestTakePage() {
   const [index, setIndex] = useState(0)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [checking, setChecking] = useState(false)
-  const [result, setResult] = useState<{
-    isCorrect: boolean
-    correctAnswerIds: string[]
-  } | null>(null)
-  const [liveCorrect, setLiveCorrect] = useState(0)
+  const [submitted, setSubmitted] = useState(false)
   const [answeredCount, setAnsweredCount] = useState(0)
   const [finished, setFinished] = useState(false)
   const [finalScore, setFinalScore] = useState<{
@@ -200,8 +190,8 @@ export function ExamensTestTakePage() {
 
   const selectedIdsRef = useRef(selectedIds)
   selectedIdsRef.current = selectedIds
-  const resultRef = useRef(result)
-  resultRef.current = result
+  const submittedRef = useRef(submitted)
+  submittedRef.current = submitted
   const checkingRef = useRef(checking)
   checkingRef.current = checking
   const indexRef = useRef(index)
@@ -229,8 +219,7 @@ export function ExamensTestTakePage() {
       const answered = started.answeredCount || 0
       setIndex(Math.min(answered, Math.max((started.questions?.length || 1) - 1, 0)))
       setSelectedIds([])
-      setResult(null)
-      setLiveCorrect(started.liveCorrect || 0)
+      setSubmitted(false)
       setAnsweredCount(answered)
       setFinished(started.status === 'completed')
       setSequenceLive(started.status !== 'completed')
@@ -258,7 +247,7 @@ export function ExamensTestTakePage() {
   useEffect(() => {
     setSequenceLive(true)
     setSelectedIds([])
-    setResult(null)
+    setSubmitted(false)
     stopAllQuizAudio()
   }, [index])
 
@@ -277,7 +266,7 @@ export function ExamensTestTakePage() {
   }, [index, questions.length])
 
   const toggleAnswer = (answerId: string) => {
-    if (result || checking) return
+    if (submitted || checking) return
     setSelectedIds((current) =>
       current.includes(answerId)
         ? current.filter((id) => id !== answerId)
@@ -306,7 +295,7 @@ export function ExamensTestTakePage() {
     stopAllQuizAudio()
     setIndex((value) => value + 1)
     setSelectedIds([])
-    setResult(null)
+    setSubmitted(false)
     setSequenceLive(true)
   }, [])
 
@@ -317,21 +306,20 @@ export function ExamensTestTakePage() {
       !currentAttempt ||
       !currentQuestion ||
       checkingRef.current ||
-      resultRef.current
+      submittedRef.current
     )
       return
 
     setChecking(true)
+    setSubmitted(true)
     setSequenceLive(false)
     stopAllQuizAudio()
     try {
       const data = await checkPracticeExamAnswer(currentAttempt.id, currentQuestion.id, [])
-      setResult({ isCorrect: false, correctAnswerIds: [] })
-      setLiveCorrect(data.liveCorrect)
       setAnsweredCount(data.answeredCount)
-      void playFailSound()
       await finishOrAdvance()
     } catch (err) {
+      setSubmitted(false)
       setError(err instanceof ContentError ? err.message : 'Vérification impossible')
     } finally {
       setChecking(false)
@@ -347,23 +335,20 @@ export function ExamensTestTakePage() {
         !currentQuestion ||
         ids.length === 0 ||
         checkingRef.current ||
-        resultRef.current
+        submittedRef.current
       )
         return
 
       setChecking(true)
+      setSubmitted(true)
       setSequenceLive(false)
       stopAllQuizAudio()
       try {
         const data = await checkPracticeExamAnswer(currentAttempt.id, currentQuestion.id, ids)
-        setResult({ isCorrect: data.isCorrect, correctAnswerIds: data.correctAnswerIds })
-        setLiveCorrect(data.liveCorrect)
         setAnsweredCount(data.answeredCount)
-        if (data.isCorrect) await playSuccessSound()
-        else await playFailSound()
-        await wait(900)
         await finishOrAdvance()
       } catch (err) {
+        setSubmitted(false)
         setError(err instanceof ContentError ? err.message : 'Vérification impossible')
         setSequenceLive(selectedIdsRef.current.length === 0)
       } finally {
@@ -385,7 +370,7 @@ export function ExamensTestTakePage() {
 
   const handleContinue = () => {
     const ids = selectedIdsRef.current
-    if (ids.length === 0 || checking || result) return
+    if (ids.length === 0 || checking || submitted) return
     setSequenceLive(false)
     stopAllQuizAudio()
     void resolveSelection(ids)
@@ -414,8 +399,7 @@ export function ExamensTestTakePage() {
         <header className="auth-header learner-header">
           <p className="learner-kicker">Examen blanc</p>
           <p>
-            Note en direct : {liveCorrect}/{attempt?.total ?? 20} · Seuil{' '}
-            {attempt?.passScore ?? 14}/20
+            Seuil de réussite : {attempt?.passScore ?? 14}/20 · Résultats à la fin
           </p>
         </header>
 
@@ -457,9 +441,7 @@ export function ExamensTestTakePage() {
 
           {!loading && !error && question && !finished ? (
             <form className="learner-quiz">
-              <p className="learner-quiz-progress">
-                {progressLabel} · Score live {liveCorrect}/{answeredCount || '—'}
-              </p>
+              <p className="learner-quiz-progress">{progressLabel}</p>
               {(question.correctCount ?? 1) > 1 ? (
                 <span className="learner-multi-badge">
                   {question.correctCount} bonnes réponses à cocher
@@ -475,7 +457,7 @@ export function ExamensTestTakePage() {
               {question.prompt?.text ? (
                 <p className="learner-quiz-prompt">{question.prompt.text}</p>
               ) : null}
-              {sequenceLive && !result ? (
+              {sequenceLive && !submitted ? (
                 <QuestionAudioSequence
                   key={question.id}
                   questionKey={question.id}
@@ -488,18 +470,15 @@ export function ExamensTestTakePage() {
               <div className="learner-quiz-answers">
                 {question.answers.map((answer) => {
                   const selected = selectedIds.includes(answer.id)
-                  const isCorrect = result?.correctAnswerIds.includes(answer.id)
                   let className = 'learner-quiz-answer'
                   if (selected) className += ' is-selected'
-                  if (result && isCorrect) className += ' is-correct'
-                  if (result && selected && !isCorrect) className += ' is-wrong'
                   return (
                     <button
                       key={answer.id}
                       type="button"
                       className={className}
                       onClick={() => toggleAnswer(answer.id)}
-                      disabled={Boolean(result) || checking}
+                      disabled={submitted || checking}
                     >
                       <strong>{answer.label.toUpperCase()}</strong>
                       {answer.text ? <span>{answer.text}</span> : null}
@@ -508,31 +487,22 @@ export function ExamensTestTakePage() {
                 })}
               </div>
 
-              {result ? (
-                <p className={result.isCorrect ? 'form-success' : 'form-error'}>
-                  {result.isCorrect ? 'Bonne réponse' : 'Mauvaise réponse'}
-                </p>
-              ) : null}
-
               <div className="learner-quiz-actions">
-                {!result && selectedIds.length > 0 ? (
+                {!submitted && selectedIds.length > 0 ? (
                   <button
                     type="button"
                     className="btn-primary"
                     disabled={checking}
                     onClick={handleContinue}
                   >
-                    {checking ? 'Vérification…' : 'Continuer'}
+                    {checking ? 'Enregistrement…' : 'Continuer'}
                   </button>
                 ) : null}
-                {!result && selectedIds.length === 0 ? (
+                {!submitted && selectedIds.length === 0 ? (
                   <p className="learner-quiz-audio-status">
                     L’audio lit la question 2 fois. Vous pouvez cocher pendant la lecture ; Continuer
                     valide sans attendre. Sans choix à la fin : question ratée.
                   </p>
-                ) : null}
-                {result ? (
-                  <p className="learner-quiz-audio-status">Passage automatique…</p>
                 ) : null}
               </div>
             </form>

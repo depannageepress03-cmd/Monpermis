@@ -18,6 +18,9 @@ export function createMoniteur(
     fullName?: string
     name?: string
     phone?: string
+    email?: string
+    password?: string
+    activeLogin?: boolean
     specialties?: string[]
     vehicleTypes?: string[]
     defaultPriceFcfa?: number
@@ -47,6 +50,9 @@ export function updateMoniteur(
     fullName: string
     name: string
     phone: string
+    email: string
+    password: string
+    activeLogin: boolean
     specialties: string[]
     vehicleTypes: string[]
     active: boolean

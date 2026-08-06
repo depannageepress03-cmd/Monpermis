@@ -29,7 +29,8 @@ function formatDateLabel(date: string) {
 }
 
 function statusLabel(item: ReservationItem) {
-  if (item.status === 'confirmed' || item.paymentStatus === 'paid') return 'Confirmée'
+  if (item.status === 'pending_moniteur') return 'En attente du moniteur'
+  if (item.status === 'confirmed') return 'Confirmée'
   if (item.paymentStatus === 'pending_validation') return 'Paiement à valider'
   if (item.status === 'pending_payment') return 'Paiement en cours'
   return item.status
@@ -85,9 +86,8 @@ export function MesReservationsPage() {
 
   if (loading || !user) return <PageLoader />
 
-  const confirmed = items.filter(
-    (item) => item.status === 'confirmed' || item.paymentStatus === 'paid',
-  )
+  const confirmed = items.filter((item) => item.status === 'confirmed')
+  const awaitingMoniteur = items.filter((item) => item.status === 'pending_moniteur')
   const pending = items.filter(
     (item) => item.status === 'pending_payment' && item.paymentStatus !== 'paid',
   )
@@ -132,6 +132,41 @@ export function MesReservationsPage() {
               <h3 className="section-title">Confirmées</h3>
               <ul className="upcoming-list">
                 {confirmed.map((item) => (
+                  <li key={String(item.id)}>
+                    <div className="upcoming-item-main">
+                      <strong>
+                        {item.creneau
+                          ? `${formatDateLabel(item.creneau.date)} · ${item.creneau.startTime} – ${item.creneau.endTime}`
+                          : 'Séance'}
+                      </strong>
+                      <span>
+                        {item.moniteur?.fullName || 'Moniteur'} · {statusLabel(item)}
+                      </span>
+                    </div>
+                    {item.canCancel ? (
+                      <button
+                        type="button"
+                        className="upcoming-cancel-btn"
+                        onClick={() => {
+                          setError(null)
+                          setCancelReason('')
+                          setCancelTarget(item)
+                        }}
+                      >
+                        Annuler
+                      </button>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ) : null}
+
+          {!busy && awaitingMoniteur.length > 0 ? (
+            <section className="upcoming-block" style={{ marginTop: '1.25rem' }}>
+              <h3 className="section-title">En attente du moniteur</h3>
+              <ul className="upcoming-list">
+                {awaitingMoniteur.map((item) => (
                   <li key={String(item.id)}>
                     <div className="upcoming-item-main">
                       <strong>

@@ -4,6 +4,8 @@ Structure :
 
 ```
 code-images/
+  chapitre-2/
+    13.png … (intersections I-*)
   chapitre-3/
     2.png 6.png 8.png
   chapitre-8/

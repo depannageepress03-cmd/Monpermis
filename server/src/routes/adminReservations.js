@@ -67,7 +67,7 @@ function clampBio(value) {
 
 router.get('/moniteurs', async (_req, res) => {
   try {
-    const moniteurs = await Moniteur.find().sort({ lastName: 1, firstName: 1 })
+    const moniteurs = await Moniteur.find().select('+passwordHash').sort({ lastName: 1, firstName: 1 })
     res.json({
       success: true,
       data: { moniteurs: moniteurs.map((item) => item.toJSONSafe()) },
@@ -99,6 +99,10 @@ router.post('/moniteurs', audit('create', 'moniteur'), async (req, res) => {
       firstName,
       lastName,
       phone: String(req.body.phone || '').trim(),
+      email: String(req.body.email || '')
+        .trim()
+        .toLowerCase(),
+      activeLogin: Boolean(req.body.activeLogin),
       specialties: Array.isArray(req.body.specialties)
         ? req.body.specialties.map((item) => String(item).trim()).filter(Boolean)
         : [],
@@ -128,8 +132,25 @@ router.post('/moniteurs', audit('create', 'moniteur'), async (req, res) => {
       videos: parseVideosList(req.body.videos),
     })
 
-    res.status(201).json({ success: true, data: { moniteur: moniteur.toJSONSafe() } })
+    const password = String(req.body.password || '')
+    if (password) {
+      if (password.length < 8) {
+        await Moniteur.findByIdAndDelete(moniteur._id)
+        return res.status(400).json({
+          success: false,
+          error: 'Mot de passe moniteur : minimum 8 caractères',
+        })
+      }
+      await moniteur.setPassword(password)
+      await moniteur.save()
+    }
+
+    const saved = await Moniteur.findById(moniteur._id).select('+passwordHash')
+    res.status(201).json({ success: true, data: { moniteur: saved.toJSONSafe() } })
   } catch (error) {
+    if (error?.code === 11000) {
+      return res.status(409).json({ success: false, error: 'Cet email moniteur est déjà utilisé' })
+    }
     logger.error('Erreur création moniteur:', error)
     res.status(500).json({ success: false, error: 'Création impossible' })
   }
@@ -153,6 +174,24 @@ router.patch('/moniteurs/:id', audit('update', 'moniteur'), async (req, res) => 
     if (req.body.firstName !== undefined) moniteur.firstName = String(req.body.firstName).trim()
     if (req.body.lastName !== undefined) moniteur.lastName = String(req.body.lastName).trim()
     if (req.body.phone !== undefined) moniteur.phone = String(req.body.phone).trim()
+    if (req.body.email !== undefined) {
+      moniteur.email = String(req.body.email || '')
+        .trim()
+        .toLowerCase()
+    }
+    if (req.body.activeLogin !== undefined) {
+      moniteur.activeLogin = Boolean(req.body.activeLogin)
+    }
+    if (req.body.password !== undefined && String(req.body.password || '').length > 0) {
+      const password = String(req.body.password)
+      if (password.length < 8) {
+        return res.status(400).json({
+          success: false,
+          error: 'Mot de passe moniteur : minimum 8 caractères',
+        })
+      }
+      await moniteur.setPassword(password)
+    }
     if (req.body.specialties !== undefined) {
       moniteur.specialties = Array.isArray(req.body.specialties)
         ? req.body.specialties.map((item) => String(item).trim()).filter(Boolean)
@@ -202,8 +241,12 @@ router.patch('/moniteurs/:id', audit('update', 'moniteur'), async (req, res) => 
     }
 
     await moniteur.save()
-    res.json({ success: true, data: { moniteur: moniteur.toJSONSafe() } })
+    const saved = await Moniteur.findById(moniteur._id).select('+passwordHash')
+    res.json({ success: true, data: { moniteur: saved.toJSONSafe() } })
   } catch (error) {
+    if (error?.code === 11000) {
+      return res.status(409).json({ success: false, error: 'Cet email moniteur est déjà utilisé' })
+    }
     logger.error('Erreur maj moniteur:', error)
     res.status(500).json({ success: false, error: 'Mise à jour impossible' })
   }
@@ -216,6 +259,24 @@ router.delete('/moniteurs/:id', audit('delete', 'moniteur'), async (req, res) =>
       return res.status(404).json({ success: false, error: 'Moniteur introuvable' })
     }
     await Creneau.deleteMany({ moniteurId: moniteur._id, status: 'libre' })
+    // Annule les réservations encore actives et libère / purge les créneaux restants.
+    const activeReservations = await Reservation.find({
+      moniteurId: moniteur._id,
+      status: { $in: ['pending_payment', 'pending_moniteur', 'confirmed'] },
+    })
+    for (const reservation of activeReservations) {
+      if (reservation.heuresDebitees > 0 && reservation.userId) {
+        await User.findByIdAndUpdate(reservation.userId, {
+          $inc: { soldeHeures: reservation.heuresDebitees },
+        })
+      }
+      reservation.status = 'cancelled'
+      reservation.cancelledAt = new Date()
+      reservation.cancellationReason = 'Moniteur supprimé'
+      reservation.cancelledBy = 'admin'
+      await reservation.save()
+    }
+    await Creneau.deleteMany({ moniteurId: moniteur._id })
     res.json({ success: true, data: { deleted: true } })
   } catch (error) {
     logger.error('Erreur suppression moniteur:', error)
@@ -489,8 +550,8 @@ router.get('/reservations', async (req, res) => {
     const filter = {}
     if (req.query.status) filter.status = String(req.query.status).slice(0, 30)
     if (req.query.paymentStatus) filter.paymentStatus = String(req.query.paymentStatus).slice(0, 30)
-    if (req.query.moniteurId) filter.moniteurtId = req.query.moniteurtId
-    if (req.query.userId) filter.userId = req.query.userId
+    if (req.query.moniteurId) filter.moniteurId = asObjectId(req.query.moniteurId) || req.query.moniteurId
+    if (req.query.userId) filter.userId = asObjectId(req.query.userId) || req.query.userId
 
     const reservations = await Reservation.find(filter)
       .sort({ createdAt: -1 })
@@ -575,7 +636,11 @@ router.patch('/reservations/:id', audit('update', 'reservation'), async (req, re
     }
 
     if (req.body.status) {
-      if (!['pending_payment', 'confirmed', 'cancelled', 'completed'].includes(req.body.status)) {
+      if (
+        !['pending_payment', 'pending_moniteur', 'confirmed', 'cancelled', 'completed'].includes(
+          req.body.status,
+        )
+      ) {
         return res.status(400).json({ success: false, error: 'Statut invalide' })
       }
 

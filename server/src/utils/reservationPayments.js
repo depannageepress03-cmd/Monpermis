@@ -139,7 +139,7 @@ async function confirmReservationsForApprovedPayment(payment) {
       { _id: reservation._id, status: 'pending_payment' },
       {
         $set: {
-          status: 'confirmed',
+          status: 'pending_moniteur',
           paymentStatus: 'paid',
           paymentRef,
         },
@@ -151,18 +151,24 @@ async function confirmReservationsForApprovedPayment(payment) {
     await guaranteeCreneauReserved(updated.creneauId)
   }
 
-  // Défensif : toute réservation confirmée (ou encore livrable) garde le créneau exclusif.
+  // Défensif : toute réservation payée (ou encore livrable) garde le créneau exclusif.
   const reservations = await Reservation.find({ bookingGroupId: payment.reservationGroupId })
   let guaranteed = 0
   for (const reservation of reservations) {
-    if (reservation.status !== 'confirmed' && reservation.status !== 'pending_payment') continue
-    // pending_payment orphelin après claim concurrent : si Payment est approved, on force confirmed.
+    if (
+      reservation.status !== 'confirmed' &&
+      reservation.status !== 'pending_moniteur' &&
+      reservation.status !== 'pending_payment'
+    ) {
+      continue
+    }
+    // pending_payment orphelin après claim concurrent : si Payment est approved, on force pending_moniteur.
     if (reservation.status === 'pending_payment') {
       const forced = await Reservation.findOneAndUpdate(
         { _id: reservation._id, status: 'pending_payment' },
         {
           $set: {
-            status: 'confirmed',
+            status: 'pending_moniteur',
             paymentStatus: 'paid',
             paymentRef,
           },
@@ -329,9 +335,11 @@ export async function applyApprovedReservationPayment(
     // si le Payment est déjà approved mais les Reservation encore pending_payment.
     const { reservations, unlocked } = await confirmReservationsForApprovedPayment(payment)
     const fresh = await Payment.findById(payment._id)
-    const hasConfirmed = reservations.some((r) => r.status === 'confirmed')
+    const hasDelivered = reservations.some(
+      (r) => r.status === 'confirmed' || r.status === 'pending_moniteur',
+    )
 
-    if (!hasConfirmed) {
+    if (!hasDelivered) {
       if (fresh && !fresh.needsRefund) {
         fresh.needsRefund = true
         fresh.errorMessage =
@@ -479,8 +487,11 @@ export async function applyApprovedReservationPayment(
     })
   }
 
-  // Approved mais aucune réservation confirmable (annulée/expirée) → orphelin.
-  if (unlocked === 0 && !reservations.some((r) => r.status === 'confirmed')) {
+  // Approved mais aucune réservation livrable (annulée/expirée) → orphelin.
+  if (
+    unlocked === 0 &&
+    !reservations.some((r) => r.status === 'confirmed' || r.status === 'pending_moniteur')
+  ) {
     claimed.needsRefund = true
     claimed.errorMessage =
       claimed.errorMessage ||
@@ -496,7 +507,9 @@ export async function applyApprovedReservationPayment(
     alreadyProcessed: false,
     unlocked,
     needsRefund: Boolean(claimed.needsRefund),
-    orphan: unlocked === 0 && !reservations.some((r) => r.status === 'confirmed'),
+    orphan:
+      unlocked === 0 &&
+      !reservations.some((r) => r.status === 'confirmed' || r.status === 'pending_moniteur'),
   })
 }
 
