@@ -82,7 +82,6 @@ services:
     name: monpermis-admin
     runtime: static
     rootDir: administration
-    plan: free
     buildCommand: npm install && npm run build
     staticPublishPath: dist
     envVars:
@@ -97,7 +96,6 @@ services:
     name: monpermis-moniteur
     runtime: static
     rootDir: moniteur
-    plan: free
     buildCommand: npm install && npm run build
     staticPublishPath: dist
     envVars:
@@ -112,7 +110,6 @@ services:
     name: monpermis-web
     runtime: static
     rootDir: .
-    plan: free
     # ignore-scripts : évite le postinstall mobile pendant le build web
     buildCommand: npm install --ignore-scripts && npm run build:web
     staticPublishPath: dist
