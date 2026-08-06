@@ -241,6 +241,7 @@ Fichiers médias : stockés sur le serveur (`server/uploads/`) et servis via `/u
 |--------|----------------------------|
 | API | `https://monpermis-api.onrender.com` |
 | Admin | `https://monpermis-admin.onrender.com` |
+| Moniteur | `https://monpermis-moniteur.onrender.com` |
 | Web apprenant | service Render `monpermis-web` (ou domaine dédié) |
 | Mobile | APK GitHub Releases (`vX.Y.Z-preview`) |
 
@@ -281,9 +282,10 @@ Trois services prévus (`render.yaml`) :
 
 1. **monpermis-api** — Node, root `server`, health `/api/health`
 2. **monpermis-admin** — static, root `administration`, publish `dist`
-3. **monpermis-web** — static, build web apprenant, publish `dist`
+3. **monpermis-moniteur** — static, root `moniteur`, publish `dist`
+4. **monpermis-web** — static, build web apprenant, publish `dist`
 
-Variables critiques API : `MONGODB_URI`, `JWT_SECRET`, `ALLOWED_ORIGINS`, `CLIENT_URL`, `ADMIN_CLIENT_URL`, `API_PUBLIC_URL`, clés FedaPay, SMTP, `GOOGLE_CLIENT_ID`.
+Variables critiques API : `MONGODB_URI`, `JWT_SECRET`, `ALLOWED_ORIGINS`, `CLIENT_URL`, `ADMIN_CLIENT_URL`, `MONITEUR_CLIENT_URL`, `API_PUBLIC_URL`, clés FedaPay, SMTP, `GOOGLE_CLIENT_ID`.
 
 ### 11.2 Build mobile (sans EAS)
 

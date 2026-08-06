@@ -2,7 +2,18 @@
 
 Application web séparée (comme `administration/`).
 
-## Développement
+## En ligne (Render)
+
+URL prévue : **https://monpermis-moniteur.onrender.com**
+
+1. Créer / synchroniser le service static `monpermis-moniteur` (voir `render.yaml`).
+2. Sur ce service, définir `VITE_API_URL=https://monpermis-api.onrender.com` (build-time).
+3. Sur `monpermis-api`, ajouter l’origine aux CORS :
+   - `MONITEUR_CLIENT_URL=https://monpermis-moniteur.onrender.com`
+   - ou l’inclure dans `ALLOWED_ORIGINS`
+4. Redéployer l’API puis le site moniteur.
+
+## Développement local
 
 ```bash
 # API
