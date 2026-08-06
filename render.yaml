@@ -8,7 +8,8 @@ services:
     rootDir: server
     plan: free
     # Build l’API + le portail moniteur (SPA servie à la racine de monpermis-api.onrender.com)
-    buildCommand: npm install && cd .. && npm install --prefix moniteur && VITE_API_URL= npm run build --prefix moniteur && rm -rf server/web-dist && mkdir -p server/web-dist && cp -r moniteur/dist/. server/web-dist/
+    # --include=dev : NODE_ENV=production sur Render omettrait sinon typescript/vite/@types
+    buildCommand: npm install && cd .. && npm install --prefix moniteur --include=dev && VITE_API_URL= npm run build --prefix moniteur && rm -rf server/web-dist && mkdir -p server/web-dist && cp -r moniteur/dist/. server/web-dist/
     startCommand: npm start
     healthCheckPath: /api/health
     envVars:
