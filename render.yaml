@@ -7,8 +7,8 @@ services:
     runtime: node
     rootDir: server
     plan: free
-    # Build l’API + la SPA web (servie par Express si monpermis-web est down)
-    buildCommand: npm install && cd .. && npm install && VITE_API_URL= VITE_GOOGLE_CLIENT_ID="${VITE_GOOGLE_CLIENT_ID:-$GOOGLE_CLIENT_ID}" npm run build:web && rm -rf server/web-dist && mkdir -p server/web-dist && cp -r dist/. server/web-dist/
+    # Build l’API + le portail moniteur (SPA servie à la racine de monpermis-api.onrender.com)
+    buildCommand: npm install && cd .. && npm install --prefix moniteur && VITE_API_URL= npm run build --prefix moniteur && rm -rf server/web-dist && mkdir -p server/web-dist && cp -r moniteur/dist/. server/web-dist/
     startCommand: npm start
     healthCheckPath: /api/health
     envVars:
