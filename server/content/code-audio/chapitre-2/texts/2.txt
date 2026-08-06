@@ -1,0 +1,1 @@
+Les feux tricolores fonctionnent. Cependant, l'agent de sécurité réglemente la circulation. A : je passe au feu vert. B : je passe sans tenir compte ni du feu ni de l'agent de sécurité. C : je ne passe que si je suis autorisé par l'agent de sécurité.

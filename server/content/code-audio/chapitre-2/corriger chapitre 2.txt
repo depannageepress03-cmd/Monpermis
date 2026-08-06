@@ -1,0 +1,62 @@
+Corriger chapitre 2
+
+1. Les véhicules prioritaires sont
+   Correcte : C
+2. Les feux tricolores fonctionnent. Cependant, l'agent de sécurité réglemente la c
+   Correcte : C
+3. À une intersection munie à la fois de panneaux et de feux tricolores fonctionnan
+   Correcte : B
+4. Quelles sont les grandes règles de priorité ? A
+   Correcte : B
+5. La priorité à droite consiste à
+   Correcte : B
+6. Que faire à une intersection sans signalisation ? A
+   Correcte : B
+7. Que faire à une intersection de routes de même nature ? A
+   Correcte : B
+8. Les indications des agents de sécurité prévalent sur
+   Correcte : A, B
+9. La priorité à droite consiste à
+   Correcte : C
+10. À l'intersection munie de feux tricolores, dont le rouge est allumé, que dois-je
+   Correcte : C
+11. À une distance raisonnable du feu jaune fixe, je me prépare à
+   Correcte : B
+12. Lorsque je vois de face l'agent de sécurité réglementant la circulation
+   Correcte : C
+13. À cette intersection I-17, quel doit être l'ordre de passage des véhicules ? A
+   Correcte : A
+14. Au carrefour à sens giratoire en agglomération
+   Correcte : B
+15. À l'intersection d'une route revêtue et d'une route en terre, quelle est la règl
+   Correcte : B
+16. À l'intersection d'une route revêtue et d'une route en terre, quelle est la règl
+   Correcte : C
+17. Dans quel cas dois-je céder le passage aux usagers venant de gauche comme de dro
+   Correcte : B
+18. Quel doit être l'ordre de passage des véhicules à cette intersection I-3 ? A
+   Correcte : C
+19. À cette intersection I-7
+   Correcte : B
+20. À cette intersection I-9
+   Correcte : B
+21. À cette intersection I-7 en agglomération, le véhicule rouge est sur la chaussée
+   Correcte : C
+22. À cette intersection I-7 hors agglomération, le véhicule rouge est sur la chauss
+   Correcte : C
+23. À cette intersection I-8, quel doit être l'ordre de passage des véhicules ? A
+   Correcte : B
+24. À cette intersection I-9, qui passera définitivement en premier ? A
+   Correcte : A
+25. À cette intersection de routes de même valeur où aucun usager n'a sa droite libr
+   Correcte : C
+26. À cette intersection I-10, quel doit être l'ordre de passage des véhicules ? A
+   Correcte : A
+27. À cette intersection I-12, quel doit être l'ordre de passage des véhicules ? A
+   Correcte : C
+28. À cette intersection I-18, quel doit être l'ordre de passage des véhicules ? A
+   Correcte : C
+29. À cette intersection I-22, quel sera l'ordre de passage ? A
+   Correcte : C
+30. Au carrefour à sens giratoire en agglomération
+   Correcte : C

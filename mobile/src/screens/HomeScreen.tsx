@@ -4,18 +4,13 @@ import { setStatusBarStyle } from 'expo-status-bar'
 import {
   Bell,
   BookOpen,
-  CalendarDays,
   ChevronRight,
-  ClipboardList,
-  CreditCard,
-  Crown,
-  HelpCircle,
   Lock,
   User,
   Video,
 } from 'lucide-react-native'
 import { supportWhatsAppUrl } from '../utils/support'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   Animated,
   Easing,
@@ -27,7 +22,6 @@ import {
   Text,
   View,
 } from 'react-native'
-import Svg, { Circle } from 'react-native-svg'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { fetchAccessMe, type AccessMe } from '../api/accessRequests'
 import { AccountSheet } from '../components/AccountSheet'
@@ -42,7 +36,6 @@ import { useAuth } from '../context/AuthContext'
 import { useRequireAuth } from '../hooks/useRequireAuth'
 import { useUnreadNotifications } from '../hooks/useUnreadNotifications'
 import type { RootStackParamList } from '../navigation/types'
-import { getActiveSubscriptions } from '../utils/subscriptionSummary'
 import { dark, fonts, radii, shadows } from '../theme'
 import { cacheGetThenFetch, cacheSet } from '../utils/contentCache'
 
@@ -53,46 +46,6 @@ function greetingWord() {
   if (hour < 12) return 'Bonjour'
   if (hour < 18) return 'Bon après-midi'
   return 'Bonsoir'
-}
-
-function DaysRing({ daysLeft, progress }: { daysLeft: number; progress: number }) {
-  const size = 64
-  const stroke = 6
-  const r = (size - stroke) / 2
-  const c = 2 * Math.PI * r
-  const clamped = Math.max(0, Math.min(1, progress))
-  const offset = c * (1 - clamped)
-
-  return (
-    <View style={styles.ringWrap}>
-      <Svg width={size} height={size}>
-        <Circle
-          cx={size / 2}
-          cy={size / 2}
-          r={r}
-          stroke="rgba(0,176,80,0.15)"
-          strokeWidth={stroke}
-          fill="none"
-        />
-        <Circle
-          cx={size / 2}
-          cy={size / 2}
-          r={r}
-          stroke={dark.green}
-          strokeWidth={stroke}
-          fill="none"
-          strokeDasharray={`${c} ${c}`}
-          strokeDashoffset={offset}
-          strokeLinecap="round"
-          transform={`rotate(-90 ${size / 2} ${size / 2})`}
-        />
-      </Svg>
-      <View style={styles.ringLabel}>
-        <Text style={styles.ringDays}>{daysLeft}</Text>
-        <Text style={styles.ringUnit}>jours</Text>
-      </View>
-    </View>
-  )
 }
 
 export function HomeScreen() {
@@ -174,13 +127,6 @@ export function HomeScreen() {
   const conduiteLocked = accessMe
     ? !(accessMe.access.conduite_videos || accessMe.access.conduite_heures || accessMe.user.soldeHeures > 0)
     : false
-  const hasActiveAccess =
-    Boolean(accessMe) &&
-    (Object.values(accessMe!.access).some(Boolean) || accessMe!.user.soldeHeures > 0)
-  const activeSubscriptions = useMemo(() => getActiveSubscriptions(accessMe), [accessMe])
-  const nearestSub = activeSubscriptions[0]
-  const pendingRequest = accessMe?.pendingRequest
-  const subProgress = nearestSub ? Math.max(0, Math.min(1, nearestSub.daysLeft / 30)) : 0
 
   if (loading || !user) return <ScreenLoader />
 
@@ -238,7 +184,7 @@ export function HomeScreen() {
                   {user.firstName}
                 </Text>
                 <Text style={styles.heroSubtitle} numberOfLines={2}>
-                  Code, conduite — ta route vers le permis.
+                  Code, conduite, ta route vers le permis.
                 </Text>
               </View>
               <HomeHeroDecor />
@@ -256,71 +202,6 @@ export function HomeScreen() {
                 <ChevronRight size={16} color={dark.textMuted} />
               </Pressable>
             ) : null}
-
-            <Bouncy scaleTo={0.98} onPress={() => navigation.navigate('Abonnement')}>
-              <View style={styles.subCard}>
-                {nearestSub ? (
-                  <DaysRing daysLeft={nearestSub.daysLeft} progress={subProgress} />
-                ) : (
-                  <View style={[styles.ringWrap, styles.ringEmpty]}>
-                    <CreditCard size={22} color={dark.green} />
-                  </View>
-                )}
-                <View style={styles.subCopy}>
-                  <Text style={styles.subTitle} numberOfLines={1}>
-                    {hasActiveAccess
-                      ? nearestSub?.label || 'Accès actifs'
-                      : pendingRequest
-                        ? 'Paiement en cours'
-                        : 'Aucun accès actif'}
-                  </Text>
-                  <Text style={styles.subMeta} numberOfLines={1}>
-                    {hasActiveAccess
-                      ? nearestSub
-                        ? `${nearestSub.daysLeft} jour${nearestSub.daysLeft > 1 ? 's' : ''} restants`
-                        : 'Gérer mes accès'
-                      : pendingRequest
-                        ? 'Validation en cours'
-                        : 'Voir les offres'}
-                  </Text>
-                  <View style={styles.subBarTrack}>
-                    <View
-                      style={[
-                        styles.subBarFill,
-                        { width: `${Math.round((hasActiveAccess ? subProgress : 0) * 100)}%` },
-                      ]}
-                    />
-                  </View>
-                </View>
-                <View style={styles.managePill}>
-                  <Text style={styles.managePillText}>
-                    {hasActiveAccess
-                      ? nearestSub && nearestSub.daysLeft <= 7
-                        ? 'Renouveler'
-                        : 'Gérer'
-                      : 'Voir'}
-                  </Text>
-                  <ChevronRight size={14} color={dark.green} />
-                </View>
-              </View>
-            </Bouncy>
-
-            <Bouncy scaleTo={0.98} onPress={() => navigation.navigate('Abonnement')}>
-              <View style={styles.premiumCard}>
-                <View style={styles.premiumIcon}>
-                  <Crown size={18} color="#FFC000" />
-                </View>
-                <View style={styles.premiumCopy}>
-                  <Text style={styles.premiumTitle}>Abonnement</Text>
-                  <Text style={styles.premiumDesc}>
-                    {hasActiveAccess ? 'Gérer mes accès' : 'Débloquer les parcours'}
-                  </Text>
-                </View>
-                <View style={styles.premiumArrow}>
-                  <ChevronRight size={18} color="#0B0F1A" />
-                </View>
-              </View>
-            </Bouncy>
 
             <Text style={[styles.sectionLabel, styles.sectionSpaced]}>
               Sur la route avec Monpermis
@@ -364,26 +245,6 @@ export function HomeScreen() {
                     </View>
                   </View>
                 </Bouncy>
-                <View style={styles.chipRow}>
-                  <Pressable style={styles.chip} onPress={() => navigation.navigate('CodeCours')}>
-                    <BookOpen size={12} color={dark.green} />
-                    <Text style={styles.chipTextGreen}>Cours</Text>
-                  </Pressable>
-                  <Pressable
-                    style={styles.chip}
-                    onPress={() => navigation.navigate('RevisionChapitres')}
-                  >
-                    <HelpCircle size={12} color={dark.green} />
-                    <Text style={styles.chipTextGreen}>Quiz</Text>
-                  </Pressable>
-                  <Pressable
-                    style={styles.chip}
-                    onPress={() => navigation.navigate('ExamensTest')}
-                  >
-                    <ClipboardList size={12} color={dark.green} />
-                    <Text style={styles.chipTextGreen}>Examens</Text>
-                  </Pressable>
-                </View>
               </View>
 
               <View
@@ -421,22 +282,6 @@ export function HomeScreen() {
                     </View>
                   </View>
                 </Bouncy>
-                <View style={styles.chipRow}>
-                  <Pressable
-                    style={styles.chip}
-                    onPress={() => navigation.navigate('LeconsChapitres')}
-                  >
-                    <Video size={12} color={dark.coral} />
-                    <Text style={styles.chipTextCoral}>Leçons</Text>
-                  </Pressable>
-                  <Pressable
-                    style={styles.chip}
-                    onPress={() => navigation.navigate('ReservationFlow')}
-                  >
-                    <CalendarDays size={12} color={dark.coral} />
-                    <Text style={styles.chipTextCoral}>Réservations</Text>
-                  </Pressable>
-                </View>
               </View>
             </View>
 
@@ -610,132 +455,6 @@ const styles = StyleSheet.create({
     color: dark.green,
   },
 
-  subCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    padding: 14,
-    borderRadius: radii.xl,
-    backgroundColor: '#FFFFFF',
-    marginBottom: 12,
-    ...shadows.card,
-  },
-  ringWrap: {
-    width: 64,
-    height: 64,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  ringEmpty: {
-    borderRadius: 999,
-    borderWidth: 6,
-    borderColor: 'rgba(0,176,80,0.15)',
-  },
-  ringLabel: {
-    ...StyleSheet.absoluteFillObject,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  ringDays: {
-    fontFamily: fonts.displayExtraBold,
-    fontSize: 16,
-    lineHeight: 18,
-    color: dark.textPrimary,
-  },
-  ringUnit: {
-    fontFamily: fonts.bodySemiBold,
-    fontSize: 10,
-    color: dark.textMuted,
-    marginTop: -1,
-  },
-  subCopy: {
-    flex: 1,
-    minWidth: 0,
-    gap: 4,
-  },
-  subTitle: {
-    fontFamily: fonts.displayBold,
-    fontSize: 15,
-    color: dark.textPrimary,
-  },
-  subMeta: {
-    fontFamily: fonts.body,
-    fontSize: 12.5,
-    color: dark.textMuted,
-  },
-  subBarTrack: {
-    marginTop: 4,
-    height: 5,
-    borderRadius: 999,
-    backgroundColor: 'rgba(0,176,80,0.12)',
-    overflow: 'hidden',
-  },
-  subBarFill: {
-    height: '100%',
-    borderRadius: 999,
-    backgroundColor: dark.green,
-  },
-  managePill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: radii.pill,
-    borderWidth: 1,
-    borderColor: 'rgba(0,176,80,0.28)',
-    backgroundColor: dark.greenSoft,
-  },
-  managePillText: {
-    fontFamily: fonts.bodySemiBold,
-    fontSize: 12.5,
-    color: dark.green,
-  },
-
-  premiumCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    minHeight: 72,
-    paddingVertical: 14,
-    paddingHorizontal: 14,
-    borderRadius: radii.xl,
-    backgroundColor: '#001030',
-    marginBottom: 4,
-    ...shadows.md,
-  },
-  premiumIcon: {
-    width: 42,
-    height: 42,
-    borderRadius: 14,
-    backgroundColor: dark.green,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  premiumCopy: {
-    flex: 1,
-    minWidth: 0,
-  },
-  premiumTitle: {
-    fontFamily: fonts.displayBold,
-    fontSize: 16,
-    color: '#FFFFFF',
-    marginBottom: 2,
-  },
-  premiumDesc: {
-    fontFamily: fonts.body,
-    fontSize: 13,
-    color: 'rgba(255,255,255,0.72)',
-  },
-  premiumArrow: {
-    width: 36,
-    height: 36,
-    borderRadius: 999,
-    backgroundColor: dark.green,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
   sectionLabel: {
     fontFamily: fonts.display,
     fontSize: 11,
@@ -840,34 +559,6 @@ const styles = StyleSheet.create({
   },
   pathArrowCoral: {
     backgroundColor: dark.coralSoft,
-  },
-  chipRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 12,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(0,16,48,0.06)',
-  },
-  chip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    paddingVertical: 7,
-    paddingHorizontal: 10,
-    borderRadius: radii.pill,
-    backgroundColor: dark.surface,
-  },
-  chipTextGreen: {
-    fontFamily: fonts.bodySemiBold,
-    fontSize: 12,
-    color: dark.green,
-  },
-  chipTextCoral: {
-    fontFamily: fonts.bodySemiBold,
-    fontSize: 12,
-    color: dark.coral,
   },
   pressed: {
     opacity: 0.88,

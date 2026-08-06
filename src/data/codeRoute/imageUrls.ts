@@ -11,6 +11,18 @@ import img1_20 from '../../assets/code-images/chapitre-1/20.png?url'
 import img1_22 from '../../assets/code-images/chapitre-1/22.png?url'
 import img1_33 from '../../assets/code-images/chapitre-1/33.png?url'
 import img1_36 from '../../assets/code-images/chapitre-1/36.png?url'
+import img2_13 from '../../assets/code-images/chapitre-2/13.png?url'
+import img2_18 from '../../assets/code-images/chapitre-2/18.png?url'
+import img2_19 from '../../assets/code-images/chapitre-2/19.png?url'
+import img2_20 from '../../assets/code-images/chapitre-2/20.png?url'
+import img2_21 from '../../assets/code-images/chapitre-2/21.png?url'
+import img2_22 from '../../assets/code-images/chapitre-2/22.png?url'
+import img2_23 from '../../assets/code-images/chapitre-2/23.png?url'
+import img2_24 from '../../assets/code-images/chapitre-2/24.png?url'
+import img2_26 from '../../assets/code-images/chapitre-2/26.png?url'
+import img2_27 from '../../assets/code-images/chapitre-2/27.png?url'
+import img2_28 from '../../assets/code-images/chapitre-2/28.png?url'
+import img2_29 from '../../assets/code-images/chapitre-2/29.png?url'
 import img3_2 from '../../assets/code-images/chapitre-3/2.png?url'
 import img3_6 from '../../assets/code-images/chapitre-3/6.png?url'
 import img3_8 from '../../assets/code-images/chapitre-3/8.png?url'
@@ -85,6 +97,20 @@ const MAP: Record<number, Record<number, string>> = {
     102: new URL('../../../assets/code-images/chapitre-1/102.png', import.meta.url).href,
     104: new URL('../../../assets/code-images/chapitre-1/104.png', import.meta.url).href,
     106: new URL('../../../assets/code-images/chapitre-1/106.png', import.meta.url).href,
+  },
+  2: {
+    13: img2_13,
+    18: img2_18,
+    19: img2_19,
+    20: img2_20,
+    21: img2_21,
+    22: img2_22,
+    23: img2_23,
+    24: img2_24,
+    26: img2_26,
+    27: img2_27,
+    28: img2_28,
+    29: img2_29,
   },
   3: {
     2: img3_2,

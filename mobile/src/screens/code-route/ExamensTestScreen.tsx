@@ -33,14 +33,8 @@ import { useLeaveGuard } from '../../hooks/useLeaveGuard'
 import { useRequireAuth } from '../../hooks/useRequireAuth'
 import type { RootStackParamList } from '../../navigation/types'
 import { dark, fonts } from '../../theme'
-import { playFailSound, playSuccessSound, stopAllQuizAudio } from '../../utils/quizSounds'
+import { stopAllQuizAudio } from '../../utils/quizSounds'
 import { tracker } from '../../tracking/tracker'
-
-function wait(ms: number) {
-  return new Promise<void>((resolve) => {
-    setTimeout(resolve, ms)
-  })
-}
 
 type ListNav = NativeStackNavigationProp<RootStackParamList, 'ExamensTest'>
 type TakeNav = NativeStackNavigationProp<RootStackParamList, 'ExamensTestTake'>
@@ -233,11 +227,7 @@ export function ExamensTestTakeScreen() {
   const [index, setIndex] = useState(0)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [checking, setChecking] = useState(false)
-  const [result, setResult] = useState<{
-    isCorrect: boolean
-    correctAnswerIds: string[]
-  } | null>(null)
-  const [liveCorrect, setLiveCorrect] = useState(0)
+  const [submitted, setSubmitted] = useState(false)
   const [answeredCount, setAnsweredCount] = useState(0)
   const [finished, setFinished] = useState(false)
   const [finalScore, setFinalScore] = useState<{
@@ -251,8 +241,8 @@ export function ExamensTestTakeScreen() {
 
   const selectedIdsRef = useRef(selectedIds)
   selectedIdsRef.current = selectedIds
-  const resultRef = useRef(result)
-  resultRef.current = result
+  const submittedRef = useRef(submitted)
+  submittedRef.current = submitted
   const checkingRef = useRef(checking)
   checkingRef.current = checking
   const indexRef = useRef(index)
@@ -277,8 +267,7 @@ export function ExamensTestTakeScreen() {
       const answered = started.answeredCount || 0
       setIndex(Math.min(answered, Math.max((started.questions?.length || 1) - 1, 0)))
       setSelectedIds([])
-      setResult(null)
-      setLiveCorrect(started.liveCorrect || 0)
+      setSubmitted(false)
       setAnsweredCount(answered)
       setFinished(started.status === 'completed')
       setSequenceLive(started.status !== 'completed')
@@ -324,7 +313,7 @@ export function ExamensTestTakeScreen() {
   useEffect(() => {
     setSequenceLive(true)
     setSelectedIds([])
-    setResult(null)
+    setSubmitted(false)
     stopAllQuizAudio()
     tracker.markQuestionStart()
   }, [index])
@@ -350,7 +339,7 @@ export function ExamensTestTakeScreen() {
   }, [index, questions.length])
 
   const toggleAnswer = (answerId: string) => {
-    if (result || checking) return
+    if (submitted || checking) return
     setSelectedIds((current) =>
       current.includes(answerId)
         ? current.filter((id) => id !== answerId)
@@ -394,9 +383,9 @@ export function ExamensTestTakeScreen() {
     stopAllQuizAudio()
     setIndex((value) => value + 1)
     setSelectedIds([])
-    setResult(null)
+    setSubmitted(false)
     setSequenceLive(true)
-  }, [])
+  }, [examNumber])
 
   const skipMissed = useCallback(async () => {
     const currentAttempt = attemptRef.current
@@ -405,11 +394,12 @@ export function ExamensTestTakeScreen() {
       !currentAttempt ||
       !currentQuestion ||
       checkingRef.current ||
-      resultRef.current
+      submittedRef.current
     )
       return
 
     setChecking(true)
+    setSubmitted(true)
     setSequenceLive(false)
     stopAllQuizAudio()
     try {
@@ -424,17 +414,15 @@ export function ExamensTestTakeScreen() {
         },
         { index: indexRef.current, elapsedMs: tracker.consumeElapsedMs() },
       )
-      setResult({ isCorrect: false, correctAnswerIds: [] })
-      setLiveCorrect(data.liveCorrect)
       setAnsweredCount(data.answeredCount)
-      void playFailSound()
       await finishOrAdvance()
     } catch (err) {
+      setSubmitted(false)
       setError(err instanceof ContentError ? err.message : 'Vérification impossible')
     } finally {
       setChecking(false)
     }
-  }, [finishOrAdvance])
+  }, [examNumber, finishOrAdvance])
 
   const resolveSelection = useCallback(
     async (ids: string[]) => {
@@ -445,11 +433,12 @@ export function ExamensTestTakeScreen() {
         !currentQuestion ||
         ids.length === 0 ||
         checkingRef.current ||
-        resultRef.current
+        submittedRef.current
       )
         return
 
       setChecking(true)
+      setSubmitted(true)
       setSequenceLive(false)
       stopAllQuizAudio()
       try {
@@ -470,21 +459,17 @@ export function ExamensTestTakeScreen() {
             elapsedMs: tracker.consumeElapsedMs(),
           },
         )
-        setResult({ isCorrect: data.isCorrect, correctAnswerIds: data.correctAnswerIds })
-        setLiveCorrect(data.liveCorrect)
         setAnsweredCount(data.answeredCount)
-        if (data.isCorrect) await playSuccessSound()
-        else await playFailSound()
-        await wait(900)
         await finishOrAdvance()
       } catch (err) {
+        setSubmitted(false)
         setError(err instanceof ContentError ? err.message : 'Vérification impossible')
         setSequenceLive(selectedIdsRef.current.length === 0)
       } finally {
         setChecking(false)
       }
     },
-    [finishOrAdvance],
+    [examNumber, finishOrAdvance],
   )
 
   const handleSequenceComplete = useCallback(() => {
@@ -499,7 +484,7 @@ export function ExamensTestTakeScreen() {
 
   const handleContinue = () => {
     const ids = selectedIdsRef.current
-    if (ids.length === 0 || checking || result) return
+    if (ids.length === 0 || checking || submitted) return
     setSequenceLive(false)
     stopAllQuizAudio()
     void resolveSelection(ids)
@@ -542,8 +527,7 @@ export function ExamensTestTakeScreen() {
           <Text style={styles.kicker}>Examen blanc</Text>
           <Text style={styles.title}>Examen {examNumber}</Text>
           <Text style={styles.subtitle}>
-            Note en direct : {liveCorrect}/{attempt?.total ?? 20} · Seuil{' '}
-            {attempt?.passScore ?? 14}/20
+            Seuil de réussite : {attempt?.passScore ?? 14}/20 · Résultats à la fin
           </Text>
 
           {loading ? <ActivityIndicator color={dark.green} /> : null}
@@ -570,9 +554,7 @@ export function ExamensTestTakeScreen() {
 
           {!loading && question && !finished ? (
             <View style={styles.quizBox}>
-              <Text style={styles.progress}>
-                {progressLabel} · Score live {liveCorrect}/{answeredCount || '—'}
-              </Text>
+              <Text style={styles.progress}>{progressLabel}</Text>
               {(question.correctCount ?? 1) > 1 ? (
                 <Text style={styles.multiBadge}>
                   {question.correctCount} bonnes réponses à cocher
@@ -581,7 +563,7 @@ export function ExamensTestTakeScreen() {
               {question.prompt?.text ? (
                 <QuestionPromptHtml text={question.prompt.text} style={styles.prompt} />
               ) : null}
-              {sequenceLive && !result ? (
+              {sequenceLive && !submitted ? (
                 <QuestionAudioSequence
                   questionKey={question.id}
                   promptUri={question.prompt?.audioUrl}
@@ -591,18 +573,12 @@ export function ExamensTestTakeScreen() {
               ) : null}
               {question.answers.map((answer) => {
                 const selected = selectedIds.includes(answer.id)
-                const isCorrect = result?.correctAnswerIds.includes(answer.id)
                 return (
                   <Pressable
                     key={answer.id}
-                    style={[
-                      styles.answer,
-                      selected && styles.answerSelected,
-                      result && isCorrect && styles.answerCorrect,
-                      result && selected && !isCorrect && styles.answerWrong,
-                    ]}
+                    style={[styles.answer, selected && styles.answerSelected]}
                     onPress={() => toggleAnswer(answer.id)}
-                    disabled={Boolean(result) || checking}
+                    disabled={submitted || checking}
                   >
                     <Text style={styles.answerLabel}>{answer.label.toUpperCase()}</Text>
                     {answer.text ? <Text style={styles.answerMeta}>{answer.text}</Text> : null}
@@ -610,13 +586,7 @@ export function ExamensTestTakeScreen() {
                 )
               })}
 
-              {result ? (
-                <Text style={result.isCorrect ? styles.ok : styles.error}>
-                  {result.isCorrect ? 'Bonne réponse' : 'Mauvaise réponse'}
-                </Text>
-              ) : null}
-
-              {!result && selectedIds.length > 0 ? (
+              {!submitted && selectedIds.length > 0 ? (
                 <Pressable
                   style={[styles.primaryBtn, checking && styles.primaryBtnDisabled]}
                   disabled={checking}
@@ -629,12 +599,11 @@ export function ExamensTestTakeScreen() {
                   )}
                 </Pressable>
               ) : null}
-              {!result && selectedIds.length === 0 ? (
+              {!submitted && selectedIds.length === 0 ? (
                 <Text style={styles.awaitingText}>
                   L’audio lit la question 2 fois. Vous pouvez cocher pendant la lecture ; Continuer valide sans attendre.
                 </Text>
               ) : null}
-              {result ? <Text style={styles.awaitingText}>Passage automatique…</Text> : null}
             </View>
           ) : null}
         </ScrollView>
@@ -819,11 +788,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     overflow: 'hidden',
   },
-  ok: {
-    color: dark.green,
-    fontFamily: fonts.bodyBold,
-    marginBottom: 10,
-  },
   quizBox: { gap: 10 },
   progress: {
     fontFamily: fonts.bodyBold,
@@ -847,14 +811,6 @@ const styles = StyleSheet.create({
   answerSelected: {
     borderColor: dark.green,
     backgroundColor: dark.greenSoft,
-  },
-  answerCorrect: {
-    borderColor: dark.green,
-    backgroundColor: dark.greenSoft,
-  },
-  answerWrong: {
-    borderColor: dark.coral,
-    backgroundColor: dark.coralSoft,
   },
   answerLabel: {
     fontFamily: fonts.displayBold,

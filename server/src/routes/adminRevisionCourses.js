@@ -3,10 +3,33 @@ import { requireAdminAuth } from '../middleware/adminAuth.js'
 import { audit } from '../middleware/audit.js'
 import { RevisionCourse } from '../models/RevisionCourse.js'
 import { serializeModule } from '../models/BaseChapter.js'
-import { ensureStandaloneRevisionCourses } from '../services/migrateRevisionCourses.js'
+import {
+  ensureNotionsHaveChapter,
+  ensureStandaloneRevisionCourses,
+  ensureUnsortedChapter,
+} from '../services/migrateRevisionCourses.js'
+import { ensureStandardRevisionChapters } from '../services/standardRevisionChapters.js'
+import { Chapter } from '../models/Chapter.js'
 
 const router = Router()
 router.use(requireAdminAuth)
+
+/** Prépare le catalogue : chapitres standards + notions toutes rattachées. */
+async function ensureCatalog() {
+  await ensureStandaloneRevisionCourses()
+  await ensureStandardRevisionChapters()
+  await ensureNotionsHaveChapter()
+}
+
+/** Résout le chapitre cible d'une notion, avec repli sur le chapitre tampon. */
+async function resolveChapter(chapterId) {
+  if (chapterId) {
+    const chapter = await Chapter.findById(chapterId)
+    if (chapter) return chapter
+    return null
+  }
+  return ensureUnsortedChapter()
+}
 
 function nextOrder(items) {
   if (!items.length) return 0
@@ -48,13 +71,29 @@ function normalizeMediaFields(body) {
   return { name, title, text, mediaType, videoUrl, imageUrl, mediaBytes }
 }
 
-router.get('/courses', audit('list', 'course'), async (_req, res) => {
+router.get('/courses', audit('list', 'course'), async (req, res) => {
   try {
-    await ensureStandaloneRevisionCourses()
-    const courses = await RevisionCourse.find().sort({ order: 1, createdAt: 1 })
+    await ensureCatalog()
+    const filter = {}
+    const chapterId = String(req.query?.chapterId || '').trim()
+    if (chapterId) filter.chapter = chapterId
+
+    const [courses, chapters] = await Promise.all([
+      RevisionCourse.find(filter).sort({ order: 1, createdAt: 1 }),
+      Chapter.find().sort({ order: 1, createdAt: 1 }).select('name order published'),
+    ])
+
     res.json({
       success: true,
-      data: { courses: courses.map((course) => course.toAdminJSON()) },
+      data: {
+        courses: courses.map((course) => course.toAdminJSON()),
+        chapters: chapters.map((chapter) => ({
+          id: String(chapter._id),
+          name: chapter.name,
+          order: chapter.order,
+          published: Boolean(chapter.published),
+        })),
+      },
     })
   } catch (error) {
     console.error('Erreur liste cours:', error)
@@ -64,14 +103,19 @@ router.get('/courses', audit('list', 'course'), async (_req, res) => {
 
 router.post('/courses', audit('create', 'course'), async (req, res) => {
   try {
-    await ensureStandaloneRevisionCourses()
+    await ensureCatalog()
     const title = String(req.body?.title || '').trim()
     if (title.length < 2) {
       return res.status(400).json({ success: false, error: 'Titre requis (2 caractères min.)' })
     }
-    const count = await RevisionCourse.countDocuments()
+    const chapter = await resolveChapter(String(req.body?.chapterId || '').trim())
+    if (!chapter) {
+      return res.status(404).json({ success: false, error: 'Chapitre introuvable' })
+    }
+    const count = await RevisionCourse.countDocuments({ chapter: chapter._id })
     const course = await RevisionCourse.create({
       title,
+      chapter: chapter._id,
       order: count,
       published: false,
       modules: [],
@@ -98,6 +142,17 @@ router.patch('/courses/:courseId', audit('update', 'course'), async (req, res) =
     if (req.body?.published !== undefined) {
       course.published = Boolean(req.body.published)
     }
+    if (req.body?.chapterId !== undefined) {
+      const target = await resolveChapter(String(req.body.chapterId || '').trim())
+      if (!target) {
+        return res.status(404).json({ success: false, error: 'Chapitre introuvable' })
+      }
+      if (String(target._id) !== String(course.chapter || '')) {
+        // Placée en fin de liste du chapitre d'arrivée.
+        course.order = await RevisionCourse.countDocuments({ chapter: target._id })
+        course.chapter = target._id
+      }
+    }
     await course.save()
     res.json({ success: true, data: { course: course.toAdminJSON() } })
   } catch (error) {
@@ -109,12 +164,14 @@ router.patch('/courses/:courseId', audit('update', 'course'), async (req, res) =
 router.post('/courses/reorder', audit('reorder', 'course'), async (req, res) => {
   try {
     const orderedIds = Array.isArray(req.body?.orderedIds) ? req.body.orderedIds.map(String) : []
-    const courses = await RevisionCourse.find()
+    const chapterId = String(req.body?.chapterId || '').trim()
+    const filter = chapterId ? { chapter: chapterId } : {}
+    const courses = await RevisionCourse.find(filter)
     if (!applyOrder(courses, orderedIds)) {
       return res.status(400).json({ success: false, error: 'Ordre invalide' })
     }
     await Promise.all(courses.map((course) => course.save()))
-    const next = await RevisionCourse.find().sort({ order: 1, createdAt: 1 })
+    const next = await RevisionCourse.find(filter).sort({ order: 1, createdAt: 1 })
     res.json({ success: true, data: { courses: next.map((c) => c.toAdminJSON()) } })
   } catch (error) {
     console.error('Erreur réordonnancement cours:', error)

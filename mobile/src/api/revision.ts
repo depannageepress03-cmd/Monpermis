@@ -110,7 +110,28 @@ export async function fetchRevisionChapters(): Promise<RevisionChapter[]> {
   }
 }
 
-/** Cours autonomes (hors chapitres). */
+export interface CourseChapter {
+  id: string
+  name: string
+  order: number
+  courses: {
+    id: string
+    title: string
+    order: number
+    modules: RevisionChapter['courses'][number]['modules']
+  }[]
+}
+
+/** Chapitres du parcours Cours, avec leurs notions publiées. */
+export async function fetchCourseChapters(): Promise<CourseChapter[]> {
+  const data = await request<{ chapters: CourseChapter[] }>(
+    '/content/revision/course-chapters',
+    { auth: true },
+  )
+  return data.chapters
+}
+
+/** Liste plate de toutes les notions publiées. */
 export async function fetchRevisionCourses(): Promise<
   {
     id: string

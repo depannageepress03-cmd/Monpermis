@@ -1,0 +1,1 @@
+À cette intersection de routes de même valeur où aucun usager n'a sa droite libre s'applique : A : la priorité de passage pour les usagers venant de droite et de gauche. B : la perte de priorité de passage pour les usagers venant de face. C : le jeu de courtoisie et ensuite la règle de la priorité à droite.

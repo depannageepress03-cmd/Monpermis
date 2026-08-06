@@ -13,8 +13,6 @@ import {
   Pencil,
   ShieldCheck,
   Smartphone,
-  Target,
-  Timer,
   Trophy,
   Wallet,
 } from 'lucide-react-native'
@@ -51,7 +49,6 @@ import { ScreenLoader } from '../components/ScreenLoader'
 import { SkeletonList } from '../components/Skeleton'
 import { useRequireAuth } from '../hooks/useRequireAuth'
 import type { RootStackParamList } from '../navigation/types'
-import { getActiveSubscriptions } from '../utils/subscriptionSummary'
 import { PAYMENT_OPERATORS } from '../utils/paymentOperators'
 import { brand, dark, fonts, radii, shadows } from '../theme'
 
@@ -127,11 +124,6 @@ export function CodeRouteScreen() {
       void loadAccess(true)
       return () => setStatusBarStyle('dark')
     }, [loadAccess]),
-  )
-
-  const codeSub = useMemo(
-    () => getActiveSubscriptions(accessMe).find((item) => item.module === 'code'),
-    [accessMe],
   )
 
   const chapterProgress = useMemo(() => {
@@ -402,30 +394,6 @@ export function CodeRouteScreen() {
     )
   }
 
-  const summaryRows = [
-    codeSub
-      ? {
-          key: 'sub',
-          Icon: Timer,
-          text: `${codeSub.daysLeft} jour${codeSub.daysLeft > 1 ? 's' : ''} restants sur ton abonnement`,
-        }
-      : null,
-    journey?.practiceExams
-      ? {
-          key: 'exams',
-          Icon: Target,
-          text: `${journey.practiceExams.passedCount} / ${journey.practiceExams.examTotal} examens test réussis`,
-        }
-      : null,
-    journey?.code.chaptersTotal
-      ? {
-          key: 'progress',
-          Icon: LineChart,
-          text: `${Math.round(chapterProgress * 100)}% progression globale`,
-        }
-      : null,
-  ].filter(Boolean) as { key: string; Icon: typeof Timer; text: string }[]
-
   return (
     <View style={styles.root}>
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
@@ -506,29 +474,6 @@ export function CodeRouteScreen() {
               )
             })}
           </View>
-
-          {summaryRows.length > 0 ? (
-            <FadeUp delay={420}>
-              <Bouncy scaleTo={0.98} onPress={() => navigation.navigate('MesNotes')}>
-                <View style={styles.summaryCard}>
-                  <View style={styles.summaryRows}>
-                    {summaryRows.map((row) => {
-                      const Icon = row.Icon
-                      return (
-                        <View key={row.key} style={styles.summaryRow}>
-                          <View style={styles.summaryIcon}>
-                            <Icon size={15} color={dark.green} />
-                          </View>
-                          <Text style={styles.summaryText}>{row.text}</Text>
-                        </View>
-                      )
-                    })}
-                  </View>
-                  <ChevronRight size={18} color={dark.textMuted} />
-                </View>
-              </Bouncy>
-            </FadeUp>
-          ) : null}
 
           <FadeUp delay={480}>
             <View style={styles.footer}>
@@ -903,41 +848,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     ...shadows.sm,
-  },
-  summaryCard: {
-    marginTop: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    paddingVertical: 14,
-    paddingHorizontal: 14,
-    borderRadius: 24,
-    backgroundColor: '#FFFFFF',
-    ...shadows.card,
-  },
-  summaryRows: {
-    flex: 1,
-    gap: 10,
-  },
-  summaryRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  summaryIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: 999,
-    backgroundColor: dark.greenSoft,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  summaryText: {
-    flex: 1,
-    fontFamily: fonts.bodySemiBold,
-    fontSize: 13,
-    lineHeight: 18,
-    color: dark.textPrimary,
   },
   footer: {
     marginTop: 8,

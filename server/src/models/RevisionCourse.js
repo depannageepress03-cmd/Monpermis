@@ -18,6 +18,8 @@ const contentModuleSchema = new mongoose.Schema(
 const revisionCourseSchema = new mongoose.Schema(
   {
     title: { type: String, required: true, trim: true },
+    // Chapitre de rattachement : les notions sont toujours classées par chapitre.
+    chapter: { type: mongoose.Schema.Types.ObjectId, ref: 'Chapter', default: null, index: true },
     order: { type: Number, default: 0 },
     published: { type: Boolean, default: false },
     modules: [contentModuleSchema],
@@ -29,6 +31,7 @@ revisionCourseSchema.methods.toAdminJSON = function toAdminJSON() {
   return {
     id: String(this._id),
     title: this.title,
+    chapterId: this.chapter ? String(this.chapter) : '',
     order: this.order,
     published: Boolean(this.published),
     modules: [...this.modules]
@@ -43,6 +46,7 @@ revisionCourseSchema.methods.toPublicJSON = function toPublicJSON() {
   return {
     id: String(this._id),
     title: this.title,
+    chapterId: this.chapter ? String(this.chapter) : '',
     order: this.order,
     modules: [...this.modules]
       .sort((a, b) => a.order - b.order)

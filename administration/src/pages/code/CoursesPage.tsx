@@ -15,7 +15,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { FormEvent, useCallback, useEffect, useState } from 'react'
+import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
 import {
   BookOpen,
   ChevronDown,
@@ -43,12 +43,13 @@ import {
 } from '../../api/courses'
 import { uploadRevisionImage } from '../../api/revision'
 import { AdminSectionHeader } from '../../components/AdminSectionHeader'
+import { CmsWorkspace } from '../../ui'
 import { MediaPreview } from '../../components/MediaPreview'
 import { PublishSwitch } from '../../components/PublishSwitch'
 import { RichTextEditor } from '../../components/RichTextEditor'
 import { getAdminToken, isAuthError } from '../../context/AdminAuthContext'
 import { EmptyState, SkeletonBlock } from '../../ui'
-import type { ContentModule, Course, MediaType } from '../../types/revision'
+import type { ChapterRef, ContentModule, Course, MediaType } from '../../types/revision'
 import { describeModuleSize } from '../../utils/moduleSize'
 import { stripHtml } from '../../utils/richText'
 
@@ -465,10 +466,11 @@ function ModuleEditor({
 
 interface CoursePanelProps {
   course: Course
+  chapters: ChapterRef[]
   onUpdated: () => void
 }
 
-function CoursePanel({ course, onUpdated }: CoursePanelProps) {
+function CoursePanel({ course, chapters, onUpdated }: CoursePanelProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: course.id,
   })
@@ -518,8 +520,25 @@ function CoursePanel({ course, onUpdated }: CoursePanelProps) {
     }
   }
 
+  const handleMoveToChapter = async (chapterId: string) => {
+    if (!chapterId || chapterId === course.chapterId) return
+    const token = getAdminToken()
+    if (!token) return
+
+    setBusy(true)
+    setError(null)
+    try {
+      await updateStandaloneCourse(token, course.id, { chapterId })
+      onUpdated()
+    } catch (err) {
+      setError(isAuthError(err) ? err.message : 'Déplacement impossible')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const handleDeleteCourse = async () => {
-    if (!window.confirm(`Supprimer le cours « ${course.title} » et tous ses modules ?`)) return
+    if (!window.confirm(`Supprimer la notion « ${course.title} » et tous ses contenus ?`)) return
     const token = getAdminToken()
     if (!token) return
 
@@ -580,8 +599,8 @@ function CoursePanel({ course, onUpdated }: CoursePanelProps) {
             type="button"
             className="btn-text-danger"
             onClick={handleDeleteCourse}
-            aria-label={`Supprimer le cours ${course.title}`}
-            title="Supprimer le cours"
+            aria-label={`Supprimer la notion ${course.title}`}
+            title="Supprimer la notion"
           >
             <Trash2 size={16} />
             Supprimer
@@ -591,6 +610,23 @@ function CoursePanel({ course, onUpdated }: CoursePanelProps) {
 
       {expanded ? (
         <div className="revision-course-body">
+          {chapters.length > 1 ? (
+            <label className="revision-move-chapter">
+              <span>Chapitre</span>
+              <select
+                value={course.chapterId}
+                disabled={busy}
+                onChange={(e) => void handleMoveToChapter(e.target.value)}
+              >
+                {chapters.map((chapter) => (
+                  <option key={chapter.id} value={chapter.id}>
+                    {chapter.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
+
           {modules.length === 0 ? (
             <p className="revision-empty">Aucun contenu. Ajoutez une vidéo, une image ou du texte.</p>
           ) : (
@@ -630,9 +666,34 @@ function CoursePanel({ course, onUpdated }: CoursePanelProps) {
 }
 
 
+function ChapterRailItem({
+  chapter,
+  count,
+  active,
+  onSelect,
+}: {
+  chapter: ChapterRef
+  count: number
+  active: boolean
+  onSelect: () => void
+}) {
+  return (
+    <div className={`revision-rail-item${active ? ' active' : ''}`}>
+      <button type="button" className="revision-rail-button" onClick={onSelect}>
+        <span className="revision-rail-name">{chapter.name}</span>
+        <span className="revision-rail-meta">
+          {count} notion{count !== 1 ? 's' : ''}
+        </span>
+      </button>
+    </div>
+  )
+}
+
 export function CoursesPage() {
   const sensors = useAdminSensors()
   const [courses, setCourses] = useState<Course[]>([])
+  const [chapters, setChapters] = useState<ChapterRef[]>([])
+  const [selectedChapterId, setSelectedChapterId] = useState<string | null>(null)
   const [courseTitle, setCourseTitle] = useState('')
   const [loading, setLoading] = useState(true)
   const [addingCourse, setAddingCourse] = useState(false)
@@ -645,8 +706,17 @@ export function CoursesPage() {
     if (!silent) setLoading(true)
     setError(null)
     try {
-      const { courses: data } = await fetchStandaloneCourses(token)
+      const { courses: data, chapters: chapterList } = await fetchStandaloneCourses(token)
       setCourses(data)
+      setChapters(chapterList)
+      setSelectedChapterId((current) => {
+        if (current && chapterList.some((chapter) => chapter.id === current)) return current
+        // Par défaut : premier chapitre qui contient déjà des notions, sinon le premier.
+        const firstFilled = chapterList.find((chapter) =>
+          data.some((course) => course.chapterId === chapter.id),
+        )
+        return firstFilled?.id ?? chapterList[0]?.id ?? null
+      })
     } catch (err) {
       setError(isAuthError(err) ? err.message : 'Chargement impossible')
     } finally {
@@ -666,19 +736,34 @@ export function CoursesPage() {
 
   const refresh = useCallback(() => loadCourses(true), [loadCourses])
 
+  const countByChapter = useMemo(() => {
+    const counts = new Map<string, number>()
+    for (const course of courses) {
+      counts.set(course.chapterId, (counts.get(course.chapterId) ?? 0) + 1)
+    }
+    return counts
+  }, [courses])
+
+  const selectedChapter = chapters.find((chapter) => chapter.id === selectedChapterId) ?? null
+
+  const chapterCourses = useMemo(
+    () => courses.filter((course) => course.chapterId === selectedChapterId),
+    [courses, selectedChapterId],
+  )
+
   const handleAddCourse = async (e: FormEvent) => {
     e.preventDefault()
     const title = courseTitle.trim()
-    if (!title) return
+    if (!title || !selectedChapterId) return
     const token = getAdminToken()
     if (!token) return
     setAddingCourse(true)
     setError(null)
     setSuccess(null)
     try {
-      const { course } = await createStandaloneCourse(token, title)
+      const { course } = await createStandaloneCourse(token, title, selectedChapterId)
       setCourseTitle('')
-      setSuccess(`Création finie — le cours « ${course.title} » a été ajouté.`)
+      setSuccess(`Création finie — la notion « ${course.title} » a été ajoutée.`)
       await loadCourses(true)
     } catch (err) {
       setError(isAuthError(err) ? err.message : 'Ajout impossible')
@@ -689,18 +774,23 @@ export function CoursesPage() {
 
   const handleCourseDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event
-    if (!over || active.id === over.id) return
-    const oldIndex = courses.findIndex((item) => item.id === active.id)
-    const newIndex = courses.findIndex((item) => item.id === over.id)
+    if (!over || active.id === over.id || !selectedChapterId) return
+    const oldIndex = chapterCourses.findIndex((item) => item.id === active.id)
+    const newIndex = chapterCourses.findIndex((item) => item.id === over.id)
     if (oldIndex < 0 || newIndex < 0) return
-    const next = arrayMove(courses, oldIndex, newIndex)
-    setCourses(next)
+    const next = arrayMove(chapterCourses, oldIndex, newIndex)
+    // Optimiste : on réordonne uniquement le chapitre courant.
+    setCourses((current) => [
+      ...current.filter((course) => course.chapterId !== selectedChapterId),
+      ...next,
+    ])
     const token = getAdminToken()
     if (!token) return
     try {
       await reorderStandaloneCourses(
         token,
         next.map((item) => item.id),
+        selectedChapterId,
       )
       await refresh()
     } catch (err) {
@@ -717,24 +807,9 @@ export function CoursesPage() {
           backLabel="Code de la route"
           kicker="Formation"
           title="Cours"
-          subtitle="Même éditeur que les leçons de conduite : cours, modules, aperçu téléphone. Vidéos via lien YouTube / Vimeo."
+          subtitle="Les cours sont classés par chapitre : choisissez un chapitre, puis créez ses notions. Vidéos via lien YouTube / Vimeo."
         />
       </header>
-
-      <form onSubmit={handleAddCourse} className="revision-inline-form revision-add-course">
-        <input
-          type="text"
-          value={courseTitle}
-          onChange={(e) => setCourseTitle(e.target.value)}
-          placeholder="Titre du nouveau cours"
-          required
-          minLength={2}
-        />
-        <button type="submit" className="btn-primary btn-primary-inline" disabled={addingCourse}>
-          <Plus size={16} />
-          {addingCourse ? 'Ajout…' : 'Ajouter un cours'}
-        </button>
-      </form>
 
       {loading ? (
         <div style={{ padding: 8 }}>
@@ -748,34 +823,105 @@ export function CoursesPage() {
         </p>
       ) : null}
 
-      {!loading && courses.length === 0 ? (
+      {!loading && chapters.length === 0 ? (
         <EmptyState
-          title="Aucun cours"
-          description="Commencez par ajouter votre premier cours, puis ses contenus."
+          title="Chapitres en cours de synchronisation"
+          description="Les 20 chapitres standards seront créés automatiquement au prochain chargement."
         />
       ) : null}
 
-      {!loading && courses.length > 0 ? (
-        <div className="revision-chapter selected revision-chapter-workspace">
-          <div className="revision-chapter-body">
-            <div className="revision-courses-stack">
-              <DndContext
-                sensors={sensors}
-                collisionDetection={closestCenter}
-                onDragEnd={handleCourseDragEnd}
-              >
-                <SortableContext
-                  items={courses.map((item) => item.id)}
-                  strategy={verticalListSortingStrategy}
-                >
-                  {courses.map((course) => (
-                    <CoursePanel key={course.id} course={course} onUpdated={refresh} />
-                  ))}
-                </SortableContext>
-              </DndContext>
-            </div>
-          </div>
-        </div>
+      {!loading && chapters.length > 0 ? (
+        <CmsWorkspace
+          tree={
+            <>
+              <div className="revision-rail-header">
+                <h3>Chapitres</h3>
+                <span>{chapters.length}</span>
+              </div>
+              <div className="revision-rail-list">
+                {chapters.map((chapter) => (
+                  <ChapterRailItem
+                    key={chapter.id}
+                    chapter={chapter}
+                    count={countByChapter.get(chapter.id) ?? 0}
+                    active={chapter.id === selectedChapterId}
+                    onSelect={() => setSelectedChapterId(chapter.id)}
+                  />
+                ))}
+              </div>
+            </>
+          }
+          editor={
+            selectedChapter ? (
+              <div className="revision-chapter selected revision-chapter-workspace">
+                <div className="revision-chapter-header">
+                  <div className="revision-chapter-heading">
+                    <p className="revision-chapter-kicker">Chapitre sélectionné</p>
+                    <div className="revision-chapter-title">{selectedChapter.name}</div>
+                  </div>
+                </div>
+
+                <div className="revision-chapter-body">
+                  <form
+                    onSubmit={handleAddCourse}
+                    className="revision-inline-form revision-add-course"
+                  >
+                    <input
+                      type="text"
+                      value={courseTitle}
+                      onChange={(e) => setCourseTitle(e.target.value)}
+                      placeholder={`Titre de la notion à ajouter dans ${selectedChapter.name}`}
+                      required
+                      minLength={2}
+                    />
+                    <button
+                      type="submit"
+                      className="btn-primary btn-primary-inline"
+                      disabled={addingCourse}
+                    >
+                      <Plus size={16} />
+                      {addingCourse ? 'Ajout…' : 'Ajouter une notion'}
+                    </button>
+                  </form>
+
+                  {chapterCourses.length === 0 ? (
+                    <EmptyState
+                      title="Aucune notion dans ce chapitre"
+                      description="Ajoutez une première notion, puis ses contenus (texte, image, vidéo)."
+                    />
+                  ) : (
+                    <div className="revision-courses-stack">
+                      <DndContext
+                        sensors={sensors}
+                        collisionDetection={closestCenter}
+                        onDragEnd={handleCourseDragEnd}
+                      >
+                        <SortableContext
+                          items={chapterCourses.map((item) => item.id)}
+                          strategy={verticalListSortingStrategy}
+                        >
+                          {chapterCourses.map((course) => (
+                            <CoursePanel
+                              key={course.id}
+                              course={course}
+                              chapters={chapters}
+                              onUpdated={refresh}
+                            />
+                          ))}
+                        </SortableContext>
+                      </DndContext>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <EmptyState
+                title="Aucun chapitre sélectionné"
+                description="Sélectionnez un chapitre pour gérer ses notions."
+              />
+            )
+          }
+        />
       ) : null}
     </div>
   )

@@ -141,6 +141,9 @@ export function MoniteursPage() {
   const [editingMoniteur, setEditingMoniteur] = useState<Moniteur | null>(null)
   const [editBio, setEditBio] = useState('')
   const [editPhone, setEditPhone] = useState('')
+  const [editEmail, setEditEmail] = useState('')
+  const [editPassword, setEditPassword] = useState('')
+  const [editActiveLogin, setEditActiveLogin] = useState(false)
   const [editSpecialties, setEditSpecialties] = useState('')
   const [editVehicleBrand, setEditVehicleBrand] = useState('')
   const [editVehiclePhotoUrl, setEditVehiclePhotoUrl] = useState('')
@@ -275,6 +278,9 @@ export function MoniteursPage() {
     setEditingMoniteur(item)
     setEditBio(item.bio || '')
     setEditPhone(item.phone || '')
+    setEditEmail(item.email || '')
+    setEditPassword('')
+    setEditActiveLogin(Boolean(item.activeLogin))
     setEditSpecialties((item.specialties || []).join(', '))
     setEditVehicleBrand(item.vehicleBrand || '')
     setEditVehiclePhotoUrl(item.vehiclePhotoUrl || '')
@@ -391,6 +397,9 @@ export function MoniteursPage() {
       const { moniteur } = await updateMoniteur(token, editingMoniteur.id, {
         bio: editBio.trim().slice(0, MONITEUR_BIO_MAX),
         phone: editPhone.trim(),
+        email: editEmail.trim().toLowerCase(),
+        activeLogin: editActiveLogin,
+        ...(editPassword.trim() ? { password: editPassword.trim() } : {}),
         specialties: editSpecialties
           .split(',')
           .map((item) => item.trim())
@@ -633,6 +642,31 @@ export function MoniteursPage() {
                       onChange={(e) => setEditPhone(e.target.value)}
                       placeholder="Téléphone"
                     />
+                    <input
+                      type="email"
+                      value={editEmail}
+                      onChange={(e) => setEditEmail(e.target.value)}
+                      placeholder="Email (portail moniteur)"
+                    />
+                    <input
+                      type="password"
+                      value={editPassword}
+                      onChange={(e) => setEditPassword(e.target.value)}
+                      placeholder={
+                        editingMoniteur.hasPassword
+                          ? 'Nouveau mot de passe (optionnel)'
+                          : 'Mot de passe portail (min. 8)'
+                      }
+                      autoComplete="new-password"
+                    />
+                    <label className="moniteur-hours-day" style={{ alignSelf: 'center' }}>
+                      <input
+                        type="checkbox"
+                        checked={editActiveLogin}
+                        onChange={(e) => setEditActiveLogin(e.target.checked)}
+                      />
+                      <span>Activer la connexion portail</span>
+                    </label>
                     <input
                       value={editSpecialties}
                       onChange={(e) => setEditSpecialties(e.target.value)}

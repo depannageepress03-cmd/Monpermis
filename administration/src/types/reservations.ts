@@ -10,6 +10,10 @@ export interface Moniteur {
   lastName: string
   fullName: string
   phone: string
+  email?: string
+  activeLogin?: boolean
+  hasPassword?: boolean
+  lastLoginAt?: string | null
   specialties: string[]
   vehicleTypes: string[]
   weeklyAvailability: WeeklyAvailabilitySlot[]

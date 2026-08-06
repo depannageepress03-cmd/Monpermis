@@ -101,3 +101,31 @@ export function isWithinWindows(windows, startTime, endTime) {
 export function isValidHhMm(value) {
   return /^\d{2}:\d{2}$/.test(normalizeTime(value))
 }
+
+/** Fusionne des fenêtres qui se chevauchent ou se touchent. */
+export function mergeWindows(windows) {
+  const sorted = (windows || [])
+    .map((slot) => ({
+      start: normalizeTime(slot.start),
+      end: normalizeTime(slot.end),
+    }))
+    .filter((slot) => timeToMinutes(slot.end) > timeToMinutes(slot.start))
+    .sort((a, b) => timeToMinutes(a.start) - timeToMinutes(b.start))
+
+  const merged = []
+  for (const slot of sorted) {
+    const last = merged[merged.length - 1]
+    if (!last) {
+      merged.push({ ...slot })
+      continue
+    }
+    if (timeToMinutes(slot.start) <= timeToMinutes(last.end)) {
+      if (timeToMinutes(slot.end) > timeToMinutes(last.end)) {
+        last.end = slot.end
+      }
+      continue
+    }
+    merged.push({ ...slot })
+  }
+  return merged
+}

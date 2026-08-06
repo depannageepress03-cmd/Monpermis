@@ -48,7 +48,7 @@ export async function deleteUserAccount(userId, { cancelledBy = 'learner' } = {}
 
   const activeReservations = await Reservation.find({
     userId: id,
-    status: { $in: ['pending_payment', 'confirmed'] },
+    status: { $in: ['pending_payment', 'pending_moniteur', 'confirmed'] },
   })
 
   for (const reservation of activeReservations) {

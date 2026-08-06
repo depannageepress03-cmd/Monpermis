@@ -22,6 +22,8 @@ services:
         sync: false
       - key: ADMIN_CLIENT_URL
         sync: false
+      - key: MONITEUR_CLIENT_URL
+        sync: false
       - key: ALLOWED_ORIGINS
         sync: false
       - key: API_PUBLIC_URL
@@ -80,7 +82,20 @@ services:
     name: monpermis-admin
     runtime: static
     rootDir: administration
-    plan: free
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    envVars:
+      - key: VITE_API_URL
+        sync: false
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+
+  - type: web
+    name: monpermis-moniteur
+    runtime: static
+    rootDir: moniteur
     buildCommand: npm install && npm run build
     staticPublishPath: dist
     envVars:
@@ -95,7 +110,6 @@ services:
     name: monpermis-web
     runtime: static
     rootDir: .
-    plan: free
     # ignore-scripts : évite le postinstall mobile pendant le build web
     buildCommand: npm install --ignore-scripts && npm run build:web
     staticPublishPath: dist
