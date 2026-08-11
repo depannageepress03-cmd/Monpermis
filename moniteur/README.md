@@ -6,7 +6,8 @@
 
 Le build Render de l’API embarque le portail moniteur dans `web-dist` : ouvrir l’URL de l’API affiche la page de connexion moniteur (`/api/*` reste l’API).
 
-Optionnel : static séparé `https://monpermis-moniteur.onrender.com` (voir `render.yaml`).
+**URL static (ex-site apprenant) :** https://monpermis-web.onrender.com  
+Même build `moniteur/` (voir `render.yaml` — plus aucun déploiement du web apprenant `src/`).
 
 ## Développement local
 

@@ -93,31 +93,16 @@ services:
         source: /*
         destination: /index.html
 
+  # Ancien site apprenant (monpermis-web) : désormais le portail moniteur.
+  # Les apprenants utilisent uniquement l’app mobile — ne plus builder src/ (web apprenant).
   - type: web
-    name: monpermis-moniteur
+    name: monpermis-web
     runtime: static
     rootDir: moniteur
     buildCommand: npm install && npm run build
     staticPublishPath: dist
     envVars:
       - key: VITE_API_URL
-        sync: false
-    routes:
-      - type: rewrite
-        source: /*
-        destination: /index.html
-
-  - type: web
-    name: monpermis-web
-    runtime: static
-    rootDir: .
-    # ignore-scripts : évite le postinstall mobile pendant le build web
-    buildCommand: npm install --ignore-scripts && npm run build:web
-    staticPublishPath: dist
-    envVars:
-      - key: VITE_API_URL
-        sync: false
-      - key: VITE_GOOGLE_CLIENT_ID
         sync: false
     routes:
       - type: rewrite

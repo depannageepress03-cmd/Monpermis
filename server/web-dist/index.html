@@ -2,39 +2,11 @@
 <html lang="fr">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-
-    <meta name="theme-color" content="#001030" />
-    <meta name="apple-mobile-web-app-title" content="Monpermis.bj" />
-    <meta name="mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-    <meta name="application-name" content="Monpermis.bj" />
-    <meta name="description" content="Application d'auto-école en ligne" />
-    <link rel="icon" href="/favicon.ico" sizes="any" />
-    <link rel="icon" type="image/png" href="/favicon-32.png" sizes="32x32" />
-    <link rel="apple-touch-icon" href="/pwa-icon-192.png" />
-    <title>Monpermis.bj</title>
-    <script>
-      // Si un ancien SW contrôle encore la page, on force la purge via /api (hors cache SW)
-      (function () {
-        try {
-          if (sessionStorage.getItem('mp_purged_v3') === '1') return
-          if (!('serviceWorker' in navigator)) return
-          var controlled = !!navigator.serviceWorker.controller
-          navigator.serviceWorker.getRegistrations().then(function (regs) {
-            if (!controlled && (!regs || regs.length === 0)) return
-            sessionStorage.setItem('mp_purged_v3', '1')
-            location.replace('/api/client-reset?next=' + encodeURIComponent(location.pathname + location.search))
-          })
-        } catch (e) {}
-      })()
-    </script>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@600;700;800&family=Playfair+Display:wght@700&display=swap" rel="stylesheet" />
-    <script type="module" crossorigin src="/assets/index-DQHpNEHf.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-BT7oKf0b.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Monpermis.bj — Portail moniteur</title>
+    <script type="module" crossorigin src="/assets/index-M8tK2QF3.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-BaOM_05B.css">
   </head>
   <body>
     <div id="root"></div>

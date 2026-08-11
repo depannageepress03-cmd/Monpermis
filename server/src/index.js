@@ -75,6 +75,7 @@ function parseAllowedOrigins() {
     .map(clean)
     .filter(Boolean)
   // Origines de prod connues (filet de sécurité si env incomplet)
+  // monpermis-web = portail moniteur (remplace l’ancien site apprenant)
   const defaults = [
     'https://monpermis-admin.onrender.com',
     'https://monpermis-moniteur.onrender.com',
