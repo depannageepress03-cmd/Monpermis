@@ -130,6 +130,10 @@ export function MoniteursPage() {
   const [success, setSuccess] = useState<string | null>(null)
 
   const [moniteurName, setMoniteurName] = useState('')
+  const [createPhone, setCreatePhone] = useState('')
+  const [createEmail, setCreateEmail] = useState('')
+  const [createPassword, setCreatePassword] = useState('')
+  const [createActiveLogin, setCreateActiveLogin] = useState(true)
   const [vehicleBrand, setVehicleBrand] = useState('')
   const [formVehicleType, setFormVehicleType] = useState('')
   const [vehiclePhotoUrl, setVehiclePhotoUrl] = useState('')
@@ -216,6 +220,8 @@ export function MoniteursPage() {
     if (!token) return
     const name = moniteurName.trim()
     const type = formVehicleType.trim()
+    const email = createEmail.trim().toLowerCase()
+    const password = createPassword
     if (name.length < 2) {
       setError('Saisissez le nom du moniteur')
       return
@@ -224,12 +230,26 @@ export function MoniteursPage() {
       setError('Saisissez le type de véhicule')
       return
     }
+    if (createActiveLogin || email || password) {
+      if (!email.includes('@')) {
+        setError('Email de connexion requis pour le compte portail')
+        return
+      }
+      if (password.length < 8) {
+        setError('Mot de passe : minimum 8 caractères')
+        return
+      }
+    }
 
     setSavingMoniteur(true)
     setError(null)
     try {
       const { moniteur } = await createMoniteur(token, {
         fullName: name,
+        phone: createPhone.trim(),
+        email: email || undefined,
+        password: password || undefined,
+        activeLogin: Boolean(createActiveLogin && email && password),
         vehicleBrand: vehicleBrand.trim(),
         vehiclePhotoUrl,
         photoUrl,
@@ -237,12 +257,20 @@ export function MoniteursPage() {
         vehicleTypes: [type.trim().toLowerCase()],
       })
       setMoniteurName('')
+      setCreatePhone('')
+      setCreateEmail('')
+      setCreatePassword('')
+      setCreateActiveLogin(true)
       setVehicleBrand('')
       setFormVehicleType('')
       setVehiclePhotoUrl('')
       setPhotoUrl('')
       setCity('')
-      setSuccess(`Moniteur « ${moniteur.fullName} » ajouté.`)
+      setSuccess(
+        moniteur.activeLogin
+          ? `Compte « ${moniteur.fullName} » créé. Remettez-lui email + mot de passe pour le portail moniteur.`
+          : `Moniteur « ${moniteur.fullName} » ajouté.`,
+      )
       await load()
       openEdit(moniteur)
     } catch (err) {
@@ -449,7 +477,7 @@ export function MoniteursPage() {
         backLabel="Conduite"
         kicker="Gestion"
         title="Moniteurs"
-        subtitle="Créez et gérez les moniteurs, leurs profils, galeries et disponibilités."
+        subtitle="Créez les comptes moniteur (identifiants portail). Chaque moniteur gère ensuite ses disponibilités et réservations."
       />
 
       {error ? <p className="form-error">{error}</p> : null}
@@ -457,16 +485,37 @@ export function MoniteursPage() {
 
       <section className="admin-section">
         <div className="admin-section-head">
-          <h3 className="admin-section-label">Nouveau moniteur</h3>
+          <h3 className="admin-section-label">Créer un compte moniteur</h3>
         </div>
         <form onSubmit={handleCreateMoniteur} className="admin-section-body">
           <div className="reserv-create-grid">
             <input
               value={moniteurName}
               onChange={(e) => setMoniteurName(e.target.value)}
-              placeholder="Nom du moniteur"
+              placeholder="Nom complet"
               required
               minLength={2}
+            />
+            <input
+              value={createPhone}
+              onChange={(e) => setCreatePhone(e.target.value)}
+              placeholder="Téléphone"
+              inputMode="tel"
+            />
+            <input
+              type="email"
+              value={createEmail}
+              onChange={(e) => setCreateEmail(e.target.value)}
+              placeholder="Email de connexion"
+              autoComplete="off"
+            />
+            <input
+              type="password"
+              value={createPassword}
+              onChange={(e) => setCreatePassword(e.target.value)}
+              placeholder="Mot de passe (min. 8)"
+              autoComplete="new-password"
+              minLength={8}
             />
             <input
               value={vehicleBrand}
@@ -488,6 +537,17 @@ export function MoniteursPage() {
               aria-label="Ville du moniteur"
             />
           </div>
+          <label className="admin-check-row" style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 12 }}>
+            <input
+              type="checkbox"
+              checked={createActiveLogin}
+              onChange={(e) => setCreateActiveLogin(e.target.checked)}
+            />
+            <span>Activer la connexion au portail moniteur</span>
+          </label>
+          <p className="admin-muted" style={{ marginTop: 8 }}>
+            Remettez l’email et le mot de passe au moniteur. Il gérera ses horaires sur le portail.
+          </p>
           <div className="reserv-create-actions">
             <label className="btn-outline btn-file">
               <ImagePlus size={15} />
@@ -515,7 +575,7 @@ export function MoniteursPage() {
               disabled={savingMoniteur || uploadingPhoto || uploadingMoniteurPhoto}
             >
               <Plus size={16} />
-              {savingMoniteur ? 'Ajout…' : 'Enregistrer'}
+              {savingMoniteur ? 'Création…' : 'Créer le compte'}
             </button>
           </div>
 
@@ -562,7 +622,8 @@ export function MoniteursPage() {
         <div className="admin-section-head">
           <h3 className="admin-section-label">Équipe & disponibilité</h3>
           <p className="admin-section-hint">
-            Ouvrez le crayon pour modifier le profil et les horaires (matin / après-midi).
+            Les moniteurs gèrent leurs horaires sur le portail. Ici : vue et correction de support
+            (profil, galerie, plages hebdo).
           </p>
         </div>
         <div className="admin-section-body">

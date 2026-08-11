@@ -14,6 +14,10 @@ import {
 } from '../utils/availability.js'
 import { computeCreneauHeures } from '../utils/creneauDuration.js'
 import { normalizeVehicleType } from '../utils/localDate.js'
+import {
+  computeMoniteurEarnings,
+  normalizeWeeklyAvailability,
+} from '../utils/moniteurEarnings.js'
 
 const router = Router()
 router.use(requireMoniteurAuth)
@@ -415,6 +419,242 @@ router.get('/reservations/history', async (req, res) => {
     })
   } catch (error) {
     logger.error('Erreur historique moniteur:', error)
+    res.status(500).json({ success: false, error: 'Chargement impossible' })
+  }
+})
+
+/** Réservations confirmées à venir (+ optionnellement pending). */
+router.get('/reservations', async (req, res) => {
+  try {
+    const scope = String(req.query.scope || 'upcoming').trim()
+    const filter = { moniteurId: req.moniteur._id }
+
+    if (scope === 'pending') {
+      filter.status = 'pending_moniteur'
+    } else if (scope === 'confirmed') {
+      filter.status = 'confirmed'
+    } else if (scope === 'all_active') {
+      filter.status = { $in: ['pending_moniteur', 'confirmed'] }
+    } else {
+      filter.status = { $in: ['pending_moniteur', 'confirmed'] }
+    }
+
+    const reservations = await Reservation.find(filter)
+      .sort({ createdAt: 1 })
+      .limit(200)
+      .populate('userId', 'firstName lastName phone email')
+      .populate('creneauId')
+
+    const today = new Date()
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+
+    const sorted = reservations
+      .map(hydrateReservation)
+      .sort((a, b) => {
+        const da = a.creneau?.date || ''
+        const db = b.creneau?.date || ''
+        if (da !== db) return da.localeCompare(db)
+        return String(a.creneau?.startTime || '').localeCompare(String(b.creneau?.startTime || ''))
+      })
+
+    res.json({
+      success: true,
+      data: {
+        reservations: sorted,
+        today: todayStr,
+      },
+    })
+  } catch (error) {
+    logger.error('Erreur liste réservations moniteur:', error)
+    res.status(500).json({ success: false, error: 'Chargement impossible' })
+  }
+})
+
+router.get('/dashboard', async (req, res) => {
+  try {
+    const moniteurId = req.moniteur._id
+    const today = new Date()
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+
+    const [pending, confirmed, cancelled, completed, earnings] = await Promise.all([
+      Reservation.find({ moniteurId, status: 'pending_moniteur' })
+        .sort({ createdAt: 1 })
+        .limit(20)
+        .populate('userId', 'firstName lastName phone email')
+        .populate('creneauId'),
+      Reservation.find({ moniteurId, status: 'confirmed' })
+        .populate('userId', 'firstName lastName phone email')
+        .populate('creneauId'),
+      Reservation.countDocuments({ moniteurId, status: 'cancelled' }),
+      Reservation.countDocuments({ moniteurId, status: 'completed' }),
+      computeMoniteurEarnings(moniteurId),
+    ])
+
+    const upcoming = confirmed
+      .filter((item) => {
+        const date = item.creneauId?.date
+        return date && date >= todayStr
+      })
+      .sort((a, b) => {
+        const da = a.creneauId?.date || ''
+        const db = b.creneauId?.date || ''
+        if (da !== db) return da.localeCompare(db)
+        return String(a.creneauId?.startTime || '').localeCompare(String(b.creneauId?.startTime || ''))
+      })
+
+    const todaySessions = upcoming.filter((item) => item.creneauId?.date === todayStr)
+
+    res.json({
+      success: true,
+      data: {
+        stats: {
+          pending: pending.length,
+          confirmedUpcoming: upcoming.length,
+          confirmedTotal: confirmed.length,
+          completed,
+          cancelled,
+          hoursCompleted: earnings.totals.hoursCompleted,
+          totalEarned: earnings.totals.totalEarned,
+          monthEarned: earnings.totals.monthEarned,
+          totalPaid: earnings.totals.totalPaid,
+          outstanding: earnings.totals.outstanding,
+          weeklySlots: (req.moniteur.weeklyAvailability || []).length,
+        },
+        pending: pending.map(hydrateReservation),
+        upcoming: upcoming.slice(0, 12).map(hydrateReservation),
+        today: todaySessions.map(hydrateReservation),
+        earnings: earnings.totals,
+      },
+    })
+  } catch (error) {
+    logger.error('Erreur dashboard moniteur:', error)
+    res.status(500).json({ success: false, error: 'Chargement impossible' })
+  }
+})
+
+router.get('/availability', async (req, res) => {
+  try {
+    res.json({
+      success: true,
+      data: {
+        weeklyAvailability: req.moniteur.weeklyAvailability || [],
+      },
+    })
+  } catch (error) {
+    logger.error('Erreur lecture dispo moniteur:', error)
+    res.status(500).json({ success: false, error: 'Chargement impossible' })
+  }
+})
+
+router.put('/availability', async (req, res) => {
+  try {
+    const slots = normalizeWeeklyAvailability(req.body.weeklyAvailability ?? req.body.slots)
+    req.moniteur.weeklyAvailability = slots
+    await req.moniteur.save()
+    res.json({
+      success: true,
+      data: { weeklyAvailability: req.moniteur.weeklyAvailability || [] },
+    })
+  } catch (error) {
+    logger.error('Erreur maj dispo moniteur:', error)
+    res.status(500).json({ success: false, error: 'Enregistrement impossible' })
+  }
+})
+
+router.get('/profile', async (req, res) => {
+  try {
+    const m = req.moniteur
+    res.json({
+      success: true,
+      data: {
+        profile: {
+          id: String(m._id),
+          firstName: m.firstName,
+          lastName: m.lastName,
+          fullName: `${m.firstName} ${m.lastName}`.trim(),
+          email: m.email || '',
+          phone: m.phone || '',
+          city: m.city || '',
+          bio: m.bio || '',
+          photoUrl: m.photoUrl || '',
+          vehicleBrand: m.vehicleBrand || '',
+          vehicleTypes: m.vehicleTypes || [],
+          specialties: m.specialties || [],
+          defaultPriceFcfa: m.defaultPriceFcfa || 5000,
+          activeLogin: Boolean(m.activeLogin),
+          lastLoginAt: m.lastLoginAt || null,
+        },
+      },
+    })
+  } catch (error) {
+    logger.error('Erreur profil moniteur:', error)
+    res.status(500).json({ success: false, error: 'Chargement impossible' })
+  }
+})
+
+router.patch('/profile', async (req, res) => {
+  try {
+    const m = req.moniteur
+
+    if (req.body.phone !== undefined) m.phone = String(req.body.phone || '').trim()
+    if (req.body.city !== undefined) m.city = String(req.body.city || '').trim()
+    if (req.body.bio !== undefined) {
+      m.bio = String(req.body.bio || '').trim().slice(0, 2000)
+    }
+    if (req.body.photoUrl !== undefined) m.photoUrl = String(req.body.photoUrl || '').trim()
+
+    const currentPassword = String(req.body.currentPassword || '')
+    const newPassword = String(req.body.newPassword || req.body.password || '')
+    if (newPassword) {
+      if (newPassword.length < 8) {
+        return res.status(400).json({
+          success: false,
+          error: 'Nouveau mot de passe : minimum 8 caractères',
+        })
+      }
+      const ok = await m.comparePassword(currentPassword)
+      if (!ok) {
+        return res.status(400).json({ success: false, error: 'Mot de passe actuel incorrect' })
+      }
+      await m.setPassword(newPassword)
+    }
+
+    await m.save()
+    res.json({
+      success: true,
+      data: {
+        moniteur: m.toAuthJSON(),
+        profile: {
+          id: String(m._id),
+          firstName: m.firstName,
+          lastName: m.lastName,
+          fullName: `${m.firstName} ${m.lastName}`.trim(),
+          email: m.email || '',
+          phone: m.phone || '',
+          city: m.city || '',
+          bio: m.bio || '',
+          photoUrl: m.photoUrl || '',
+          vehicleBrand: m.vehicleBrand || '',
+          vehicleTypes: m.vehicleTypes || [],
+          specialties: m.specialties || [],
+          defaultPriceFcfa: m.defaultPriceFcfa || 5000,
+          activeLogin: Boolean(m.activeLogin),
+          lastLoginAt: m.lastLoginAt || null,
+        },
+      },
+    })
+  } catch (error) {
+    logger.error('Erreur maj profil moniteur:', error)
+    res.status(500).json({ success: false, error: 'Mise à jour impossible' })
+  }
+})
+
+router.get('/earnings', async (req, res) => {
+  try {
+    const earnings = await computeMoniteurEarnings(req.moniteur._id)
+    res.json({ success: true, data: earnings })
+  } catch (error) {
+    logger.error('Erreur revenus moniteur:', error)
     res.status(500).json({ success: false, error: 'Chargement impossible' })
   }
 })

@@ -27,8 +27,9 @@ import {
 } from '../api/finances'
 import { StatusBadge } from '../components/StatusBadge'
 import { getAdminToken, isAuthError } from '../context/AdminAuthContext'
+import { MoniteurFinancesPanel } from './MoniteurFinancesPanel'
 
-type Tab = 'ledger' | 'refunds'
+type Tab = 'ledger' | 'refunds' | 'moniteurs'
 
 function formatMoney(value: number, currency = 'XOF') {
   return new Intl.NumberFormat('fr-FR', {
@@ -64,7 +65,9 @@ function initials(learner: FinancePayment['learner']) {
 export function FinancesPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const initialTab = (searchParams.get('tab') as Tab | null) || 'ledger'
-  const [tab, setTab] = useState<Tab>(initialTab === 'refunds' ? 'refunds' : 'ledger')
+  const [tab, setTab] = useState<Tab>(
+    initialTab === 'refunds' || initialTab === 'moniteurs' ? initialTab : 'ledger',
+  )
 
   const [summary, setSummary] = useState<FinanceSummary | null>(null)
   const [kpiPeriod, setKpiPeriod] = useState<'today' | 'week' | 'month'>('today')
@@ -409,8 +412,19 @@ export function FinancesPage() {
           À rembourser
           {outstanding && outstanding.count > 0 ? <span>{outstanding.count}</span> : null}
         </button>
+        <button
+          type="button"
+          className={tab === 'moniteurs' ? 'active' : ''}
+          onClick={() => setActiveTab('moniteurs')}
+        >
+          Paiements moniteurs
+        </button>
       </div>
 
+      {tab === 'moniteurs' ? (
+        <MoniteurFinancesPanel />
+      ) : (
+        <>
       <form className="ar-filters finances-filters" onSubmit={applyFilters}>
         <label className="ar-search-field">
           <Search size={14} aria-hidden />
@@ -752,6 +766,8 @@ export function FinancesPage() {
           </aside>
         </div>
       ) : null}
+        </>
+      )}
     </div>
   )
 }

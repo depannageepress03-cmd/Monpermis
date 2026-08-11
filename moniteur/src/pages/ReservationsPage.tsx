@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   confirmReservation,
-  fetchPendingReservations,
+  fetchReservations,
   refuseReservation,
   type ReservationItem,
 } from '../api/portal'
@@ -19,12 +19,13 @@ function formatDateLabel(date: string) {
   }
 }
 
-export function AConfirmerPage() {
+export function ReservationsPage() {
   const [items, setItems] = useState<ReservationItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [busyId, setBusyId] = useState<string | null>(null)
+  const [tab, setTab] = useState<'pending' | 'confirmed'>('pending')
 
   const load = useCallback(async () => {
     const token = getMoniteurToken()
@@ -32,7 +33,7 @@ export function AConfirmerPage() {
     setLoading(true)
     setError(null)
     try {
-      const data = await fetchPendingReservations(token)
+      const data = await fetchReservations(token, 'all_active')
       setItems(data.reservations)
     } catch (err) {
       setError(isAuthError(err) ? err.message : 'Chargement impossible')
@@ -44,6 +45,16 @@ export function AConfirmerPage() {
   useEffect(() => {
     void load()
   }, [load])
+
+  const pending = useMemo(
+    () => items.filter((item) => item.status === 'pending_moniteur'),
+    [items],
+  )
+  const confirmed = useMemo(
+    () => items.filter((item) => item.status === 'confirmed'),
+    [items],
+  )
+  const visible = tab === 'pending' ? pending : confirmed
 
   const handleConfirm = async (item: ReservationItem) => {
     const token = getMoniteurToken()
@@ -65,17 +76,14 @@ export function AConfirmerPage() {
   const handleRefuse = async (item: ReservationItem) => {
     const token = getMoniteurToken()
     if (!token) return
-    const reason = window.prompt(
-      'Motif du refus (optionnel) :',
-      'Indisponible sur ce créneau',
-    )
+    const reason = window.prompt('Motif du refus (optionnel) :', 'Indisponible sur ce créneau')
     if (reason === null) return
     setBusyId(item.id)
     setError(null)
     setSuccess(null)
     try {
       await refuseReservation(token, item.id, reason)
-      setSuccess(`Demande refusée. Le créneau a été libéré.`)
+      setSuccess('Demande refusée. Le créneau a été libéré.')
       await load()
     } catch (err) {
       setError(isAuthError(err) ? err.message : 'Refus impossible')
@@ -88,27 +96,46 @@ export function AConfirmerPage() {
     <div className="admin-page">
       <header className="admin-page-header">
         <div>
-          <p className="admin-kicker">Validation</p>
-          <h1>Rendez-vous à confirmer</h1>
+          <p className="admin-kicker">Réservations</p>
+          <h1>Mes rendez-vous</h1>
           <p className="admin-muted">
-            Paiement déjà reçu. Confirmez pour finaliser la séance, ou refusez pour libérer le
-            créneau et déclencher le remboursement.
+            Validez les demandes payées, puis suivez vos séances confirmées.
           </p>
         </div>
       </header>
 
       {error ? <p className="form-error">{error}</p> : null}
       {success ? <p className="form-success">{success}</p> : null}
+
+      <div className="subscriptions-tabs" role="tablist" style={{ marginBottom: 16 }}>
+        <button
+          type="button"
+          className={tab === 'pending' ? 'active' : ''}
+          onClick={() => setTab('pending')}
+        >
+          À confirmer ({pending.length})
+        </button>
+        <button
+          type="button"
+          className={tab === 'confirmed' ? 'active' : ''}
+          onClick={() => setTab('confirmed')}
+        >
+          Confirmées ({confirmed.length})
+        </button>
+      </div>
+
       {loading ? <p className="admin-muted">Chargement…</p> : null}
 
-      {!loading && items.length === 0 ? (
+      {!loading && visible.length === 0 ? (
         <div className="admin-card">
-          <p className="admin-muted">Aucune demande en attente.</p>
+          <p className="admin-muted">
+            {tab === 'pending' ? 'Aucune demande en attente.' : 'Aucune séance confirmée.'}
+          </p>
         </div>
       ) : null}
 
       <ul className="upcoming-list">
-        {items.map((item) => (
+        {visible.map((item) => (
           <li key={item.id} className="admin-card" style={{ listStyle: 'none', marginBottom: 12 }}>
             <div className="upcoming-item-main">
               <strong>{item.user?.fullName || 'Apprenant'}</strong>
@@ -122,24 +149,26 @@ export function AConfirmerPage() {
                 {(item.priceFcfa || 0).toLocaleString('fr-FR')} FCFA
               </span>
             </div>
-            <div className="admin-actions-row">
-              <button
-                type="button"
-                className="btn-primary"
-                disabled={busyId === item.id}
-                onClick={() => void handleConfirm(item)}
-              >
-                Confirmer
-              </button>
-              <button
-                type="button"
-                className="btn-outline"
-                disabled={busyId === item.id}
-                onClick={() => void handleRefuse(item)}
-              >
-                Refuser
-              </button>
-            </div>
+            {tab === 'pending' ? (
+              <div className="admin-actions-row">
+                <button
+                  type="button"
+                  className="btn-primary"
+                  disabled={busyId === item.id}
+                  onClick={() => void handleConfirm(item)}
+                >
+                  Accepter
+                </button>
+                <button
+                  type="button"
+                  className="btn-outline"
+                  disabled={busyId === item.id}
+                  onClick={() => void handleRefuse(item)}
+                >
+                  Refuser
+                </button>
+              </div>
+            ) : null}
           </li>
         ))}
       </ul>

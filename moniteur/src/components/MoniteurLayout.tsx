@@ -1,4 +1,13 @@
-import { CalendarClock, CalendarDays, ClipboardList, LogOut, Menu, X } from 'lucide-react'
+import {
+  CalendarClock,
+  CalendarDays,
+  ClipboardList,
+  LogOut,
+  Menu,
+  UserRound,
+  Wallet,
+  X,
+} from 'lucide-react'
 import { useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 import logoUrl from '../assets/logo.png'
@@ -7,9 +16,11 @@ import { SITE_NAME } from '../theme/brand'
 
 const navItems = [
   { to: '/', label: 'Tableau de bord', end: true, icon: ClipboardList },
-  { to: '/disponibilites', label: 'Mes disponibilités', icon: CalendarDays },
-  { to: '/a-confirmer', label: 'À confirmer', icon: CalendarClock },
+  { to: '/disponibilites', label: 'Disponibilités', icon: CalendarDays },
+  { to: '/reservations', label: 'Réservations', icon: CalendarClock },
   { to: '/historique', label: 'Historique', icon: ClipboardList },
+  { to: '/revenus', label: 'Revenus', icon: Wallet },
+  { to: '/profil', label: 'Profil', icon: UserRound },
 ]
 
 export function MoniteurLayout() {
