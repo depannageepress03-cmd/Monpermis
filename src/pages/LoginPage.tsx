@@ -1,8 +1,9 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { type FormEvent, useEffect, useState } from 'react'
-import { getAuthErrorDetails, loginUser, saveSession } from '../api/auth'
+import { getAuthErrorDetails, loginUser, saveSession, type AuthUser } from '../api/auth'
 import { AuthInput } from '../components/AuthInput'
 import { AuthStage } from '../components/AuthStage'
+import { GoogleAuthButton } from '../components/GoogleAuthButton'
 import { LegalFooter } from '../components/LegalFooter'
 import {
   normalizePhone,
@@ -72,6 +73,21 @@ export function LoginPage() {
     }
   }
 
+  const handleGoogleSuccess = (user: AuthUser, token: string) => {
+    saveSession(token, user, true)
+    if (!String(user.phone || '').trim()) {
+      navigate('/profil', {
+        replace: true,
+        state: {
+          phoneRequired:
+            'Ajoute ton numéro de téléphone pour payer en Mobile Money et recevoir les rappels.',
+        },
+      })
+      return
+    }
+    navigate('/accueil', { replace: true })
+  }
+
   return (
     <AuthStage tagline="Code, conduite, confiance — avance à ton rythme." imageSrc="/home/i2.jpg">
       <p className="auth-stage-kicker">Connexion</p>
@@ -81,6 +97,16 @@ export function LoginPage() {
       <form className="signin-form signin-form--stage" onSubmit={handleSubmit} noValidate>
         {errors.info ? <p className="signin-banner signin-banner--ok">{errors.info}</p> : null}
         {errors.form ? <p className="signin-banner signin-banner--err">{errors.form}</p> : null}
+
+        <GoogleAuthButton
+          text="continue_with"
+          onSuccess={handleGoogleSuccess}
+          onError={(message) => setErrors({ form: message })}
+        />
+
+        <div className="signin-divider">
+          <span>ou avec ton téléphone</span>
+        </div>
 
         <div className="signin-fields">
           <AuthInput

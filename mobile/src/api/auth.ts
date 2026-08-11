@@ -94,6 +94,26 @@ export function loginUser(data: { phone?: string; identifier?: string; password:
   })
 }
 
+export interface GoogleAuthConfig {
+  enabled: boolean
+  clientId: string
+  androidClientId: string
+  iosClientId: string
+}
+
+/** Config Google OAuth exposée par le serveur (null si Google non configuré). */
+export function getGoogleAuthConfig() {
+  return publicAuth<GoogleAuthConfig>('/auth/google/config')
+}
+
+/** Échange un ID token Google contre une session Monpermis (login ou inscription). */
+export function loginWithGoogle(idToken: string) {
+  return publicAuth<AuthData>('/auth/google', {
+    method: 'POST',
+    body: JSON.stringify({ idToken, client: 'mobile' }),
+  })
+}
+
 export function forgotPassword(email: string) {
   return publicAuth<{ message: string }>('/auth/forgot-password', {
     method: 'POST',

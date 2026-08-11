@@ -5,6 +5,7 @@ import { setStatusBarStyle } from 'expo-status-bar'
 import { useEffect, useRef, useState } from 'react'
 import {
   Animated,
+  Alert,
   ImageBackground,
   KeyboardAvoidingView,
   Platform,
@@ -17,9 +18,12 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { AuthInput } from '../components/AuthInput'
 import { Bouncy } from '../components/Bouncy'
+import { GoogleAuthButton } from '../components/GoogleAuthButton'
 import { LegalFooter } from '../components/LegalFooter'
 import { AuthLogoBadge } from '../components/AuthLogoBadge'
 import { BrandName } from '../components/BrandName'
+import { useAuth } from '../context/AuthContext'
+import type { AuthUser } from '../api/auth'
 import type { RootStackParamList } from '../navigation/types'
 import { brand, dark, fonts, gradients } from '../theme'
 import {
@@ -40,11 +44,12 @@ interface FormErrors {
 
 export function RegisterScreen() {
   const navigation = useNavigation<Nav>()
+  const { signIn } = useAuth()
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
   const [phone, setPhone] = useState('')
   const [acceptTerms, setAcceptTerms] = useState(false)
-  const [errors, setErrors] = useState<FormErrors>({})
+  const [errors, setErrors] = useState<FormErrors & { form?: string }>({})
   const contentOpacity = useRef(new Animated.Value(0)).current
   const contentTranslate = useRef(new Animated.Value(16)).current
 
@@ -84,6 +89,19 @@ export function RegisterScreen() {
       lastName: lastName.trim(),
       phone: normalizePhone(phone),
     })
+  }
+
+  const handleGoogleSuccess = async (user: AuthUser, token: string) => {
+    await signIn(token, user)
+    if (!String(user.phone || '').trim()) {
+      navigation.reset({ index: 0, routes: [{ name: 'Profile' }] })
+      Alert.alert(
+        'Téléphone requis',
+        'Ajoute ton numéro pour payer en Mobile Money et recevoir les rappels.',
+      )
+      return
+    }
+    navigation.reset({ index: 0, routes: [{ name: 'Home' }] })
   }
 
   return (
@@ -131,6 +149,20 @@ export function RegisterScreen() {
               <Text style={styles.subtitle}>
                 Quelques infos et tu démarres ta préparation au permis.
               </Text>
+
+              {errors.form ? <Text style={styles.formError}>{errors.form}</Text> : null}
+
+              <GoogleAuthButton
+                label="Continuer avec Google"
+                onSuccess={handleGoogleSuccess}
+                onError={(message) => setErrors({ form: message })}
+              />
+
+              <View style={styles.dividerRow}>
+                <View style={styles.dividerLine} />
+                <Text style={styles.dividerText}>ou avec ton téléphone</Text>
+                <View style={styles.dividerLine} />
+              </View>
 
               <View style={styles.row}>
                 <View style={styles.half}>
@@ -344,6 +376,34 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bodyMedium,
     fontSize: 12,
     marginBottom: 12,
+  },
+  formError: {
+    color: dark.coral,
+    fontFamily: fonts.bodyMedium,
+    fontSize: 13,
+    textAlign: 'center',
+    marginBottom: 12,
+    backgroundColor: dark.coralSoft,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    overflow: 'hidden',
+  },
+  dividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginVertical: 16,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: dark.border,
+  },
+  dividerText: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: 13,
+    color: dark.textMuted,
   },
   submitBtn: {
     width: '100%',

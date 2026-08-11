@@ -1,8 +1,9 @@
 import { Link, useNavigate } from 'react-router-dom'
 import { type FormEvent, useState } from 'react'
-import { registerUser } from '../api/auth'
+import { registerUser, saveSession, type AuthUser } from '../api/auth'
 import { AuthInput } from '../components/AuthInput'
 import { AuthStage } from '../components/AuthStage'
+import { GoogleAuthButton } from '../components/GoogleAuthButton'
 import { LegalFooter } from '../components/LegalFooter'
 import {
   validateName,
@@ -72,6 +73,21 @@ export function RegisterPage() {
     }
   }
 
+  const handleGoogleSuccess = (user: AuthUser, token: string) => {
+    saveSession(token, user, true)
+    if (!String(user.phone || '').trim()) {
+      navigate('/profil', {
+        replace: true,
+        state: {
+          phoneRequired:
+            'Ajoute ton numéro de téléphone pour payer en Mobile Money et recevoir les rappels.',
+        },
+      })
+      return
+    }
+    navigate('/accueil', { replace: true })
+  }
+
   return (
     <AuthStage
       tagline="Code, conduite, confiance — avance à ton rythme."
@@ -83,6 +99,16 @@ export function RegisterPage() {
 
       <form className="signin-form signin-form--stage" onSubmit={handleSubmit} noValidate>
         {errors.form ? <p className="signin-banner signin-banner--err">{errors.form}</p> : null}
+
+        <GoogleAuthButton
+          text="signup_with"
+          onSuccess={handleGoogleSuccess}
+          onError={(message) => setErrors({ form: message })}
+        />
+
+        <div className="signin-divider">
+          <span>ou avec ton téléphone</span>
+        </div>
 
         <div className="signin-row signin-row--app">
           <AuthInput

@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import jwt from 'jsonwebtoken'
+import { getGoogleAudiences, verifyGoogleIdToken } from '../utils/googleAuth.js'
 import { User } from '../models/User.js'
 import {
   sendVerificationEmail,
@@ -517,12 +518,151 @@ router.delete('/account', requireUserAuth, async (req, res) => {
   }
 })
 
-router.post('/google', (_req, res) => {
-  return res.status(410).json({
-    success: false,
-    error: 'La connexion Google n’est plus disponible. Utilise ton téléphone et ton mot de passe.',
-    code: 'GOOGLE_DISABLED',
+/** Config publique pour les clients (boutons Google web / mobile). */
+router.get('/google/config', (_req, res) => {
+  const audiences = getGoogleAudiences()
+  res.json({
+    success: true,
+    data: {
+      enabled: audiences.length > 0,
+      clientId:
+        String(process.env.GOOGLE_CLIENT_ID || '').trim() || audiences[0] || '',
+      androidClientId: String(process.env.GOOGLE_ANDROID_CLIENT_ID || '').trim(),
+      iosClientId: String(process.env.GOOGLE_IOS_CLIENT_ID || '').trim(),
+    },
   })
+})
+
+router.post('/google', async (req, res) => {
+  try {
+    const idToken = String(req.body?.idToken || '').trim()
+    const clientHeader = String(req.get('X-Client') || '').toLowerCase()
+    const clientBody = String(req.body?.client || '').toLowerCase()
+    const clientKind = clientHeader === 'mobile' || clientBody === 'mobile' ? 'mobile' : 'web'
+
+    if (getGoogleAudiences().length === 0) {
+      return res.status(503).json({
+        success: false,
+        error: 'La connexion Google n’est pas configurée. Contacte le support.',
+        code: 'GOOGLE_NOT_CONFIGURED',
+      })
+    }
+
+    if (!idToken) {
+      return res.status(400).json({
+        success: false,
+        error: 'Jeton Google manquant',
+        code: 'GOOGLE_TOKEN_MISSING',
+      })
+    }
+
+    let payload
+    try {
+      payload = await verifyGoogleIdToken(idToken)
+    } catch (error) {
+      logger.warn('Vérification ID token Google refusée', { error: error.message })
+      return res.status(401).json({
+        success: false,
+        error: 'Session Google invalide ou expirée. Réessaie.',
+        code: 'GOOGLE_TOKEN_INVALID',
+      })
+    }
+
+    const email = String(payload?.email || '').trim().toLowerCase()
+    const googleId = String(payload?.sub || '').trim()
+
+    if (!email || !googleId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Impossible de lire ton compte Google.',
+        code: 'GOOGLE_PAYLOAD_MISSING',
+      })
+    }
+
+    if (payload.email_verified !== true && String(payload.email_verified) !== 'true') {
+      return res.status(403).json({
+        success: false,
+        error: 'Ton adresse Gmail n’est pas vérifiée. Vérifie-la sur Google puis réessaie.',
+        code: 'GOOGLE_EMAIL_UNVERIFIED',
+      })
+    }
+
+    const googleName = String(payload?.name || '').trim()
+    const googleFirstName = String(
+      payload?.given_name || (googleName ? googleName.split(' ')[0] : ''),
+    )
+      .trim()
+      .slice(0, 100)
+    const googleLastName = String(
+      payload?.family_name || (googleName ? googleName.split(' ').slice(1).join(' ') : ''),
+    )
+      .trim()
+      .slice(0, 100)
+
+    let user = await User.findOne({ googleId })
+
+    if (!user) {
+      // Compte local existant (même email) → liaison Google, mot de passe conservé.
+      user = await User.findOne({ email }).select('+password')
+      if (user) {
+        user.googleId = googleId
+        user.authProvider = 'google'
+        user.isEmailVerified = true
+        if (!user.firstName && googleFirstName) user.firstName = googleFirstName
+        if (!user.lastName && googleLastName) user.lastName = googleLastName
+        await user.save()
+      }
+    }
+
+    if (!user) {
+      user = await User.create({
+        firstName: googleFirstName || 'Utilisateur',
+        lastName: googleLastName || 'Google',
+        email,
+        googleId,
+        authProvider: 'google',
+        isEmailVerified: true,
+        phone: '',
+      })
+    }
+
+    if (user.isActive === false) {
+      return res.status(403).json({
+        success: false,
+        error: 'Compte suspendu. Contacte l’administration.',
+      })
+    }
+
+    const token = createToken(user._id)
+
+    logUserActivity(req, {
+      user,
+      action: 'google_login',
+      resource: 'user',
+      resourceId: String(user._id),
+      summary: `Connexion Google · ${user.firstName} ${user.lastName}`,
+      severity: 'info',
+      metadata: { client: clientKind, email },
+    })
+
+    res.json({
+      success: true,
+      data: {
+        user: user.toPublicJSON(),
+        token,
+        needsPhone: !String(user.phone || '').trim(),
+      },
+    })
+  } catch (error) {
+    console.error('Erreur connexion Google:', error)
+    if (error?.code === 11000) {
+      return res.status(409).json({
+        success: false,
+        error: 'Cet email est déjà associé à un autre compte. Utilise ton téléphone pour te connecter, ou contacte le support.',
+      })
+    }
+    res.status(500).json({ success: false, error: 'Erreur lors de la connexion Google' })
+  }
 })
 
 export default router

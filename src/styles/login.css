@@ -292,6 +292,53 @@
   background: var(--color-border);
 }
 
+.signin-google-wrap {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1rem;
+}
+
+.signin-google-official {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.signin-google-official > div {
+  width: 100%;
+  max-width: 340px;
+}
+
+.signin-google-btn {
+  width: 100%;
+  max-width: 340px;
+  padding: 0.95rem 1rem;
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  background: #fff;
+  color: var(--color-text);
+  font-family: inherit;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  transition: background 0.15s;
+}
+
+.signin-google-btn:hover:not(:disabled) {
+  background: #f8fafc;
+}
+
+.signin-google-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .signin-btn-secondary {
   width: 100%;
   padding: 0.95rem 1rem;

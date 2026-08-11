@@ -35,7 +35,7 @@ ADMIN_CLIENT_URL=https://monpermis-admin.onrender.com
 MONITEUR_CLIENT_URL=https://monpermis-api.onrender.com
 ALLOWED_ORIGINS=https://monpermis-api.onrender.com,https://monpermis-admin.onrender.com,https://monpermis-web.onrender.com
 API_PUBLIC_URL=https://monpermis-api.onrender.com
-GOOGLE_CLIENT_ID=...
+GOOGLE_CLIENT_ID=... (web) / GOOGLE_ANDROID_CLIENT_ID=... (mobile) / GOOGLE_IOS_CLIENT_ID=... (mobile)
 SMTP_HOST / SMTP_PORT / SMTP_SECURE / SMTP_USER / SMTP_PASS / SMTP_FROM
 FEDAPAY_PUBLIC_KEY / FEDAPAY_SECRET_KEY / FEDAPAY_ENVIRONMENT=live / FEDAPAY_WEBHOOK_SECRET
 ALLOW_ADMIN_REGISTRATION=false

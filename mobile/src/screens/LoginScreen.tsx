@@ -15,9 +15,10 @@ import {
   Alert,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { loginUser } from '../api/auth'
+import { loginUser, type AuthUser } from '../api/auth'
 import { AuthInput } from '../components/AuthInput'
 import { Bouncy } from '../components/Bouncy'
+import { GoogleAuthButton } from '../components/GoogleAuthButton'
 import { LegalFooter } from '../components/LegalFooter'
 import { AuthLogoBadge } from '../components/AuthLogoBadge'
 import { BrandName } from '../components/BrandName'
@@ -41,7 +42,7 @@ export function LoginScreen() {
   const { signIn } = useAuth()
   const [phone, setPhone] = useState('')
   const [password, setPassword] = useState('')
-  const [errors, setErrors] = useState<{ phone?: string; password?: string; info?: string }>({})
+  const [errors, setErrors] = useState<{ phone?: string; password?: string; info?: string; form?: string }>({})
   const [loading, setLoading] = useState(false)
   const contentOpacity = useRef(new Animated.Value(0)).current
   const contentTranslate = useRef(new Animated.Value(16)).current
@@ -112,6 +113,10 @@ export function LoginScreen() {
     }
   }
 
+  const handleGoogleSuccess = async (user: AuthUser, token: string) => {
+    await finishAuth(token, user)
+  }
+
   return (
     <View style={styles.root}>
       <ImageBackground
@@ -159,6 +164,19 @@ export function LoginScreen() {
               </Text>
 
               {errors.info ? <Text style={styles.info}>{errors.info}</Text> : null}
+              {errors.form ? <Text style={styles.formError}>{errors.form}</Text> : null}
+
+              <GoogleAuthButton
+                label="Continuer avec Google"
+                onSuccess={handleGoogleSuccess}
+                onError={(message) => setErrors({ form: message })}
+              />
+
+              <View style={styles.dividerRow}>
+                <View style={styles.dividerLine} />
+                <Text style={styles.dividerText}>ou avec ton téléphone</Text>
+                <View style={styles.dividerLine} />
+              </View>
 
               <View style={styles.fields}>
                 <AuthInput
@@ -314,6 +332,34 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 12,
     overflow: 'hidden',
+  },
+  formError: {
+    color: dark.coral,
+    fontFamily: fonts.bodyMedium,
+    fontSize: 13,
+    textAlign: 'center',
+    marginBottom: 12,
+    backgroundColor: dark.coralSoft,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    overflow: 'hidden',
+  },
+  dividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginVertical: 16,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: dark.border,
+  },
+  dividerText: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: 13,
+    color: dark.textMuted,
   },
   fields: {
     gap: 18,
