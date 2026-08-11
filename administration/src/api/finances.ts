@@ -219,4 +219,90 @@ export function ledgerEventLabel(eventType: string) {
   return map[eventType] || eventType
 }
 
+export interface MoniteurFinanceRow {
+  moniteur: {
+    id: string
+    fullName: string
+    email: string
+    phone: string
+    active: boolean
+    activeLogin: boolean
+    defaultPriceFcfa: number
+  }
+  completedSessions: number
+  confirmedPendingSessions: number
+  hoursCompleted: number
+  hoursPending: number
+  totalEarned: number
+  monthEarned: number
+  prevMonthEarned: number
+  pendingEarned: number
+  totalPaid: number
+  outstanding: number
+  lastPayoutAt: string | null
+}
+
+export interface MoniteurPayoutItem {
+  id: string
+  amountFcfa: number
+  paidAt: string | null
+  note: string
+  periodLabel: string
+}
+
+export interface MoniteurFinanceDetail {
+  moniteur: {
+    id: string
+    fullName: string
+    email?: string
+    phone?: string
+  }
+  totals: MoniteurFinanceRow
+  recentSessions: {
+    id: string
+    priceFcfa: number
+    heures: number
+    completedAt?: string
+    user: { id: string; fullName: string } | null
+    creneau: { date: string; startTime: string; endTime: string } | null
+  }[]
+  payouts: MoniteurPayoutItem[]
+}
+
+export function fetchMoniteurFinances(token: string) {
+  return apiFetch<{
+    moniteurs: MoniteurFinanceRow[]
+    totals: {
+      totalEarned: number
+      totalPaid: number
+      outstanding: number
+      completedSessions: number
+    }
+  }>('/api/admin/finances/moniteurs', {}, token)
+}
+
+export function fetchMoniteurFinanceDetail(token: string, moniteurId: string) {
+  return apiFetch<{
+    moniteur: { id: string; fullName: string; email?: string; phone?: string }
+    totals: Omit<MoniteurFinanceRow, 'moniteur' | 'lastPayoutAt'>
+    recentSessions: MoniteurFinanceDetail['recentSessions']
+    payouts: MoniteurPayoutItem[]
+  }>(`/api/admin/finances/moniteurs/${moniteurId}`, {}, token)
+}
+
+export function createMoniteurPayout(
+  token: string,
+  moniteurId: string,
+  payload: { amountFcfa: number; note?: string; periodLabel?: string; paidAt?: string },
+) {
+  return apiFetch<{
+    payout: MoniteurPayoutItem
+    totals: Omit<MoniteurFinanceRow, 'moniteur' | 'lastPayoutAt'>
+  }>(
+    `/api/admin/finances/moniteurs/${moniteurId}/payouts`,
+    { method: 'POST', body: JSON.stringify(payload) },
+    token,
+  )
+}
+
 export type { LearnerRef, PaymentMethod, PaymentStatus }

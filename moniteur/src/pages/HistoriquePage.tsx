@@ -84,7 +84,8 @@ export function HistoriquePage() {
                   : 'Séance'}
               </strong>
               <span>
-                {item.user?.fullName || 'Apprenant'} · {statusLabel(item.status)}
+                {item.user?.fullName || 'Apprenant'} · {statusLabel(item.status)} ·{' '}
+                {(item.priceFcfa || 0).toLocaleString('fr-FR')} FCFA
               </span>
               {item.cancellationReason ? (
                 <span className="admin-muted">{item.cancellationReason}</span>

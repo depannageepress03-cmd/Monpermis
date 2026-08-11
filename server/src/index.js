@@ -32,6 +32,7 @@ import accessRequestsRoutes from './routes/accessRequests.js'
 import paymentsRoutes from './routes/payments.js'
 import adminAccessRequestsRoutes from './routes/adminAccessRequests.js'
 import adminFinancesRoutes from './routes/adminFinances.js'
+import adminMoniteurFinancesRoutes from './routes/adminMoniteurFinances.js'
 import promoCodesRoutes from './routes/promoCodes.js'
 import adminPromoCodesRoutes from './routes/adminPromoCodes.js'
 import trackingRoutes from './routes/tracking.js'
@@ -236,6 +237,7 @@ app.use('/api/admin/users', adminUsersRoutes)
 app.use('/api/admin/dashboard', adminDashboardRoutes)
 app.use('/api/admin/access-requests', adminAccessRequestsRoutes)
 app.use('/api/admin/finances', adminFinancesRoutes)
+app.use('/api/admin/finances', adminMoniteurFinancesRoutes)
 app.use('/api/access-requests', accessRequestsRoutes)
 app.use('/api/payments', paymentsRoutes)
 app.use('/api/admin/promo-codes', adminPromoCodesRoutes)
