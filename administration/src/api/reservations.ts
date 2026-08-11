@@ -34,7 +34,7 @@ export function createMoniteur(
     weeklyAvailability?: WeeklyAvailabilitySlot[]
   },
 ) {
-  return apiFetch<{ moniteur: Moniteur }>(
+  return apiFetch<{ moniteur: Moniteur; loginEmail?: string }>(
     '/api/admin/conduite/moniteurs',
     { method: 'POST', body: JSON.stringify(payload) },
     token,

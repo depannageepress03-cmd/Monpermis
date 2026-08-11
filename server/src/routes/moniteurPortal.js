@@ -4,8 +4,15 @@ import { Creneau } from '../models/Creneau.js'
 import { Payment } from '../models/Payment.js'
 import { Reservation } from '../models/Reservation.js'
 import { User } from '../models/User.js'
+import {
+  MONITEUR_BIO_MAX,
+  MONITEUR_PHOTOS_MAX,
+  MONITEUR_VIDEOS_MAX,
+} from '../models/Moniteur.js'
 import { requireMoniteurAuth } from '../middleware/moniteurAuth.js'
+import { imageUpload } from '../middleware/upload.js'
 import { notifyUser } from '../services/notifications.js'
+import { uploadImageBuffer } from '../services/cloudinary.js'
 import { logger } from '../utils/logger.js'
 import {
   isValidHhMm,
@@ -14,6 +21,7 @@ import {
 } from '../utils/availability.js'
 import { computeCreneauHeures } from '../utils/creneauDuration.js'
 import { normalizeVehicleType } from '../utils/localDate.js'
+import { filterAllowedMoniteurVideos } from '../utils/moniteurVideos.js'
 import {
   computeMoniteurEarnings,
   normalizeWeeklyAvailability,
@@ -30,6 +38,53 @@ function asObjectId(value) {
     return new mongoose.Types.ObjectId(value)
   }
   return null
+}
+
+function profilePayload(m) {
+  return {
+    id: String(m._id),
+    firstName: m.firstName,
+    lastName: m.lastName,
+    fullName: `${m.firstName} ${m.lastName}`.trim(),
+    email: m.email || '',
+    phone: m.phone || '',
+    city: m.city || '',
+    bio: m.bio || '',
+    photoUrl: m.photoUrl || '',
+    vehicleBrand: m.vehicleBrand || '',
+    vehiclePhotoUrl: m.vehiclePhotoUrl || '',
+    vehicleTypes: m.vehicleTypes || [],
+    specialties: m.specialties || [],
+    photos: m.photos || [],
+    videos: m.videos || [],
+    defaultPriceFcfa: m.defaultPriceFcfa || 5000,
+    activeLogin: Boolean(m.activeLogin),
+    lastLoginAt: m.lastLoginAt || null,
+  }
+}
+
+function parseVehicleTypes(raw) {
+  if (!Array.isArray(raw) || raw.length === 0) return ['voiture']
+  const cleaned = [
+    ...new Set(
+      raw
+        .map((item) => normalizeVehicleType(item, ''))
+        .filter((item) => item.length >= 2),
+    ),
+  ]
+  return cleaned.length > 0 ? cleaned : ['voiture']
+}
+
+function parseUrlList(raw, max) {
+  if (!Array.isArray(raw)) return []
+  const out = []
+  for (const item of raw) {
+    const url = String(item || '').trim()
+    if (!url) continue
+    if (!out.includes(url)) out.push(url)
+    if (out.length >= max) break
+  }
+  return out
 }
 
 function hydrateReservation(item) {
@@ -563,28 +618,9 @@ router.put('/availability', async (req, res) => {
 
 router.get('/profile', async (req, res) => {
   try {
-    const m = req.moniteur
     res.json({
       success: true,
-      data: {
-        profile: {
-          id: String(m._id),
-          firstName: m.firstName,
-          lastName: m.lastName,
-          fullName: `${m.firstName} ${m.lastName}`.trim(),
-          email: m.email || '',
-          phone: m.phone || '',
-          city: m.city || '',
-          bio: m.bio || '',
-          photoUrl: m.photoUrl || '',
-          vehicleBrand: m.vehicleBrand || '',
-          vehicleTypes: m.vehicleTypes || [],
-          specialties: m.specialties || [],
-          defaultPriceFcfa: m.defaultPriceFcfa || 5000,
-          activeLogin: Boolean(m.activeLogin),
-          lastLoginAt: m.lastLoginAt || null,
-        },
-      },
+      data: { profile: profilePayload(req.moniteur) },
     })
   } catch (error) {
     logger.error('Erreur profil moniteur:', error)
@@ -599,9 +635,33 @@ router.patch('/profile', async (req, res) => {
     if (req.body.phone !== undefined) m.phone = String(req.body.phone || '').trim()
     if (req.body.city !== undefined) m.city = String(req.body.city || '').trim()
     if (req.body.bio !== undefined) {
-      m.bio = String(req.body.bio || '').trim().slice(0, 2000)
+      m.bio = String(req.body.bio || '').trim().slice(0, MONITEUR_BIO_MAX)
     }
     if (req.body.photoUrl !== undefined) m.photoUrl = String(req.body.photoUrl || '').trim()
+    if (req.body.vehicleBrand !== undefined) {
+      m.vehicleBrand = String(req.body.vehicleBrand || '').trim()
+    }
+    if (req.body.vehiclePhotoUrl !== undefined) {
+      m.vehiclePhotoUrl = String(req.body.vehiclePhotoUrl || '').trim()
+    }
+    if (req.body.vehicleTypes !== undefined) {
+      m.vehicleTypes = parseVehicleTypes(req.body.vehicleTypes)
+    }
+    if (req.body.specialties !== undefined) {
+      m.specialties = Array.isArray(req.body.specialties)
+        ? req.body.specialties.map((item) => String(item).trim()).filter(Boolean)
+        : []
+    }
+    if (req.body.photos !== undefined) {
+      m.photos = parseUrlList(req.body.photos, MONITEUR_PHOTOS_MAX)
+    }
+    if (req.body.videos !== undefined) {
+      m.videos = filterAllowedMoniteurVideos(req.body.videos, MONITEUR_VIDEOS_MAX)
+    }
+    if (req.body.defaultPriceFcfa !== undefined) {
+      const price = Number(req.body.defaultPriceFcfa)
+      if (Number.isFinite(price) && price >= 0) m.defaultPriceFcfa = Math.round(price)
+    }
 
     const currentPassword = String(req.body.currentPassword || '')
     const newPassword = String(req.body.newPassword || req.body.password || '')
@@ -624,29 +684,42 @@ router.patch('/profile', async (req, res) => {
       success: true,
       data: {
         moniteur: m.toAuthJSON(),
-        profile: {
-          id: String(m._id),
-          firstName: m.firstName,
-          lastName: m.lastName,
-          fullName: `${m.firstName} ${m.lastName}`.trim(),
-          email: m.email || '',
-          phone: m.phone || '',
-          city: m.city || '',
-          bio: m.bio || '',
-          photoUrl: m.photoUrl || '',
-          vehicleBrand: m.vehicleBrand || '',
-          vehicleTypes: m.vehicleTypes || [],
-          specialties: m.specialties || [],
-          defaultPriceFcfa: m.defaultPriceFcfa || 5000,
-          activeLogin: Boolean(m.activeLogin),
-          lastLoginAt: m.lastLoginAt || null,
-        },
+        profile: profilePayload(m),
       },
     })
   } catch (error) {
     logger.error('Erreur maj profil moniteur:', error)
     res.status(500).json({ success: false, error: 'Mise à jour impossible' })
   }
+})
+
+router.post('/upload-photo', (req, res) => {
+  imageUpload.single('photo')(req, res, async (err) => {
+    if (err) {
+      return res.status(400).json({ success: false, error: err.message || 'Fichier invalide' })
+    }
+    try {
+      if (!req.file?.buffer) {
+        return res.status(400).json({ success: false, error: 'Aucune photo fournie' })
+      }
+      const uploaded = await uploadImageBuffer(req.file.buffer, {
+        folder: 'monpermis/moniteurs',
+      })
+      res.json({
+        success: true,
+        data: {
+          imageUrl: uploaded.imageUrl,
+          imagePublicId: uploaded.imagePublicId,
+        },
+      })
+    } catch (uploadErr) {
+      logger.error('Upload photo moniteur:', uploadErr)
+      res.status(500).json({
+        success: false,
+        error: uploadErr.message || 'Enregistrement photo impossible',
+      })
+    }
+  })
 })
 
 router.get('/earnings', async (req, res) => {

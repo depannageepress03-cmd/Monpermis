@@ -125,21 +125,12 @@ export function MoniteursPage() {
   const [editDayHours, setEditDayHours] = useState<EditDayHours[]>(() => toEditDayHours([]))
   const [loading, setLoading] = useState(true)
   const [savingMoniteur, setSavingMoniteur] = useState(false)
-  const [uploadingPhoto, setUploadingPhoto] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
 
   const [moniteurName, setMoniteurName] = useState('')
-  const [createPhone, setCreatePhone] = useState('')
-  const [createEmail, setCreateEmail] = useState('')
   const [createPassword, setCreatePassword] = useState('')
-  const [createActiveLogin, setCreateActiveLogin] = useState(true)
-  const [vehicleBrand, setVehicleBrand] = useState('')
-  const [formVehicleType, setFormVehicleType] = useState('')
-  const [vehiclePhotoUrl, setVehiclePhotoUrl] = useState('')
-  const [photoUrl, setPhotoUrl] = useState('')
-  const [city, setCity] = useState('')
-  const [uploadingMoniteurPhoto, setUploadingMoniteurPhoto] = useState(false)
+  const [createdLoginEmail, setCreatedLoginEmail] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
   const [editingMoniteur, setEditingMoniteur] = useState<Moniteur | null>(null)
@@ -180,99 +171,40 @@ export function MoniteursPage() {
     void load()
   }, [load])
 
-  const handlePhotoUpload = async (file: File | null) => {
-    if (!file) return
-    const token = getAdminToken()
-    if (!token) return
-    setUploadingPhoto(true)
-    setError(null)
-    try {
-      const { imageUrl } = await uploadVehiclePhoto(token, file)
-      setVehiclePhotoUrl(imageUrl)
-      setSuccess('Photo du véhicule importée.')
-    } catch (err) {
-      setError(isAuthError(err) ? err.message : 'Import photo impossible')
-    } finally {
-      setUploadingPhoto(false)
-    }
-  }
-
-  const handleMoniteurPhotoUpload = async (file: File | null) => {
-    if (!file) return
-    const token = getAdminToken()
-    if (!token) return
-    setUploadingMoniteurPhoto(true)
-    setError(null)
-    try {
-      const { imageUrl } = await uploadVehiclePhoto(token, file)
-      setPhotoUrl(imageUrl)
-      setSuccess('Photo du moniteur importée.')
-    } catch (err) {
-      setError(isAuthError(err) ? err.message : 'Import photo impossible')
-    } finally {
-      setUploadingMoniteurPhoto(false)
-    }
-  }
-
   const handleCreateMoniteur = async (e: FormEvent) => {
     e.preventDefault()
     const token = getAdminToken()
     if (!token) return
     const name = moniteurName.trim()
-    const type = formVehicleType.trim()
-    const email = createEmail.trim().toLowerCase()
     const password = createPassword
     if (name.length < 2) {
       setError('Saisissez le nom du moniteur')
       return
     }
-    if (type.length < 2) {
-      setError('Saisissez le type de véhicule')
+    if (password.length < 8) {
+      setError('Mot de passe : minimum 8 caractères')
       return
-    }
-    if (createActiveLogin || email || password) {
-      if (!email.includes('@')) {
-        setError('Email de connexion requis pour le compte portail')
-        return
-      }
-      if (password.length < 8) {
-        setError('Mot de passe : minimum 8 caractères')
-        return
-      }
     }
 
     setSavingMoniteur(true)
     setError(null)
+    setCreatedLoginEmail(null)
     try {
-      const { moniteur } = await createMoniteur(token, {
+      const data = await createMoniteur(token, {
         fullName: name,
-        phone: createPhone.trim(),
-        email: email || undefined,
-        password: password || undefined,
-        activeLogin: Boolean(createActiveLogin && email && password),
-        vehicleBrand: vehicleBrand.trim(),
-        vehiclePhotoUrl,
-        photoUrl,
-        city: city.trim(),
-        vehicleTypes: [type.trim().toLowerCase()],
+        password,
+        activeLogin: true,
       })
+      const loginEmail = data.loginEmail || data.moniteur.email || ''
       setMoniteurName('')
-      setCreatePhone('')
-      setCreateEmail('')
       setCreatePassword('')
-      setCreateActiveLogin(true)
-      setVehicleBrand('')
-      setFormVehicleType('')
-      setVehiclePhotoUrl('')
-      setPhotoUrl('')
-      setCity('')
+      setCreatedLoginEmail(loginEmail || null)
       setSuccess(
-        moniteur.activeLogin
-          ? `Compte « ${moniteur.fullName} » créé. Remettez-lui email + mot de passe pour le portail moniteur.`
-          : `Moniteur « ${moniteur.fullName} » ajouté.`,
+        loginEmail
+          ? `Compte « ${data.moniteur.fullName} » créé. Identifiant : ${loginEmail} — remettez-le avec le mot de passe au moniteur. Le profil public se remplit sur le portail.`
+          : `Compte « ${data.moniteur.fullName} » créé.`,
       )
       await load()
-      openEdit(moniteur)
     } catch (err) {
       setError(isAuthError(err) ? err.message : 'Création impossible')
     } finally {
@@ -477,11 +409,16 @@ export function MoniteursPage() {
         backLabel="Conduite"
         kicker="Gestion"
         title="Moniteurs"
-        subtitle="Créez les comptes moniteur (identifiants portail). Chaque moniteur gère ensuite ses disponibilités et réservations."
+        subtitle="Créez uniquement le compte (nom + mot de passe). Le moniteur complète ensuite son profil sur le portail."
       />
 
       {error ? <p className="form-error">{error}</p> : null}
       {success ? <p className="form-success">{success}</p> : null}
+      {createdLoginEmail ? (
+        <p className="form-success" role="status">
+          Identifiant de connexion à remettre : <strong>{createdLoginEmail}</strong>
+        </p>
+      ) : null}
 
       <section className="admin-section">
         <div className="admin-section-head">
@@ -497,124 +434,25 @@ export function MoniteursPage() {
               minLength={2}
             />
             <input
-              value={createPhone}
-              onChange={(e) => setCreatePhone(e.target.value)}
-              placeholder="Téléphone"
-              inputMode="tel"
-            />
-            <input
-              type="email"
-              value={createEmail}
-              onChange={(e) => setCreateEmail(e.target.value)}
-              placeholder="Email de connexion"
-              autoComplete="off"
-            />
-            <input
               type="password"
               value={createPassword}
               onChange={(e) => setCreatePassword(e.target.value)}
               placeholder="Mot de passe (min. 8)"
               autoComplete="new-password"
+              required
               minLength={8}
             />
-            <input
-              value={vehicleBrand}
-              onChange={(e) => setVehicleBrand(e.target.value)}
-              placeholder="Marque (ex. Toyota Corolla)"
-            />
-            <input
-              value={formVehicleType}
-              onChange={(e) => setFormVehicleType(e.target.value)}
-              placeholder="Type (ex. Voiture, Moto…)"
-              required
-              minLength={2}
-              aria-label="Type de véhicule"
-            />
-            <input
-              value={city}
-              onChange={(e) => setCity(e.target.value)}
-              placeholder="Ville / zone (ex. Cotonou, Calavi…)"
-              aria-label="Ville du moniteur"
-            />
           </div>
-          <label className="admin-check-row" style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 12 }}>
-            <input
-              type="checkbox"
-              checked={createActiveLogin}
-              onChange={(e) => setCreateActiveLogin(e.target.checked)}
-            />
-            <span>Activer la connexion au portail moniteur</span>
-          </label>
           <p className="admin-muted" style={{ marginTop: 8 }}>
-            Remettez l’email et le mot de passe au moniteur. Il gérera ses horaires sur le portail.
+            Un identifiant de connexion est généré automatiquement. Photos, véhicule, ville et bio
+            sont saisis par le moniteur sur son portail.
           </p>
           <div className="reserv-create-actions">
-            <label className="btn-outline btn-file">
-              <ImagePlus size={15} />
-              {uploadingMoniteurPhoto ? 'Import…' : 'Photo moniteur'}
-              <input
-                type="file"
-                accept="image/*"
-                hidden
-                onChange={(e) => void handleMoniteurPhotoUpload(e.target.files?.[0] ?? null)}
-              />
-            </label>
-            <label className="btn-outline btn-file">
-              <ImagePlus size={15} />
-              {uploadingPhoto ? 'Import…' : 'Photo véhicule'}
-              <input
-                type="file"
-                accept="image/*"
-                hidden
-                onChange={(e) => void handlePhotoUpload(e.target.files?.[0] ?? null)}
-              />
-            </label>
-            <button
-              type="submit"
-              className="btn-primary btn-primary-inline"
-              disabled={savingMoniteur || uploadingPhoto || uploadingMoniteurPhoto}
-            >
+            <button type="submit" className="btn-primary btn-primary-inline" disabled={savingMoniteur}>
               <Plus size={16} />
               {savingMoniteur ? 'Création…' : 'Créer le compte'}
             </button>
           </div>
-
-          {(photoUrl || vehiclePhotoUrl) && (
-            <div className="reserv-create-previews">
-              {photoUrl ? (
-                <div className="moniteur-vehicle-preview">
-                  <img src={mediaSrc(photoUrl)} alt="Moniteur" />
-                  <div>
-                    <p className="admin-muted">Photo moniteur</p>
-                    <button
-                      type="button"
-                      className="btn-text-danger"
-                      onClick={() => setPhotoUrl('')}
-                    >
-                      <Trash2 size={14} />
-                      Retirer
-                    </button>
-                  </div>
-                </div>
-              ) : null}
-              {vehiclePhotoUrl ? (
-                <div className="moniteur-vehicle-preview">
-                  <img src={mediaSrc(vehiclePhotoUrl)} alt="Véhicule" />
-                  <div>
-                    <p className="admin-muted">Photo véhicule</p>
-                    <button
-                      type="button"
-                      className="btn-text-danger"
-                      onClick={() => setVehiclePhotoUrl('')}
-                    >
-                      <Trash2 size={14} />
-                      Retirer
-                    </button>
-                  </div>
-                </div>
-              ) : null}
-            </div>
-          )}
         </form>
       </section>
 
@@ -622,8 +460,8 @@ export function MoniteursPage() {
         <div className="admin-section-head">
           <h3 className="admin-section-label">Équipe & disponibilité</h3>
           <p className="admin-section-hint">
-            Les moniteurs gèrent leurs horaires sur le portail. Ici : vue et correction de support
-            (profil, galerie, plages hebdo).
+            Vue support : profils et plages. Le moniteur gère le contenu public et ses horaires au
+            quotidien.
           </p>
         </div>
         <div className="admin-section-body">

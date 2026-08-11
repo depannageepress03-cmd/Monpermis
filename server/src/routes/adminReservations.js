@@ -65,6 +65,27 @@ function clampBio(value) {
   return String(value || '').trim().slice(0, MONITEUR_BIO_MAX)
 }
 
+function slugifyLoginBase(firstName, lastName) {
+  const raw = `${firstName}.${lastName}`
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '.')
+    .replace(/^\.+|\.+$/g, '')
+  return (raw || 'moniteur').slice(0, 40)
+}
+
+async function allocateMoniteurEmail(firstName, lastName) {
+  const base = slugifyLoginBase(firstName, lastName)
+  for (let i = 0; i < 50; i += 1) {
+    const local = i === 0 ? base : `${base}${i + 1}`
+    const email = `${local}@monpermis.local`
+    const exists = await Moniteur.exists({ email })
+    if (!exists) return email
+  }
+  return `${base}.${Date.now().toString(36)}@monpermis.local`
+}
+
 router.get('/moniteurs', async (_req, res) => {
   try {
     const moniteurs = await Moniteur.find().select('+passwordHash').sort({ lastName: 1, firstName: 1 })
@@ -95,32 +116,34 @@ router.post('/moniteurs', audit('create', 'moniteur'), async (req, res) => {
     }
     if (lastName.length < 1) lastName = '—'
 
+    const password = String(req.body.password || '')
+    if (!password || password.length < 8) {
+      return res.status(400).json({
+        success: false,
+        error: 'Mot de passe requis (minimum 8 caractères)',
+      })
+    }
+
+    let email = String(req.body.email || '')
+      .trim()
+      .toLowerCase()
+    if (!email) {
+      email = await allocateMoniteurEmail(firstName, lastName)
+    }
+
     const moniteur = await Moniteur.create({
       firstName,
       lastName,
       phone: String(req.body.phone || '').trim(),
-      email: String(req.body.email || '')
-        .trim()
-        .toLowerCase(),
-      activeLogin: Boolean(req.body.activeLogin),
+      email,
+      activeLogin: req.body.activeLogin === false ? false : true,
       specialties: Array.isArray(req.body.specialties)
         ? req.body.specialties.map((item) => String(item).trim()).filter(Boolean)
         : [],
       vehicleTypes: parseVehicleTypes(req.body.vehicleTypes),
       weeklyAvailability: Array.isArray(req.body.weeklyAvailability)
         ? req.body.weeklyAvailability
-        : [
-            { dayOfWeek: 1, start: '08:00', end: '12:00' },
-            { dayOfWeek: 1, start: '14:00', end: '18:00' },
-            { dayOfWeek: 2, start: '08:00', end: '12:00' },
-            { dayOfWeek: 2, start: '14:00', end: '18:00' },
-            { dayOfWeek: 3, start: '08:00', end: '12:00' },
-            { dayOfWeek: 3, start: '14:00', end: '18:00' },
-            { dayOfWeek: 4, start: '08:00', end: '12:00' },
-            { dayOfWeek: 4, start: '14:00', end: '18:00' },
-            { dayOfWeek: 5, start: '08:00', end: '12:00' },
-            { dayOfWeek: 5, start: '14:00', end: '18:00' },
-          ],
+        : [],
       active: req.body.active !== false,
       defaultPriceFcfa: Number(req.body.defaultPriceFcfa) || 5000,
       vehicleBrand: String(req.body.vehicleBrand || '').trim(),
@@ -132,21 +155,17 @@ router.post('/moniteurs', audit('create', 'moniteur'), async (req, res) => {
       videos: parseVideosList(req.body.videos),
     })
 
-    const password = String(req.body.password || '')
-    if (password) {
-      if (password.length < 8) {
-        await Moniteur.findByIdAndDelete(moniteur._id)
-        return res.status(400).json({
-          success: false,
-          error: 'Mot de passe moniteur : minimum 8 caractères',
-        })
-      }
-      await moniteur.setPassword(password)
-      await moniteur.save()
-    }
+    await moniteur.setPassword(password)
+    await moniteur.save()
 
     const saved = await Moniteur.findById(moniteur._id).select('+passwordHash')
-    res.status(201).json({ success: true, data: { moniteur: saved.toJSONSafe() } })
+    res.status(201).json({
+      success: true,
+      data: {
+        moniteur: saved.toJSONSafe(),
+        loginEmail: saved.email || email,
+      },
+    })
   } catch (error) {
     if (error?.code === 11000) {
       return res.status(409).json({ success: false, error: 'Cet email moniteur est déjà utilisé' })

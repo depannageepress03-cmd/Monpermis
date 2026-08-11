@@ -1,4 +1,5 @@
-import { apiFetch } from './client'
+import { ApiError, apiFetch } from './client'
+import { getApiOrigin } from '../utils/mediaUrl'
 
 export interface CreneauItem {
   id: string
@@ -110,8 +111,11 @@ export interface MoniteurProfile {
   bio: string
   photoUrl: string
   vehicleBrand: string
+  vehiclePhotoUrl: string
   vehicleTypes: string[]
   specialties: string[]
+  photos: string[]
+  videos: string[]
   defaultPriceFcfa: number
   activeLogin: boolean
   lastLoginAt: string | null
@@ -226,6 +230,13 @@ export function updateProfile(
     city: string
     bio: string
     photoUrl: string
+    vehicleBrand: string
+    vehiclePhotoUrl: string
+    vehicleTypes: string[]
+    specialties: string[]
+    photos: string[]
+    videos: string[]
+    defaultPriceFcfa: number
     currentPassword: string
     newPassword: string
   }>,
@@ -235,4 +246,24 @@ export function updateProfile(
     { method: 'PATCH', body: JSON.stringify(payload) },
     token,
   )
+}
+
+export async function uploadMoniteurPhoto(token: string, file: File) {
+  const form = new FormData()
+  form.append('photo', file)
+  const origin = getApiOrigin()
+  const response = await fetch(`${origin}/api/moniteur/upload-photo`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: form,
+  })
+  const body = (await response.json().catch(() => ({}))) as {
+    success?: boolean
+    data?: { imageUrl: string }
+    error?: string
+  }
+  if (!response.ok || !body.success || !body.data?.imageUrl) {
+    throw new ApiError(body.error || 'Upload impossible', response.status)
+  }
+  return body.data
 }
