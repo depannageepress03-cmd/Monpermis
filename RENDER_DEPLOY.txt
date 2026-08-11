@@ -1,52 +1,72 @@
-# Guide rapide Render (backend + admin)
-# À coller dans le dashboard Render après connexion du repo GitHub.
+# Guide Render — Monpermis.bj
+# Repo GitHub : https://github.com/depannageepress03-cmd/Monpermis.git
+#
+# Architecture de prod :
+#   Mobile  → Apprenants (dossier mobile/)
+#   Web     → Moniteurs  (dossier moniteur/)
+#   Admin   → administration/
+#   API     → server/  (+ SPA moniteur dans web-dist)
 
 ## Prérequis
-1. Pousser TOUT le projet (pas seulement mobile/) vers GitHub :
-   https://github.com/depannageepress03-cmd/Monpermis.git
+1. Pousser le monorepo (pas seulement mobile/) vers GitHub.
 2. Autoriser Render à accéder au repo.
+3. Preferer le blueprint `render.yaml`, ou coller les commandes ci-dessous dans le dashboard.
 
-## 1) Web Service — Backend
+## 1) Web Service — API + portail moniteur (URL principale)
 - Name: monpermis-api
 - Root Directory: server
 - Runtime: Node
-- Build Command: npm install
+- Build Command:
+  npm install && cd .. && npm install --prefix moniteur --include=dev && VITE_API_URL= npm run build --prefix moniteur && rm -rf server/web-dist && mkdir -p server/web-dist && cp -r moniteur/dist/. server/web-dist/
 - Start Command: npm start
 - Health Check Path: /api/health
 
-Variables d'environnement (copier depuis server/.env.example) :
+IMPORTANT :
+- Ne PAS utiliser `npm run build:web` (racine) ni `vite build` sur `src/` — c’était l’ancien site apprenant.
+- Le build doit produire `server/web-dist` depuis `moniteur/dist`.
+- Titre attendu sur https://monpermis-api.onrender.com : « Monpermis.bj — Portail moniteur ».
+
+Variables d'environnement (voir aussi server/.env.example) :
 NODE_ENV=production
 MONGODB_URI=...
 JWT_SECRET=...
-CLIENT_URL=https://<site-apprenant>.onrender.com
-ADMIN_CLIENT_URL=https://<admin>.onrender.com
-ALLOWED_ORIGINS=https://<site-apprenant>.onrender.com,https://<admin>.onrender.com
-API_PUBLIC_URL=https://<api>.onrender.com
+CLIENT_URL=https://monpermis-api.onrender.com
+ADMIN_CLIENT_URL=https://monpermis-admin.onrender.com
+MONITEUR_CLIENT_URL=https://monpermis-api.onrender.com
+ALLOWED_ORIGINS=https://monpermis-api.onrender.com,https://monpermis-admin.onrender.com,https://monpermis-web.onrender.com
+API_PUBLIC_URL=https://monpermis-api.onrender.com
 GOOGLE_CLIENT_ID=...
 SMTP_HOST / SMTP_PORT / SMTP_SECURE / SMTP_USER / SMTP_PASS / SMTP_FROM
 FEDAPAY_PUBLIC_KEY / FEDAPAY_SECRET_KEY / FEDAPAY_ENVIRONMENT=live / FEDAPAY_WEBHOOK_SECRET
-ALLOW_ADMIN_REGISTRATION=true
+ALLOW_ADMIN_REGISTRATION=false
 MOBILE_SCHEME=monpermis
-
-# Cloudinary (obligatoire pour audios quiz + images/vidéos cours) — service monpermis-api uniquement
-# Ne pas committer les vraies valeurs : les coller dans Render → Environment
-CLOUDINARY_CLOUD_NAME=...
-CLOUDINARY_API_KEY=...
-CLOUDINARY_API_SECRET=...
-# Optionnel :
-# CLOUDINARY_URL=cloudinary://API_KEY:API_SECRET@CLOUD_NAME
-# CLOUDINARY_FOLDER=monpermis/code
+CLOUDINARY_CLOUD_NAME / CLOUDINARY_API_KEY / CLOUDINARY_API_SECRET
 
 ## 2) Static Site — Admin
 - Name: monpermis-admin
 - Root Directory: administration
 - Build Command: npm install && npm run build
 - Publish Directory: dist
-- Env: VITE_API_URL=https://<api>.onrender.com
+- Env: VITE_API_URL=https://monpermis-api.onrender.com
+- Rewrite SPA: /* → /index.html
 
-Rewrite SPA: /* → /index.html
+## 3) Static Site — Web (ex-apprenant → moniteur)
+- Name: monpermis-web
+- Root Directory: moniteur
+- Build Command: npm install && npm run build
+- Publish Directory: dist
+- Env: VITE_API_URL=https://monpermis-api.onrender.com
+- Rewrite SPA: /* → /index.html
 
-## 3) Après déploiement
-- Mettre à jour ALLOWED_ORIGINS / CLIENT_URL / ADMIN_CLIENT_URL / API_PUBLIC_URL avec les URLs finales
-- Webhook FedaPay → https://<api>.onrender.com/api/webhooks/fedapay
-- Rebuild APK mobile avec EXPO_PUBLIC_API_URL=https://<api>.onrender.com/api
+Ne plus pointer monpermis-web vers la racine du repo ni vers `npm run build:learner-web`.
+
+## 4) Après déploiement
+- Vérifier https://monpermis-api.onrender.com → login moniteur
+- Vérifier https://monpermis-web.onrender.com → login moniteur (même app)
+- Webhook FedaPay → https://monpermis-api.onrender.com/api/webhooks/fedapay
+- APK mobile : EXPO_PUBLIC_API_URL=https://monpermis-api.onrender.com (inchangé)
+
+## Scripts locaux (racine package.json)
+- npm run build:web / build:moniteur → portail moniteur (prod web)
+- npm run build:learner-web → ancien site apprenant (local uniquement, non déployé)
+- npm run build (mobile) → app apprenants

@@ -6,13 +6,15 @@
   "scripts": {
     "dev": "npm run start --prefix mobile",
     "dev:mobile": "npm run start --prefix mobile",
-    "dev:web": "vite",
+    "dev:web": "npm run dev --prefix moniteur",
+    "dev:learner-web": "vite",
     "dev:admin": "npm run dev --prefix administration",
     "dev:moniteur": "npm run dev --prefix moniteur",
     "dev:server": "npm run dev --prefix server",
     "android": "npm run android --prefix mobile",
     "build": "npm run build --prefix mobile",
-    "build:web": "vite build",
+    "build:web": "npm run build --prefix moniteur",
+    "build:learner-web": "vite build",
     "build:admin": "npm run build --prefix administration",
     "build:moniteur": "npm run build --prefix moniteur",
     "lint": "npm run lint --prefix mobile"
