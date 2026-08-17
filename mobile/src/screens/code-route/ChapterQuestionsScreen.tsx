@@ -116,6 +116,7 @@ export function ChapterQuestionsScreen() {
     chapterOrder,
     mode = 'practice',
     subjectNumber: subjectNumberParam,
+    selectedQuestionIds,
   } = route.params
   const isTest = mode === 'test'
   const subjectNumber = Math.max(1, Number(subjectNumberParam) || 1)
@@ -174,7 +175,13 @@ export function ChapterQuestionsScreen() {
         setQuestions(loaded)
       } else {
         setSubjectLabel('')
-        loaded = await fetchChapterQuestions(chapterId)
+        const all = await fetchChapterQuestions(chapterId)
+        if (selectedQuestionIds && selectedQuestionIds.length > 0) {
+          const selectedSet = new Set(selectedQuestionIds)
+          loaded = all.filter((q) => selectedSet.has(q.id))
+        } else {
+          loaded = all
+        }
         setQuestions(loaded)
       }
       setIndex(0)
@@ -201,7 +208,7 @@ export function ChapterQuestionsScreen() {
     } finally {
       setLoadingQuestions(false)
     }
-  }, [chapterId, chapterOrder, chapterName, isTest, subjectNumber, mode])
+  }, [chapterId, chapterOrder, chapterName, isTest, subjectNumber, mode, selectedQuestionIds])
 
   useFocusEffect(
     useCallback(() => {

@@ -4,6 +4,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { setStatusBarStyle } from 'expo-status-bar'
 import {
   Brain,
+  CheckSquare,
   ChevronLeft,
   ChevronRight,
   ClipboardList,
@@ -11,6 +12,8 @@ import {
   HelpCircle,
   LineChart,
   ShieldCheck,
+  Square,
+  SquareCheckBig,
   Target,
   Trophy,
 } from 'lucide-react-native'
@@ -106,6 +109,7 @@ export function ChapterQuestionsListScreen() {
   const [testEntry, setTestEntry] = useState<TestProgressEntry | null>(null)
   const [loadingList, setLoadingList] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
 
   const load = useCallback(async () => {
     setLoadingList(true)
@@ -117,6 +121,7 @@ export function ChapterQuestionsListScreen() {
         fetchLearnerProgress(chapterId).catch(() => null),
       ])
       setQuestions(list)
+      setSelectedIds(new Set(list.map((q) => q.id)))
       const entry =
         progress?.completedTests?.find((item) => item.chapterId === chapterId) || null
       setTestEntry(entry)
@@ -149,12 +154,25 @@ export function ChapterQuestionsListScreen() {
 
   if (loading || !user) return <ScreenLoader />
 
+  const toggleQuestion = (questionId: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(questionId)) next.delete(questionId)
+      else next.add(questionId)
+      return next
+    })
+  }
+
+  const selectAll = () => setSelectedIds(new Set(questions.map((q) => q.id)))
+  const deselectAll = () => setSelectedIds(new Set())
+
   const startTraining = () =>
     navigation.navigate('ChapterQuestions', {
       chapterId,
       chapterName,
       chapterOrder,
       mode: 'practice',
+      selectedQuestionIds: [...selectedIds],
     })
 
   return (
@@ -261,6 +279,52 @@ export function ChapterQuestionsListScreen() {
               </FadeUp>
 
               <FadeUp delay={160}>
+                <View style={qStyles.selectBar}>
+                  <Pressable style={qStyles.selectBtn} onPress={selectAll}>
+                    <CheckSquare size={16} color={dark.green} />
+                    <Text style={qStyles.selectBtnText}>Tout sélectionner</Text>
+                  </Pressable>
+                  <Pressable style={qStyles.selectBtn} onPress={deselectAll}>
+                    <Square size={16} color={dark.textMuted} />
+                    <Text style={qStyles.selectBtnTextAlt}>Tout désélectionner</Text>
+                  </Pressable>
+                </View>
+                <Text style={qStyles.selectCounter}>
+                  {selectedIds.size} / {count} question{count !== 1 ? 's' : ''} sélectionnée{count !== 1 ? 's' : ''}
+                </Text>
+                <View style={qStyles.questionChecklist}>
+                  {questions.map((q, qi) => {
+                    const checked = selectedIds.has(q.id)
+                    const excerpt = q.prompt?.text
+                      ? q.prompt.text.replace(/<[^>]*>/g, '').substring(0, 60)
+                      : `Question ${qi + 1}`
+                    return (
+                      <Pressable
+                        key={q.id}
+                        style={({ pressed }) => [
+                          qStyles.questionCheckRow,
+                          pressed && qStyles.pressed,
+                        ]}
+                        onPress={() => toggleQuestion(q.id)}
+                        accessibilityRole="checkbox"
+                        accessibilityState={{ checked }}
+                      >
+                        {checked ? (
+                          <SquareCheckBig size={22} color={dark.green} />
+                        ) : (
+                          <Square size={22} color="rgba(0,16,48,0.24)" />
+                        )}
+                        <Text style={qStyles.questionCheckLabel} numberOfLines={2}>
+                          <Text style={qStyles.questionCheckNum}>{qi + 1}. </Text>
+                          {excerpt}{excerpt.length >= 60 ? '…' : ''}
+                        </Text>
+                      </Pressable>
+                    )
+                  })}
+                </View>
+              </FadeUp>
+
+              <FadeUp delay={200}>
                 <Bouncy scaleTo={0.98} onPress={startTraining}>
                   <LinearGradient
                     colors={['#00D566', '#00A344']}
@@ -646,6 +710,66 @@ const qStyles = StyleSheet.create({
   footerAnim: {
     marginTop: 4,
     marginBottom: 4,
+  },
+  selectBar: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 8,
+  },
+  selectBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: 'rgba(0,16,48,0.1)',
+  },
+  selectBtnText: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 13,
+    color: dark.green,
+  },
+  selectBtnTextAlt: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 13,
+    color: dark.textMuted,
+  },
+  selectCounter: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 13,
+    color: dark.textPrimary,
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  questionChecklist: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 6,
+    marginBottom: 14,
+    ...shadows.sm,
+  },
+  questionCheckRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+  },
+  questionCheckLabel: {
+    flex: 1,
+    fontFamily: fonts.body,
+    fontSize: 14,
+    lineHeight: 19,
+    color: dark.textPrimary,
+  },
+  questionCheckNum: {
+    fontFamily: fonts.bodySemiBold,
+    color: dark.green,
   },
   centerBox: {
     alignItems: 'center',
