@@ -116,10 +116,11 @@ export function ChapterQuestionsScreen() {
     chapterOrder,
     mode = 'practice',
     subjectNumber: subjectNumberParam,
-    selectedQuestionIds,
+    questionIndex: questionIndexParam,
   } = route.params
   const isTest = mode === 'test'
   const subjectNumber = Math.max(1, Number(subjectNumberParam) || 1)
+  const isSingleQuestion = !isTest && questionIndexParam != null
 
   const [subjectLabel, setSubjectLabel] = useState(isTest ? `Sujet ${subjectNumber}` : '')
   const [questions, setQuestions] = useState<RevisionQuestion[]>([])
@@ -176,9 +177,8 @@ export function ChapterQuestionsScreen() {
       } else {
         setSubjectLabel('')
         const all = await fetchChapterQuestions(chapterId)
-        if (selectedQuestionIds && selectedQuestionIds.length > 0) {
-          const selectedSet = new Set(selectedQuestionIds)
-          loaded = all.filter((q) => selectedSet.has(q.id))
+        if (questionIndexParam != null && questionIndexParam >= 0 && questionIndexParam < all.length) {
+          loaded = [all[questionIndexParam]]
         } else {
           loaded = all
         }
@@ -208,7 +208,7 @@ export function ChapterQuestionsScreen() {
     } finally {
       setLoadingQuestions(false)
     }
-  }, [chapterId, chapterOrder, chapterName, isTest, subjectNumber, mode, selectedQuestionIds])
+  }, [chapterId, chapterOrder, chapterName, isTest, subjectNumber, mode, questionIndexParam])
 
   useFocusEffect(
     useCallback(() => {
@@ -615,15 +615,26 @@ export function ChapterQuestionsScreen() {
                   <Text style={styles.inlinePrimaryText}>Mode correction</Text>
                 </Pressable>
               ) : null}
-              <Pressable style={styles.secondaryBtn} onPress={() => void loadQuestions()}>
-                <Text style={styles.secondaryBtnText}>Recommencer</Text>
-              </Pressable>
-              <Pressable
-                style={styles.secondaryBtn}
-                onPress={() => navigation.navigate('RevisionChapitres')}
-              >
-                <Text style={styles.secondaryBtnText}>Retour aux chapitres</Text>
-              </Pressable>
+              {isSingleQuestion ? (
+                <Pressable
+                  style={styles.secondaryBtn}
+                  onPress={() => navigation.navigate('ChapterQuestionsList', { chapterId, chapterName, chapterOrder })}
+                >
+                  <Text style={styles.secondaryBtnText}>Retour à la liste</Text>
+                </Pressable>
+              ) : (
+                <>
+                  <Pressable style={styles.secondaryBtn} onPress={() => void loadQuestions()}>
+                    <Text style={styles.secondaryBtnText}>Recommencer</Text>
+                  </Pressable>
+                  <Pressable
+                    style={styles.secondaryBtn}
+                    onPress={() => navigation.navigate('RevisionChapitres')}
+                  >
+                    <Text style={styles.secondaryBtnText}>Retour aux chapitres</Text>
+                  </Pressable>
+                </>
+              )}
             </View>
           ) : question ? (
             <FadeUp delay={80}>

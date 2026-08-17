@@ -4,7 +4,6 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { setStatusBarStyle } from 'expo-status-bar'
 import {
   Brain,
-  CheckSquare,
   ChevronLeft,
   ChevronRight,
   ClipboardList,
@@ -12,8 +11,6 @@ import {
   HelpCircle,
   LineChart,
   ShieldCheck,
-  Square,
-  SquareCheckBig,
   Target,
   Trophy,
 } from 'lucide-react-native'
@@ -24,7 +21,6 @@ import {
   Text,
   View,
 } from 'react-native'
-import { LinearGradient } from 'expo-linear-gradient'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import Svg, { Circle, Path, Rect } from 'react-native-svg'
 import {
@@ -36,11 +32,10 @@ import {
   type TestProgressEntry,
 } from '../../api/revision'
 import { rememberChapterOrder } from '../../data/codeRoute/chapterIndex'
-import { Bouncy } from '../../components/Bouncy'
+import { EmptyState } from '../../components/EmptyState'
 import { FadeUp } from '../../components/FadeUp'
 import { HomeBottomAnimation } from '../../components/HomeBottomAnimation'
 import { LegalFooter } from '../../components/LegalFooter'
-import { PageNavbar } from '../../components/PageNavbar'
 import { ScreenLoader } from '../../components/ScreenLoader'
 import { SkeletonList } from '../../components/Skeleton'
 import { useRequireAuth } from '../../hooks/useRequireAuth'
@@ -109,7 +104,6 @@ export function ChapterQuestionsListScreen() {
   const [testEntry, setTestEntry] = useState<TestProgressEntry | null>(null)
   const [loadingList, setLoadingList] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
 
   const load = useCallback(async () => {
     setLoadingList(true)
@@ -121,7 +115,6 @@ export function ChapterQuestionsListScreen() {
         fetchLearnerProgress(chapterId).catch(() => null),
       ])
       setQuestions(list)
-      setSelectedIds(new Set(list.map((q) => q.id)))
       const entry =
         progress?.completedTests?.find((item) => item.chapterId === chapterId) || null
       setTestEntry(entry)
@@ -154,25 +147,13 @@ export function ChapterQuestionsListScreen() {
 
   if (loading || !user) return <ScreenLoader />
 
-  const toggleQuestion = (questionId: string) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev)
-      if (next.has(questionId)) next.delete(questionId)
-      else next.add(questionId)
-      return next
-    })
-  }
-
-  const selectAll = () => setSelectedIds(new Set(questions.map((q) => q.id)))
-  const deselectAll = () => setSelectedIds(new Set())
-
-  const startTraining = () =>
+  const openQuestion = (questionIndex: number) =>
     navigation.navigate('ChapterQuestions', {
       chapterId,
       chapterName,
       chapterOrder,
       mode: 'practice',
-      selectedQuestionIds: [...selectedIds],
+      questionIndex,
     })
 
   return (
@@ -211,7 +192,7 @@ export function ChapterQuestionsListScreen() {
                   {loadingList
                     ? 'Chargement…'
                     : count > 0
-                      ? `${count} question${count !== 1 ? 's' : ''} — entraînez-vous à votre rythme.`
+                      ? 'Choisissez une question pour vous entraîner.'
                       : 'Aucune question publiée pour ce chapitre.'}
                 </Text>
               </View>
@@ -223,10 +204,11 @@ export function ChapterQuestionsListScreen() {
           {error ? <Text style={qStyles.errorText}>{error}</Text> : null}
 
           {!loadingList && !error && count === 0 ? (
-            <View style={qStyles.centerBox}>
-              <Text style={qStyles.emptyTitle}>Aucune question</Text>
-              <Text style={qStyles.emptyText}>Aucune question publiée pour ce chapitre.</Text>
-            </View>
+            <EmptyState
+              icon={<HelpCircle size={30} color={dark.textMuted} />}
+              title="Aucune question"
+              message="Les questions publiées de ce chapitre apparaîtront ici."
+            />
           ) : null}
 
           {!loadingList && !error && count > 0 ? (
@@ -279,101 +261,32 @@ export function ChapterQuestionsListScreen() {
               </FadeUp>
 
               <FadeUp delay={160}>
-                <View style={qStyles.selectBar}>
-                  <Pressable style={qStyles.selectBtn} onPress={selectAll}>
-                    <CheckSquare size={16} color={dark.green} />
-                    <Text style={qStyles.selectBtnText}>Tout sélectionner</Text>
-                  </Pressable>
-                  <Pressable style={qStyles.selectBtn} onPress={deselectAll}>
-                    <Square size={16} color={dark.textMuted} />
-                    <Text style={qStyles.selectBtnTextAlt}>Tout désélectionner</Text>
-                  </Pressable>
-                </View>
-                <Text style={qStyles.selectCounter}>
-                  {selectedIds.size} / {count} question{count !== 1 ? 's' : ''} sélectionnée{count !== 1 ? 's' : ''}
-                </Text>
-                <View style={qStyles.questionChecklist}>
+                <View style={qStyles.questionList}>
                   {questions.map((q, qi) => {
-                    const checked = selectedIds.has(q.id)
                     const excerpt = q.prompt?.text
-                      ? q.prompt.text.replace(/<[^>]*>/g, '').substring(0, 60)
+                      ? q.prompt.text.replace(/<[^>]*>/g, '').substring(0, 70)
                       : `Question ${qi + 1}`
                     return (
                       <Pressable
                         key={q.id}
                         style={({ pressed }) => [
-                          qStyles.questionCheckRow,
+                          qStyles.questionRow,
                           pressed && qStyles.pressed,
                         ]}
-                        onPress={() => toggleQuestion(q.id)}
-                        accessibilityRole="checkbox"
-                        accessibilityState={{ checked }}
+                        onPress={() => openQuestion(qi)}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Question ${qi + 1}`}
                       >
-                        {checked ? (
-                          <SquareCheckBig size={22} color={dark.green} />
-                        ) : (
-                          <Square size={22} color="rgba(0,16,48,0.24)" />
-                        )}
-                        <Text style={qStyles.questionCheckLabel} numberOfLines={2}>
-                          <Text style={qStyles.questionCheckNum}>{qi + 1}. </Text>
-                          {excerpt}{excerpt.length >= 60 ? '…' : ''}
+                        <View style={qStyles.questionNum}>
+                          <Text style={qStyles.questionNumText}>{qi + 1}</Text>
+                        </View>
+                        <Text style={qStyles.questionExcerpt} numberOfLines={2}>
+                          {excerpt}{excerpt.length >= 70 ? '…' : ''}
                         </Text>
+                        <ChevronRight size={16} color={dark.textMuted} />
                       </Pressable>
                     )
                   })}
-                </View>
-              </FadeUp>
-
-              <FadeUp delay={200}>
-                <Bouncy scaleTo={0.98} onPress={startTraining}>
-                  <LinearGradient
-                    colors={['#00D566', '#00A344']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={qStyles.startBtn}
-                  >
-                    <View style={qStyles.startIcon}>
-                      <HelpCircle size={16} color={dark.green} />
-                    </View>
-                    <Text style={qStyles.startBtnText}>Commencer l’entraînement</Text>
-                    <ChevronRight size={20} color="#FFFFFF" />
-                  </LinearGradient>
-                </Bouncy>
-              </FadeUp>
-
-              <FadeUp delay={220}>
-                <View style={qStyles.featuresCard}>
-                  <Text style={qStyles.featuresTitle}>Dans ce chapitre</Text>
-                  <View style={qStyles.featuresGrid}>
-                    <View style={qStyles.featureItem}>
-                      <View style={qStyles.featureIcon}>
-                        <FileQuestion size={16} color={dark.green} />
-                      </View>
-                      <Text style={qStyles.featureLabel}>Questions variées</Text>
-                      <Text style={qStyles.featureDesc}>QCM et mises en situation</Text>
-                    </View>
-                    <View style={qStyles.featureItem}>
-                      <View style={qStyles.featureIcon}>
-                        <Brain size={16} color={dark.green} />
-                      </View>
-                      <Text style={qStyles.featureLabel}>Entraînement</Text>
-                      <Text style={qStyles.featureDesc}>À votre rythme</Text>
-                    </View>
-                    <View style={qStyles.featureItem}>
-                      <View style={qStyles.featureIcon}>
-                        <LineChart size={16} color={dark.green} />
-                      </View>
-                      <Text style={qStyles.featureLabel}>Suivi</Text>
-                      <Text style={qStyles.featureDesc}>Chapitre par chapitre</Text>
-                    </View>
-                    <View style={qStyles.featureItem}>
-                      <View style={qStyles.featureIcon}>
-                        <ShieldCheck size={16} color={dark.green} />
-                      </View>
-                      <Text style={qStyles.featureLabel}>Préparation</Text>
-                      <Text style={qStyles.featureDesc}>Puis sujet test</Text>
-                    </View>
-                  </View>
                 </View>
               </FadeUp>
             </>
@@ -433,12 +346,25 @@ export function ChapterTestSubjectScreen() {
   return (
     <View style={tStyles.root}>
       <SafeAreaView style={tStyles.safe} edges={['top', 'bottom']}>
-        <PageNavbar
-          title={chapterName}
-          icon={ClipboardList}
-          onBack={() => navigation.goBack()}
-          numberOfLines={2}
-        />
+        <View style={tStyles.topBar}>
+          <Pressable
+            style={({ pressed }) => [tStyles.roundBtn, pressed && tStyles.pressed]}
+            onPress={() => navigation.goBack()}
+            accessibilityLabel="Retour"
+            hitSlop={10}
+          >
+            <ChevronLeft size={22} color={dark.textPrimary} />
+          </Pressable>
+          <View style={tStyles.topBarCenter}>
+            <View style={tStyles.topBarIcon}>
+              <ClipboardList size={15} color={dark.green} />
+            </View>
+            <Text style={tStyles.topBarTitle} numberOfLines={2}>
+              {chapterName}
+            </Text>
+          </View>
+          <View style={tStyles.roundBtnSpacer} accessibilityElementsHidden />
+        </View>
 
         <ScrollView contentContainerStyle={tStyles.scroll} showsVerticalScrollIndicator={false}>
           <View style={tStyles.header}>
@@ -455,17 +381,18 @@ export function ChapterTestSubjectScreen() {
           {error ? <Text style={tStyles.errorText}>{error}</Text> : null}
 
           {!loadingList && !error && subjects.length === 0 ? (
-            <View style={tStyles.centerBox}>
-              <Text style={tStyles.emptyTitle}>Aucun sujet test</Text>
-              <Text style={tStyles.emptyText}>Aucune question publiée pour ce chapitre.</Text>
-            </View>
+            <EmptyState
+              icon={<ClipboardList size={30} color={dark.textMuted} />}
+              title="Aucun sujet test"
+              message="Aucune question publiée pour ce chapitre."
+            />
           ) : null}
 
           {!loadingList && !error
             ? subjects.map((subject) => (
                 <Pressable
                   key={subject.id || `sujet-${subject.number}`}
-                  style={({ pressed }) => [tStyles.startBtn, pressed && tStyles.pressed]}
+                  style={({ pressed }) => [tStyles.subjectBtn, pressed && tStyles.pressed]}
                   onPress={() =>
                     navigation.navigate('ChapterQuestions', {
                       chapterId,
@@ -478,15 +405,15 @@ export function ChapterTestSubjectScreen() {
                   accessibilityRole="button"
                   accessibilityLabel={subject.label}
                 >
-                  <ClipboardList size={20} color="#0B0F1A" />
+                  <ClipboardList size={20} color={dark.textPrimary} />
                   <View style={tStyles.subjectCopy}>
-                    <Text style={tStyles.startBtnText}>{subject.label}</Text>
+                    <Text style={tStyles.subjectBtnText}>{subject.label}</Text>
                     <Text style={tStyles.subjectMeta}>
                       {subject.questionCount} question
                       {subject.questionCount !== 1 ? 's' : ''}
                     </Text>
                   </View>
-                  <ChevronRight size={20} color="#0B0F1A" />
+                  <ChevronRight size={20} color={dark.textPrimary} />
                 </Pressable>
               ))
             : null}
@@ -641,135 +568,44 @@ const qStyles = StyleSheet.create({
     fontSize: 12.5,
     color: dark.textMuted,
   },
-  startBtn: {
-    minHeight: 60,
+  questionList: {
+    backgroundColor: '#FFFFFF',
     borderRadius: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingHorizontal: 16,
-    marginBottom: 14,
-    ...shadows.md,
-  },
-  startIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 999,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  startBtnText: {
-    flex: 1,
-    fontFamily: fonts.bodyBold,
-    fontSize: 16,
-    color: '#FFFFFF',
-  },
-  featuresCard: {
-    backgroundColor: dark.greenSoft,
-    borderRadius: 24,
-    padding: 16,
-    marginBottom: 8,
-  },
-  featuresTitle: {
-    fontFamily: fonts.displayBold,
-    fontSize: 15,
-    color: dark.textPrimary,
-    marginBottom: 12,
-  },
-  featuresGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-  featureItem: {
-    width: '47%',
-    flexGrow: 1,
-    gap: 4,
-  },
-  featureIcon: {
-    width: 30,
-    height: 30,
-    borderRadius: 10,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 2,
-  },
-  featureLabel: {
-    fontFamily: fonts.bodySemiBold,
-    fontSize: 13,
-    color: dark.textPrimary,
-  },
-  featureDesc: {
-    fontFamily: fonts.body,
-    fontSize: 12,
-    lineHeight: 16,
-    color: dark.textMuted,
-  },
-  footerAnim: {
-    marginTop: 4,
-    marginBottom: 4,
-  },
-  selectBar: {
-    flexDirection: 'row',
-    gap: 10,
-    marginBottom: 8,
-  },
-  selectBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 10,
-    borderRadius: 12,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: 'rgba(0,16,48,0.1)',
-  },
-  selectBtnText: {
-    fontFamily: fonts.bodySemiBold,
-    fontSize: 13,
-    color: dark.green,
-  },
-  selectBtnTextAlt: {
-    fontFamily: fonts.bodySemiBold,
-    fontSize: 13,
-    color: dark.textMuted,
-  },
-  selectCounter: {
-    fontFamily: fonts.bodySemiBold,
-    fontSize: 13,
-    color: dark.textPrimary,
-    marginBottom: 10,
-    textAlign: 'center',
-  },
-  questionChecklist: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 6,
+    padding: 4,
     marginBottom: 14,
     ...shadows.sm,
   },
-  questionCheckRow: {
+  questionRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    paddingVertical: 12,
-    paddingHorizontal: 10,
-    borderRadius: 12,
+    gap: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    borderRadius: 14,
   },
-  questionCheckLabel: {
+  questionNum: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: dark.greenSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  questionNumText: {
+    fontFamily: fonts.bodyBold,
+    fontSize: 13,
+    color: dark.green,
+  },
+  questionExcerpt: {
     flex: 1,
     fontFamily: fonts.body,
     fontSize: 14,
     lineHeight: 19,
     color: dark.textPrimary,
   },
-  questionCheckNum: {
-    fontFamily: fonts.bodySemiBold,
-    color: dark.green,
+  footerAnim: {
+    marginTop: 4,
+    marginBottom: 4,
   },
   centerBox: {
     alignItems: 'center',
@@ -806,6 +642,49 @@ const tStyles = StyleSheet.create({
   safe: {
     flex: 1,
   },
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingTop: 6,
+    paddingBottom: 10,
+  },
+  roundBtn: {
+    width: 52,
+    height: 52,
+    borderRadius: 999,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+    ...shadows.sm,
+  },
+  roundBtnSpacer: {
+    width: 52,
+    height: 52,
+  },
+  topBarCenter: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingHorizontal: 8,
+  },
+  topBarIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 9,
+    backgroundColor: dark.greenSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  topBarTitle: {
+    flexShrink: 1,
+    fontFamily: fonts.displayBold,
+    fontSize: 16,
+    color: dark.textPrimary,
+  },
   scroll: {
     paddingHorizontal: 22,
     paddingTop: 8,
@@ -835,7 +714,7 @@ const tStyles = StyleSheet.create({
     lineHeight: 20,
     color: dark.textMuted,
   },
-  startBtn: {
+  subjectBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
@@ -846,7 +725,7 @@ const tStyles = StyleSheet.create({
     paddingHorizontal: 16,
     marginBottom: 12,
   },
-  startBtnText: {
+  subjectBtnText: {
     color: '#0B0F1A',
     fontFamily: fonts.bodyBold,
     fontSize: 15,
