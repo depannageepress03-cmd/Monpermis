@@ -47,6 +47,7 @@ import { MobileMoneyCheckout } from '../components/MobileMoneyCheckout'
 import { CodeModuleIcon } from '../components/ModuleIcons'
 import { ScreenLoader } from '../components/ScreenLoader'
 import { SkeletonList } from '../components/Skeleton'
+import { useOffline } from '../context/OfflineContext'
 import { useRequireAuth } from '../hooks/useRequireAuth'
 import type { RootStackParamList } from '../navigation/types'
 import { PAYMENT_OPERATORS } from '../utils/paymentOperators'
@@ -89,6 +90,7 @@ const toneArrow: Record<Tone, string> = {
 export function CodeRouteScreen() {
   const navigation = useNavigation<Nav>()
   const { user, loading } = useRequireAuth(navigation)
+  const { isOffline } = useOffline()
   const [accessMe, setAccessMe] = useState<AccessMe | null>(null)
   const [modules, setModules] = useState<AccessModule[]>([])
   const [journey, setJourney] = useState<LearnerJourney | null>(null)
@@ -100,6 +102,17 @@ export function CodeRouteScreen() {
     if (!user) return
     if (!silent) setAccessLoading(true)
     try {
+      if (isOffline) {
+        const cached = await import('../utils/contentCache').then((m) =>
+          m.cacheGet<AccessMe>(`access:me:${user.id}`, 24 * 60 * 60 * 1000),
+        )
+        if (cached) {
+          setAccessMe(cached.data)
+          setAccessLoading(false)
+          setRefreshing(false)
+          return
+        }
+      }
       const [me, catalog, journeyData] = await Promise.all([
         fetchAccessMe(),
         fetchAccessModules(),
@@ -116,7 +129,7 @@ export function CodeRouteScreen() {
       setAccessLoading(false)
       setRefreshing(false)
     }
-  }, [user])
+  }, [user, isOffline])
 
   useFocusEffect(
     useCallback(() => {

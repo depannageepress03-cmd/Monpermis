@@ -5,6 +5,9 @@ const INDEX_KEY = '@mp/cache/v1:__index'
 const MAX_ENTRIES = 48
 const DEFAULT_TTL_MS = 30 * 60 * 1000
 
+/** TTL étendu pour le mode hors-ligne (7 jours). */
+export const OFFLINE_TTL_MS = 7 * 24 * 60 * 60 * 1000
+
 type CacheEntry<T> = {
   savedAt: number
   data: T
@@ -76,10 +79,19 @@ export async function cacheGetThenFetch<T>(
     if (!cached.stale) return cached.data
   }
 
-  const fresh = await fetcher()
-  await cacheSet(key, fresh)
-  options?.onData?.(fresh, { fromCache: false, stale: false })
-  return fresh
+  try {
+    const fresh = await fetcher()
+    await cacheSet(key, fresh)
+    options?.onData?.(fresh, { fromCache: false, stale: false })
+    return fresh
+  } catch (fetchError) {
+    // Si le fetch échoue mais qu'on a un cache (même périmé), l'utiliser
+    if (cached) {
+      options?.onData?.(cached.data, { fromCache: true, stale: true })
+      return cached.data
+    }
+    throw fetchError
+  }
 }
 
 /** Vide tout le cache contenu (logout / changement de compte). */

@@ -7,7 +7,8 @@ import {
 } from '../data/codeRoute/banks'
 import { buildLocalSubject, buildLocalSubjectSummaries } from '../data/codeRoute/subjects'
 import { listStandardChapterShells } from '../data/codeRoute/standardChapters'
-import { cacheGetThenFetch } from '../utils/contentCache'
+import { cacheGetThenFetch, cacheGet } from '../utils/contentCache'
+import { getOfflineChapter } from '../utils/offlineStorage'
 
 export interface RevisionModule {
   id: string
@@ -105,7 +106,9 @@ export async function fetchRevisionChapters(): Promise<RevisionChapter[]> {
       return withStandardChapters(data.chapters)
     })
   } catch {
-    // Hors ligne : catalogue local 20 chapitres.
+    // Hors ligne : essayer le cache étendu, puis les chapitres locaux.
+    const cached = await cacheGet<RevisionChapter[]>('revision:chapters', 7 * 24 * 60 * 60 * 1000)
+    if (cached) return withStandardChapters(cached.data)
     return withStandardChapters(listStandardChapterShells() as RevisionChapter[])
   }
 }
@@ -177,7 +180,17 @@ export async function fetchRevisionChaptersSWR(
 
 export async function fetchLearnerProgress(chapterId?: string): Promise<LearnerProgress> {
   const query = chapterId ? `?chapterId=${encodeURIComponent(chapterId)}` : ''
-  return request<LearnerProgress>(`/content/revision/progress${query}`, { auth: true })
+  try {
+    return await request<LearnerProgress>(`/content/revision/progress${query}`, { auth: true })
+  } catch {
+    // Hors ligne : retourner une progression vide
+    return {
+      minCourseSeconds: 300,
+      completedCourses: [],
+      completedTests: [],
+      courseSessions: [],
+    }
+  }
 }
 
 /** @deprecated Prefer fetchLearnerProgress */
@@ -314,7 +327,23 @@ export interface PracticeExamAttempt {
 }
 
 export async function fetchLearnerJourney(): Promise<LearnerJourney> {
-  return request<LearnerJourney>('/content/revision/progress/journey', { auth: true })
+  try {
+    return await request<LearnerJourney>('/content/revision/progress/journey', { auth: true })
+  } catch {
+    // Hors ligne : retourner un voyage vide
+    return {
+      code: { currentStop: null, chaptersDone: 0, chaptersTotal: 20 },
+      conduite: { currentStop: null, chaptersDone: 0, chaptersTotal: 0 },
+      testScores: [],
+      practiceExams: {
+        examTotal: 0,
+        passScore: 0.7,
+        completedCount: 0,
+        passedCount: 0,
+        scores: [],
+      },
+    }
+  }
 }
 
 export async function fetchPracticeExams(): Promise<PracticeExamsOverview> {
@@ -380,6 +409,28 @@ export async function fetchChapterQuestions(chapterId: string): Promise<Revision
   const localBank = order ? getLocalBankByChapterOrder(order) : null
   if (localBank) {
     return localBank.map((q) => toPublicLocalQuestion(q, chapterId))
+  }
+
+  // Vérifier le stockage hors-ligne
+  const offlineChapter = await getOfflineChapter(chapterId)
+  if (offlineChapter) {
+    const allQuestions: RevisionQuestion[] = []
+    for (const course of offlineChapter.courses) {
+      if (course.modules) {
+        for (const mod of course.modules) {
+          if (mod.text) {
+            allQuestions.push({
+              id: `offline-${course.id}-${mod.id}`,
+              chapterId,
+              order: mod.order,
+              prompt: { text: mod.title, audioUrl: '', imageUrls: [] },
+              answers: [],
+            })
+          }
+        }
+      }
+    }
+    if (allQuestions.length > 0) return allQuestions
   }
 
   try {

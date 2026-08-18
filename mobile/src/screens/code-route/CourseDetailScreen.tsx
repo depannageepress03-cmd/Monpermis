@@ -35,6 +35,7 @@ import { ProgressBar } from '../../components/ProgressBar'
 import { ScreenLoader } from '../../components/ScreenLoader'
 import { CourseDetailSkeleton } from '../../components/Skeleton'
 import { useRequireAuth } from '../../hooks/useRequireAuth'
+import { useOffline } from '../../context/OfflineContext'
 import { useUnreadNotifications } from '../../hooks/useUnreadNotifications'
 import type { RootStackParamList } from '../../navigation/types'
 import { brand, dark, fonts, shadows } from '../../theme'
@@ -61,6 +62,7 @@ export function CourseDetailScreen() {
   const navigation = useNavigation<Nav>()
   const route = useRoute<Route>()
   const { user, loading } = useRequireAuth(navigation)
+  const { isOffline, enqueue } = useOffline()
   const unreadCount = useUnreadNotifications(Boolean(user))
   const { chapterId, chapterName, course, courses: coursesParam } = route.params
   const courses = coursesParam?.length ? coursesParam : [course]
@@ -155,7 +157,11 @@ export function CourseDetailScreen() {
     setSaving(true)
     setError(null)
     try {
-      await markCourseCompleted(chapterId, course.id)
+      if (isOffline) {
+        await enqueue('markCourseCompleted', { chapterId, courseId: course.id })
+      } else {
+        await markCourseCompleted(chapterId, course.id)
+      }
       setCompletedIds((current) => new Set(current).add(course.id))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Enregistrement impossible')

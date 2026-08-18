@@ -33,6 +33,7 @@ import { InfiniteImageMarquee } from '../components/InfiniteImageMarquee'
 import { HomeSkeleton } from '../components/Skeleton'
 import { ScreenLoader } from '../components/ScreenLoader'
 import { useAuth } from '../context/AuthContext'
+import { useOffline } from '../context/OfflineContext'
 import { useRequireAuth } from '../hooks/useRequireAuth'
 import { useUnreadNotifications } from '../hooks/useUnreadNotifications'
 import type { RootStackParamList } from '../navigation/types'
@@ -51,6 +52,7 @@ function greetingWord() {
 export function HomeScreen() {
   const navigation = useNavigation<Nav>()
   const { signOut } = useAuth()
+  const { isOffline } = useOffline()
   const { user, loading } = useRequireAuth(navigation)
   const [profileOpen, setProfileOpen] = useState(false)
   const [accessMe, setAccessMe] = useState<AccessMe | null>(null)
@@ -67,7 +69,7 @@ export function HomeScreen() {
         `access:me:${user.id}`,
         () => fetchAccessMe(),
         {
-          maxAgeMs: 0,
+          maxAgeMs: isOffline ? 24 * 60 * 60 * 1000 : 0,
           onData: (data) => {
             setAccessMe(data)
             setBootstrapping(false)
@@ -77,7 +79,7 @@ export function HomeScreen() {
     } finally {
       setBootstrapping(false)
     }
-  }, [user])
+  }, [user, isOffline])
 
   useEffect(() => {
     void loadHome()

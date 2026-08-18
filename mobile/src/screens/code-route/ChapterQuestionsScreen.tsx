@@ -43,6 +43,7 @@ import { QuestionPromptHtml } from '../../components/QuestionPromptHtml'
 import { SkeletonList } from '../../components/Skeleton'
 import { useLeaveGuard } from '../../hooks/useLeaveGuard'
 import { useRequireAuth } from '../../hooks/useRequireAuth'
+import { useOffline } from '../../context/OfflineContext'
 import type { RootStackParamList } from '../../navigation/types'
 import { brand, dark, fonts, shadows } from '../../theme'
 import { hapticError, hapticSelect, hapticSuccess } from '../../utils/haptics'
@@ -110,6 +111,7 @@ export function ChapterQuestionsScreen() {
   const navigation = useNavigation<Nav>()
   const route = useRoute<Route>()
   const { user, loading } = useRequireAuth(navigation)
+  const { isOffline, enqueue } = useOffline()
   const {
     chapterId,
     chapterName,
@@ -283,7 +285,15 @@ export function ChapterQuestionsScreen() {
         if (isTest && !testSavedRef.current) {
           setSavingTest(true)
           try {
-            await markChapterTestCompleted(chapterId, nextScore.correct, nextScore.total)
+            if (isOffline) {
+              await enqueue('markTestCompleted', {
+                chapterId,
+                correct: nextScore.correct,
+                total: nextScore.total,
+              })
+            } else {
+              await markChapterTestCompleted(chapterId, nextScore.correct, nextScore.total)
+            }
             setTestSaved(true)
           } catch (err) {
             setError(err instanceof Error ? err.message : 'Validation du test impossible')

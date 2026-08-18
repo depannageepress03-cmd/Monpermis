@@ -21,7 +21,9 @@ const navTheme = {
 }
 import { AppErrorBoundary } from '../components/AppErrorBoundary'
 import { AppToastHost } from '../components/AppToast'
+import { OfflineBanner } from '../components/OfflineBanner'
 import { AuthProvider } from '../context/AuthContext'
+import { OfflineProvider } from '../context/OfflineContext'
 import type { RootStackParamList } from './types'
 import { IntroScreen } from '../screens/IntroScreen'
 import { OnboardingScreen } from '../screens/OnboardingScreen'
@@ -278,30 +280,33 @@ export function RootNavigator() {
   return (
     <SafeAreaProvider>
       <AppErrorBoundary>
-        <AuthProvider>
-          <NavigationContainer
-            ref={navigationRef}
-            linking={linking}
-            theme={navTheme}
-            onReady={() => {
-              const name = navigationRef.getCurrentRoute()?.name
-              if (name && name !== lastScreenRef.current) {
+        <OfflineProvider>
+          <AuthProvider>
+            <NavigationContainer
+              ref={navigationRef}
+              linking={linking}
+              theme={navTheme}
+              onReady={() => {
+                const name = navigationRef.getCurrentRoute()?.name
+                if (name && name !== lastScreenRef.current) {
+                  lastScreenRef.current = name
+                  tracker.track('screen_view', { screen: name })
+                }
+              }}
+              onStateChange={() => {
+                const name = navigationRef.getCurrentRoute()?.name
+                if (!name || name === lastScreenRef.current) return
                 lastScreenRef.current = name
                 tracker.track('screen_view', { screen: name })
-              }
-            }}
-            onStateChange={() => {
-              const name = navigationRef.getCurrentRoute()?.name
-              if (!name || name === lastScreenRef.current) return
-              lastScreenRef.current = name
-              tracker.track('screen_view', { screen: name })
-            }}
-          >
-            <StatusBar style="dark" />
-            <AppNavigator />
-            <AppToastHost />
-          </NavigationContainer>
-        </AuthProvider>
+              }}
+            >
+              <StatusBar style="dark" />
+              <OfflineBanner />
+              <AppNavigator />
+              <AppToastHost />
+            </NavigationContainer>
+          </AuthProvider>
+        </OfflineProvider>
       </AppErrorBoundary>
     </SafeAreaProvider>
   )
