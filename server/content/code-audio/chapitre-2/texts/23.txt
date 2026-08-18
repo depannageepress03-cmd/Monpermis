@@ -1,3 +1,1 @@
 À cette intersection I-8, quel doit être l'ordre de passage des véhicules ? A : 1, les véhicules jaune et bleu passent ; 2, le véhicule rouge passe ; 3, la moto passe après. B : 1, les véhicules jaune, bleu et la moto passent simultanément ; 2, le véhicule rouge passe après.
-
-Correction: B
