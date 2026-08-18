@@ -35,11 +35,22 @@ async function seed() {
     let updated = false
     if (existing.role !== role && process.env.ADMIN_FORCE_ROLE === 'true') {
       existing.role = role
-      await existing.save()
       updated = true
     }
+    if (existing.fullName !== fullName) {
+      existing.fullName = fullName
+      updated = true
+    }
+    if (existing.password !== password) {
+      existing.password = password
+      updated = true
+    }
+    if (updated) {
+      existing.isActive = true
+      await existing.save()
+    }
     console.log(
-      `Admin déjà existant : ${existing.phone} (rôle: ${existing.role})${updated ? ' — rôle mis à jour' : ''}`,
+      `Admin déjà existant : ${existing.fullName} (${existing.phone}) — rôle: ${existing.role})${updated ? ' — mis à jour' : ''}`,
     )
     if (existing.role !== 'superadmin') {
       console.log(
