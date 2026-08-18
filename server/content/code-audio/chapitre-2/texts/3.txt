@@ -1,1 +1,3 @@
 À une intersection munie à la fois de panneaux et de feux tricolores fonctionnant normalement : A : je me conforme à la fois aux panneaux et aux feux. B : je me conforme uniquement aux feux. C : je ne me conforme ni à l’un ni à l’autre.
+
+Correction: B

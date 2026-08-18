@@ -1,1 +1,3 @@
 À cette intersection I-9 : A : le véhicule jaune peut tourner immédiatement à gauche. B : le véhicule jaune peut tourner immédiatement à droite. C : le véhicule jaune peut aller immédiatement tout droit.
+
+Correction: B

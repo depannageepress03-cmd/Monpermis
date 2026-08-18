@@ -1,0 +1,1 @@
+Never add "Made-with: Cursor", "Co-authored-by: Cursor", "Co-Authored-By: Claude", or any Cursor/Claude attribution trailer to commits, PRs, or code comments. When committing, use only the subject/body without --trailer.

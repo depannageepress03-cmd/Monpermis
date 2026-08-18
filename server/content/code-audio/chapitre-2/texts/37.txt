@@ -1,0 +1,2 @@
+Sur une chaussée, donnez l'écart latéral minimal entre deux véhicules automobiles lors d'un dépassement. Réponse A, 0,50 m environ. B, 1 m environ. C, 0,3 m environ.
+Correction: à déterminer

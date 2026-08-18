@@ -1,1 +1,3 @@
 À cette intersection I-10, quel doit être l'ordre de passage des véhicules ? A : 1, la moto ; 2, le véhicule jaune ensuite ; 3, le véhicule bleu après. B : 1, le véhicule jaune ; 2, le véhicule bleu ensuite ; 3, la moto après.
+
+Correction: A

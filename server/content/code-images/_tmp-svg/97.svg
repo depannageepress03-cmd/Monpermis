@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <rect width="100%" height="100%" fill="#ffffff"/>
+  
+    <rect x="86" y="86" width="340" height="340" rx="24" fill="#E30613" stroke="#fff" stroke-width="14"/>
+    <text x="256" y="290" text-anchor="middle" font-size="92" font-family="Arial Black, Arial" font-weight="700" fill="#fff">STOP</text>
+</svg>

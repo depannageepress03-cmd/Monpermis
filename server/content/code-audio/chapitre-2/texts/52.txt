@@ -1,0 +1,2 @@
+Quel est l'ordre de passage des véhicules à cette intersection entre parenthèses IM2? Réponse A, rouge, jaune, bleu, blanc. B, jaune et blanc simultanément, puis bleu et rouge sur ordre de l'agent. C, rouge et bleu simultanément, puis blanc et jaune sur l'ordre de l'agent.
+Correction: à déterminer
