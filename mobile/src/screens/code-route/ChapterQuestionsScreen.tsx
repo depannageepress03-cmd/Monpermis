@@ -496,23 +496,25 @@ export function ChapterQuestionsScreen() {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          <FadeUp delay={40}>
-            <View style={styles.header}>
-              <Text style={styles.kicker}>{isTest ? 'Sujet test' : 'Entraînement'}</Text>
-              <Text style={styles.modeTitle}>
-                {isTest ? subjectLabel || 'Évaluation' : 'Questions'}
-              </Text>
-              {isTest ? (
-                <Text style={styles.subtitle}>
-                  Évaluation du chapitre — répondez à chaque question à votre rythme.
+          {!showQuizChrome && !reviewing && !finished ? (
+            <FadeUp delay={40}>
+              <View style={styles.header}>
+                <Text style={styles.kicker}>{isTest ? 'Sujet test' : 'Entraînement'}</Text>
+                <Text style={styles.modeTitle}>
+                  {isTest ? subjectLabel || 'Évaluation' : 'Questions'}
                 </Text>
-              ) : (
-                <Text style={styles.subtitle}>
-                  Cochez la ou les bonnes réponses, puis validez.
-                </Text>
-              )}
-            </View>
-          </FadeUp>
+                {isTest ? (
+                  <Text style={styles.subtitle}>
+                    Évaluation du chapitre — répondez à chaque question à votre rythme.
+                  </Text>
+                ) : (
+                  <Text style={styles.subtitle}>
+                    Cochez la ou les bonnes réponses, puis validez.
+                  </Text>
+                )}
+              </View>
+            </FadeUp>
+          ) : null}
 
           {loadingQuestions ? (
             <SkeletonList count={3} />
@@ -890,8 +892,8 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   progressBlock: {
-    marginBottom: 16,
-    gap: 8,
+    marginBottom: 10,
+    gap: 6,
   },
   progressLabel: {
     fontFamily: fonts.bodyMedium,
@@ -937,8 +939,8 @@ const styles = StyleSheet.create({
   promptTextCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
+    padding: 12,
+    marginBottom: 8,
     ...shadows.sm,
   },
   promptText: {
@@ -948,11 +950,11 @@ const styles = StyleSheet.create({
     color: dark.textPrimary,
   },
   audioWrap: {
-    marginBottom: 16,
+    marginBottom: 10,
   },
   images: {
-    gap: 10,
-    marginBottom: 16,
+    gap: 8,
+    marginBottom: 10,
   },
   image: {
     width: '100%',
@@ -962,16 +964,16 @@ const styles = StyleSheet.create({
   },
   answersTitle: {
     fontFamily: fonts.bodyBold,
-    fontSize: 17,
+    fontSize: 16,
     color: dark.textPrimary,
-    marginBottom: 6,
+    marginBottom: 4,
   },
   hintText: {
     fontFamily: fonts.body,
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 13,
+    lineHeight: 18,
     color: dark.textMuted,
-    marginBottom: 16,
+    marginBottom: 10,
   },
   answerRow: {
     flexDirection: 'row',
@@ -981,10 +983,10 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: 'transparent',
     backgroundColor: '#FFFFFF',
-    paddingVertical: 16,
+    paddingVertical: 12,
     paddingHorizontal: 16,
-    marginBottom: 12,
-    minHeight: 56,
+    marginBottom: 10,
+    minHeight: 52,
     ...shadows.sm,
   },
   answerSelected: {
