@@ -7,11 +7,6 @@ on:
         description: 'Tag de release (ex: v1.0.6-preview)'
         required: true
         default: 'v1.0.6-preview'
-  # Déclenchement unique pour produire l’APK de la branche révision
-  # (workflow_dispatch indisponible depuis l’agent). À retirer après le build.
-  push:
-    branches:
-      - cursor/revision-question-transcripts-df89
 
 permissions:
   contents: write
