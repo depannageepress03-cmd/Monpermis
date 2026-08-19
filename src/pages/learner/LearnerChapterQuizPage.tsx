@@ -18,8 +18,6 @@ import { useLeaveGuard } from '../../hooks/useLeaveGuard'
 import { playFailSound, playSuccessSound, stopAllQuizAudio } from '../../utils/quizSounds'
 import { resolveMediaUrl } from '../../utils/mediaUrl'
 import { resolveCodeImageUrl } from '../../utils/codeImageUrl'
-import { getRevisionPracticeTranscript } from '../../data/codeRoute/questionTranscripts'
-import { getChapterOrderById } from '../../data/codeRoute/chapterIndex'
 import '../../styles/auth.css'
 import '../../styles/learner.css'
 
@@ -132,14 +130,6 @@ export function LearnerChapterQuizPage({
   // Sélection d’une réponse : ne coupe PAS l’audio (2 lectures complètes jusqu’à Continuer / fin de séquence).
 
   const question = questions[index]
-  const practiceTranscript =
-    mode === 'practice'
-      ? getRevisionPracticeTranscript(question?.prompt, {
-          id: question?.id,
-          order: question?.order,
-          chapterOrder: getChapterOrderById(chapterId) || undefined,
-        })
-      : ''
 
   const toggleAnswer = (answerId: string) => {
     if (result || checking) return
@@ -327,12 +317,7 @@ export function LearnerChapterQuizPage({
                   ))}
                 </div>
               ) : null}
-              {practiceTranscript ? (
-                <div className="learner-quiz-subtitles">
-                  <p className="learner-quiz-subtitles-kicker">Sous-titres</p>
-                  <p className="learner-quiz-subtitles-text">{practiceTranscript}</p>
-                </div>
-              ) : question.prompt?.text ? (
+              {question.prompt?.text ? (
                 <p className="learner-quiz-prompt">{question.prompt.text}</p>
               ) : null}
               <p className="learner-quiz-answers-title">Choisissez la ou les bonnes réponses</p>

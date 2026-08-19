@@ -366,11 +366,3 @@ export function attachQuestionTranscript<T extends TranscriptQuestion>(
     },
   }
 }
-
-/** Texte affiché en entraînement révision uniquement (pas examens / sujets test). */
-export function getRevisionPracticeTranscript(
-  prompt?: { text?: string; transcript?: string } | null,
-  meta?: { id?: string; order?: number; chapterOrder?: number } | null,
-): string {
-  return resolveQuestionTranscript({ id: meta?.id, order: meta?.order, prompt }, meta?.chapterOrder)
-}

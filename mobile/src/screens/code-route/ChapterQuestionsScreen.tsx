@@ -48,7 +48,6 @@ import { brand, dark, fonts, shadows } from '../../theme'
 import { hapticError, hapticSelect, hapticSuccess } from '../../utils/haptics'
 import { playFailSound, playSuccessSound, stopAllQuizAudio } from '../../utils/quizSounds'
 import { rememberChapterOrder } from '../../data/codeRoute/chapterIndex'
-import { getRevisionPracticeTranscript } from '../../data/codeRoute/questionTranscripts'
 import { resolveQuestionImageUri } from '../../utils/questionImages'
 import { tracker } from '../../tracking/tracker'
 
@@ -60,17 +59,6 @@ type ReviewEntry = {
   selectedIds: string[]
   correctAnswerIds: string[]
   isCorrect: boolean
-}
-
-function AudioSubtitles({ text }: { text: string }) {
-  const value = text.trim()
-  if (!value) return null
-  return (
-    <View style={styles.subtitles} accessibilityLabel="Sous-titres de l’énoncé audio">
-      <Text style={styles.subtitlesKicker}>Sous-titres</Text>
-      <Text style={styles.subtitlesText}>{value}</Text>
-    </View>
-  )
 }
 
 export function ChapterQuestionsScreen() {
@@ -207,13 +195,6 @@ export function ChapterQuestionsScreen() {
   // Sélection d’une réponse : ne coupe PAS l’audio (2 lectures complètes jusqu’à Continuer / fin de séquence).
 
   const question = questions[index]
-  const practiceTranscript = !isTest
-    ? getRevisionPracticeTranscript(question?.prompt, {
-        id: question?.id,
-        order: question?.order,
-        chapterOrder,
-      })
-    : ''
   const [resolvedImages, setResolvedImages] = useState<{ key: string; uri: string }[]>([])
 
   useEffect(() => {
@@ -518,15 +499,7 @@ export function ChapterQuestionsScreen() {
               <Text style={styles.emptyText}>
                 {score.correct}/{score.total} — revois tes réponses et les bonnes.
               </Text>
-              {reviewHistory.map((entry, reviewIndex) => {
-                const entryTranscript = !isTest
-                  ? getRevisionPracticeTranscript(entry.question.prompt, {
-                      id: entry.question.id,
-                      order: entry.question.order,
-                      chapterOrder,
-                    })
-                  : ''
-                return (
+              {reviewHistory.map((entry, reviewIndex) => (
                 <View key={`${entry.question.id}-${reviewIndex}`} style={styles.reviewCard}>
                   <View style={styles.reviewHead}>
                     <Text style={styles.progressLabel}>
@@ -539,9 +512,7 @@ export function ChapterQuestionsScreen() {
                       <X size={18} color={dark.coral} />
                     )}
                   </View>
-                  {entryTranscript ? (
-                    <AudioSubtitles text={entryTranscript} />
-                  ) : entry.question.prompt.text ? (
+                  {entry.question.prompt.text ? (
                     <QuestionPromptHtml text={entry.question.prompt.text} style={styles.promptText} />
                   ) : null}
                   {entry.question.answers.map((answer) => {
@@ -565,8 +536,7 @@ export function ChapterQuestionsScreen() {
                     )
                   })}
                 </View>
-                )
-              })}
+              ))}
               <Pressable style={styles.inlinePrimary} onPress={() => setReviewing(false)}>
                 <Text style={styles.inlinePrimaryText}>Retour au score</Text>
               </Pressable>
@@ -656,9 +626,7 @@ export function ChapterQuestionsScreen() {
                 </View>
               ) : null}
 
-              {practiceTranscript ? (
-                <AudioSubtitles text={practiceTranscript} />
-              ) : question.prompt.text ? (
+              {question.prompt.text ? (
                 <View style={styles.promptTextCard}>
                   <QuestionPromptHtml text={question.prompt.text} style={styles.promptText} />
                 </View>
@@ -888,29 +856,6 @@ const styles = StyleSheet.create({
   },
   audioWrap: {
     marginBottom: 10,
-  },
-  subtitles: {
-    marginBottom: 14,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    borderRadius: 14,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: 'rgba(0,176,80,0.18)',
-  },
-  subtitlesKicker: {
-    fontFamily: fonts.bodyBold,
-    fontSize: 11,
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
-    color: dark.green,
-    marginBottom: 8,
-  },
-  subtitlesText: {
-    fontFamily: fonts.body,
-    fontSize: 16,
-    lineHeight: 24,
-    color: dark.textPrimary,
   },
   images: {
     gap: 8,
