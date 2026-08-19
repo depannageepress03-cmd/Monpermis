@@ -1,3 +1,5 @@
+import { getQuestionTranscript } from './questionTranscripts'
+
 export type LocalAnswer = {
   id: string
   label: string
@@ -664,6 +666,7 @@ export function toPublicLocalQuestion(q: LocalQuestion, chapterId: string) {
     order: q.order,
     prompt: {
       text: q.prompt.text || '',
+      transcript: getQuestionTranscript(q.chapterOrder, q.order),
       audioUrl: q.prompt.audioUrl,
       imageUrls: q.prompt.imageUrls || [],
     },

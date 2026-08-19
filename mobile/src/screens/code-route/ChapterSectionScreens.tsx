@@ -32,6 +32,7 @@ import {
   type TestProgressEntry,
 } from '../../api/revision'
 import { rememberChapterOrder } from '../../data/codeRoute/chapterIndex'
+import { getRevisionPracticeTranscript } from '../../data/codeRoute/questionTranscripts'
 import { EmptyState } from '../../components/EmptyState'
 import { FadeUp } from '../../components/FadeUp'
 import { HomeBottomAnimation } from '../../components/HomeBottomAnimation'
@@ -263,8 +264,9 @@ export function ChapterQuestionsListScreen() {
               <FadeUp delay={160}>
                 <View style={qStyles.questionList}>
                   {questions.map((q, qi) => {
-                    const excerpt = q.prompt?.text
-                      ? q.prompt.text.replace(/<[^>]*>/g, '').substring(0, 70)
+                    const excerptSource = getRevisionPracticeTranscript(q.prompt)
+                    const excerpt = excerptSource
+                      ? excerptSource.replace(/\s+/g, ' ').substring(0, 70)
                       : `Question ${qi + 1}`
                     return (
                       <Pressable

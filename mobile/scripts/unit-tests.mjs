@@ -11,6 +11,7 @@ import {
   isCourseUnlocked,
 } from '../src/utils/unlock.ts'
 import { sanitizeCmsHtml } from '../src/utils/sanitizeHtml.ts'
+import { getQuestionTranscript, getRevisionPracticeTranscript } from '../src/data/codeRoute/questionTranscripts.ts'
 
 function computeModuleAmount(module, unitPrice, quantity = 1) {
   const qty = Math.max(1, Number(quantity) || 1)
@@ -67,6 +68,20 @@ ok('isChapterUnlocked locked', () => {
 })
 ok('isCourseUnlocked sequential', () => {
   assert.equal(isCourseUnlocked(1, 'c0', new Set(['c0'])), true)
+})
+ok('getQuestionTranscript formats spoken options', () => {
+  const text = getQuestionTranscript(2, 1)
+  assert.match(text, /véhicules prioritaires/i)
+  assert.match(text, /\nA\. /)
+})
+ok('getQuestionTranscript missing is empty', () => {
+  assert.equal(getQuestionTranscript(99, 1), '')
+})
+ok('practice transcript prefers prompt.transcript', () => {
+  assert.equal(
+    getRevisionPracticeTranscript({ text: 'stem', transcript: 'audio text' }),
+    'audio text',
+  )
 })
 ok('isChapterQuizUnlocked all courses', () => {
   assert.equal(isChapterQuizUnlocked(['a', 'b'], new Set(['a', 'b'])), true)

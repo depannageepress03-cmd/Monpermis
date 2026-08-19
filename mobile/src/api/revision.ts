@@ -398,6 +398,7 @@ export interface RevisionQuestion {
   correctCount?: number
   prompt: {
     text?: string
+    transcript?: string
     audioUrl: string
     imageUrls: string[]
   }

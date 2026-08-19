@@ -553,6 +553,24 @@
   border: 1px solid rgba(0, 16, 48, 0.08);
   font-weight: 600;
   color: #0f172a;
+  white-space: pre-wrap;
+}
+
+.learner-quiz-transcript {
+  margin: 0 0 0.75rem;
+}
+
+.learner-quiz-transcript .learner-quiz-prompt {
+  margin: 0;
+}
+
+.learner-quiz-transcript-label {
+  margin: 0 0 0.4rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #00b050;
 }
 
 .learner-quiz-audio-status {

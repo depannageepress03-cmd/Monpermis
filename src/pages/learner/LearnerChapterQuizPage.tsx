@@ -18,6 +18,7 @@ import { useLeaveGuard } from '../../hooks/useLeaveGuard'
 import { playFailSound, playSuccessSound, stopAllQuizAudio } from '../../utils/quizSounds'
 import { resolveMediaUrl } from '../../utils/mediaUrl'
 import { resolveCodeImageUrl } from '../../utils/codeImageUrl'
+import { getRevisionPracticeTranscript } from '../../data/codeRoute/questionTranscripts'
 import '../../styles/auth.css'
 import '../../styles/learner.css'
 
@@ -130,6 +131,8 @@ export function LearnerChapterQuizPage({
   // Sélection d’une réponse : ne coupe PAS l’audio (2 lectures complètes jusqu’à Continuer / fin de séquence).
 
   const question = questions[index]
+  const practiceTranscript =
+    mode === 'practice' ? getRevisionPracticeTranscript(question?.prompt) : ''
   const progressLabel = useMemo(() => {
     if (!questions.length) return ''
     return `Question ${Math.min(index + 1, questions.length)} / ${questions.length}`
@@ -314,7 +317,12 @@ export function LearnerChapterQuizPage({
                   ))}
                 </div>
               ) : null}
-              {question.prompt?.text ? (
+              {practiceTranscript ? (
+                <div className="learner-quiz-transcript">
+                  <p className="learner-quiz-transcript-label">Transcription</p>
+                  <p className="learner-quiz-prompt">{practiceTranscript}</p>
+                </div>
+              ) : question.prompt?.text ? (
                 <p className="learner-quiz-prompt">{question.prompt.text}</p>
               ) : null}
               {sequenceLive && !result ? (

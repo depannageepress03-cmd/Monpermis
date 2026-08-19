@@ -1,0 +1,39 @@
+import fs from 'fs'
+import path from 'path'
+import { fileURLToPath } from 'url'
+
+const textsRoot = path.join(path.dirname(fileURLToPath(import.meta.url)), '../../../content/code-audio')
+const cache = new Map()
+
+function normalizeTranscript(value) {
+  return String(value || '')
+    .replace(/\r\n/g, '\n')
+    .replace(/[ \t]+/g, ' ')
+    .replace(/\s+([A-E])\s*[:.]\s+/g, '\n$1. ')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+}
+
+/**
+ * Transcription TTS (énoncé lu) pour une question hardcodée.
+ * Fichiers : server/content/code-audio/chapitre-{n}/texts/{order}.txt
+ */
+export function getHardcodedQuestionTranscript(chapterOrder, questionOrder) {
+  const chapter = Number(chapterOrder)
+  const order = Number(questionOrder)
+  if (!Number.isFinite(chapter) || chapter < 1 || !Number.isFinite(order) || order < 1) {
+    return ''
+  }
+  const key = `${chapter}:${order}`
+  if (cache.has(key)) return cache.get(key)
+
+  const file = path.join(textsRoot, `chapitre-${chapter}`, 'texts', `${order}.txt`)
+  let text = ''
+  try {
+    text = normalizeTranscript(fs.readFileSync(file, 'utf8'))
+  } catch {
+    text = ''
+  }
+  cache.set(key, text)
+  return text
+}

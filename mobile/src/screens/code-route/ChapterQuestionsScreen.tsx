@@ -49,6 +49,7 @@ import { brand, dark, fonts, shadows } from '../../theme'
 import { hapticError, hapticSelect, hapticSuccess } from '../../utils/haptics'
 import { playFailSound, playSuccessSound, stopAllQuizAudio } from '../../utils/quizSounds'
 import { rememberChapterOrder } from '../../data/codeRoute/chapterIndex'
+import { getRevisionPracticeTranscript } from '../../data/codeRoute/questionTranscripts'
 import { resolveQuestionImageUri } from '../../utils/questionImages'
 import { tracker } from '../../tracking/tracker'
 
@@ -241,6 +242,7 @@ export function ChapterQuestionsScreen() {
   // Sélection d’une réponse : ne coupe PAS l’audio (2 lectures complètes jusqu’à Continuer / fin de séquence).
 
   const question = questions[index]
+  const practiceTranscript = !isTest ? getRevisionPracticeTranscript(question?.prompt) : ''
   const [resolvedImages, setResolvedImages] = useState<{ key: string; uri: string }[]>([])
 
   useEffect(() => {
@@ -552,7 +554,11 @@ export function ChapterQuestionsScreen() {
               <Text style={styles.emptyText}>
                 {score.correct}/{score.total} — revois tes réponses et les bonnes.
               </Text>
-              {reviewHistory.map((entry, reviewIndex) => (
+              {reviewHistory.map((entry, reviewIndex) => {
+                const entryTranscript = !isTest
+                  ? getRevisionPracticeTranscript(entry.question.prompt)
+                  : ''
+                return (
                 <View key={`${entry.question.id}-${reviewIndex}`} style={styles.reviewCard}>
                   <View style={styles.reviewHead}>
                     <Text style={styles.progressLabel}>
@@ -565,7 +571,12 @@ export function ChapterQuestionsScreen() {
                       <X size={18} color={dark.coral} />
                     )}
                   </View>
-                  {entry.question.prompt.text ? (
+                  {entryTranscript ? (
+                    <View style={styles.promptTextCard}>
+                      <Text style={styles.transcriptLabel}>Transcription</Text>
+                      <Text style={styles.promptText}>{entryTranscript}</Text>
+                    </View>
+                  ) : entry.question.prompt.text ? (
                     <QuestionPromptHtml text={entry.question.prompt.text} style={styles.promptText} />
                   ) : null}
                   {entry.question.answers.map((answer) => {
@@ -589,7 +600,8 @@ export function ChapterQuestionsScreen() {
                     )
                   })}
                 </View>
-              ))}
+                )
+              })}
               <Pressable style={styles.inlinePrimary} onPress={() => setReviewing(false)}>
                 <Text style={styles.inlinePrimaryText}>Retour au score</Text>
               </Pressable>
@@ -668,7 +680,12 @@ export function ChapterQuestionsScreen() {
                 </Text>
               ) : null}
 
-              {question.prompt.text ? (
+              {practiceTranscript ? (
+                <View style={styles.promptTextCard}>
+                  <Text style={styles.transcriptLabel}>Transcription</Text>
+                  <Text style={styles.promptText}>{practiceTranscript}</Text>
+                </View>
+              ) : question.prompt.text ? (
                 <View style={styles.promptTextCard}>
                   <QuestionPromptHtml text={question.prompt.text} style={styles.promptText} />
                 </View>
@@ -952,6 +969,14 @@ const styles = StyleSheet.create({
     padding: 12,
     marginBottom: 8,
     ...shadows.sm,
+  },
+  transcriptLabel: {
+    fontFamily: fonts.bodyBold,
+    fontSize: 11,
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+    color: dark.green,
+    marginBottom: 6,
   },
   promptText: {
     fontFamily: fonts.bodySemiBold,

@@ -166,6 +166,7 @@ export interface LearnerQuestion {
   correctCount?: number
   prompt: {
     text?: string
+    transcript?: string
     audioUrl?: string
     imageUrls?: string[]
   }
