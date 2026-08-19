@@ -332,7 +332,7 @@ export async function fetchLearnerJourney(): Promise<LearnerJourney> {
   } catch {
     // Hors ligne : retourner un voyage vide
     return {
-      code: { currentStop: null, chaptersDone: 0, chaptersTotal: 20 },
+      code: { currentStop: null, chaptersDone: 0, chaptersTotal: 19 },
       conduite: { currentStop: null, chaptersDone: 0, chaptersTotal: 0 },
       testScores: [],
       practiceExams: {

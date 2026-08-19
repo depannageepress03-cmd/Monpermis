@@ -313,6 +313,34 @@ import a10_20 from '../../assets/code-audio/chapitre-10/20.mp3?url'
 import a10_21 from '../../assets/code-audio/chapitre-10/21.mp3?url'
 import a10_22 from '../../assets/code-audio/chapitre-10/22.mp3?url'
 import a10_23 from '../../assets/code-audio/chapitre-10/23.mp3?url'
+import a15_1 from '../../assets/code-audio/chapitre-15/1.mp3?url'
+import a15_2 from '../../assets/code-audio/chapitre-15/2.mp3?url'
+import a15_3 from '../../assets/code-audio/chapitre-15/3.mp3?url'
+import a15_4 from '../../assets/code-audio/chapitre-15/4.mp3?url'
+import a15_5 from '../../assets/code-audio/chapitre-15/5.mp3?url'
+import a15_6 from '../../assets/code-audio/chapitre-15/6.mp3?url'
+import a15_7 from '../../assets/code-audio/chapitre-15/7.mp3?url'
+import a15_8 from '../../assets/code-audio/chapitre-15/8.mp3?url'
+import a15_9 from '../../assets/code-audio/chapitre-15/9.mp3?url'
+import a15_10 from '../../assets/code-audio/chapitre-15/10.mp3?url'
+import a15_11 from '../../assets/code-audio/chapitre-15/11.mp3?url'
+import a15_12 from '../../assets/code-audio/chapitre-15/12.mp3?url'
+import a15_13 from '../../assets/code-audio/chapitre-15/13.mp3?url'
+import a15_14 from '../../assets/code-audio/chapitre-15/14.mp3?url'
+import a15_15 from '../../assets/code-audio/chapitre-15/15.mp3?url'
+import a15_16 from '../../assets/code-audio/chapitre-15/16.mp3?url'
+import a15_17 from '../../assets/code-audio/chapitre-15/17.mp3?url'
+import a15_18 from '../../assets/code-audio/chapitre-15/18.mp3?url'
+import a15_19 from '../../assets/code-audio/chapitre-15/19.mp3?url'
+import a15_20 from '../../assets/code-audio/chapitre-15/20.mp3?url'
+import a15_21 from '../../assets/code-audio/chapitre-15/21.mp3?url'
+import a15_22 from '../../assets/code-audio/chapitre-15/22.mp3?url'
+import a15_23 from '../../assets/code-audio/chapitre-15/23.mp3?url'
+import a15_24 from '../../assets/code-audio/chapitre-15/24.mp3?url'
+import a15_25 from '../../assets/code-audio/chapitre-15/25.mp3?url'
+import a15_26 from '../../assets/code-audio/chapitre-15/26.mp3?url'
+import a15_27 from '../../assets/code-audio/chapitre-15/27.mp3?url'
+import a15_28 from '../../assets/code-audio/chapitre-15/28.mp3?url'
 import a16_1 from '../../assets/code-audio/chapitre-16/1.mp3?url'
 import a16_2 from '../../assets/code-audio/chapitre-16/2.mp3?url'
 import a16_3 from '../../assets/code-audio/chapitre-16/3.mp3?url'
@@ -328,19 +356,6 @@ import a16_12 from '../../assets/code-audio/chapitre-16/12.mp3?url'
 import a16_13 from '../../assets/code-audio/chapitre-16/13.mp3?url'
 import a16_14 from '../../assets/code-audio/chapitre-16/14.mp3?url'
 import a16_15 from '../../assets/code-audio/chapitre-16/15.mp3?url'
-import a16_16 from '../../assets/code-audio/chapitre-16/16.mp3?url'
-import a16_17 from '../../assets/code-audio/chapitre-16/17.mp3?url'
-import a16_18 from '../../assets/code-audio/chapitre-16/18.mp3?url'
-import a16_19 from '../../assets/code-audio/chapitre-16/19.mp3?url'
-import a16_20 from '../../assets/code-audio/chapitre-16/20.mp3?url'
-import a16_21 from '../../assets/code-audio/chapitre-16/21.mp3?url'
-import a16_22 from '../../assets/code-audio/chapitre-16/22.mp3?url'
-import a16_23 from '../../assets/code-audio/chapitre-16/23.mp3?url'
-import a16_24 from '../../assets/code-audio/chapitre-16/24.mp3?url'
-import a16_25 from '../../assets/code-audio/chapitre-16/25.mp3?url'
-import a16_26 from '../../assets/code-audio/chapitre-16/26.mp3?url'
-import a16_27 from '../../assets/code-audio/chapitre-16/27.mp3?url'
-import a16_28 from '../../assets/code-audio/chapitre-16/28.mp3?url'
 import a17_1 from '../../assets/code-audio/chapitre-17/1.mp3?url'
 import a17_2 from '../../assets/code-audio/chapitre-17/2.mp3?url'
 import a17_3 from '../../assets/code-audio/chapitre-17/3.mp3?url'
@@ -356,6 +371,17 @@ import a17_12 from '../../assets/code-audio/chapitre-17/12.mp3?url'
 import a17_13 from '../../assets/code-audio/chapitre-17/13.mp3?url'
 import a17_14 from '../../assets/code-audio/chapitre-17/14.mp3?url'
 import a17_15 from '../../assets/code-audio/chapitre-17/15.mp3?url'
+import a17_16 from '../../assets/code-audio/chapitre-17/16.mp3?url'
+import a17_17 from '../../assets/code-audio/chapitre-17/17.mp3?url'
+import a17_18 from '../../assets/code-audio/chapitre-17/18.mp3?url'
+import a17_19 from '../../assets/code-audio/chapitre-17/19.mp3?url'
+import a17_20 from '../../assets/code-audio/chapitre-17/20.mp3?url'
+import a17_21 from '../../assets/code-audio/chapitre-17/21.mp3?url'
+import a17_22 from '../../assets/code-audio/chapitre-17/22.mp3?url'
+import a17_23 from '../../assets/code-audio/chapitre-17/23.mp3?url'
+import a17_24 from '../../assets/code-audio/chapitre-17/24.mp3?url'
+import a17_25 from '../../assets/code-audio/chapitre-17/25.mp3?url'
+import a17_26 from '../../assets/code-audio/chapitre-17/26.mp3?url'
 import a18_1 from '../../assets/code-audio/chapitre-18/1.mp3?url'
 import a18_2 from '../../assets/code-audio/chapitre-18/2.mp3?url'
 import a18_3 from '../../assets/code-audio/chapitre-18/3.mp3?url'
@@ -392,32 +418,6 @@ import a19_7 from '../../assets/code-audio/chapitre-19/7.mp3?url'
 import a19_8 from '../../assets/code-audio/chapitre-19/8.mp3?url'
 import a19_9 from '../../assets/code-audio/chapitre-19/9.mp3?url'
 import a19_10 from '../../assets/code-audio/chapitre-19/10.mp3?url'
-import a19_11 from '../../assets/code-audio/chapitre-19/11.mp3?url'
-import a19_12 from '../../assets/code-audio/chapitre-19/12.mp3?url'
-import a19_13 from '../../assets/code-audio/chapitre-19/13.mp3?url'
-import a19_14 from '../../assets/code-audio/chapitre-19/14.mp3?url'
-import a19_15 from '../../assets/code-audio/chapitre-19/15.mp3?url'
-import a19_16 from '../../assets/code-audio/chapitre-19/16.mp3?url'
-import a19_17 from '../../assets/code-audio/chapitre-19/17.mp3?url'
-import a19_18 from '../../assets/code-audio/chapitre-19/18.mp3?url'
-import a19_19 from '../../assets/code-audio/chapitre-19/19.mp3?url'
-import a19_20 from '../../assets/code-audio/chapitre-19/20.mp3?url'
-import a19_21 from '../../assets/code-audio/chapitre-19/21.mp3?url'
-import a19_22 from '../../assets/code-audio/chapitre-19/22.mp3?url'
-import a19_23 from '../../assets/code-audio/chapitre-19/23.mp3?url'
-import a19_24 from '../../assets/code-audio/chapitre-19/24.mp3?url'
-import a19_25 from '../../assets/code-audio/chapitre-19/25.mp3?url'
-import a19_26 from '../../assets/code-audio/chapitre-19/26.mp3?url'
-import a20_1 from '../../assets/code-audio/chapitre-20/1.mp3?url'
-import a20_2 from '../../assets/code-audio/chapitre-20/2.mp3?url'
-import a20_3 from '../../assets/code-audio/chapitre-20/3.mp3?url'
-import a20_4 from '../../assets/code-audio/chapitre-20/4.mp3?url'
-import a20_5 from '../../assets/code-audio/chapitre-20/5.mp3?url'
-import a20_6 from '../../assets/code-audio/chapitre-20/6.mp3?url'
-import a20_7 from '../../assets/code-audio/chapitre-20/7.mp3?url'
-import a20_8 from '../../assets/code-audio/chapitre-20/8.mp3?url'
-import a20_9 from '../../assets/code-audio/chapitre-20/9.mp3?url'
-import a20_10 from '../../assets/code-audio/chapitre-20/10.mp3?url'
 
 const MAP: Record<number, Record<number, string>> = {
   1: {
@@ -750,6 +750,36 @@ const MAP: Record<number, Record<number, string>> = {
     22: a10_22,
     23: a10_23,
   },
+  15: {
+    1: a15_1,
+    2: a15_2,
+    3: a15_3,
+    4: a15_4,
+    5: a15_5,
+    6: a15_6,
+    7: a15_7,
+    8: a15_8,
+    9: a15_9,
+    10: a15_10,
+    11: a15_11,
+    12: a15_12,
+    13: a15_13,
+    14: a15_14,
+    15: a15_15,
+    16: a15_16,
+    17: a15_17,
+    18: a15_18,
+    19: a15_19,
+    20: a15_20,
+    21: a15_21,
+    22: a15_22,
+    23: a15_23,
+    24: a15_24,
+    25: a15_25,
+    26: a15_26,
+    27: a15_27,
+    28: a15_28,
+  },
   16: {
     1: a16_1,
     2: a16_2,
@@ -766,19 +796,6 @@ const MAP: Record<number, Record<number, string>> = {
     13: a16_13,
     14: a16_14,
     15: a16_15,
-    16: a16_16,
-    17: a16_17,
-    18: a16_18,
-    19: a16_19,
-    20: a16_20,
-    21: a16_21,
-    22: a16_22,
-    23: a16_23,
-    24: a16_24,
-    25: a16_25,
-    26: a16_26,
-    27: a16_27,
-    28: a16_28,
   },
   17: {
     1: a17_1,
@@ -796,6 +813,17 @@ const MAP: Record<number, Record<number, string>> = {
     13: a17_13,
     14: a17_14,
     15: a17_15,
+    16: a17_16,
+    17: a17_17,
+    18: a17_18,
+    19: a17_19,
+    20: a17_20,
+    21: a17_21,
+    22: a17_22,
+    23: a17_23,
+    24: a17_24,
+    25: a17_25,
+    26: a17_26,
   },
   18: {
     1: a18_1,
@@ -836,34 +864,6 @@ const MAP: Record<number, Record<number, string>> = {
     8: a19_8,
     9: a19_9,
     10: a19_10,
-    11: a19_11,
-    12: a19_12,
-    13: a19_13,
-    14: a19_14,
-    15: a19_15,
-    16: a19_16,
-    17: a19_17,
-    18: a19_18,
-    19: a19_19,
-    20: a19_20,
-    21: a19_21,
-    22: a19_22,
-    23: a19_23,
-    24: a19_24,
-    25: a19_25,
-    26: a19_26,
-  },
-  20: {
-    1: a20_1,
-    2: a20_2,
-    3: a20_3,
-    4: a20_4,
-    5: a20_5,
-    6: a20_6,
-    7: a20_7,
-    8: a20_8,
-    9: a20_9,
-    10: a20_10,
   },
 }
 

@@ -3,7 +3,7 @@ import { Chapter } from '../models/Chapter.js'
 import { logger } from '../utils/logger.js'
 
 /**
- * Garantit les 20 chapitres standards (ordre 1…20, noms « Chapitre N »).
+ * Garantit les 19 chapitres standards (ordre 1…19, noms « Chapitre N »).
  * Ne supprime pas d’éventuels chapitres hors catalogue.
  */
 export async function ensureStandardRevisionChapters() {
@@ -40,7 +40,7 @@ export async function ensureStandardRevisionChapters() {
       existing.name = item.name
       dirty = true
     }
-    // Les 20 chapitres standards sont toujours visibles côté élève.
+    // Les 19 chapitres standards sont toujours visibles côté élève.
     if (!existing.published) {
       existing.published = true
       dirty = true

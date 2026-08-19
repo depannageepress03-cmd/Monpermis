@@ -38,11 +38,11 @@ import img9_26 from '../../assets/code-images/chapitre-9/26.png?url'
 import img9_27 from '../../assets/code-images/chapitre-9/27.png?url'
 import img9_28 from '../../assets/code-images/chapitre-9/28.png?url'
 import img9_29 from '../../assets/code-images/chapitre-9/29.png?url'
-import img16_1 from '../../assets/code-images/chapitre-16/1.png?url'
-import img16_2 from '../../assets/code-images/chapitre-16/2.png?url'
-import img16_3 from '../../assets/code-images/chapitre-16/3.png?url'
-import img16_8 from '../../assets/code-images/chapitre-16/8.png?url'
-import img18_1 from '../../assets/code-images/chapitre-18/1.png?url'
+import img15_1 from '../../assets/code-images/chapitre-15/1.png?url'
+import img15_2 from '../../assets/code-images/chapitre-15/2.png?url'
+import img15_3 from '../../assets/code-images/chapitre-15/3.png?url'
+import img15_8 from '../../assets/code-images/chapitre-15/8.png?url'
+import img17_1 from '../../assets/code-images/chapitre-17/1.png?url'
 
 const MAP: Record<number, Record<number, string>> = {
   1: {
@@ -133,14 +133,14 @@ const MAP: Record<number, Record<number, string>> = {
     28: img9_28,
     29: img9_29,
   },
-  16: {
-    1: img16_1,
-    2: img16_2,
-    3: img16_3,
-    8: img16_8,
+  15: {
+    1: img15_1,
+    2: img15_2,
+    3: img15_3,
+    8: img15_8,
   },
-  18: {
-    1: img18_1,
+  17: {
+    1: img17_1,
   },
 }
 

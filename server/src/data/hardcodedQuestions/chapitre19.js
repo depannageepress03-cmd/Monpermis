@@ -1,7 +1,7 @@
 /**
  * Banque questions en dur — Chapitre 19.
  * Audio : /content/code-audio/chapitre-19/{n}.mp3
- * Corrections réponses fournies 2026-07-30.
+ * (anciennement chapitre 20 — décalage catalogue 20 chapitres)
  */
 
 export const CHAPITRE_19_KEY = 'chapitre-19'
@@ -24,7 +24,7 @@ function answers(questionIndex, letters, correctLetters) {
   return letters.map((letter) => {
     const L = letter.toUpperCase()
     return {
-      id: `hc-ch19-q${String(questionIndex).padStart(2, '0')}-${L.toLowerCase()}`,
+      id: `hc-ch20-q${String(questionIndex).padStart(2, '0')}-${L.toLowerCase()}`,
       label: L,
       text: '',
       audioUrl: '',
@@ -35,7 +35,7 @@ function answers(questionIndex, letters, correctLetters) {
 
 function question(order, letterOptions, correctLetters) {
   return {
-    id: `hc-ch19-q${String(order).padStart(2, '0')}`,
+    id: `hc-ch20-q${String(order).padStart(2, '0')}`,
     chapterKey: CHAPITRE_19_KEY,
     chapterOrder: CHAPITRE_19_ORDER,
     order,
@@ -50,32 +50,21 @@ function question(order, letterOptions, correctLetters) {
   }
 }
 
-/** 26 questions — énoncé audio uniquement ; réponses A/B/C/D. */
+/** 10 questions — énoncé audio uniquement ; réponses A/B/C/D. */
 export const CHAPITRE_19_QUESTIONS = [
-  question(1, ['A', 'B', 'C'], ['A', 'B']),
-  question(2, ['A', 'B'], ['B']),
-  question(3, ['A', 'B'], ['B']),
-  question(4, ['A', 'B'], ['A']),
-  question(5, ['A', 'B', 'C'], ['C']),
-  question(6, ['A', 'B', 'C'], ['B']),
-  question(7, ['A', 'B', 'C', 'D'], ['A']),
-  question(8, ['A', 'B', 'C', 'D'], ['A', 'B', 'D']),
-  question(9, ['A', 'B', 'C'], ['A']),
-  question(10, ['A', 'B', 'C', 'D'], ['B']),
-  question(11, ['A', 'B', 'C', 'D'], ['A', 'C', 'D']),
-  question(12, ['A', 'B', 'C'], ['A', 'B']),
-  question(13, ['A', 'B', 'C', 'D'], ['C']),
-  question(14, ['A', 'B', 'C', 'D'], ['A', 'B', 'C', 'D']),
-  question(15, ['A', 'B', 'C', 'D'], ['A']),
-  question(16, ['A', 'B', 'C', 'D'], ['D']),
-  question(17, ['A', 'B', 'C', 'D'], ['A', 'B', 'C', 'D']),
-  question(18, ['A', 'B', 'C'], ['C']),
-  question(19, ['A', 'B', 'C'], ['C']),
-  question(20, ['A', 'B', 'C'], ['A', 'C']),
-  question(21, ['A', 'B', 'C', 'D'], ['A', 'C', 'D']),
-  question(22, ['A', 'B', 'C'], ['A']),
-  question(23, ['A', 'B', 'C', 'D'], ['A', 'B']),
-  question(24, ['A', 'B', 'C', 'D'], ['A', 'B', 'C', 'D']),
-  question(25, ['A', 'B', 'C'], ['A']),
-  question(26, ['A', 'B', 'C'], ['C']),
+  question(1, ['A', 'B'], ['B']),
+  question(2, ['A', 'B', 'C', 'D'], ['A', 'C']),
+  question(3, ['A', 'B', 'C', 'D'], ['C']),
+  question(4, ['A', 'B', 'C', 'D'], ['B']),
+  question(5, ['A', 'B', 'C', 'D'], ['B']),
+  question(6, ['A', 'B', 'C', 'D'], ['B', 'C']),
+  question(7, ['A', 'B', 'C'], ['A', 'C']),
+  question(8, ['A', 'B', 'C'], ['B']),
+  question(9, ['A', 'B', 'C'], ['A', 'B', 'C']),
+  question(10, ['A', 'B', 'C'], ['A']),
 ]
+
+export {
+  toAdminHardcodedQuestion,
+  toPublicHardcodedQuestion,
+} from './serialize.js'

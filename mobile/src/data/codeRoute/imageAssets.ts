@@ -88,14 +88,14 @@ export const CODE_IMAGE_MODULES: Record<number, Record<number, number>> = {
     28: require('../../../assets/code-images/chapitre-9/28.png'),
     29: require('../../../assets/code-images/chapitre-9/29.png'),
   },
-  16: {
-    1: require('../../../assets/code-images/chapitre-16/1.png'),
-    2: require('../../../assets/code-images/chapitre-16/2.png'),
-    3: require('../../../assets/code-images/chapitre-16/3.png'),
-    8: require('../../../assets/code-images/chapitre-16/8.png'),
+  15: {
+    1: require('../../../assets/code-images/chapitre-15/1.png'),
+    2: require('../../../assets/code-images/chapitre-15/2.png'),
+    3: require('../../../assets/code-images/chapitre-15/3.png'),
+    8: require('../../../assets/code-images/chapitre-15/8.png'),
   },
-  18: {
-    1: require('../../../assets/code-images/chapitre-18/1.png'),
+  17: {
+    1: require('../../../assets/code-images/chapitre-17/1.png'),
   },
 }
 

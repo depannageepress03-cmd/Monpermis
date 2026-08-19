@@ -1,6 +1,6 @@
-/** Les 20 chapitres de révision code — catalogue figé (pas de création admin). */
+/** Les 19 chapitres de révision code — catalogue figé (pas de création admin). */
 
-export const STANDARD_REVISION_CHAPTER_COUNT = 20
+export const STANDARD_REVISION_CHAPTER_COUNT = 19
 
 export function standardRevisionChapterName(order) {
   return `Chapitre ${order}`

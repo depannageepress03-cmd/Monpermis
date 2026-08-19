@@ -23,7 +23,7 @@ function answers(questionIndex, letters, correctLetters) {
   return letters.map((letter) => {
     const L = letter.toUpperCase()
     return {
-      id: `hc-ch18-q${String(questionIndex).padStart(2, '0')}-${L.toLowerCase()}`,
+      id: `hc-ch19-q${String(questionIndex).padStart(2, '0')}-${L.toLowerCase()}`,
       label: L,
       text: '',
       audioUrl: '',
@@ -34,7 +34,7 @@ function answers(questionIndex, letters, correctLetters) {
 
 function question(order, letterOptions, correctLetters) {
   return {
-    id: `hc-ch18-q${String(order).padStart(2, '0')}`,
+    id: `hc-ch19-q${String(order).padStart(2, '0')}`,
     chapterKey: CHAPITRE_18_KEY,
     chapterOrder: CHAPITRE_18_ORDER,
     order,
