@@ -1,11 +1,16 @@
+import { LearnerChapterQuestionsListPage } from '../learner/LearnerChapterQuestionsListPage'
 import { LearnerChapterQuizPage } from '../learner/LearnerChapterQuizPage'
 import { RevisionChapterTestSubjectsPage } from './RevisionChapterTestSubjectsPage'
 
 export function RevisionChapterQuestionsPage() {
+  return <LearnerChapterQuestionsListPage />
+}
+
+export function RevisionChapterQuestionPage() {
   return (
     <LearnerChapterQuizPage
       mode="practice"
-      backTo={() => '/code-de-la-route/revision-chapitres'}
+      backTo={(chapterId) => `/code-de-la-route/revision-chapitres/${chapterId}/questions`}
     />
   )
 }

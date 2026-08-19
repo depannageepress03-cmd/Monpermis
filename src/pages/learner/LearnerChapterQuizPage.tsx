@@ -31,8 +31,16 @@ export function LearnerChapterQuizPage({
   backTo: (chapterId: string) => string
 }) {
   const navigate = useNavigate()
-  const { chapterId = '', subjectNumber: subjectNumberParam } = useParams()
+  const {
+    chapterId = '',
+    subjectNumber: subjectNumberParam,
+    questionIndex: questionIndexParam,
+  } = useParams()
   const subjectNumber = Math.max(1, parseInt(String(subjectNumberParam || '1'), 10) || 1)
+  const parsedQuestionIndex = parseInt(String(questionIndexParam ?? ''), 10)
+  const questionIndex =
+    Number.isFinite(parsedQuestionIndex) && parsedQuestionIndex >= 0 ? parsedQuestionIndex : null
+  const isSingleQuestion = mode === 'practice' && questionIndex != null
   const location = useLocation()
   const { user, loading: authLoading } = useAuth()
   const stateChapterName =
@@ -57,6 +65,15 @@ export function LearnerChapterQuizPage({
   const [savingTest, setSavingTest] = useState(false)
   const [testSaved, setTestSaved] = useState(false)
   const [sequenceLive, setSequenceLive] = useState(true)
+  const [reviewHistory, setReviewHistory] = useState<
+    {
+      question: LearnerQuestion
+      selectedIds: string[]
+      correctAnswerIds: string[]
+      isCorrect: boolean
+    }[]
+  >([])
+  const [reviewing, setReviewing] = useState(false)
 
   const selectedIdsRef = useRef(selectedIds)
   selectedIdsRef.current = selectedIds
@@ -95,7 +112,12 @@ export function LearnerChapterQuizPage({
         setQuestions(subject.questions || [])
       } else {
         setSubjectLabel('')
-        setQuestions(await fetchRevisionChapterQuestions(chapterId))
+        const all = await fetchRevisionChapterQuestions(chapterId)
+        setQuestions(
+          questionIndex != null && questionIndex >= 0 && questionIndex < all.length
+            ? [all[questionIndex]]
+            : all,
+        )
       }
       setIndex(0)
       setSelectedIds([])
@@ -104,13 +126,15 @@ export function LearnerChapterQuizPage({
       setFinished(false)
       setTestSaved(false)
       setSequenceLive(true)
+      setReviewHistory([])
+      setReviewing(false)
     } catch (err) {
       setError(err instanceof ContentError ? err.message : 'Chargement impossible')
       setQuestions([])
     } finally {
       setLoading(false)
     }
-  }, [chapterId, mode, stateChapterName, subjectNumber])
+  }, [chapterId, mode, stateChapterName, subjectNumber, questionIndex])
 
   useEffect(() => {
     if (user) void load()
@@ -132,8 +156,11 @@ export function LearnerChapterQuizPage({
   const question = questions[index]
   const progressLabel = useMemo(() => {
     if (!questions.length) return ''
+    if (isSingleQuestion && questionIndex != null) {
+      return `Question ${questionIndex + 1}`
+    }
     return `Question ${Math.min(index + 1, questions.length)} / ${questions.length}`
-  }, [index, questions.length])
+  }, [index, questions.length, isSingleQuestion, questionIndex])
 
   const toggleAnswer = (answerId: string) => {
     if (result || checking) return
@@ -203,6 +230,15 @@ export function LearnerChapterQuizPage({
       try {
         const data = await checkRevisionQuestionAnswers(chapterId, currentQuestion.id, ids)
         setResult(data)
+        setReviewHistory((current) => [
+          ...current,
+          {
+            question: currentQuestion,
+            selectedIds: ids,
+            correctAnswerIds: data.correctAnswerIds,
+            isCorrect: data.isCorrect,
+          },
+        ])
         const nextScore = {
           correct: scoreRef.current.correct + (data.isCorrect ? 1 : 0),
           total: scoreRef.current.total + 1,
@@ -278,12 +314,60 @@ export function LearnerChapterQuizPage({
             </div>
           ) : null}
 
-          {!loading && !error && finished ? (
+          {!loading && !error && finished && reviewing ? (
+            <div className="learner-quiz">
+              <h2>Mode correction</h2>
+              {reviewHistory.map((entry, i) => (
+                <div key={`${entry.question.id}-${i}`} className="learner-quiz-review">
+                  <p className="learner-quiz-progress">
+                    Question {i + 1} — {entry.isCorrect ? 'Bonne réponse' : 'À revoir'}
+                  </p>
+                  {entry.question.prompt?.text ? (
+                    <p className="learner-quiz-prompt">{entry.question.prompt.text}</p>
+                  ) : null}
+                  <div className="learner-quiz-answers">
+                    {entry.question.answers.map((answer) => {
+                      const selected = entry.selectedIds.includes(answer.id)
+                      const isCorrect = entry.correctAnswerIds.includes(answer.id)
+                      let className = 'learner-quiz-answer'
+                      if (isCorrect) className += ' is-correct'
+                      if (selected && !isCorrect) className += ' is-wrong'
+                      return (
+                        <div key={answer.id} className={className}>
+                          <strong>{answer.label.toUpperCase()}</strong>
+                          {answer.text ? <span>{answer.text}</span> : null}
+                          <small>
+                            {isCorrect ? 'Bonne réponse' : selected ? 'Ta réponse' : ''}
+                          </small>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              ))}
+              <button type="button" className="btn-primary" onClick={() => setReviewing(false)}>
+                Retour au score
+              </button>
+            </div>
+          ) : null}
+
+          {!loading && !error && finished && !reviewing ? (
             <div className="learner-empty">
-              <h2>Terminé</h2>
-              <p className="subtitle">
-                Score : {score.correct} / {score.total}
-              </p>
+              <h2>
+                {score.total > 0 && score.correct / score.total >= 0.7
+                  ? 'Bravo !'
+                  : score.total > 0 && score.correct / score.total >= 0.5
+                    ? 'Bien joué'
+                    : 'Terminé'}
+              </h2>
+              <div className="learner-quiz-recap">
+                <div>
+                  <span>Bonnes réponses</span>
+                  <strong>
+                    {score.correct} / {score.total}
+                  </strong>
+                </div>
+              </div>
               {mode === 'test' ? (
                 <p className="subtitle">
                   {savingTest
@@ -293,9 +377,24 @@ export function LearnerChapterQuizPage({
                       : 'Sujet test terminé.'}
                 </p>
               ) : null}
-              <button type="button" className="btn-primary" onClick={() => void load()}>
-                Recommencer
-              </button>
+              {reviewHistory.length > 0 ? (
+                <button type="button" className="btn-primary" onClick={() => setReviewing(true)}>
+                  Mode correction
+                </button>
+              ) : null}
+              {isSingleQuestion ? (
+                <button
+                  type="button"
+                  className="btn-primary"
+                  onClick={() => navigate(backTo(chapterId), { state: { chapterName } })}
+                >
+                  Retour à la liste
+                </button>
+              ) : (
+                <button type="button" className="btn-primary" onClick={() => void load()}>
+                  Recommencer
+                </button>
+              )}
             </div>
           ) : null}
 

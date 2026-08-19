@@ -15,6 +15,7 @@ import { MesNotesPage } from './pages/code-route/MesNotesPage'
 import { RevisionChapterCoursesPage } from './pages/code-route/RevisionChapterCoursesPage'
 import { RevisionChapitresPage } from './pages/code-route/RevisionChapitresPage'
 import {
+  RevisionChapterQuestionPage,
   RevisionChapterQuestionsPage,
   RevisionChapterTestSubjectListPage,
   RevisionChapterTestSubjectPage,
@@ -86,6 +87,10 @@ export default function App() {
       <Route
         path="/code-de-la-route/revision-chapitres/:chapterId/questions"
         element={<RevisionChapterQuestionsPage />}
+      />
+      <Route
+        path="/code-de-la-route/revision-chapitres/:chapterId/questions/:questionIndex"
+        element={<RevisionChapterQuestionPage />}
       />
       <Route
         path="/code-de-la-route/revision-chapitres/:chapterId/sujet-test"

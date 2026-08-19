@@ -77,6 +77,135 @@ import a1_75 from '../../assets/code-audio/chapitre-1/75.mp3?url'
 import a1_76 from '../../assets/code-audio/chapitre-1/76.mp3?url'
 import a1_77 from '../../assets/code-audio/chapitre-1/77.mp3?url'
 import a1_78 from '../../assets/code-audio/chapitre-1/78.mp3?url'
+import a2_1 from '../../assets/code-audio/chapitre-2/1.mp3?url'
+import a2_2 from '../../assets/code-audio/chapitre-2/2.mp3?url'
+import a2_3 from '../../assets/code-audio/chapitre-2/3.mp3?url'
+import a2_4 from '../../assets/code-audio/chapitre-2/4.mp3?url'
+import a2_5 from '../../assets/code-audio/chapitre-2/5.mp3?url'
+import a2_6 from '../../assets/code-audio/chapitre-2/6.mp3?url'
+import a2_7 from '../../assets/code-audio/chapitre-2/7.mp3?url'
+import a2_8 from '../../assets/code-audio/chapitre-2/8.mp3?url'
+import a2_9 from '../../assets/code-audio/chapitre-2/9.mp3?url'
+import a2_10 from '../../assets/code-audio/chapitre-2/10.mp3?url'
+import a2_11 from '../../assets/code-audio/chapitre-2/11.mp3?url'
+import a2_12 from '../../assets/code-audio/chapitre-2/12.mp3?url'
+import a2_13 from '../../assets/code-audio/chapitre-2/13.mp3?url'
+import a2_14 from '../../assets/code-audio/chapitre-2/14.mp3?url'
+import a2_15 from '../../assets/code-audio/chapitre-2/15.mp3?url'
+import a2_16 from '../../assets/code-audio/chapitre-2/16.mp3?url'
+import a2_17 from '../../assets/code-audio/chapitre-2/17.mp3?url'
+import a2_18 from '../../assets/code-audio/chapitre-2/18.mp3?url'
+import a2_19 from '../../assets/code-audio/chapitre-2/19.mp3?url'
+import a2_20 from '../../assets/code-audio/chapitre-2/20.mp3?url'
+import a2_21 from '../../assets/code-audio/chapitre-2/21.mp3?url'
+import a2_22 from '../../assets/code-audio/chapitre-2/22.mp3?url'
+import a2_23 from '../../assets/code-audio/chapitre-2/23.mp3?url'
+import a2_24 from '../../assets/code-audio/chapitre-2/24.mp3?url'
+import a2_25 from '../../assets/code-audio/chapitre-2/25.mp3?url'
+import a2_26 from '../../assets/code-audio/chapitre-2/26.mp3?url'
+import a2_27 from '../../assets/code-audio/chapitre-2/27.mp3?url'
+import a2_28 from '../../assets/code-audio/chapitre-2/28.mp3?url'
+import a2_29 from '../../assets/code-audio/chapitre-2/29.mp3?url'
+import a2_30 from '../../assets/code-audio/chapitre-2/30.mp3?url'
+import a2_31 from '../../assets/code-audio/chapitre-2/31.mp3?url'
+import a2_32 from '../../assets/code-audio/chapitre-2/32.mp3?url'
+import a2_33 from '../../assets/code-audio/chapitre-2/33.mp3?url'
+import a2_34 from '../../assets/code-audio/chapitre-2/34.mp3?url'
+import a2_35 from '../../assets/code-audio/chapitre-2/35.mp3?url'
+import a2_36 from '../../assets/code-audio/chapitre-2/36.mp3?url'
+import a2_37 from '../../assets/code-audio/chapitre-2/37.mp3?url'
+import a2_38 from '../../assets/code-audio/chapitre-2/38.mp3?url'
+import a2_39 from '../../assets/code-audio/chapitre-2/39.mp3?url'
+import a2_40 from '../../assets/code-audio/chapitre-2/40.mp3?url'
+import a2_41 from '../../assets/code-audio/chapitre-2/41.mp3?url'
+import a2_42 from '../../assets/code-audio/chapitre-2/42.mp3?url'
+import a2_43 from '../../assets/code-audio/chapitre-2/43.mp3?url'
+import a2_44 from '../../assets/code-audio/chapitre-2/44.mp3?url'
+import a2_45 from '../../assets/code-audio/chapitre-2/45.mp3?url'
+import a2_46 from '../../assets/code-audio/chapitre-2/46.mp3?url'
+import a2_47 from '../../assets/code-audio/chapitre-2/47.mp3?url'
+import a2_48 from '../../assets/code-audio/chapitre-2/48.mp3?url'
+import a2_49 from '../../assets/code-audio/chapitre-2/49.mp3?url'
+import a2_50 from '../../assets/code-audio/chapitre-2/50.mp3?url'
+import a2_51 from '../../assets/code-audio/chapitre-2/51.mp3?url'
+import a2_52 from '../../assets/code-audio/chapitre-2/52.mp3?url'
+import a2_53 from '../../assets/code-audio/chapitre-2/53.mp3?url'
+import a2_54 from '../../assets/code-audio/chapitre-2/54.mp3?url'
+import a2_55 from '../../assets/code-audio/chapitre-2/55.mp3?url'
+import a2_56 from '../../assets/code-audio/chapitre-2/56.mp3?url'
+import a2_57 from '../../assets/code-audio/chapitre-2/57.mp3?url'
+import a2_58 from '../../assets/code-audio/chapitre-2/58.mp3?url'
+import a2_59 from '../../assets/code-audio/chapitre-2/59.mp3?url'
+import a2_60 from '../../assets/code-audio/chapitre-2/60.mp3?url'
+import a2_61 from '../../assets/code-audio/chapitre-2/61.mp3?url'
+import a2_62 from '../../assets/code-audio/chapitre-2/62.mp3?url'
+import a2_63 from '../../assets/code-audio/chapitre-2/63.mp3?url'
+import a2_64 from '../../assets/code-audio/chapitre-2/64.mp3?url'
+import a2_65 from '../../assets/code-audio/chapitre-2/65.mp3?url'
+import a2_66 from '../../assets/code-audio/chapitre-2/66.mp3?url'
+import a2_67 from '../../assets/code-audio/chapitre-2/67.mp3?url'
+import a2_68 from '../../assets/code-audio/chapitre-2/68.mp3?url'
+import a2_69 from '../../assets/code-audio/chapitre-2/69.mp3?url'
+import a2_70 from '../../assets/code-audio/chapitre-2/70.mp3?url'
+import a2_71 from '../../assets/code-audio/chapitre-2/71.mp3?url'
+import a2_72 from '../../assets/code-audio/chapitre-2/72.mp3?url'
+import a2_73 from '../../assets/code-audio/chapitre-2/73.mp3?url'
+import a2_74 from '../../assets/code-audio/chapitre-2/74.mp3?url'
+import a2_75 from '../../assets/code-audio/chapitre-2/75.mp3?url'
+import a2_76 from '../../assets/code-audio/chapitre-2/76.mp3?url'
+import a2_77 from '../../assets/code-audio/chapitre-2/77.mp3?url'
+import a2_78 from '../../assets/code-audio/chapitre-2/78.mp3?url'
+import a2_79 from '../../assets/code-audio/chapitre-2/79.mp3?url'
+import a2_80 from '../../assets/code-audio/chapitre-2/80.mp3?url'
+import a2_81 from '../../assets/code-audio/chapitre-2/81.mp3?url'
+import a2_82 from '../../assets/code-audio/chapitre-2/82.mp3?url'
+import a2_83 from '../../assets/code-audio/chapitre-2/83.mp3?url'
+import a2_84 from '../../assets/code-audio/chapitre-2/84.mp3?url'
+import a2_85 from '../../assets/code-audio/chapitre-2/85.mp3?url'
+import a2_86 from '../../assets/code-audio/chapitre-2/86.mp3?url'
+import a2_87 from '../../assets/code-audio/chapitre-2/87.mp3?url'
+import a3_1 from '../../assets/code-audio/chapitre-3/1.mp3?url'
+import a3_2 from '../../assets/code-audio/chapitre-3/2.mp3?url'
+import a3_3 from '../../assets/code-audio/chapitre-3/3.mp3?url'
+import a3_4 from '../../assets/code-audio/chapitre-3/4.mp3?url'
+import a3_5 from '../../assets/code-audio/chapitre-3/5.mp3?url'
+import a3_6 from '../../assets/code-audio/chapitre-3/6.mp3?url'
+import a3_7 from '../../assets/code-audio/chapitre-3/7.mp3?url'
+import a3_8 from '../../assets/code-audio/chapitre-3/8.mp3?url'
+import a3_9 from '../../assets/code-audio/chapitre-3/9.mp3?url'
+import a3_10 from '../../assets/code-audio/chapitre-3/10.mp3?url'
+import a3_11 from '../../assets/code-audio/chapitre-3/11.mp3?url'
+import a3_12 from '../../assets/code-audio/chapitre-3/12.mp3?url'
+import a3_13 from '../../assets/code-audio/chapitre-3/13.mp3?url'
+import a3_14 from '../../assets/code-audio/chapitre-3/14.mp3?url'
+import a3_15 from '../../assets/code-audio/chapitre-3/15.mp3?url'
+import a3_16 from '../../assets/code-audio/chapitre-3/16.mp3?url'
+import a3_17 from '../../assets/code-audio/chapitre-3/17.mp3?url'
+import a3_18 from '../../assets/code-audio/chapitre-3/18.mp3?url'
+import a3_19 from '../../assets/code-audio/chapitre-3/19.mp3?url'
+import a3_20 from '../../assets/code-audio/chapitre-3/20.mp3?url'
+import a3_21 from '../../assets/code-audio/chapitre-3/21.mp3?url'
+import a3_22 from '../../assets/code-audio/chapitre-3/22.mp3?url'
+import a3_23 from '../../assets/code-audio/chapitre-3/23.mp3?url'
+import a3_24 from '../../assets/code-audio/chapitre-3/24.mp3?url'
+import a3_25 from '../../assets/code-audio/chapitre-3/25.mp3?url'
+import a3_26 from '../../assets/code-audio/chapitre-3/26.mp3?url'
+import a3_27 from '../../assets/code-audio/chapitre-3/27.mp3?url'
+import a3_28 from '../../assets/code-audio/chapitre-3/28.mp3?url'
+import a3_29 from '../../assets/code-audio/chapitre-3/29.mp3?url'
+import a3_30 from '../../assets/code-audio/chapitre-3/30.mp3?url'
+import a3_31 from '../../assets/code-audio/chapitre-3/31.mp3?url'
+import a3_32 from '../../assets/code-audio/chapitre-3/32.mp3?url'
+import a3_33 from '../../assets/code-audio/chapitre-3/33.mp3?url'
+import a3_34 from '../../assets/code-audio/chapitre-3/34.mp3?url'
+import a3_35 from '../../assets/code-audio/chapitre-3/35.mp3?url'
+import a3_36 from '../../assets/code-audio/chapitre-3/36.mp3?url'
+import a3_37 from '../../assets/code-audio/chapitre-3/37.mp3?url'
+import a3_38 from '../../assets/code-audio/chapitre-3/38.mp3?url'
+import a3_39 from '../../assets/code-audio/chapitre-3/39.mp3?url'
+import a3_40 from '../../assets/code-audio/chapitre-3/40.mp3?url'
+import a3_41 from '../../assets/code-audio/chapitre-3/41.mp3?url'
+import a3_42 from '../../assets/code-audio/chapitre-3/42.mp3?url'
 import a4_1 from '../../assets/code-audio/chapitre-4/1.mp3?url'
 import a4_2 from '../../assets/code-audio/chapitre-4/2.mp3?url'
 import a4_3 from '../../assets/code-audio/chapitre-4/3.mp3?url'
@@ -499,6 +628,139 @@ const MAP: Record<number, Record<number, string>> = {
     76: a1_76,
     77: a1_77,
     78: a1_78,
+  },
+  2: {
+    1: a2_1,
+    2: a2_2,
+    3: a2_3,
+    4: a2_4,
+    5: a2_5,
+    6: a2_6,
+    7: a2_7,
+    8: a2_8,
+    9: a2_9,
+    10: a2_10,
+    11: a2_11,
+    12: a2_12,
+    13: a2_13,
+    14: a2_14,
+    15: a2_15,
+    16: a2_16,
+    17: a2_17,
+    18: a2_18,
+    19: a2_19,
+    20: a2_20,
+    21: a2_21,
+    22: a2_22,
+    23: a2_23,
+    24: a2_24,
+    25: a2_25,
+    26: a2_26,
+    27: a2_27,
+    28: a2_28,
+    29: a2_29,
+    30: a2_30,
+    31: a2_31,
+    32: a2_32,
+    33: a2_33,
+    34: a2_34,
+    35: a2_35,
+    36: a2_36,
+    37: a2_37,
+    38: a2_38,
+    39: a2_39,
+    40: a2_40,
+    41: a2_41,
+    42: a2_42,
+    43: a2_43,
+    44: a2_44,
+    45: a2_45,
+    46: a2_46,
+    47: a2_47,
+    48: a2_48,
+    49: a2_49,
+    50: a2_50,
+    51: a2_51,
+    52: a2_52,
+    53: a2_53,
+    54: a2_54,
+    55: a2_55,
+    56: a2_56,
+    57: a2_57,
+    58: a2_58,
+    59: a2_59,
+    60: a2_60,
+    61: a2_61,
+    62: a2_62,
+    63: a2_63,
+    64: a2_64,
+    65: a2_65,
+    66: a2_66,
+    67: a2_67,
+    68: a2_68,
+    69: a2_69,
+    70: a2_70,
+    71: a2_71,
+    72: a2_72,
+    73: a2_73,
+    74: a2_74,
+    75: a2_75,
+    76: a2_76,
+    77: a2_77,
+    78: a2_78,
+    79: a2_79,
+    80: a2_80,
+    81: a2_81,
+    82: a2_82,
+    83: a2_83,
+    84: a2_84,
+    85: a2_85,
+    86: a2_86,
+    87: a2_87,
+  },
+  3: {
+    1: a3_1,
+    2: a3_2,
+    3: a3_3,
+    4: a3_4,
+    5: a3_5,
+    6: a3_6,
+    7: a3_7,
+    8: a3_8,
+    9: a3_9,
+    10: a3_10,
+    11: a3_11,
+    12: a3_12,
+    13: a3_13,
+    14: a3_14,
+    15: a3_15,
+    16: a3_16,
+    17: a3_17,
+    18: a3_18,
+    19: a3_19,
+    20: a3_20,
+    21: a3_21,
+    22: a3_22,
+    23: a3_23,
+    24: a3_24,
+    25: a3_25,
+    26: a3_26,
+    27: a3_27,
+    28: a3_28,
+    29: a3_29,
+    30: a3_30,
+    31: a3_31,
+    32: a3_32,
+    33: a3_33,
+    34: a3_34,
+    35: a3_35,
+    36: a3_36,
+    37: a3_37,
+    38: a3_38,
+    39: a3_39,
+    40: a3_40,
+    41: a3_41,
+    42: a3_42,
   },
   4: {
     1: a4_1,

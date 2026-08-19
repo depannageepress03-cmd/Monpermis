@@ -3,7 +3,7 @@
     "name": "Monpermis.bj",
     "slug": "monpermis",
     "scheme": "monpermis",
-    "version": "1.0.67",
+    "version": "1.0.68",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -14,7 +14,7 @@
     },
     "ios": {
       "bundleIdentifier": "com.monpermis.app",
-      "buildNumber": "64",
+      "buildNumber": "68",
       "supportsTablet": true,
       "icon": "./assets/icon.png",
       "config": {
@@ -34,7 +34,7 @@
     },
     "android": {
       "package": "com.monpermis.app",
-      "versionCode": 67,
+      "versionCode": 68,
       "adaptiveIcon": {
         "backgroundColor": "#FFFFFF",
         "foregroundImage": "./assets/android-icon-foreground.png",
