@@ -36,14 +36,12 @@ import {
   type TestProgressEntry,
 } from '../../api/revision'
 import { Bouncy } from '../../components/Bouncy'
-import { DownloadChapterButton } from '../../components/DownloadChapterButton'
 import { EmptyState } from '../../components/EmptyState'
 import { FadeUp } from '../../components/FadeUp'
 import { HomeBottomAnimation } from '../../components/HomeBottomAnimation'
 import { ScreenLoader } from '../../components/ScreenLoader'
 import { SkeletonList } from '../../components/Skeleton'
 import { useRequireAuth } from '../../hooks/useRequireAuth'
-import { useOffline } from '../../context/OfflineContext'
 import type { RootStackParamList } from '../../navigation/types'
 import { getActiveSubscriptions } from '../../utils/subscriptionSummary'
 import { dark, fonts, radii, shadows } from '../../theme'
@@ -82,7 +80,6 @@ function RevisionChecklistDecor() {
 export function RevisionChapitresScreen() {
   const navigation = useNavigation<Nav>()
   const { user, loading: authLoading } = useRequireAuth(navigation)
-  const { isOffline } = useOffline()
   const [chapters, setChapters] = useState<RevisionChapter[]>([])
   const [completedTests, setCompletedTests] = useState<TestProgressEntry[]>([])
   const [journey, setJourney] = useState<LearnerJourney | null>(null)
@@ -341,13 +338,6 @@ export function RevisionChapitresScreen() {
                             <Text style={styles.actionLabelSecondary}>Sujet test</Text>
                           </View>
                         </Bouncy>
-
-                        <DownloadChapterButton
-                          chapterId={chapter.id}
-                          chapterName={chapter.name}
-                          chapterOrder={order}
-                          courses={chapter.courses || []}
-                        />
                       </View>
                     </View>
                   </FadeUp>
