@@ -1,0 +1,1 @@
+Pour évaluer l'allure d'un autre usager venant en face, je prends en compte : A. Le type de véhicule. B. L'état du conducteur. C. La vitesse de rapprochement.

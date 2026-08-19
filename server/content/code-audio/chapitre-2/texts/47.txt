@@ -1,0 +1,4 @@
+Lorsque la ligne discontinue de la ligne mixte est plus proche du conducteur, on peut franchir cette ligne :
+A. Pour tourner à gauche.
+B. Pour tourner à droite.
+C. Pour dépasser puis se rabattre.

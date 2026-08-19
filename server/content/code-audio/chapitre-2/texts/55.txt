@@ -1,0 +1,4 @@
+Donner l'écart latéral minimal entre deux véhicules automobiles lors d'un déplacement.
+A. 0,50 mètre environ.
+B. 1 mètre environ.
+C. 0,3 mètre environ.

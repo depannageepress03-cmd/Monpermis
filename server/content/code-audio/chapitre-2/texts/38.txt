@@ -1,0 +1,3 @@
+À cette intersection I24, quel sera l'ordre de passage ?
+A. 1) Le véhicule vert, 2) le véhicule bleu ensuite, 3) le véhicule rouge après.
+B. 1) Le véhicule bleu, 2) le véhicule rouge ensuite, 3) le véhicule vert après.

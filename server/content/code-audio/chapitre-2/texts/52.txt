@@ -1,0 +1,4 @@
+En combien d'étapes s'effectue le dépassement ?
+A. En une étape.
+B. En deux étapes.
+C. En trois étapes.

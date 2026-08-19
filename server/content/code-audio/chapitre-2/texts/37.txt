@@ -1,0 +1,4 @@
+À cette intersection I12, quel est le véhicule qui passera définitivement le premier ?
+A. Le véhicule rouge.
+B. Le véhicule vert.
+C. Le véhicule bleu.

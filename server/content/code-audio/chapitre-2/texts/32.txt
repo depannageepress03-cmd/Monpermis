@@ -1,0 +1,4 @@
+Sur cette image PN1, le véhicule bleu doit :
+A. S'arrêter devant la demi-barrière et attendre le passage du train.
+B. Pouvoir se faufiler entre les demi-barrières pour partir après le passage du train.
+C. Attendre que la demi-barrière s'élève et que le feu rouge s'éteigne avant de démarrer.

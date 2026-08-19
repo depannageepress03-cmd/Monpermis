@@ -1,0 +1,4 @@
+Sur une route où il y a un panneau STOP, l'arrêt se fait :
+A. À la limite de la visibilité en absence de ligne blanche au sol.
+B. Exactement devant le panneau.
+C. Si la ligne blanche, la visibilité est insuffisante, on marque un second arrêt à la limite de la chaussée abordée.

@@ -1,0 +1,5 @@
+À cette intersection I20, quel est le véhicule qui peut passer immédiatement ?
+A. Le véhicule jaune.
+B. Le véhicule vert qui a sa droite libre.
+C. Les véhicules vert et jaune.
+D. Aucun véhicule.

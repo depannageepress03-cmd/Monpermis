@@ -1,1 +1,5 @@
-À cette intersection I-7 : A : il faut appliquer la règle de courtoisie. B : il faut appliquer la règle de la priorité à droite. C : la voiture rouge doit céder le passage à la jaune. D : la voiture jaune doit céder le passage à la rouge.
+À cette intersection I7 :
+A. Il faut appliquer la règle de courtoisie.
+B. Il faut appliquer la règle de la priorité à droite.
+C. La voiture rouge doit céder le passage à la jaune.
+D. La voiture jaune doit céder le passage à la rouge.

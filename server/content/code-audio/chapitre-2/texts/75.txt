@@ -1,0 +1,4 @@
+À l'approche d'une intersection sur une route à caractère prioritaire :
+A. Je ne peux pas dépasser un véhicule.
+B. Je peux dépasser un véhicule.
+C. Je ne peux pas dépasser lorsqu'il y a un barrage laissant les piétons.

@@ -11,6 +11,14 @@ import {
   matchesChapitre03,
 } from './chapitre03.js'
 import {
+  CHAPITRE_04_QUESTIONS,
+  matchesChapitre04,
+} from './chapitre04.js'
+import {
+  CHAPITRE_05_QUESTIONS,
+  matchesChapitre05,
+} from './chapitre05.js'
+import {
   CHAPITRE_06_QUESTIONS,
   matchesChapitre06,
 } from './chapitre06.js'
@@ -26,6 +34,10 @@ import {
   CHAPITRE_09_QUESTIONS,
   matchesChapitre09,
 } from './chapitre09.js'
+import {
+  CHAPITRE_10_QUESTIONS,
+  matchesChapitre10,
+} from './chapitre10.js'
 import {
   CHAPITRE_16_QUESTIONS,
   matchesChapitre16,
@@ -80,6 +92,11 @@ export const HARDCODED_CHAPTER_BANKS = [
     questions: CHAPITRE_09_QUESTIONS,
   },
   {
+    order: 10,
+    match: matchesChapitre10,
+    questions: CHAPITRE_10_QUESTIONS,
+  },
+  {
     order: 8,
     match: matchesChapitre08,
     questions: CHAPITRE_08_QUESTIONS,
@@ -93,6 +110,16 @@ export const HARDCODED_CHAPTER_BANKS = [
     order: 6,
     match: matchesChapitre06,
     questions: CHAPITRE_06_QUESTIONS,
+  },
+  {
+    order: 5,
+    match: matchesChapitre05,
+    questions: CHAPITRE_05_QUESTIONS,
+  },
+  {
+    order: 4,
+    match: matchesChapitre04,
+    questions: CHAPITRE_04_QUESTIONS,
   },
   {
     order: 3,

@@ -1,0 +1,5 @@
+À cette intersection I26, quel est le véhicule qui passera en premier ?
+A. Le véhicule vert.
+B. Le véhicule jaune.
+C. Le véhicule bleu.
+D. Le véhicule rouge.

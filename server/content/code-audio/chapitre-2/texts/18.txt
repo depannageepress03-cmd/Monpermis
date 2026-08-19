@@ -1,1 +1,4 @@
-Quel doit être l'ordre de passage des véhicules à cette intersection I-3 ? A : le véhicule rouge, le véhicule jaune et le véhicule bleu. B : les véhicules jaunes, rouges et bleus. C : le véhicule bleu, le véhicule jaune et le véhicule rouge.
+Quel doit être l'ordre de passage des véhicules à cette intersection I3 ?
+A. Le véhicule rouge, le véhicule jaune et le véhicule bleu.
+B. Les véhicules jaunes, rouges et bleus.
+C. Le véhicule bleu, le véhicule jaune et le véhicule rouge.

@@ -1,0 +1,6 @@
+Sur cette image, item 5, P47, donnez la règle à appliquer et l'ordre de passage des véhicules :
+A. Priorité à droite.
+B. Perte de priorité.
+C. Priorité de passage.
+D. Bleu, rouge, jaune.
+E. Bleu et jaune simultanément, puis rouge après.

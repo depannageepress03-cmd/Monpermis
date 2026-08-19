@@ -1,1 +1,4 @@
-À cette intersection I-18, quel doit être l'ordre de passage des véhicules ? A : le véhicule orange tourne immédiatement ; les véhicules jaune, rouge et vert passent simultanément. B : les véhicules jaune, rouge et vert passent simultanément ; le véhicule orange qui a vu la flèche verte tourne à droite. C : le véhicule orange marque un arrêt ; les véhicules jaune, rouge et vert passent simultanément ; le véhicule orange laisse passer les piétons et passera au feu vert.
+À cette intersection I18, quel doit être l'ordre de passage des véhicules ?
+A. Le véhicule orange tourne immédiatement. Les véhicules jaune, rouge et vert passent simultanément.
+B. Les véhicules jaune, rouge et vert passent simultanément. Le véhicule orange, qui a vu la flèche verte, tourne à droite.
+C. Le véhicule orange marque un arrêt. Les véhicules jaune, rouge et vert passent simultanément. Le véhicule orange laisse passer les piétons et passera au feu vert.

@@ -1,0 +1,4 @@
+Citez deux cas d'interdiction de dépasser.
+A. Devant un panneau interdisant de dépasser et sur une ligne discontinue.
+B. Devant un panneau interdisant de dépasser et sur une ligne continue.
+C. Sur des lignes mixtes dont la ligne discontinue se trouve du côté du conducteur.

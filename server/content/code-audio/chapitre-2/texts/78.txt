@@ -1,0 +1,5 @@
+En montagne, sur une route étroite, celui qui doit s'arrêter est :
+A. Le véhicule qui monte.
+B. Le véhicule le moins chargé.
+C. Le véhicule le plus chargé.
+D. Le véhicule qui descend.

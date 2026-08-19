@@ -1,1 +1,4 @@
-Les véhicules prioritaires sont : A : SAMU, corbillard, police. B : police, gendarmerie, corbillard en mission. C : SAMU, SMUR, sapeurs-pompiers, gendarmerie en mission.
+Les véhicules prioritaires sont :
+A. SAMU, corbillard, police.
+B. Police, gendarmerie, corbillard en mission.
+C. SAMU, SMUR, sapeurs-pompiers, gendarmerie en mission.

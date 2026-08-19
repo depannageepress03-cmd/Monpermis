@@ -1,0 +1,5 @@
+En général, de quel côté s'effectue le dépassement ?
+A. Par la gauche.
+B. Par la droite.
+C. Du côté de votre choix.
+D. Du côté où c'est possible.

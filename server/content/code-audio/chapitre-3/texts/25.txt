@@ -1,0 +1,1 @@
+Le contrôle de la durée d'un stationnement payant peut se faire : A. Par horodateur. B. Par parcmètre. C. Par disque de stationnement.
