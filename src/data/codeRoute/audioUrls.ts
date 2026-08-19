@@ -442,6 +442,50 @@ import a10_20 from '../../assets/code-audio/chapitre-10/20.mp3?url'
 import a10_21 from '../../assets/code-audio/chapitre-10/21.mp3?url'
 import a10_22 from '../../assets/code-audio/chapitre-10/22.mp3?url'
 import a10_23 from '../../assets/code-audio/chapitre-10/23.mp3?url'
+import a10_24 from '../../assets/code-audio/chapitre-10/24.mp3?url'
+import a10_25 from '../../assets/code-audio/chapitre-10/25.mp3?url'
+import a10_26 from '../../assets/code-audio/chapitre-10/26.mp3?url'
+import a10_27 from '../../assets/code-audio/chapitre-10/27.mp3?url'
+import a10_28 from '../../assets/code-audio/chapitre-10/28.mp3?url'
+import a10_29 from '../../assets/code-audio/chapitre-10/29.mp3?url'
+import a10_30 from '../../assets/code-audio/chapitre-10/30.mp3?url'
+import a10_31 from '../../assets/code-audio/chapitre-10/31.mp3?url'
+import a10_32 from '../../assets/code-audio/chapitre-10/32.mp3?url'
+import a10_33 from '../../assets/code-audio/chapitre-10/33.mp3?url'
+import a10_34 from '../../assets/code-audio/chapitre-10/34.mp3?url'
+import a10_35 from '../../assets/code-audio/chapitre-10/35.mp3?url'
+import a10_36 from '../../assets/code-audio/chapitre-10/36.mp3?url'
+import a10_37 from '../../assets/code-audio/chapitre-10/37.mp3?url'
+import a10_38 from '../../assets/code-audio/chapitre-10/38.mp3?url'
+import a10_39 from '../../assets/code-audio/chapitre-10/39.mp3?url'
+import a10_40 from '../../assets/code-audio/chapitre-10/40.mp3?url'
+import a10_41 from '../../assets/code-audio/chapitre-10/41.mp3?url'
+import a10_42 from '../../assets/code-audio/chapitre-10/42.mp3?url'
+import a10_43 from '../../assets/code-audio/chapitre-10/43.mp3?url'
+import a10_44 from '../../assets/code-audio/chapitre-10/44.mp3?url'
+import a10_45 from '../../assets/code-audio/chapitre-10/45.mp3?url'
+import a10_46 from '../../assets/code-audio/chapitre-10/46.mp3?url'
+import a10_47 from '../../assets/code-audio/chapitre-10/47.mp3?url'
+import a10_48 from '../../assets/code-audio/chapitre-10/48.mp3?url'
+import a10_49 from '../../assets/code-audio/chapitre-10/49.mp3?url'
+import a10_50 from '../../assets/code-audio/chapitre-10/50.mp3?url'
+import a10_51 from '../../assets/code-audio/chapitre-10/51.mp3?url'
+import a10_52 from '../../assets/code-audio/chapitre-10/52.mp3?url'
+import a10_53 from '../../assets/code-audio/chapitre-10/53.mp3?url'
+import a10_54 from '../../assets/code-audio/chapitre-10/54.mp3?url'
+import a10_55 from '../../assets/code-audio/chapitre-10/55.mp3?url'
+import a10_56 from '../../assets/code-audio/chapitre-10/56.mp3?url'
+import a10_57 from '../../assets/code-audio/chapitre-10/57.mp3?url'
+import a10_58 from '../../assets/code-audio/chapitre-10/58.mp3?url'
+import a10_59 from '../../assets/code-audio/chapitre-10/59.mp3?url'
+import a10_60 from '../../assets/code-audio/chapitre-10/60.mp3?url'
+import a10_61 from '../../assets/code-audio/chapitre-10/61.mp3?url'
+import a10_62 from '../../assets/code-audio/chapitre-10/62.mp3?url'
+import a10_63 from '../../assets/code-audio/chapitre-10/63.mp3?url'
+import a10_64 from '../../assets/code-audio/chapitre-10/64.mp3?url'
+import a10_65 from '../../assets/code-audio/chapitre-10/65.mp3?url'
+import a10_66 from '../../assets/code-audio/chapitre-10/66.mp3?url'
+import a10_67 from '../../assets/code-audio/chapitre-10/67.mp3?url'
 import a11_1 from '../../assets/code-audio/chapitre-11/1.mp3?url'
 import a11_2 from '../../assets/code-audio/chapitre-11/2.mp3?url'
 import a11_3 from '../../assets/code-audio/chapitre-11/3.mp3?url'
@@ -1284,6 +1328,50 @@ const MAP: Record<number, Record<number, string>> = {
     21: a10_21,
     22: a10_22,
     23: a10_23,
+    24: a10_24,
+    25: a10_25,
+    26: a10_26,
+    27: a10_27,
+    28: a10_28,
+    29: a10_29,
+    30: a10_30,
+    31: a10_31,
+    32: a10_32,
+    33: a10_33,
+    34: a10_34,
+    35: a10_35,
+    36: a10_36,
+    37: a10_37,
+    38: a10_38,
+    39: a10_39,
+    40: a10_40,
+    41: a10_41,
+    42: a10_42,
+    43: a10_43,
+    44: a10_44,
+    45: a10_45,
+    46: a10_46,
+    47: a10_47,
+    48: a10_48,
+    49: a10_49,
+    50: a10_50,
+    51: a10_51,
+    52: a10_52,
+    53: a10_53,
+    54: a10_54,
+    55: a10_55,
+    56: a10_56,
+    57: a10_57,
+    58: a10_58,
+    59: a10_59,
+    60: a10_60,
+    61: a10_61,
+    62: a10_62,
+    63: a10_63,
+    64: a10_64,
+    65: a10_65,
+    66: a10_66,
+    67: a10_67,
   },
   11: {
     1: a11_1,
