@@ -479,7 +479,10 @@ export async function fetchChapterTestSubject(
   if (order && getLocalBankByChapterOrder(order)) {
     const subject = buildLocalSubject(order, chapterId, subjectNumber)
     if (!subject) throw new ContentError('Sujet test introuvable')
-    return subject
+    return {
+      ...subject,
+      questions: subject.questions.map((q) => attachQuestionTranscript(q, order)),
+    }
   }
 
   const data = await request<{
@@ -488,7 +491,10 @@ export async function fetchChapterTestSubject(
     `/content/revision/chapters/${encodeURIComponent(chapterId)}/test-subjects/${encodeURIComponent(String(subjectNumber))}`,
     { auth: true },
   )
-  return data.subject
+  return {
+    ...data.subject,
+    questions: data.subject.questions.map((q) => attachQuestionTranscript(q, order)),
+  }
 }
 
 export async function checkQuestionAnswers(

@@ -46,6 +46,7 @@ function formatTranscript(text: string): string {
     .replace(/,?\\s*réponse\\s+([A-E])\\s*[,:]?\\s*/gi, '\\n$1. ')
     .replace(/\\s+([A-E])\\s*[:.]\\s+/g, '\\n$1. ')
     .replace(/,\\s+([A-E])\\s*,\\s+/g, '\\n$1. ')
+    .replace(/\\.\\s+([A-E])\\s*,\\s+/g, '.\\n$1. ')
     .replace(/\\n{3,}/g, '\\n\\n')
     .trim()
 }
@@ -61,6 +62,33 @@ export type TranscriptQuestion = {
   id?: string
   order?: number
   prompt?: { text?: string; transcript?: string; audioUrl?: string; imageUrls?: string[] }
+  answers?: { label?: string; text?: string; [key: string]: unknown }[]
+}
+
+/** Options A–E extraites de la transcription TTS. */
+export function parseTranscriptAnswerOptions(transcript: string): Record<string, string> {
+  const options: Record<string, string> = {}
+  const re = /(?:^|\\n)\\s*([A-E])\\s*[.:)\\-–]\\s*([^\\n]+)/gi
+  let match: RegExpExecArray | null
+  while ((match = re.exec(String(transcript || '')))) {
+    const label = match[1].toUpperCase()
+    const text = match[2].trim()
+    if (text) options[label] = text
+  }
+  return options
+}
+
+function fillAnswerTexts<T extends TranscriptQuestion>(question: T, transcript: string): T {
+  const options = parseTranscriptAnswerOptions(transcript)
+  if (!Array.isArray(question.answers) || question.answers.length === 0) return question
+  return {
+    ...question,
+    answers: question.answers.map((answer) => {
+      const existing = String(answer.text || '').trim()
+      const fromTranscript = options[String(answer.label || '').toUpperCase()] || ''
+      return { ...answer, text: existing || fromTranscript }
+    }),
+  }
 }
 
 /** Résout la transcription même si l’API n’a pas encore le champ \`transcript\`. */
@@ -84,23 +112,18 @@ export function attachQuestionTranscript<T extends TranscriptQuestion>(
   chapterOrder?: number | null,
 ): T {
   const transcript = resolveQuestionTranscript(question, chapterOrder)
-  return {
-    ...question,
-    prompt: {
-      audioUrl: '',
-      imageUrls: [],
-      ...question.prompt,
-      transcript,
+  return fillAnswerTexts(
+    {
+      ...question,
+      prompt: {
+        audioUrl: '',
+        imageUrls: [],
+        ...question.prompt,
+        transcript,
+      },
     },
-  }
-}
-
-/** Texte affiché en entraînement révision uniquement (pas examens / sujets test). */
-export function getRevisionPracticeTranscript(
-  prompt?: { text?: string; transcript?: string } | null,
-  meta?: { id?: string; order?: number; chapterOrder?: number } | null,
-): string {
-  return resolveQuestionTranscript({ id: meta?.id, order: meta?.order, prompt }, meta?.chapterOrder)
+    transcript,
+  )
 }
 `
 

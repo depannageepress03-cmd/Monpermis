@@ -13,6 +13,7 @@ function normalizeTranscript(value) {
     .replace(/,?\s*réponse\s+([A-E])\s*[,:]?\s*/gi, '\n$1. ')
     .replace(/\s+([A-E])\s*[:.]\s+/g, '\n$1. ')
     .replace(/,\s+([A-E])\s*,\s+/g, '\n$1. ')
+    .replace(/\.\s+([A-E])\s*,\s+/g, '.\n$1. ')
     .replace(/\n{3,}/g, '\n\n')
     .trim()
   if (!text || /^Question \d+ du chapitre \d+/i.test(text)) return ''
@@ -41,4 +42,17 @@ export function getHardcodedQuestionTranscript(chapterOrder, questionOrder) {
   }
   cache.set(key, text)
   return text
+}
+
+/** Options A–E extraites de la transcription TTS. */
+export function parseTranscriptAnswerOptions(transcript) {
+  const options = {}
+  const re = /(?:^|\n)\s*([A-E])\s*[.:)\-–]\s*([^\n]+)/gi
+  let match
+  while ((match = re.exec(String(transcript || '')))) {
+    const label = String(match[1] || '').toUpperCase()
+    const text = String(match[2] || '').trim()
+    if (label && text) options[label] = text
+  }
+  return options
 }

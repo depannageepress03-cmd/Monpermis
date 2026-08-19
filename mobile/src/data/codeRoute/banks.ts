@@ -1,4 +1,4 @@
-import { getQuestionTranscript } from './questionTranscripts'
+import { getQuestionTranscript, parseTranscriptAnswerOptions } from './questionTranscripts'
 
 export type LocalAnswer = {
   id: string
@@ -660,6 +660,9 @@ export function parseLocalQuestionId(questionId: string): { chapterOrder: number
 }
 
 export function toPublicLocalQuestion(q: LocalQuestion, chapterId: string) {
+  const optionTexts = parseTranscriptAnswerOptions(
+    getQuestionTranscript(q.chapterOrder, q.order),
+  )
   return {
     id: q.id,
     chapterId: String(chapterId),
@@ -673,7 +676,7 @@ export function toPublicLocalQuestion(q: LocalQuestion, chapterId: string) {
     answers: q.answers.map((a) => ({
       id: a.id,
       label: a.label,
-      text: a.text || '',
+      text: a.text || optionTexts[String(a.label || '').toUpperCase()] || '',
       audioUrl: a.audioUrl || '',
     })),
   }

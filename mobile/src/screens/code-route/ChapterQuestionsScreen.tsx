@@ -527,8 +527,10 @@ export function ChapterQuestionsScreen() {
                           wasSelected && !isGood && styles.answerWrong,
                         ]}
                       >
-                        <Text style={styles.answerLabel}>{answer.label.toUpperCase()}</Text>
-                        {answer.text ? <Text style={styles.answerText}>{answer.text}</Text> : null}
+                        <Text style={styles.answerLabel}>
+                          {answer.label.toUpperCase()}
+                          {answer.text ? `. ${answer.text}` : ''}
+                        </Text>
                         <Text style={styles.reviewHint}>
                           {isGood ? 'Bonne réponse' : wasSelected ? 'Ta réponse' : ''}
                         </Text>
@@ -670,10 +672,10 @@ export function ChapterQuestionsScreen() {
                         <Square size={24} color="rgba(0,16,48,0.28)" />
                       )}
                       <View style={styles.answerCopy}>
-                        <Text style={styles.answerLabel}>{answer.label.toUpperCase()}</Text>
-                        {answer.text ? (
-                          <Text style={styles.answerText}>{answer.text}</Text>
-                        ) : null}
+                        <Text style={styles.answerLabel}>
+                          {answer.label.toUpperCase()}
+                          {answer.text ? `. ${answer.text}` : ''}
+                        </Text>
                       </View>
                     </View>
                     {showWrong ? <X size={18} color={dark.coral} /> : null}
@@ -882,7 +884,7 @@ const styles = StyleSheet.create({
   },
   answerRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: 12,
     borderRadius: 16,
     borderWidth: 1.5,
@@ -912,9 +914,10 @@ const styles = StyleSheet.create({
   },
   answerLeft: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: 12,
     flex: 1,
+    paddingTop: 2,
   },
   answerCopy: {
     flex: 1,
@@ -922,13 +925,8 @@ const styles = StyleSheet.create({
   },
   answerLabel: {
     fontFamily: fonts.bodySemiBold,
-    fontSize: 16,
-    color: dark.textPrimary,
-  },
-  answerText: {
-    fontFamily: fonts.bodyMedium,
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 15,
+    lineHeight: 22,
     color: dark.textPrimary,
   },
   reviewWrap: {
