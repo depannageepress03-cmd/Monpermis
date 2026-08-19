@@ -539,6 +539,32 @@
   color: #001030;
 }
 
+.learner-quiz-subtitles {
+  margin: 0;
+  padding: 0.9rem 1rem;
+  border-radius: 14px;
+  background: #ffffff;
+  border: 1px solid rgba(0, 176, 80, 0.2);
+}
+
+.learner-quiz-subtitles-kicker {
+  margin: 0 0 0.5rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #00b050;
+}
+
+.learner-quiz-subtitles-text {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 500;
+  line-height: 1.5;
+  color: #001030;
+  white-space: pre-wrap;
+}
+
 .learner-quiz-answers {
   display: flex;
   flex-direction: column;

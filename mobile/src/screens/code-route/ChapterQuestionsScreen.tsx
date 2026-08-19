@@ -12,7 +12,7 @@ import {
   Trophy,
   X,
 } from 'lucide-react-native'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   ActivityIndicator,
   Image,
@@ -23,7 +23,6 @@ import {
   View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import Svg, { Circle } from 'react-native-svg'
 import {
   checkQuestionAnswers,
   fetchChapterQuestions,
@@ -63,47 +62,13 @@ type ReviewEntry = {
   isCorrect: boolean
 }
 
-function ProgressRing({
-  current,
-  total,
-}: {
-  current: number
-  total: number
-}) {
-  const size = 44
-  const stroke = 3.5
-  const r = (size - stroke) / 2
-  const c = 2 * Math.PI * r
-  const ratio = total > 0 ? Math.min(1, Math.max(0, current / total)) : 0
-  const offset = c * (1 - ratio)
-
+function AudioSubtitles({ text }: { text: string }) {
+  const value = text.trim()
+  if (!value) return null
   return (
-    <View style={styles.progressRing} accessibilityLabel={`Question ${current} sur ${total}`}>
-      <Svg width={size} height={size}>
-        <Circle
-          cx={size / 2}
-          cy={size / 2}
-          r={r}
-          stroke="rgba(0,176,80,0.18)"
-          strokeWidth={stroke}
-          fill="#FFFFFF"
-        />
-        <Circle
-          cx={size / 2}
-          cy={size / 2}
-          r={r}
-          stroke={dark.green}
-          strokeWidth={stroke}
-          fill="none"
-          strokeDasharray={`${c} ${c}`}
-          strokeDashoffset={offset}
-          strokeLinecap="round"
-          transform={`rotate(-90 ${size / 2} ${size / 2})`}
-        />
-      </Svg>
-      <Text style={styles.progressRingText} numberOfLines={1}>
-        {current}/{total}
-      </Text>
+    <View style={styles.subtitles} accessibilityLabel="Sous-titres de l’énoncé audio">
+      <Text style={styles.subtitlesKicker}>Sous-titres</Text>
+      <Text style={styles.subtitlesText}>{value}</Text>
     </View>
   )
 }
@@ -454,11 +419,6 @@ export function ChapterQuestionsScreen() {
       : 'Quitter ? Votre progression de cette session ne sera pas conservée.',
   )
 
-  const progressPct = useMemo(() => {
-    if (questions.length === 0) return 0
-    return Math.round(((index + 1) / questions.length) * 100)
-  }, [index, questions.length])
-
   const showQuizChrome =
     !loadingQuestions && !error && questions.length > 0 && !finished && !reviewing && Boolean(question)
 
@@ -495,14 +455,12 @@ export function ChapterQuestionsScreen() {
             </Text>
           </View>
 
-          {showQuizChrome ? (
-            <ProgressRing current={index + 1} total={questions.length} />
-          ) : finished ? (
+          {finished ? (
             <View style={styles.roundBtn}>
               <Trophy size={18} color={dark.green} />
             </View>
           ) : (
-            <View style={styles.roundBtnSpacer} />
+            <View style={styles.roundBtnSpacer} accessibilityElementsHidden />
           )}
         </View>
 
@@ -582,10 +540,7 @@ export function ChapterQuestionsScreen() {
                     )}
                   </View>
                   {entryTranscript ? (
-                    <View style={styles.promptTextCard}>
-                      <Text style={styles.transcriptLabel}>Transcription</Text>
-                      <Text style={styles.promptText}>{entryTranscript}</Text>
-                    </View>
+                    <AudioSubtitles text={entryTranscript} />
                   ) : entry.question.prompt.text ? (
                     <QuestionPromptHtml text={entry.question.prompt.text} style={styles.promptText} />
                   ) : null}
@@ -672,33 +627,10 @@ export function ChapterQuestionsScreen() {
             </View>
           ) : question ? (
             <FadeUp delay={80}>
-              <View style={styles.progressBlock}>
-                <Text style={styles.progressLabel}>
-                  Question {index + 1} / {questions.length}
-                </Text>
-                <View style={styles.progressRow}>
-                  <View style={styles.progressTrack}>
-                    <View style={[styles.progressFill, { width: `${progressPct}%` }]} />
-                  </View>
-                  <Text style={styles.progressPct}>{progressPct} %</Text>
-                </View>
-              </View>
-
               {(question.correctCount ?? 1) > 1 ? (
                 <Text style={styles.multiBadge}>
                   {question.correctCount} bonnes réponses à cocher
                 </Text>
-              ) : null}
-
-              {practiceTranscript ? (
-                <View style={styles.promptTextCard}>
-                  <Text style={styles.transcriptLabel}>Transcription</Text>
-                  <Text style={styles.promptText}>{practiceTranscript}</Text>
-                </View>
-              ) : question.prompt.text ? (
-                <View style={styles.promptTextCard}>
-                  <QuestionPromptHtml text={question.prompt.text} style={styles.promptText} />
-                </View>
               ) : null}
 
               {sequenceLive && !result ? (
@@ -721,6 +653,14 @@ export function ChapterQuestionsScreen() {
                       resizeMode="contain"
                     />
                   ))}
+                </View>
+              ) : null}
+
+              {practiceTranscript ? (
+                <AudioSubtitles text={practiceTranscript} />
+              ) : question.prompt.text ? (
+                <View style={styles.promptTextCard}>
+                  <QuestionPromptHtml text={question.prompt.text} style={styles.promptText} />
                 </View>
               ) : null}
 
@@ -885,18 +825,6 @@ const styles = StyleSheet.create({
     fontSize: 17,
     color: dark.textPrimary,
   },
-  progressRing: {
-    width: 44,
-    height: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  progressRingText: {
-    position: 'absolute',
-    fontFamily: fonts.bodyBold,
-    fontSize: 10,
-    color: dark.textPrimary,
-  },
   scroll: {
     paddingHorizontal: 20,
     paddingTop: 8,
@@ -928,37 +856,9 @@ const styles = StyleSheet.create({
     color: dark.textMuted,
     marginTop: 8,
   },
-  progressBlock: {
-    marginBottom: 10,
-    gap: 6,
-  },
   progressLabel: {
     fontFamily: fonts.bodyMedium,
     fontSize: 14,
-    color: dark.textMuted,
-  },
-  progressRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  progressTrack: {
-    flex: 1,
-    height: 6,
-    borderRadius: 999,
-    backgroundColor: 'rgba(0,16,48,0.08)',
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    borderRadius: 999,
-    backgroundColor: dark.green,
-  },
-  progressPct: {
-    minWidth: 40,
-    textAlign: 'right',
-    fontFamily: fonts.bodySemiBold,
-    fontSize: 13,
     color: dark.textMuted,
   },
   multiBadge: {
@@ -980,14 +880,6 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     ...shadows.sm,
   },
-  transcriptLabel: {
-    fontFamily: fonts.bodyBold,
-    fontSize: 11,
-    letterSpacing: 0.6,
-    textTransform: 'uppercase',
-    color: dark.green,
-    marginBottom: 6,
-  },
   promptText: {
     fontFamily: fonts.bodySemiBold,
     fontSize: 16,
@@ -996,6 +888,29 @@ const styles = StyleSheet.create({
   },
   audioWrap: {
     marginBottom: 10,
+  },
+  subtitles: {
+    marginBottom: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 14,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: 'rgba(0,176,80,0.18)',
+  },
+  subtitlesKicker: {
+    fontFamily: fonts.bodyBold,
+    fontSize: 11,
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    color: dark.green,
+    marginBottom: 8,
+  },
+  subtitlesText: {
+    fontFamily: fonts.body,
+    fontSize: 16,
+    lineHeight: 24,
+    color: dark.textPrimary,
   },
   images: {
     gap: 8,
