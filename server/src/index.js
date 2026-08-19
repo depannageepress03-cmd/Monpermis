@@ -158,15 +158,25 @@ app.get('/uploads/:kind/:filename', sendMediaAsset)
 app.use(
   '/content/code-audio',
   express.static(path.join(__dirname, '../content/code-audio'), {
-    maxAge: '7d',
+    maxAge: 0,
+    etag: true,
+    lastModified: true,
     fallthrough: false,
+    setHeaders(res) {
+      res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate')
+    },
   }),
 )
 app.use(
   '/content/code-images',
   express.static(path.join(__dirname, '../content/code-images'), {
-    maxAge: '7d',
+    maxAge: 0,
+    etag: true,
+    lastModified: true,
     fallthrough: false,
+    setHeaders(res) {
+      res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate')
+    },
   }),
 )
 
