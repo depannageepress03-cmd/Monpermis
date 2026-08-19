@@ -264,7 +264,11 @@ export function ChapterQuestionsListScreen() {
               <FadeUp delay={160}>
                 <View style={qStyles.questionList}>
                   {questions.map((q, qi) => {
-                    const excerptSource = getRevisionPracticeTranscript(q.prompt)
+                    const excerptSource = getRevisionPracticeTranscript(q.prompt, {
+                      id: q.id,
+                      order: q.order,
+                      chapterOrder,
+                    })
                     const excerpt = excerptSource
                       ? excerptSource.replace(/\s+/g, ' ').substring(0, 70)
                       : `Question ${qi + 1}`

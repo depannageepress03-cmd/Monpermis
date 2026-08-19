@@ -83,6 +83,14 @@ ok('practice transcript prefers prompt.transcript', () => {
     'audio text',
   )
 })
+ok('practice transcript looks up by question id', () => {
+  const text = getRevisionPracticeTranscript({ text: '' }, { id: 'hc-ch2-q01' })
+  assert.match(text, /véhicules prioritaires/i)
+})
+ok('practice transcript looks up chapter 4', () => {
+  const text = getRevisionPracticeTranscript({ text: '' }, { id: 'hc-ch4-q01' })
+  assert.match(text, /tourner à droite/i)
+})
 ok('isChapterQuizUnlocked all courses', () => {
   assert.equal(isChapterQuizUnlocked(['a', 'b'], new Set(['a', 'b'])), true)
 })

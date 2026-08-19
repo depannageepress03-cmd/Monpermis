@@ -242,7 +242,13 @@ export function ChapterQuestionsScreen() {
   // Sélection d’une réponse : ne coupe PAS l’audio (2 lectures complètes jusqu’à Continuer / fin de séquence).
 
   const question = questions[index]
-  const practiceTranscript = !isTest ? getRevisionPracticeTranscript(question?.prompt) : ''
+  const practiceTranscript = !isTest
+    ? getRevisionPracticeTranscript(question?.prompt, {
+        id: question?.id,
+        order: question?.order,
+        chapterOrder,
+      })
+    : ''
   const [resolvedImages, setResolvedImages] = useState<{ key: string; uri: string }[]>([])
 
   useEffect(() => {
@@ -556,7 +562,11 @@ export function ChapterQuestionsScreen() {
               </Text>
               {reviewHistory.map((entry, reviewIndex) => {
                 const entryTranscript = !isTest
-                  ? getRevisionPracticeTranscript(entry.question.prompt)
+                  ? getRevisionPracticeTranscript(entry.question.prompt, {
+                      id: entry.question.id,
+                      order: entry.question.order,
+                      chapterOrder,
+                    })
                   : ''
                 return (
                 <View key={`${entry.question.id}-${reviewIndex}`} style={styles.reviewCard}>

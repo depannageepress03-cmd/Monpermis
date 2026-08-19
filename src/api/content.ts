@@ -6,6 +6,7 @@ import {
   toPublicLocalQuestion,
 } from '../data/codeRoute/banks'
 import { mergeWithStandardChapters, getChapterOrderById } from '../data/codeRoute/chapterIndex'
+import { attachQuestionTranscript } from '../data/codeRoute/questionTranscripts'
 import { buildLocalSubject, buildLocalSubjectSummaries } from '../data/codeRoute/subjects'
 import { listStandardChapterShells } from '../data/codeRoute/standardChapters'
 
@@ -177,14 +178,14 @@ export async function fetchRevisionChapterQuestions(chapterId: string) {
   const order = getChapterOrderById(chapterId)
   const localBank = order ? getLocalBankByChapterOrder(order) : null
   if (localBank) {
-    return localBank.map((q) => toPublicLocalQuestion(q, chapterId))
+    return localBank.map((q) => attachQuestionTranscript(toPublicLocalQuestion(q, chapterId), order))
   }
   try {
     const data = await request<{ questions: LearnerQuestion[] }>(
       `/content/revision/chapters/${encodeURIComponent(chapterId)}/questions`,
       { auth: true },
     )
-    return data.questions
+    return data.questions.map((q) => attachQuestionTranscript(q, order))
   } catch {
     return []
   }

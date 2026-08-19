@@ -6,12 +6,17 @@ const textsRoot = path.join(path.dirname(fileURLToPath(import.meta.url)), '../..
 const cache = new Map()
 
 function normalizeTranscript(value) {
-  return String(value || '')
+  const text = String(value || '')
     .replace(/\r\n/g, '\n')
+    .replace(/\n*Correction:.*$/is, '')
     .replace(/[ \t]+/g, ' ')
+    .replace(/,?\s*réponse\s+([A-E])\s*[,:]?\s*/gi, '\n$1. ')
     .replace(/\s+([A-E])\s*[:.]\s+/g, '\n$1. ')
+    .replace(/,\s+([A-E])\s*,\s+/g, '\n$1. ')
     .replace(/\n{3,}/g, '\n\n')
     .trim()
+  if (!text || /^Question \d+ du chapitre \d+/i.test(text)) return ''
+  return text
 }
 
 /**

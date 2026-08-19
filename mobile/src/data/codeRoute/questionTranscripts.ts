@@ -267,13 +267,57 @@ export const QUESTION_TRANSCRIPTS: Record<string, string> = {
   "3:6": "En quoi consiste le stationnement ? A. À l'immobilisation de longue durée d'un véhicule. B. À l'immobilisation momentanée d'un véhicule, conducteur à côté. C. À l'immobilisation momentanée d'un véhicule, conducteur éloigné. D. À l'immobilisation momentanée d'un véhicule, conducteur à bord.",
   "3:7": "En présence du panneau de stationnement interdit, je suis autorisé à : A. Stationner après le panneau. B. Stationner avant le panneau. C. Stationner avant la prochaine intersection.",
   "3:8": "À la rencontre du panneau « arrêt et stationnement interdit », l'interdiction commence : A. Avant le panneau. B. À partir du panneau. C. 15 mètres après le panneau.",
-  "3:9": "À la vue d'un usager qui veut s'insérer dans la circulation : A. Je klaxonne. B. Je ralentis. C. Je fais un appel de feu. D. Je change de voie."
+  "3:9": "À la vue d'un usager qui veut s'insérer dans la circulation : A. Je klaxonne. B. Je ralentis. C. Je fais un appel de feu. D. Je change de voie.",
+  "4:1": "À bord d'un véhicule de tourisme, pour tourner à droite je dois, réponse A, serrer ma gauche, B, serrer ma droite, C, me déporter au milieu de la chaussée.",
+  "4:10": "Le stationnement est dangereux, réponse A, dans un virage, B, à proximité d'une intersection, C, derrière les véhicules en stationnement.",
+  "4:11": "Sur une route hors agglomération, les véhicules peuvent stationner, réponse A, sur les accotements, B, sur le côté droit ou sur le côté gauche, C, sur le côté droit seulement, D, sur le côté gauche seulement.",
+  "4:12": "Dans une rue à sens unique, les véhicules peuvent stationner, réponse A, sur le côté droit seulement, B, sur le côté gauche seulement, C, sur le côté droit ou sur le côté gauche.",
+  "4:13": "À l'approche d'un virage à courbure très prononcée et bordé d'arbres, je dois tenir compte de, réponse A, la force centrifuge, B, l'adhérence, C, la visibilité.",
+  "4:14": "Sur une route hors agglomération, les véhicules peuvent stationner, réponse A, sur le côté droit seulement, B, sur le côté gauche seulement, C, sur le côté droit ou sur le côté gauche.",
+  "4:15": "Dans un virage, pour une bonne adhérence des pneus, je dois rouler, réponse A, en quatrième vitesse, B, en troisième vitesse, C, en deuxième vitesse.",
+  "4:16": "Quels sont les risques auxquels je m'expose en abordant un virage à vive allure? Réponse A, je risque de déraper et de me retrouver hors de la chaussée, B, je risque de casser le pare-brise à cause du vent latéral, C, je risque de déraper et de heurter l'usager venant en sens inverse.",
+  "4:17": "Quelles sont les précautions à prendre pour aborder un virage? Réponse A, je passe rapidement en tenant fortement mon volant, B, je reduces ma vive allure en maintenant ma droite, C, je réduit ma vive allure en serrant fortement mon volant.",
+  "4:18": "Quelles sont les précautions à prendre pour aborder un virage? Réponse A, je passe rapidement en tenant fortement mon volant, B, je reduces ma vive allure en maintenant ma droite, C, je réduit ma vive allure en serrant fortement mon volant.",
+  "4:19": "Sur une route en rase campagne, les véhicules peuvent stationner, réponse A, sur le côté droit seulement, B, sur le côté gauche seulement, C, sur le côté droit ou sur le côté gauche.",
+  "4:2": "Pour tourner à droite, je dois A, ralentir, B, accélérer, C, mettre le clignotant à droite.",
+  "4:20": "Sur une route en rase campagne, les véhicules peuvent stationner, réponse A, sur le côté droit seulement, B, sur le côté gauche seulement, C, sur le côté droit ou sur le côté gauche.",
+  "4:21": "Pour apprendre un usager de la route, je m'arrête, réponse A, sur la chaussée avec clignotant, B, avec mon clignotant droit en serrant ma droite, C, sur l'accotement avec les feux de détresse, D, avec mon clignotant droit en me positionnant sur la...",
+  "4:22": "Quelle est la toute première opération à effectuer par le conducteur pour immobiliser son véhicule roulant en prise directe? Réponse A, freiner, B, débrailler, C, mettre le levier au point mort.",
+  "4:23": "Quelle est la toute première opération à effectuer par le conducteur pour immobiliser son véhicule roulant en prise directe? Réponse A, freiner, B, débrailler, C, mettre le levier au point mort.",
+  "4:24": "J'ai vu un obstacle inopiné à vive allure, réponse A, je débraille et je freine, B, je freine en bloquant les roues, C, je freine franchement et je débraille au dernier moment.",
+  "4:25": "À la vue d'un obstacle inopiné à vive allure, réponse A, je débraille et je freine, B, je freine en bloquant les roues, C, je freine franchement et je débraille au dernier moment.",
+  "4:26": "Où peut-on faire un demi-tour? Réponse A, sur un pont, B, sur une chaussée à sens unique, C, sur une chaussée à double sens de circulation, D, dans un virage.",
+  "4:27": "Où peut-on faire un demi-tour? Réponse A, sur un pont, B, sur une chaussée à double sens de circulation, C, sur une chaussée à double sens de circulation.",
+  "4:28": "En marche arrière, peut-on rentrer dans un sens interdit? Réponse A, non, B, oui.",
+  "4:29": "En marche arrière, peut-on rentrer dans un sens interdit? Réponse A, non, B, oui.",
+  "4:3": "À bord d'un véhicule de tourisme, pour tourner à gauche sur une chaussée à double sens, je dois, réponse A, serrer ma droite, B, serrer ma gauche, C, me déporter au milieu de la chaussée.",
+  "4:30": "Où peut-on faire un demi-tour? Réponse A, sur un pont. B, sur une chaussée à sens unique. C, sur une chaussée à double sens de circulation. D, dans un virage.",
+  "4:31": "À la vue d'un obstacle inopiné, arrive à l'heure, réponse A, je débraie et je freine. B, je freine en bloquant les roues. C, je freine franchement et je débraie au dernier moment.",
+  "4:32": "À la vue d'un obstacle inopiné, arrive à l'heure, réponse A, je débraie et je freine. B, je freine en bloquant les roues. C, je freine franchement et je débraie au dernier moment.",
+  "4:33": "Où peut-on faire un demi-tour? Réponse A, sur un pont. B, sur une chaussée à sens unique. C, sur une chaussée à double sens de circulation. D, dans un virage.",
+  "4:34": "Où peut-on faire la marche arrière? Réponse A, sur un impôt, B, sur un accotement ou sur le trottoir. C, sur une chaussée à sens unique.",
+  "4:35": "Quels sont les facteurs qui augmentent le temps de réaction? Réponse A, la fatigue. B, le manque de visibilité. C, l'état d'ivresse. D, l'état des pneumatiques.",
+  "4:36": "La distance de freinage dépend, réponse A, du type de revêtement. B, de la vitesse. C, du temps de réaction. D, de l'état des pneumatiques. E, de l'état des amortisseurs.",
+  "4:37": "Après avoir heurté un cycliste, je freine et je m'arrête après 81 mètres. Je roulais donc à quelle vitesse? Réponse A, 60 km par heure. B, 70 km par heure. C, 90 km par heure.",
+  "4:38": "Par temps de pluie, pour m'arrêter, j'appuie sur la pédale de frein. Réponse A, moins fort que quand la chaussée est sèche. B, aussi fort que quand la chaussée est sèche. C, plus fort que quand la chaussée est sèche.",
+  "4:39": "Les zebras sont réservés pour, réponse A, le stationnement d'urgence. B, l'arrêt d'urgence. C, tourner et changer de direction. D, rien de tout ce qui précède.",
+  "4:4": "À bord d'un véhicule de tourisme, pour tourner à gauche sur une chaussée à sens unique, je dois A, serrer ma gauche, B, respecter les règles de priorité, C, serrer ma droite et mettre le clignotant à gauche.",
+  "4:40": "Je dois réduire ma vitesse, réponse A, pendant le dépassement. B, à la vue d'un panneau de limitation de vitesse. C, en passant d'une zone éclairée à une zone sombre. D, à l'approche d'une intersection. E, à la sortie d'une agglomération.",
+  "4:41": "À la vue du panneau P43, réponse A, je peux faire moins de 30 km par heure. B, je peux faire un peu de 30 km par heure. C, je respecte une vitesse de 30 km par heure obligatoirement.",
+  "4:42": "Quelles sont les précautions à prendre pour aborder un virage? Réponse A, garder la même vitesse pour vite aborder le virage. B, ralentir avant d'aborder le virage. C, bien serrer la droite avant d'aborder le virage. D, rouler au milieu de la chaussée.",
+  "4:5": "Je dois réduire ma vitesse, réponse A, à l'approche d'un virage, B, à l'approche d'une intersection, C, à la hauteur d'une ligne continue.",
+  "4:6": "Je dois réduire ma vitesse, réponse A, à la sortie d'une agglomération, B, pendant le dépassement, C, à la vue d'un panneau de limitation de vitesse, D, à l'approche d'un passage à niveau.",
+  "4:7": "Après combien de jours le stationnement devient-il abusif ? Réponse A, 10 jours, B, 7 jours, C, 4 jours, D, rien de tout ce qui précède.",
+  "4:8": "Dans quel cas peut-on utiliser le frein moteur ? Réponse A, pour ralentir, B, pour s'arrêter, C, pour aborder un virage, D, pour aborder une descente dangereuse.",
+  "4:9": "À quelle vitesse peut-on rouler à la vue du panneau P43 ? Réponse A, à 30 km par heure, B, à plus de 30 km par heure, C, à la vitesse réglementaire, D, à moins de 30 km par heure, E, rien de tout ce qui précède."
 }
 
 function formatTranscript(text: string): string {
   return String(text || '')
     .replace(/[ \t]+/g, ' ')
+    .replace(/,?\s*réponse\s+([A-E])\s*[,:]?\s*/gi, '\n$1. ')
     .replace(/\s+([A-E])\s*[:.]\s+/g, '\n$1. ')
+    .replace(/,\s+([A-E])\s*,\s+/g, '\n$1. ')
     .replace(/\n{3,}/g, '\n\n')
     .trim()
 }
@@ -285,10 +329,48 @@ export function getQuestionTranscript(chapterOrder: number, questionOrder: numbe
   return formatTranscript(QUESTION_TRANSCRIPTS[`${chapter}:${order}`] || '')
 }
 
+export type TranscriptQuestion = {
+  id?: string
+  order?: number
+  prompt?: { text?: string; transcript?: string; audioUrl?: string; imageUrls?: string[] }
+}
+
+/** Résout la transcription même si l’API n’a pas encore le champ `transcript`. */
+export function resolveQuestionTranscript(
+  question?: TranscriptQuestion | null,
+  chapterOrder?: number | null,
+): string {
+  if (!question) return ''
+  const direct = formatTranscript(question.prompt?.transcript || '')
+  if (direct) return direct
+  const parsed = String(question.id || '').match(/^hc-ch(\d+)-q(\d+)$/i)
+  const chapter = parsed ? Number(parsed[1]) : Number(chapterOrder) || 0
+  const order = parsed ? Number(parsed[2]) : Number(question.order) || 0
+  const lookedUp = getQuestionTranscript(chapter, order)
+  if (lookedUp) return lookedUp
+  return formatTranscript(question.prompt?.text || '')
+}
+
+export function attachQuestionTranscript<T extends TranscriptQuestion>(
+  question: T,
+  chapterOrder?: number | null,
+): T {
+  const transcript = resolveQuestionTranscript(question, chapterOrder)
+  return {
+    ...question,
+    prompt: {
+      audioUrl: '',
+      imageUrls: [],
+      ...question.prompt,
+      transcript,
+    },
+  }
+}
+
 /** Texte affiché en entraînement révision uniquement (pas examens / sujets test). */
-export function getRevisionPracticeTranscript(prompt?: {
-  text?: string
-  transcript?: string
-} | null): string {
-  return formatTranscript(prompt?.transcript || prompt?.text || '')
+export function getRevisionPracticeTranscript(
+  prompt?: { text?: string; transcript?: string } | null,
+  meta?: { id?: string; order?: number; chapterOrder?: number } | null,
+): string {
+  return resolveQuestionTranscript({ id: meta?.id, order: meta?.order, prompt }, meta?.chapterOrder)
 }

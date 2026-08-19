@@ -19,6 +19,7 @@ import { playFailSound, playSuccessSound, stopAllQuizAudio } from '../../utils/q
 import { resolveMediaUrl } from '../../utils/mediaUrl'
 import { resolveCodeImageUrl } from '../../utils/codeImageUrl'
 import { getRevisionPracticeTranscript } from '../../data/codeRoute/questionTranscripts'
+import { getChapterOrderById } from '../../data/codeRoute/chapterIndex'
 import '../../styles/auth.css'
 import '../../styles/learner.css'
 
@@ -132,7 +133,13 @@ export function LearnerChapterQuizPage({
 
   const question = questions[index]
   const practiceTranscript =
-    mode === 'practice' ? getRevisionPracticeTranscript(question?.prompt) : ''
+    mode === 'practice'
+      ? getRevisionPracticeTranscript(question?.prompt, {
+          id: question?.id,
+          order: question?.order,
+          chapterOrder: getChapterOrderById(chapterId) || undefined,
+        })
+      : ''
   const progressLabel = useMemo(() => {
     if (!questions.length) return ''
     return `Question ${Math.min(index + 1, questions.length)} / ${questions.length}`
