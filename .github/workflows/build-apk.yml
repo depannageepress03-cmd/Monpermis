@@ -7,9 +7,6 @@ on:
         description: 'Tag de release (ex: v1.0.6-preview)'
         required: true
         default: 'v1.0.6-preview'
-  push:
-    branches:
-      - cursor/revision-question-transcripts-df89
 
 permissions:
   contents: write
