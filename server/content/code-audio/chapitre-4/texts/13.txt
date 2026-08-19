@@ -1,0 +1,5 @@
+À l'approche d'un virage à courbure très prononcée et bordé d'arbres, je dois tenir compte de :
+
+A. La force centrifuge
+B. L'adhérence
+C. La visibilité

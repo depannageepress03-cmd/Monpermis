@@ -1,0 +1,4 @@
+Je peux franchir la ligne pointillée ?
+
+A. Oui
+B. Non

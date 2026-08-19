@@ -5,7 +5,8 @@
  *   1. Compte ElevenLabs + clé API
  *   2. Dans server/.env :
  *        ELEVENLABS_API_KEY=sk_...
- *        ELEVENLABS_VOICE_ID=...   (voix Jérôme ou autre)
+ *        ELEVENLABS_VOICE_ID=...   (voix Jérôme)
+ *        ELEVENLABS_MODEL_ID=eleven_v3
  *
  * Usage (depuis server/) :
  *   node scripts/tts-chapitre.mjs --chapter 19
@@ -30,7 +31,7 @@ const REPO_ROOT = path.resolve(SERVER_ROOT, '..')
 
 const API_KEY = String(process.env.ELEVENLABS_API_KEY || '').trim()
 const VOICE_ID = String(process.env.ELEVENLABS_VOICE_ID || '').trim()
-const MODEL_ID = String(process.env.ELEVENLABS_MODEL_ID || 'eleven_multilingual_v2').trim()
+const MODEL_ID = String(process.env.ELEVENLABS_MODEL_ID || 'eleven_v3').trim()
 
 function parseArgs(argv) {
   const out = { chapter: null, only: null, listVoices: false }

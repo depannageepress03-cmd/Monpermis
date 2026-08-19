@@ -8,6 +8,7 @@ import {
   uploadVideoBuffer,
 } from '../services/cloudinary.js'
 import { logger } from '../utils/logger.js'
+import { STANDARD_REVISION_CHAPTER_COUNT } from '../data/standardRevisionChapters.js'
 
 function nextOrder(items) {
   if (!items.length) return 0
@@ -84,13 +85,15 @@ export function createAdminChapterRouter(Model, options = {}) {
     res.status(400).json({
       success: false,
       error:
-        'Les 20 chapitres de révision sont standards et figés. Seuls les cours / modules restent éditables.',
+        `Les ${STANDARD_REVISION_CHAPTER_COUNT} chapitres de révision sont standards et figés. Seuls les cours / modules restent éditables.`,
     })
 
   router.get('/chapters', async (_req, res) => {
     try {
       if (ensureChapters) await ensureChapters()
-      const filter = lockChapterStructure ? { order: { $gte: 1, $lte: 20 } } : {}
+      const filter = lockChapterStructure
+        ? { order: { $gte: 1, $lte: STANDARD_REVISION_CHAPTER_COUNT } }
+        : {}
       const chapters = await Model.find(filter).sort({ order: 1, createdAt: 1 })
       res.json({
         success: true,

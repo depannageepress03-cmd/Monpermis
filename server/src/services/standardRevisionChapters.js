@@ -1,15 +1,20 @@
-import { listStandardRevisionChapters } from '../data/standardRevisionChapters.js'
+import {
+  STANDARD_REVISION_CHAPTER_COUNT,
+  listStandardRevisionChapters,
+} from '../data/standardRevisionChapters.js'
 import { Chapter } from '../models/Chapter.js'
+import { RevisionCourse } from '../models/RevisionCourse.js'
 import { logger } from '../utils/logger.js'
 
 /**
- * Garantit les 19 chapitres standards (ordre 1…19, noms « Chapitre N »).
- * Ne supprime pas d’éventuels chapitres hors catalogue.
+ * Garantit les chapitres standards (ordre 1…N, noms « Chapitre N »).
+ * Supprime les chapitres hors catalogue (ex. ancien chapitre 20).
  */
 export async function ensureStandardRevisionChapters() {
   const catalog = listStandardRevisionChapters()
   let created = 0
   let updated = 0
+  let removed = 0
 
   for (const item of catalog) {
     const existing = await Chapter.findOne({
@@ -51,13 +56,25 @@ export async function ensureStandardRevisionChapters() {
     }
   }
 
-  return { created, updated, total: catalog.length }
+  const extras = await Chapter.find({
+    order: { $gt: STANDARD_REVISION_CHAPTER_COUNT },
+  })
+  for (const extra of extras) {
+    await RevisionCourse.updateMany(
+      { chapter: extra._id },
+      { $set: { chapter: null } },
+    )
+    await extra.deleteOne()
+    removed += 1
+  }
+
+  return { created, updated, removed, total: catalog.length }
 }
 
 export async function ensureStandardRevisionChaptersSafe() {
   try {
     const result = await ensureStandardRevisionChapters()
-    if (result.created || result.updated) {
+    if (result.created || result.updated || result.removed) {
       logger.info('Chapitres révision standards synchronisés', result)
     }
     return result

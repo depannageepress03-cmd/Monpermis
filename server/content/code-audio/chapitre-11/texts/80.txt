@@ -1,0 +1,6 @@
+Après cette signalisation :
+
+A. Je peux stationner : oui
+B. Je peux stationner : non
+C. Je peux m'arrêter : oui
+D. Je peux m'arrêter : non

@@ -1,0 +1,6 @@
+Dans cette situation, je peux utiliser :
+
+A. Mon avertisseur sonore : oui
+B. Mon avertisseur sonore : non
+C. Mon avertisseur lumineux : oui
+D. Mon avertisseur lumineux : non

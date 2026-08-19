@@ -27,6 +27,7 @@ import {
   hardcodedAsQuestionDocs,
   listHardcodedQuestionsPublic,
 } from '../services/hardcodedQuestions.js'
+import { STANDARD_REVISION_CHAPTER_COUNT } from '../data/standardRevisionChapters.js'
 import { ensureStandardRevisionChapters } from '../services/standardRevisionChapters.js'
 
 const router = Router()
@@ -52,7 +53,9 @@ router.get('/chapters', ...withCodeAccess, async (_req, res) => {
   try {
     await ensureStandardRevisionChapters()
     await ensureStandaloneRevisionCourses()
-    const chapters = await Chapter.find({ order: { $gte: 1, $lte: 20 } }).sort({
+    const chapters = await Chapter.find({
+      order: { $gte: 1, $lte: STANDARD_REVISION_CHAPTER_COUNT },
+    }).sort({
       order: 1,
       createdAt: 1,
     })
@@ -76,7 +79,9 @@ router.get('/course-chapters', ...withCodeAccess, async (_req, res) => {
     await ensureNotionsHaveChapter()
 
     const [chapters, notions] = await Promise.all([
-      Chapter.find({ order: { $gte: 1, $lte: 20 } }).sort({ order: 1, createdAt: 1 }),
+      Chapter.find({
+        order: { $gte: 1, $lte: STANDARD_REVISION_CHAPTER_COUNT },
+      }).sort({ order: 1, createdAt: 1 }),
       RevisionCourse.find({ published: true }).sort({ order: 1, createdAt: 1 }),
     ])
 

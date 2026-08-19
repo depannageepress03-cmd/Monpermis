@@ -1,0 +1,5 @@
+Sur les zébras :
+
+A. Je peux stationner
+B. Je peux circuler
+C. Je ne peux ni circuler ni stationner

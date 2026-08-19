@@ -1,0 +1,6 @@
+Est-il autorisé de prendre des passagers sur un tricycle ?
+
+A. Il n'est pas autorisé
+B. Oui, je suis autorisé
+C. C'est autorisé dans les campagnes seulement
+D. C'est autorisé si le conducteur a le permis B

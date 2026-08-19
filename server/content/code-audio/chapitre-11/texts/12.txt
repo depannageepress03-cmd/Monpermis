@@ -1,0 +1,6 @@
+Cette signalisation indique que je peux rouler à :
+
+A. 30 km/h
+B. 50 km/h
+C. 60 km/h
+D. 90 km/h

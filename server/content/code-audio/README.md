@@ -21,8 +21,6 @@ code-audio/
   chapitre-18/
     1.mp3 … 26.mp3
   chapitre-19/
-    1.mp3 … 26.mp3
-  chapitre-20/
     1.mp3 … 10.mp3
 ```
 

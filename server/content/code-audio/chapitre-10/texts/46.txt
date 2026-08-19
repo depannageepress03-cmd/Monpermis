@@ -1,0 +1,5 @@
+L'état des pneumatiques peut se contrôler :
+
+A. Visuellement avant d'utiliser le véhicule
+B. Uniquement lors des opérations d'entretien prescrites par le conducteur
+C. Au moins une fois par mois avec un manomètre pour la pression

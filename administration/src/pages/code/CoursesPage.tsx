@@ -826,7 +826,7 @@ export function CoursesPage() {
       {!loading && chapters.length === 0 ? (
         <EmptyState
           title="Chapitres en cours de synchronisation"
-          description="Les 20 chapitres standards seront créés automatiquement au prochain chargement."
+          description="Les 19 chapitres standards seront créés automatiquement au prochain chargement."
         />
       ) : null}
 

@@ -1,0 +1,5 @@
+À la prochaine intersection, je cède la priorité :
+
+A. À droite
+B. À gauche
+C. À droite et à gauche

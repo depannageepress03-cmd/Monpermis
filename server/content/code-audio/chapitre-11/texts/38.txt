@@ -1,0 +1,6 @@
+Je fais un appel lumineux :
+
+A. Oui
+B. Non
+C. Je circule en feux de route : oui
+D. Je circule en feux de route : non

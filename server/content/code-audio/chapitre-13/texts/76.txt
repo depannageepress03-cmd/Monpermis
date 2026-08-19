@@ -1,0 +1,6 @@
+Le panneau à caractère prioritaire est répété :
+
+A. Hors agglomération tous les 5 km
+B. Hors agglomération après les intersections
+C. En agglomération tous les 2 km
+D. En agglomération tous les kilomètres

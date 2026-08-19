@@ -1,0 +1,6 @@
+Je peux utiliser l'avertisseur sonore pour :
+
+A. Signaler un danger
+B. Signaler un démarrage lent au feu vert
+C. Dépasser pendant le jour
+D. Dépasser pendant la nuit

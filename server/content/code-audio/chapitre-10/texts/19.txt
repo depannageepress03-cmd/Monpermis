@@ -1,0 +1,5 @@
+En roulant, je peux contrôler visuellement :
+
+A. L'état des courroies
+B. L'état des pneumatiques
+C. Certains niveaux

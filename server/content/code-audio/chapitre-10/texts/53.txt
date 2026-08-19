@@ -1,0 +1,5 @@
+La position du point mort concerne :
+
+A. L'embrayage, quand le moteur commence à entraîner les roues
+B. Le levier de vitesse, lorsqu'une vitesse n'est pas enclenchée
+C. La boîte de vitesses en prise directe

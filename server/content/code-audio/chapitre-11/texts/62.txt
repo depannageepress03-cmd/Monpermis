@@ -1,0 +1,5 @@
+À la prochaine intersection, je tourne à droite. Je cède le passage :
+
+A. À droite seulement
+B. À gauche seulement
+C. À droite et à gauche

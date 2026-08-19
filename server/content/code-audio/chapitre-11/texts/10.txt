@@ -1,0 +1,4 @@
+Je passe après ce piéton ?
+
+A. Oui
+B. Non

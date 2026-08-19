@@ -1,0 +1,4 @@
+Je suis bien placé ?
+
+A. Oui
+B. Non

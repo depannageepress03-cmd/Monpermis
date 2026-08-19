@@ -1,0 +1,6 @@
+La nuit, hors agglomération, si je croise un deux-roues :
+
+A. Je reste en feux de route : oui
+B. Je reste en feux de route : non
+C. Je dois passer en feux de croisement : oui
+D. Je dois passer en feux de croisement : non

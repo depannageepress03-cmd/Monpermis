@@ -1,0 +1,5 @@
+Lorsque deux véhicules se suivent et roulent à 50 km/h, l'intervalle de sécurité à conserver derrière ce véhicule est de :
+
+A. 10 m
+B. 30 m
+C. 50 m

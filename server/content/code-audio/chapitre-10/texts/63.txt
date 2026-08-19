@@ -1,0 +1,6 @@
+Je fais contrôler le système de freinage :
+
+A. Si la voiture se déporte à droite ou à gauche au freinage
+B. Si mes feux de position ne s'allument pas au freinage
+C. Si j'entends des grincements au freinage
+D. Si la course de la pédale est trop longue

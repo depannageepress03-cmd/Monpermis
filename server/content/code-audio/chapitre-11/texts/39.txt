@@ -1,0 +1,6 @@
+Ce parking est :
+
+A. Payant : oui
+B. Payant : non
+C. À durée contrôlée par disque : oui
+D. À durée contrôlée par disque : non

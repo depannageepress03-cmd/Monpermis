@@ -1,0 +1,6 @@
+Les roues motrices d'un véhicule peuvent être :
+
+A. Sur le porte-à-faux
+B. À l'avant
+C. À l'arrière
+D. À l'avant et à l'arrière

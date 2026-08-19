@@ -1,7 +1,7 @@
 /**
  * Banque questions en dur — Chapitre 19.
  * Audio : /content/code-audio/chapitre-19/{n}.mp3
- * (anciennement chapitre 20 — décalage catalogue 20 chapitres)
+ * (anciennement chapitre 20 — le catalogue s’arrête à 19)
  */
 
 export const CHAPITRE_19_KEY = 'chapitre-19'

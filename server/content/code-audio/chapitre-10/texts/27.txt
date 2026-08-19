@@ -1,0 +1,6 @@
+La roue motrice est celle qui :
+
+A. A un moteur
+B. Oriente le véhicule
+C. Tire le moteur
+D. Est reliée au moteur et entraîne le véhicule

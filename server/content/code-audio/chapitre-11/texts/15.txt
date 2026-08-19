@@ -1,0 +1,6 @@
+Ce panneau signifie :
+
+A. Chaussée à sens unique
+B. Réduction du nombre de voies
+C. Virage à droite dangereux
+D. Interdiction de tourner à droite

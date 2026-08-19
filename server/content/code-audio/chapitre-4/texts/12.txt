@@ -1,0 +1,5 @@
+Dans une rue à sens unique, les véhicules peuvent stationner :
+
+A. Sur le côté droit seulement
+B. Sur le côté gauche seulement
+C. Sur le côté droit ou sur le côté gauche

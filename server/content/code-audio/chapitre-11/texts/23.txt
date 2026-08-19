@@ -1,0 +1,6 @@
+Je cède le passage aux véhicules qui :
+
+A. Viennent de face : oui
+B. Viennent de face : non
+C. Je peux aller tout droit : oui
+D. Je peux aller tout droit : non

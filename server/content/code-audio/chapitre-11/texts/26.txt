@@ -1,0 +1,6 @@
+Je peux allumer :
+
+A. Les feux de croisement : oui
+B. Les feux de croisement : non
+C. Les feux de brouillard avant : oui
+D. Les feux de brouillard avant : non

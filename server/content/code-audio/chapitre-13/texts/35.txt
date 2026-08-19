@@ -1,0 +1,6 @@
+Pour évaluer l'allure d'un autre usager venant en face, je dois tenir compte :
+
+A. Du type de véhicule
+B. De sa vitesse
+C. De l'état du conducteur
+D. De la couleur de la voiture

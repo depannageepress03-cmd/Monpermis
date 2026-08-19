@@ -1,0 +1,4 @@
+Le véhicule est autorisé à stationner ?
+
+A. Oui
+B. Non

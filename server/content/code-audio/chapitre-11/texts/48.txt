@@ -1,0 +1,4 @@
+Cette signalisation indique que :
+
+A. La largeur est limitée
+B. La hauteur est limitée

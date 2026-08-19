@@ -1,0 +1,6 @@
+En stationnement, je dois :
+
+A. Mettre mon disque : oui
+B. Mettre mon disque : non
+C. Mettre un ticket de parcmètre : oui
+D. Mettre un ticket de parcmètre : non

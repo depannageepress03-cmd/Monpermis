@@ -1,0 +1,4 @@
+Je suis bien placé pour emprunter cette sortie ?
+
+A. Oui
+B. Non

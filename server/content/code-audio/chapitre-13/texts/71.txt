@@ -1,0 +1,6 @@
+Lors d'un croisement difficile, quel véhicule doit s'arrêter ?
+
+A. Le camion sur un terrain plat
+B. Le véhicule léger sur un terrain plat
+C. Le véhicule descendant dans une descente
+D. Dans une descente, le véhicule montant

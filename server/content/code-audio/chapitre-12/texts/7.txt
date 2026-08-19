@@ -1,0 +1,4 @@
+Je peux dépasser ce véhicule ?
+
+A. Oui
+B. Non

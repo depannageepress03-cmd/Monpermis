@@ -1,0 +1,5 @@
+Cette signalisation annonce :
+
+A. Une traversée de voie de tramway
+B. Un arrêt de tramway
+C. Une voie réservée au tramway

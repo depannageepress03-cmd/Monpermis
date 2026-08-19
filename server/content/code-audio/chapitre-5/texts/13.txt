@@ -1,0 +1,5 @@
+Dans un véhicule pour passagers, on peut transporter :
+
+A. Des passagers uniquement
+B. Passagers et animaux
+C. Passagers et marchandises

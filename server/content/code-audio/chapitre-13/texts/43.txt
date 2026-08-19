@@ -1,0 +1,6 @@
+Un véhicule de tourisme sur autoroute peut rouler à une vitesse maximale de :
+
+A. 100 km/h en période de brouillard et de neige
+B. 110 km/h en période de brouillard
+C. 130 km/h par temps sec
+D. En fonction de la législation en vigueur dans chaque pays

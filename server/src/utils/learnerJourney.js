@@ -1,6 +1,7 @@
 import { Chapter } from '../models/Chapter.js'
 import { ConduiteChapter } from '../models/ConduiteChapter.js'
 import { PracticeExamAttempt } from '../models/PracticeExamAttempt.js'
+import { STANDARD_REVISION_CHAPTER_COUNT } from '../data/standardRevisionChapters.js'
 import {
   PRACTICE_EXAM_COUNT,
   PRACTICE_EXAM_PASS_SCORE,
@@ -126,7 +127,10 @@ function findCurrentStop(chapters, track) {
 
 export async function buildLearnerJourney(user) {
   const [revisionDocs, conduiteDocs] = await Promise.all([
-    Chapter.find({ published: true }).sort({ order: 1, createdAt: 1 }),
+    Chapter.find({
+      published: true,
+      order: { $gte: 1, $lte: STANDARD_REVISION_CHAPTER_COUNT },
+    }).sort({ order: 1, createdAt: 1 }),
     ConduiteChapter.find({ published: true }).sort({ order: 1, createdAt: 1 }),
   ])
 

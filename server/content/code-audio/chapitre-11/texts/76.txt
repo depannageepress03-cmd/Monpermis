@@ -1,0 +1,6 @@
+Après cette signalisation, je peux circuler à :
+
+A. 80 km/h : oui
+B. 80 km/h : non
+C. 70 km/h : oui
+D. 70 km/h : non

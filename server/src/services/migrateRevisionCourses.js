@@ -58,7 +58,7 @@ export const UNSORTED_CHAPTER_NAME = 'À classer'
 
 /**
  * Chapitre tampon qui accueille les notions pas encore rangées.
- * Ordre 0 et non publié : invisible côté élève (le catalogue filtre les ordres 1…20),
+ * Ordre 0 et non publié : invisible côté élève (le catalogue filtre les ordres 1…N),
  * visible côté admin pour être vidé progressivement.
  */
 export async function ensureUnsortedChapter() {

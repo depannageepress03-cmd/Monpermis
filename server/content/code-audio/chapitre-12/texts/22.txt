@@ -1,0 +1,6 @@
+Au volant, je peux utiliser mon téléphone portable :
+
+A. Pour recevoir un appel : oui
+B. Pour recevoir un appel : non
+C. Pour appeler : oui
+D. Pour appeler : non

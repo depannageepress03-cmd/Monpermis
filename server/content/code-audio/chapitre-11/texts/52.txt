@@ -1,0 +1,4 @@
+Je tourne à droite : je passe avant la voiture ?
+
+A. Oui
+B. Non

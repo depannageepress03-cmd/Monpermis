@@ -1,0 +1,6 @@
+Les feux de stop s'allument lorsque :
+
+A. Je rétrograde
+B. J'enclenche la marche arrière
+C. Je freine avec la pédale
+D. Je change de direction

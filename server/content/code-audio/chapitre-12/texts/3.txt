@@ -1,0 +1,5 @@
+Je roule à 80 km/h. Je dois laisser une distance de sécurité d'au moins :
+
+A. 40 m
+B. 50 m
+C. 60 m

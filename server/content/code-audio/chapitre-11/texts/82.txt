@@ -1,0 +1,6 @@
+Dans cette situation, je dois marquer l'arrêt :
+
+A. Au passage pour piétons : oui
+B. Au passage pour piétons : non
+C. À la ligne blanche : oui
+D. À la ligne blanche : non

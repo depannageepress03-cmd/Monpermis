@@ -1,0 +1,5 @@
+Comportement sur un lieu d'accident :
+
+A. Alerter, secourir, protéger
+B. Protéger, alerter, secourir
+C. Secourir, protéger, alerter

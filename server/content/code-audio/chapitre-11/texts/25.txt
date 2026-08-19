@@ -1,0 +1,6 @@
+Je sors à la sortie numéro 14 :
+
+A. J'allume mon clignotant : oui
+B. J'allume mon clignotant : non
+C. Je ralentis de suite : oui
+D. Je ralentis de suite : non

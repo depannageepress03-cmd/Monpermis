@@ -1,0 +1,5 @@
+Cette borne est implantée au bord :
+
+A. D'un chemin communal
+B. D'une route nationale
+C. D'une route départementale

@@ -1,0 +1,6 @@
+Je peux stationner :
+
+A. Avant le panneau : oui
+B. Avant le panneau : non
+C. Après le panneau : oui
+D. Après le panneau : non

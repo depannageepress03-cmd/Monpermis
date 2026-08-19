@@ -1,0 +1,5 @@
+Sur mon véhicule, en roulant, je peux contrôler :
+
+A. L'état des pneumatiques
+B. L'état des courroies
+C. Certains niveaux

@@ -1,0 +1,4 @@
+Cette voiture a la priorité de passage ?
+
+A. Oui
+B. Non

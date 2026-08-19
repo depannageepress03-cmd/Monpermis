@@ -1,0 +1,6 @@
+On appelle véhicule lent un véhicule qui :
+
+A. Peut rouler à plus de 100 km/h
+B. Ne dépasse pas 60 km/h par construction
+C. Roule uniquement en ville
+D. Transporte des marchandises lourdes

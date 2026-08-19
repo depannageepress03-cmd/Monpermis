@@ -1,0 +1,6 @@
+À une intersection munie de feux tricolores où tous les feux sont éteints :
+
+A. J'applique la priorité à droite
+B. Je passe
+C. Je cède le passage à droite et à gauche
+D. Je cède le passage à droite

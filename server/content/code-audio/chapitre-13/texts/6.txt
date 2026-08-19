@@ -1,0 +1,5 @@
+Le vent est :
+
+A. Nul
+B. Moyen
+C. Fort

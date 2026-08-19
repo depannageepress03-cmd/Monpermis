@@ -1,0 +1,6 @@
+Sur une route hors agglomération, les véhicules peuvent stationner :
+
+A. Sur les accotements
+B. Sur le côté droit ou sur le côté gauche
+C. Sur le côté droit seulement
+D. Sur le côté gauche seulement

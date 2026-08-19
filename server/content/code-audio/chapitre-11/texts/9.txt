@@ -1,0 +1,4 @@
+Je peux allumer mon clignotant ?
+
+A. Oui
+B. Non

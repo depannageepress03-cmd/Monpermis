@@ -1,0 +1,4 @@
+Ce carrefour est encombré. Je m'engage ?
+
+A. Oui
+B. Non

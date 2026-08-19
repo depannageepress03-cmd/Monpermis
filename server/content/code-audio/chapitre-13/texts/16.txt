@@ -1,0 +1,6 @@
+Dans cette situation :
+
+A. J'entre sur une autoroute : oui
+B. J'entre sur une autoroute : non
+C. Je sors d'une route pour automobiles : oui
+D. Je sors d'une route pour automobiles : non

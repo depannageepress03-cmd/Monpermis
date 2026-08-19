@@ -1,0 +1,4 @@
+Sur autoroute, le prix du péage est :
+
+A. Le même pour tous les usagers
+B. Fonction de la catégorie du véhicule
