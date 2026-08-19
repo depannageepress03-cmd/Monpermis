@@ -12,7 +12,8 @@
     "seed:local": "node scripts/seed-local-test.mjs",
     "check:local": "node scripts/check-local-flow.mjs",
     "migrate:audios:cloudinary": "node scripts/migrate-audios-to-cloudinary.mjs",
-    "audit:audios": "node scripts/audit-question-audios.mjs"
+    "audit:audios": "node scripts/audit-question-audios.mjs",
+    "export:transcripts": "node scripts/export-question-transcripts.mjs"
   },
   "engines": {
     "node": ">=20"

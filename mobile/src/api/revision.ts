@@ -7,6 +7,7 @@ import {
 } from '../data/codeRoute/banks'
 import { buildLocalSubject, buildLocalSubjectSummaries } from '../data/codeRoute/subjects'
 import { listStandardChapterShells } from '../data/codeRoute/standardChapters'
+import { attachQuestionTranscript } from '../data/codeRoute/questionTranscripts'
 import { cacheGetThenFetch, cacheGet } from '../utils/contentCache'
 import { getOfflineChapter } from '../utils/offlineStorage'
 
@@ -398,6 +399,7 @@ export interface RevisionQuestion {
   correctCount?: number
   prompt: {
     text?: string
+    transcript?: string
     audioUrl: string
     imageUrls: string[]
   }
@@ -406,9 +408,11 @@ export interface RevisionQuestion {
 
 export async function fetchChapterQuestions(chapterId: string): Promise<RevisionQuestion[]> {
   const order = getChapterOrderById(chapterId)
+  const attach = (list: RevisionQuestion[]) =>
+    list.map((q) => attachQuestionTranscript(q, order))
   const localBank = order ? getLocalBankByChapterOrder(order) : null
   if (localBank) {
-    return localBank.map((q) => toPublicLocalQuestion(q, chapterId))
+    return attach(localBank.map((q) => toPublicLocalQuestion(q, chapterId)))
   }
 
   // Vérifier le stockage hors-ligne
@@ -430,17 +434,18 @@ export async function fetchChapterQuestions(chapterId: string): Promise<Revision
         }
       }
     }
-    if (allQuestions.length > 0) return allQuestions
+    if (allQuestions.length > 0) return attach(allQuestions)
   }
 
   try {
-    return await cacheGetThenFetch(`revision:questions:${chapterId}`, async () => {
+    const questions = await cacheGetThenFetch(`revision:questions:${chapterId}`, async () => {
       const data = await request<{ questions: RevisionQuestion[] }>(
         `/content/revision/chapters/${encodeURIComponent(chapterId)}/questions`,
         { auth: true },
       )
       return data.questions
     })
+    return attach(questions)
   } catch {
     return []
   }
@@ -474,7 +479,10 @@ export async function fetchChapterTestSubject(
   if (order && getLocalBankByChapterOrder(order)) {
     const subject = buildLocalSubject(order, chapterId, subjectNumber)
     if (!subject) throw new ContentError('Sujet test introuvable')
-    return subject
+    return {
+      ...subject,
+      questions: subject.questions.map((q) => attachQuestionTranscript(q, order)),
+    }
   }
 
   const data = await request<{
@@ -483,7 +491,10 @@ export async function fetchChapterTestSubject(
     `/content/revision/chapters/${encodeURIComponent(chapterId)}/test-subjects/${encodeURIComponent(String(subjectNumber))}`,
     { auth: true },
   )
-  return data.subject
+  return {
+    ...data.subject,
+    questions: data.subject.questions.map((q) => attachQuestionTranscript(q, order)),
+  }
 }
 
 export async function checkQuestionAnswers(

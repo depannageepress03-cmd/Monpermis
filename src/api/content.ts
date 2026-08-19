@@ -6,6 +6,7 @@ import {
   toPublicLocalQuestion,
 } from '../data/codeRoute/banks'
 import { mergeWithStandardChapters, getChapterOrderById } from '../data/codeRoute/chapterIndex'
+import { attachQuestionTranscript } from '../data/codeRoute/questionTranscripts'
 import { buildLocalSubject, buildLocalSubjectSummaries } from '../data/codeRoute/subjects'
 import { listStandardChapterShells } from '../data/codeRoute/standardChapters'
 
@@ -166,6 +167,7 @@ export interface LearnerQuestion {
   correctCount?: number
   prompt: {
     text?: string
+    transcript?: string
     audioUrl?: string
     imageUrls?: string[]
   }
@@ -176,14 +178,14 @@ export async function fetchRevisionChapterQuestions(chapterId: string) {
   const order = getChapterOrderById(chapterId)
   const localBank = order ? getLocalBankByChapterOrder(order) : null
   if (localBank) {
-    return localBank.map((q) => toPublicLocalQuestion(q, chapterId))
+    return localBank.map((q) => attachQuestionTranscript(toPublicLocalQuestion(q, chapterId), order))
   }
   try {
     const data = await request<{ questions: LearnerQuestion[] }>(
       `/content/revision/chapters/${encodeURIComponent(chapterId)}/questions`,
       { auth: true },
     )
-    return data.questions
+    return data.questions.map((q) => attachQuestionTranscript(q, order))
   } catch {
     return []
   }
@@ -213,7 +215,10 @@ export async function fetchRevisionChapterTestSubject(chapterId: string, subject
   if (order && getLocalBankByChapterOrder(order)) {
     const subject = buildLocalSubject(order, chapterId, subjectNumber)
     if (!subject) throw new ContentError('Sujet test introuvable')
-    return subject
+    return {
+      ...subject,
+      questions: subject.questions.map((q) => attachQuestionTranscript(q, order)),
+    }
   }
   const data = await request<{
     subject: { number: number; label: string; questions: LearnerQuestion[] }
@@ -221,7 +226,10 @@ export async function fetchRevisionChapterTestSubject(chapterId: string, subject
     `/content/revision/chapters/${encodeURIComponent(chapterId)}/test-subjects/${encodeURIComponent(String(subjectNumber))}`,
     { auth: true },
   )
-  return data.subject
+  return {
+    ...data.subject,
+    questions: data.subject.questions.map((q) => attachQuestionTranscript(q, order)),
+  }
 }
 
 export async function checkRevisionQuestionAnswers(

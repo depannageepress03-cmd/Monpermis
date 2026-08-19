@@ -1,3 +1,5 @@
+import { getHardcodedQuestionTranscript, parseTranscriptAnswerOptions } from './transcripts.js'
+
 /** Invalide le cache navigateur/CDN après un remplacement de MP3 au même chemin. */
 export const CODE_MEDIA_VERSION = '20260819'
 
@@ -16,19 +18,22 @@ function versionedList(urls) {
 /** Sérialisation commune des questions hardcodées (public / admin). */
 
 export function toPublicHardcodedQuestion(q, chapterId) {
+  const transcript = getHardcodedQuestionTranscript(q.chapterOrder, q.order)
+  const optionTexts = parseTranscriptAnswerOptions(transcript)
   return {
     id: q.id,
     chapterId: String(chapterId),
     order: q.order,
     prompt: {
       text: q.prompt.text || '',
+      transcript,
       audioUrl: versioned(q.prompt.audioUrl),
       imageUrls: versionedList(q.prompt.imageUrls),
     },
     answers: (q.answers || []).map((answer) => ({
       id: answer.id,
       label: answer.label,
-      text: answer.text || '',
+      text: answer.text || optionTexts[String(answer.label || '').toUpperCase()] || '',
       audioUrl: versioned(answer.audioUrl),
     })),
   }

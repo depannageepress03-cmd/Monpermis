@@ -553,6 +553,7 @@
   border: 1px solid rgba(0, 16, 48, 0.08);
   font-weight: 600;
   color: #0f172a;
+  white-space: pre-wrap;
 }
 
 .learner-quiz-audio-status {
@@ -615,14 +616,16 @@
 }
 
 .learner-quiz-answer strong {
-  font-size: 0.82rem;
+  font-size: 0.95rem;
   letter-spacing: 0.02em;
   grid-column: 2 / -1;
 }
 
 .learner-quiz-answer > span:not(.learner-quiz-check) {
   grid-column: 2 / -1;
-  color: #334155;
+  color: #001030;
+  font-size: 0.95rem;
+  line-height: 1.4;
 }
 
 .learner-quiz-answer.is-selected {

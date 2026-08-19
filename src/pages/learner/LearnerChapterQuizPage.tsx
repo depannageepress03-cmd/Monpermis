@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { ClipboardList, HelpCircle } from 'lucide-react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import {
@@ -130,10 +130,6 @@ export function LearnerChapterQuizPage({
   // Sélection d’une réponse : ne coupe PAS l’audio (2 lectures complètes jusqu’à Continuer / fin de séquence).
 
   const question = questions[index]
-  const progressLabel = useMemo(() => {
-    if (!questions.length) return ''
-    return `Question ${Math.min(index + 1, questions.length)} / ${questions.length}`
-  }, [index, questions.length])
 
   const toggleAnswer = (answerId: string) => {
     if (result || checking) return
@@ -301,11 +297,18 @@ export function LearnerChapterQuizPage({
 
           {!loading && !error && question && !finished ? (
             <div className="learner-quiz">
-              <p className="learner-quiz-progress">{progressLabel}</p>
               {(question.correctCount ?? 1) > 1 ? (
                 <span className="learner-multi-badge">
                   {question.correctCount} bonnes réponses à cocher
                 </span>
+              ) : null}
+              {sequenceLive && !result ? (
+                <QuestionAudioSequence
+                  key={question.id}
+                  questionKey={question.id}
+                  promptAudioUrl={question.prompt?.audioUrl}
+                  onSequenceComplete={handleSequenceComplete}
+                />
               ) : null}
               {question.prompt?.imageUrls?.length ? (
                 <div className="learner-quiz-images">
@@ -316,14 +319,6 @@ export function LearnerChapterQuizPage({
               ) : null}
               {question.prompt?.text ? (
                 <p className="learner-quiz-prompt">{question.prompt.text}</p>
-              ) : null}
-              {sequenceLive && !result ? (
-                <QuestionAudioSequence
-                  key={question.id}
-                  questionKey={question.id}
-                  promptAudioUrl={question.prompt?.audioUrl}
-                  onSequenceComplete={handleSequenceComplete}
-                />
               ) : null}
               <p className="learner-quiz-answers-title">Choisissez la ou les bonnes réponses</p>
               {!result ? (

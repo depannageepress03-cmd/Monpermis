@@ -1,3 +1,5 @@
+import { getQuestionTranscript, parseTranscriptAnswerOptions } from './questionTranscripts'
+
 export type LocalAnswer = {
   id: string
   label: string
@@ -658,19 +660,23 @@ export function parseLocalQuestionId(questionId: string): { chapterOrder: number
 }
 
 export function toPublicLocalQuestion(q: LocalQuestion, chapterId: string) {
+  const optionTexts = parseTranscriptAnswerOptions(
+    getQuestionTranscript(q.chapterOrder, q.order),
+  )
   return {
     id: q.id,
     chapterId: String(chapterId),
     order: q.order,
     prompt: {
       text: q.prompt.text || '',
+      transcript: getQuestionTranscript(q.chapterOrder, q.order),
       audioUrl: q.prompt.audioUrl,
       imageUrls: q.prompt.imageUrls || [],
     },
     answers: q.answers.map((a) => ({
       id: a.id,
       label: a.label,
-      text: a.text || '',
+      text: a.text || optionTexts[String(a.label || '').toUpperCase()] || '',
       audioUrl: a.audioUrl || '',
     })),
   }

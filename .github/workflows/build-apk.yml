@@ -14,6 +14,8 @@ permissions:
 jobs:
   build-apk:
     runs-on: ubuntu-latest
+    env:
+      APK_VERSION: ${{ github.event.inputs.version || 'v1.0.68-preview' }}
     defaults:
       run:
         working-directory: mobile
@@ -75,7 +77,7 @@ jobs:
             find android/app/build/outputs -type f -name '*.apk' 2>/dev/null || true
             exit 1
           fi
-          DEST="monpermis-${{ inputs.version }}.apk"
+          DEST="monpermis-${{ env.APK_VERSION }}.apk"
           cp "$APK_PATH" "$DEST"
           echo "path=$DEST" >> "$GITHUB_OUTPUT"
           ls -lh "$DEST"
@@ -83,7 +85,7 @@ jobs:
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: monpermis-${{ inputs.version }}
+          name: monpermis-${{ env.APK_VERSION }}
           path: mobile/${{ steps.apk.outputs.path }}
           if-no-files-found: error
           retention-days: 30
@@ -91,10 +93,10 @@ jobs:
       - name: Create GitHub Release + attach APK
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ inputs.version }}
-          name: Monpermis ${{ inputs.version }}
+          tag_name: ${{ env.APK_VERSION }}
+          name: Monpermis ${{ env.APK_VERSION }}
           body: |
-            APK Android Monpermis.bj (${{ inputs.version }})
+            APK Android Monpermis.bj (${{ env.APK_VERSION }})
 
             API: `https://monpermis-api.onrender.com`
 
