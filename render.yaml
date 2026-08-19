@@ -1,5 +1,7 @@
 # Blueprint Render — Monpermis.bj
-# Connecter le repo GitHub, puis "New Blueprint" / ou créer les services manuellement.
+# Dashboard : New → Blueprint → repo depannageepress03-cmd/Monpermis
+# Les secrets (Mongo, JWT, SMTP, FedaPay, Cloudinary, Google) se saisissent une fois ;
+# les URLs publiques sont figées ici pour éviter un front pointant vers localhost.
 
 services:
   - type: web
@@ -7,12 +9,22 @@ services:
     runtime: node
     rootDir: server
     plan: free
+    branch: main
+    autoDeployTrigger: commit
     # Build l’API + le portail moniteur (SPA servie à la racine de monpermis-api.onrender.com)
-    # --include=dev : NODE_ENV=production sur Render omettrait sinon typescript/vite/@types
+    # --include=dev : NODE_ENV=production omettrait sinon typescript/vite
+    # VITE_API_URL vide : mêmes origine que l’API → fetch('/api/...')
     buildCommand: npm install && cd .. && npm install --prefix moniteur --include=dev && VITE_API_URL= npm run build --prefix moniteur && rm -rf server/web-dist && mkdir -p server/web-dist && cp -r moniteur/dist/. server/web-dist/
     startCommand: npm start
     healthCheckPath: /api/health
+    buildFilter:
+      paths:
+        - server/**
+        - moniteur/**
+        - render.yaml
     envVars:
+      - key: NODE_VERSION
+        value: "22"
       - key: NODE_ENV
         value: production
       - key: MONGODB_URI
@@ -20,16 +32,20 @@ services:
       - key: JWT_SECRET
         generateValue: true
       - key: CLIENT_URL
-        sync: false
+        value: https://monpermis-api.onrender.com
       - key: ADMIN_CLIENT_URL
-        sync: false
+        value: https://monpermis-admin.onrender.com
       - key: MONITEUR_CLIENT_URL
-        sync: false
+        value: https://monpermis-api.onrender.com
       - key: ALLOWED_ORIGINS
-        sync: false
+        value: https://monpermis-api.onrender.com,https://monpermis-admin.onrender.com,https://monpermis-web.onrender.com
       - key: API_PUBLIC_URL
-        sync: false
+        value: https://monpermis-api.onrender.com
       - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_ANDROID_CLIENT_ID
+        sync: false
+      - key: GOOGLE_IOS_CLIENT_ID
         sync: false
       - key: VITE_GOOGLE_CLIENT_ID
         sync: false
@@ -54,7 +70,7 @@ services:
       - key: FEDAPAY_WEBHOOK_SECRET
         sync: false
       - key: FEDAPAY_CALLBACK_URL
-        sync: false
+        value: https://monpermis-api.onrender.com/abonnement
       - key: ALLOW_ADMIN_REGISTRATION
         value: "false"
       - key: MOBILE_SCHEME
@@ -67,7 +83,6 @@ services:
         sync: false
       - key: WHATSAPP_PHONE_NUMBER_ID
         sync: false
-      # Cloudinary — audios + images/vidéos cours (secret serveur uniquement, jamais côté frontend)
       - key: CLOUDINARY_CLOUD_NAME
         sync: false
       - key: CLOUDINARY_API_KEY
@@ -83,27 +98,42 @@ services:
     name: monpermis-admin
     runtime: static
     rootDir: administration
-    buildCommand: npm install && npm run build
+    branch: main
+    autoDeployTrigger: commit
+    buildCommand: npm install --include=dev && npm run build
     staticPublishPath: dist
+    buildFilter:
+      paths:
+        - administration/**
+        - render.yaml
     envVars:
+      - key: NODE_VERSION
+        value: "22"
       - key: VITE_API_URL
-        sync: false
+        value: https://monpermis-api.onrender.com
     routes:
       - type: rewrite
         source: /*
         destination: /index.html
 
-  # Ancien site apprenant (monpermis-web) : désormais le portail moniteur.
-  # Les apprenants utilisent uniquement l’app mobile — ne plus builder src/ (web apprenant).
+  # Miroir optionnel du portail moniteur (même app que la racine de l’API).
   - type: web
     name: monpermis-web
     runtime: static
     rootDir: moniteur
-    buildCommand: npm install && npm run build
+    branch: main
+    autoDeployTrigger: commit
+    buildCommand: npm install --include=dev && npm run build
     staticPublishPath: dist
+    buildFilter:
+      paths:
+        - moniteur/**
+        - render.yaml
     envVars:
+      - key: NODE_VERSION
+        value: "22"
       - key: VITE_API_URL
-        sync: false
+        value: https://monpermis-api.onrender.com
     routes:
       - type: rewrite
         source: /*
