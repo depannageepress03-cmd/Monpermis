@@ -1,0 +1,30 @@
+{
+  "name": "Monpermis.bj",
+  "user": "ubuntu",
+  "install": "bash .cursor/install.sh",
+  "start": "bash .cursor/start.sh",
+  "terminals": [
+    {
+      "name": "API (server:5000)",
+      "command": "cd server && npm start"
+    },
+    {
+      "name": "Admin (administration:5174)",
+      "command": "npm run dev --prefix administration"
+    },
+    {
+      "name": "Portail moniteur (moniteur:5175)",
+      "command": "npm run dev --prefix moniteur"
+    },
+    {
+      "name": "Web apprenant (vite:5173)",
+      "command": "npm run dev:learner-web"
+    }
+  ],
+  "ports": [
+    { "name": "API", "port": 5000 },
+    { "name": "Web apprenant", "port": 5173 },
+    { "name": "Admin", "port": 5174 },
+    { "name": "Portail moniteur", "port": 5175 }
+  ]
+}
