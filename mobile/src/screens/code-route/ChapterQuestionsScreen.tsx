@@ -224,7 +224,7 @@ export function ChapterQuestionsScreen() {
     setSequenceLive(true)
     setSelectedIds(new Set())
     setResult(null)
-    stopAllQuizAudio()
+    // Pas de stopAllQuizAudio ici : coupe la nouvelle séquence au montage.
     tracker.markQuestionStart()
   }, [index])
 

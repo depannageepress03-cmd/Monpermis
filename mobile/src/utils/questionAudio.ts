@@ -36,14 +36,25 @@ export function hasBundledQuestionAudio(
   return getCodeAudioModule(chapterOrder, questionOrder) != null
 }
 
+function contentAudioPath(chapterOrder: number, questionOrder: number, rawUrl?: string | null) {
+  const value = String(rawUrl || '').trim()
+  if (value && /code-audio\/chapitre-\d+\/\d+\.mp3/i.test(value) && !/^(local|asset|file):\/\//i.test(value)) {
+    return value.startsWith('/') || /^https?:\/\//i.test(value) ? value : `/${value}`
+  }
+  return `/content/code-audio/chapitre-${chapterOrder}/${questionOrder}.mp3`
+}
+
 export type ResolvedPromptAudio = {
-  /** Module `require(...)` embarqué — préféré pour expo-audio. */
+  /** Module `require(...)` embarqué — secours hors-ligne. */
   module?: number
-  /** URI fichier local ou URL https. */
+  /** URI = même source que l’admin (`/content/code-audio/...`). */
   uri?: string
 }
 
-/** Source audio embarquée (module) ou, sauf offlineOnly, URL réseau. */
+/**
+ * En ligne : même URL que l’admin (API `/content/code-audio/...`).
+ * Hors-ligne / offlineOnly : module embarqué.
+ */
 export async function resolveQuestionPromptSource(
   questionId?: string | null,
   remoteAudioUrl?: string | null,
@@ -56,32 +67,30 @@ export async function resolveQuestionPromptSource(
   const chapterOrder = fromUrl?.chapterOrder || localQ?.chapterOrder || parsed?.chapterOrder
   const questionOrder = fromUrl?.questionOrder || localQ?.order || parsed?.questionOrder
 
-  if (chapterOrder && questionOrder) {
+  const mod =
+    chapterOrder && questionOrder ? getCodeAudioModule(chapterOrder, questionOrder) : null
+
+  if (!offlineOnly && chapterOrder && questionOrder) {
+    const uri = resolveMediaUrl(contentAudioPath(chapterOrder, questionOrder, remoteAudioUrl))
+    if (uri) return { uri, module: mod ?? undefined }
+  }
+
+  if (chapterOrder && questionOrder && mod != null) {
     const cacheKey = `${chapterOrder}:${questionOrder}`
     const cached = uriCache.get(cacheKey)
-    if (cached) return { uri: cached }
-
-    const mod = getCodeAudioModule(chapterOrder, questionOrder)
-    if (mod != null) {
-      try {
-        const asset = Asset.fromModule(mod)
-        await asset.downloadAsync()
-        const uri = asset.localUri || asset.uri
-        if (uri) {
-          uriCache.set(cacheKey, uri)
-          return { module: mod, uri }
-        }
-        return { module: mod }
-      } catch {
-        return { module: mod }
+    if (cached) return { module: mod, uri: cached }
+    try {
+      const asset = Asset.fromModule(mod)
+      await asset.downloadAsync()
+      const uri = asset.localUri || asset.uri
+      if (uri) {
+        uriCache.set(cacheKey, uri)
+        return { module: mod, uri }
       }
+    } catch {
+      // ignore
     }
-
-    if (offlineOnly) return undefined
-    const uri = resolveMediaUrl(
-      `/content/code-audio/chapitre-${chapterOrder}/${questionOrder}.mp3`,
-    )
-    return uri ? { uri } : undefined
+    return { module: mod }
   }
 
   if (offlineOnly) return undefined

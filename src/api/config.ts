@@ -2,7 +2,12 @@
 export function getApiOrigin(): string {
   let value = String(import.meta.env.VITE_API_URL || '').trim()
   value = value.replace(/^https:\/(?!\/)/i, 'https://').replace(/^http:\/(?!\/)/i, 'http://')
-  return value.replace(/\/$/, '')
+  value = value.replace(/\/$/, '')
+  // Build preview sans .env : même API que l’admin / mobile.
+  if (!value && import.meta.env.PROD) {
+    return 'https://monpermis-api.onrender.com'
+  }
+  return value
 }
 
 /** Base des routes JSON (`…/api`). */

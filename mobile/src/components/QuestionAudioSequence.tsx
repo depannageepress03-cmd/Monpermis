@@ -223,19 +223,40 @@ export function QuestionAudioSequence({
         const promptUrl = source?.uri || ''
         const promptModule = source?.module
 
-        if (promptModule != null || promptUrl) {
+        if (promptUrl || promptModule != null) {
           const audio: AudioModule = await import('expo-audio')
           if (cancelledRef.current) return
-          localPlayer = audio.createAudioPlayer(
-            promptModule != null ? promptModule : { uri: promptUrl },
-            { downloadFirst: true },
-          ) as Player
+
+          const tryCreate = (sourceArg: number | { uri: string }) =>
+            audio.createAudioPlayer(sourceArg, { downloadFirst: true }) as Player
+
+          localPlayer = promptUrl
+            ? tryCreate({ uri: promptUrl })
+            : tryCreate(promptModule as number)
+
           registerActiveAudioPlayer(localPlayer)
           if (typeof localPlayer.volume === 'number') localPlayer.volume = 1
 
           setStatus('Chargement audio…')
-          const loaded = await waitUntilLoaded(localPlayer, isCancelled)
+          let loaded = await waitUntilLoaded(localPlayer, isCancelled)
           if (cancelledRef.current) return
+
+          // Si l’URL réseau échoue, bascule sur le MP3 embarqué (même fichier).
+          if (!loaded && !offlineOnly && promptModule != null && promptUrl) {
+            try {
+              localPlayer.pause?.()
+              localPlayer.remove?.()
+            } catch {
+              // ignore
+            }
+            unregisterActiveAudioPlayer(localPlayer)
+            localPlayer = tryCreate(promptModule)
+            registerActiveAudioPlayer(localPlayer)
+            if (typeof localPlayer.volume === 'number') localPlayer.volume = 1
+            loaded = await waitUntilLoaded(localPlayer, isCancelled)
+            if (cancelledRef.current) return
+          }
+
           if (!loaded) {
             setStatus('Audio indisponible')
             await wait(800, isCancelled)

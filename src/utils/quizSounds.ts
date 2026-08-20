@@ -131,9 +131,14 @@ let currentRemoteAudio: HTMLAudioElement | null = null
 
 export function cancelRemoteAudio() {
   if (currentRemoteAudio) {
-    currentRemoteAudio.pause()
-    currentRemoteAudio.src = ''
-    currentRemoteAudio.load()
+    try {
+      currentRemoteAudio.pause()
+      currentRemoteAudio.currentTime = 0
+    } catch {
+      // ignore
+    }
+    // Ne pas vider `src` ici : un stop parent juste après register()
+    // rendait le <audio> muet pour toute la question.
     currentRemoteAudio = null
   }
 }

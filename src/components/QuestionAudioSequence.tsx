@@ -177,8 +177,17 @@ export function QuestionAudioSequence({
   return (
     <div className={className}>
       {promptUrl ? (
-        <audio ref={audioRef} src={promptUrl} preload="auto" playsInline hidden />
-      ) : null}
+        <audio
+          ref={audioRef}
+          src={promptUrl}
+          preload="auto"
+          playsInline
+          controls
+          className="learner-quiz-audio-el"
+        />
+      ) : (
+        <p className="learner-quiz-audio-status">Aucun audio pour cette question</p>
+      )}
       {needsGesture ? (
         <button
           type="button"

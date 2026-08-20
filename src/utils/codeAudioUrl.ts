@@ -20,9 +20,18 @@ function isUsableBundledUrl(href: string): boolean {
   return true
 }
 
+function contentAudioPath(chapterOrder: number, questionOrder: number, rawUrl?: string | null) {
+  const value = String(rawUrl || '').trim()
+  // Garde le ?v=… de l’API (même URL que l’admin).
+  if (value && /code-audio\/chapitre-\d+\/\d+\.mp3/i.test(value) && !/^(local|asset|file):\/\//i.test(value)) {
+    return value.startsWith('/') || /^https?:\/\//i.test(value) ? value : `/${value}`
+  }
+  return `/content/code-audio/chapitre-${chapterOrder}/${questionOrder}.mp3`
+}
+
 /**
- * Audio embarqué en priorité, sinon `/content/code-audio/...` via l’API.
- * Aligné sur resolveCodeImageUrl — ne laisse plus `local://` muet.
+ * Même source que l’admin en ligne : `/content/code-audio/...` via l’API.
+ * Bundle Vite = secours hors-ligne / examens offlineOnly.
  */
 export function resolveCodeAudioUrl(
   url?: string | null,
@@ -35,12 +44,14 @@ export function resolveCodeAudioUrl(
   const questionOrder = fromUrl?.questionOrder || fromKey?.questionOrder
 
   if (chapterOrder && questionOrder) {
+    if (!offlineOnly) {
+      const apiUrl = resolveMediaUrl(contentAudioPath(chapterOrder, questionOrder, url))
+      if (apiUrl) return apiUrl
+    }
     const bundled = getBundledCodeAudioUrl(chapterOrder, questionOrder)
     if (bundled && isUsableBundledUrl(bundled)) return bundled
     if (offlineOnly) return ''
-    return resolveMediaUrl(
-      `/content/code-audio/chapitre-${chapterOrder}/${questionOrder}.mp3`,
-    )
+    return resolveMediaUrl(contentAudioPath(chapterOrder, questionOrder, url))
   }
 
   if (offlineOnly) return ''

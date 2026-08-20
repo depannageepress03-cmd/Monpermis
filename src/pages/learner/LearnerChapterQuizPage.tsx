@@ -148,7 +148,8 @@ export function LearnerChapterQuizPage({
     setSequenceLive(true)
     setSelectedIds([])
     setResult(null)
-    stopAllQuizAudio()
+    // Ne pas appeler stopAllQuizAudio ici : l’effet parent tourne APRÈS
+    // le montage de QuestionAudioSequence et vidait le <audio> (silence).
   }, [index])
 
   useEffect(() => {

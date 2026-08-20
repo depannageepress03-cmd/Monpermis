@@ -562,6 +562,14 @@
   color: #64748b;
 }
 
+.learner-quiz-audio-el {
+  display: block;
+  width: 100%;
+  max-width: 28rem;
+  margin: 0.35rem 0 0.5rem;
+  height: 2.5rem;
+}
+
 .learner-quiz-audio-play {
   display: inline-flex;
   align-items: center;

@@ -252,7 +252,7 @@ export function ExamensTestTakePage() {
     setSequenceLive(true)
     setSelectedIds([])
     setSubmitted(false)
-    stopAllQuizAudio()
+    // Ne pas couper l’audio ici — course avec QuestionAudioSequence (voir quizSounds).
   }, [index])
 
   useEffect(() => {

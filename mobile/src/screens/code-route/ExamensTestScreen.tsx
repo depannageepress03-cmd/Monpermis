@@ -314,7 +314,7 @@ export function ExamensTestTakeScreen() {
     setSequenceLive(true)
     setSelectedIds([])
     setSubmitted(false)
-    stopAllQuizAudio()
+    // Pas de stopAllQuizAudio ici : coupe la nouvelle séquence au montage.
     tracker.markQuestionStart()
   }, [index])
 
