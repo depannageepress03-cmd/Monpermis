@@ -75,6 +75,12 @@ import {
   matchesChapitre19,
 } from './chapitre19.js'
 
+/**
+ * Source de vérité questions Code (admin + API apprenant).
+ * Après modification d’un chapitre ici, régénérer le fallback hors-ligne :
+ *   npm run generate:learner-banks --prefix server
+ *   npm run check:banks-sync --prefix server
+ */
 /** Banques en dur enregistrées (ordre décroissant pour matching explicite). */
 export const HARDCODED_CHAPTER_BANKS = [
   {

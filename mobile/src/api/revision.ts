@@ -7,8 +7,7 @@ import {
 } from '../data/codeRoute/banks'
 import { buildLocalSubject, buildLocalSubjectSummaries } from '../data/codeRoute/subjects'
 import { listStandardChapterShells } from '../data/codeRoute/standardChapters'
-import { cacheGetThenFetch, cacheGet } from '../utils/contentCache'
-import { getOfflineChapter } from '../utils/offlineStorage'
+import { cacheGetThenFetch, cacheGet, cacheSet, OFFLINE_TTL_MS } from '../utils/contentCache'
 
 export interface RevisionModule {
   id: string
@@ -405,43 +404,25 @@ export interface RevisionQuestion {
 }
 
 export async function fetchChapterQuestions(chapterId: string): Promise<RevisionQuestion[]> {
-  const order = getChapterOrderById(chapterId)
-  const localBank = order ? getLocalBankByChapterOrder(order) : null
-  if (localBank) {
-    return localBank.map((q) => toPublicLocalQuestion(q, chapterId))
-  }
-
-  // Vérifier le stockage hors-ligne
-  const offlineChapter = await getOfflineChapter(chapterId)
-  if (offlineChapter) {
-    const allQuestions: RevisionQuestion[] = []
-    for (const course of offlineChapter.courses) {
-      if (course.modules) {
-        for (const mod of course.modules) {
-          if (mod.text) {
-            allQuestions.push({
-              id: `offline-${course.id}-${mod.id}`,
-              chapterId,
-              order: mod.order,
-              prompt: { text: mod.title, audioUrl: '', imageUrls: [] },
-              answers: [],
-            })
-          }
-        }
-      }
-    }
-    if (allQuestions.length > 0) return allQuestions
-  }
-
+  // Source de vérité = API (toujours en ligne). Cache / banques = hors-ligne uniquement.
+  // Pas de cache « frais » longue durée : sinon l’apprenant reste sur d’anciennes questions.
   try {
-    return await cacheGetThenFetch(`revision:questions:${chapterId}`, async () => {
-      const data = await request<{ questions: RevisionQuestion[] }>(
-        `/content/revision/chapters/${encodeURIComponent(chapterId)}/questions`,
-        { auth: true },
-      )
-      return data.questions
-    })
+    const data = await request<{ questions: RevisionQuestion[] }>(
+      `/content/revision/chapters/${encodeURIComponent(chapterId)}/questions`,
+      { auth: true },
+    )
+    const questions = data.questions || []
+    await cacheSet(`revision:questions:${chapterId}`, questions)
+    return questions
   } catch {
+    const cached = await cacheGet<RevisionQuestion[]>(`revision:questions:${chapterId}`, OFFLINE_TTL_MS)
+    if (cached?.data?.length) return cached.data
+
+    const order = getChapterOrderById(chapterId)
+    const localBank = order ? getLocalBankByChapterOrder(order) : null
+    if (localBank) {
+      return localBank.map((q) => toPublicLocalQuestion(q, chapterId))
+    }
     return []
   }
 }
@@ -454,36 +435,42 @@ export type RevisionTestSubjectSummary = {
 }
 
 export async function fetchChapterTestSubjects(chapterId: string) {
-  const order = getChapterOrderById(chapterId)
-  if (order && getLocalBankByChapterOrder(order)) {
-    return buildLocalSubjectSummaries(order, chapterId)
+  try {
+    return await request<{
+      publishedCount: number
+      questionsPerSubject: number
+      subjects: RevisionTestSubjectSummary[]
+    }>(`/content/revision/chapters/${encodeURIComponent(chapterId)}/test-subjects`, { auth: true })
+  } catch {
+    const order = getChapterOrderById(chapterId)
+    if (order && getLocalBankByChapterOrder(order)) {
+      return buildLocalSubjectSummaries(order, chapterId)
+    }
+    throw new ContentError('Impossible de charger les sujets test')
   }
-
-  return request<{
-    publishedCount: number
-    questionsPerSubject: number
-    subjects: RevisionTestSubjectSummary[]
-  }>(`/content/revision/chapters/${encodeURIComponent(chapterId)}/test-subjects`, { auth: true })
 }
 
 export async function fetchChapterTestSubject(
   chapterId: string,
   subjectNumber = 1,
 ): Promise<{ number: number; label: string; questions: RevisionQuestion[] }> {
-  const order = getChapterOrderById(chapterId)
-  if (order && getLocalBankByChapterOrder(order)) {
-    const subject = buildLocalSubject(order, chapterId, subjectNumber)
-    if (!subject) throw new ContentError('Sujet test introuvable')
-    return subject
+  try {
+    const data = await request<{
+      subject: { number: number; label: string; questions: RevisionQuestion[] }
+    }>(
+      `/content/revision/chapters/${encodeURIComponent(chapterId)}/test-subjects/${encodeURIComponent(String(subjectNumber))}`,
+      { auth: true },
+    )
+    return data.subject
+  } catch (err) {
+    const order = getChapterOrderById(chapterId)
+    if (order && getLocalBankByChapterOrder(order)) {
+      const subject = buildLocalSubject(order, chapterId, subjectNumber)
+      if (subject) return subject
+    }
+    if (err instanceof ContentError) throw err
+    throw new ContentError('Sujet test introuvable')
   }
-
-  const data = await request<{
-    subject: { number: number; label: string; questions: RevisionQuestion[] }
-  }>(
-    `/content/revision/chapters/${encodeURIComponent(chapterId)}/test-subjects/${encodeURIComponent(String(subjectNumber))}`,
-    { auth: true },
-  )
-  return data.subject
 }
 
 export async function checkQuestionAnswers(
@@ -491,15 +478,18 @@ export async function checkQuestionAnswers(
   questionId: string,
   answerIds: string[],
 ): Promise<{ isCorrect: boolean; correctAnswerIds: string[] }> {
-  const local = checkLocalAnswers(questionId, answerIds)
-  if (local) return local
-
-  return request<{ isCorrect: boolean; correctAnswerIds: string[] }>(
-    `/content/revision/chapters/${encodeURIComponent(chapterId)}/questions/check`,
-    {
-      method: 'POST',
-      auth: true,
-      body: JSON.stringify({ questionId, answerIds }),
-    },
-  )
+  try {
+    return await request<{ isCorrect: boolean; correctAnswerIds: string[] }>(
+      `/content/revision/chapters/${encodeURIComponent(chapterId)}/questions/check`,
+      {
+        method: 'POST',
+        auth: true,
+        body: JSON.stringify({ questionId, answerIds }),
+      },
+    )
+  } catch {
+    const local = checkLocalAnswers(questionId, answerIds)
+    if (local) return local
+    throw new ContentError('Vérification impossible')
+  }
 }

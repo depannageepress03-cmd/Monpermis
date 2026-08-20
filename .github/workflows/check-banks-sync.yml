@@ -1,0 +1,29 @@
+name: Check learner banks sync
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'server/src/data/hardcodedQuestions/**'
+      - 'src/data/codeRoute/banks.ts'
+      - 'mobile/src/data/codeRoute/banks.ts'
+      - 'server/scripts/check-learner-banks-sync.mjs'
+      - 'server/scripts/generate-learner-banks.mjs'
+  pull_request:
+    paths:
+      - 'server/src/data/hardcodedQuestions/**'
+      - 'src/data/codeRoute/banks.ts'
+      - 'mobile/src/data/codeRoute/banks.ts'
+      - 'server/scripts/check-learner-banks-sync.mjs'
+      - 'server/scripts/generate-learner-banks.mjs'
+
+jobs:
+  banks-sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Vérifier alignement banques learner ↔ serveur
+        run: npm run check:banks-sync --prefix server

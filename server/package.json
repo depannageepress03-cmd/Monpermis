@@ -12,7 +12,9 @@
     "seed:local": "node scripts/seed-local-test.mjs",
     "check:local": "node scripts/check-local-flow.mjs",
     "migrate:audios:cloudinary": "node scripts/migrate-audios-to-cloudinary.mjs",
-    "audit:audios": "node scripts/audit-question-audios.mjs"
+    "audit:audios": "node scripts/audit-question-audios.mjs",
+    "generate:learner-banks": "node scripts/generate-learner-banks.mjs",
+    "check:banks-sync": "node scripts/check-learner-banks-sync.mjs"
   },
   "engines": {
     "node": ">=20"

@@ -173,18 +173,19 @@ export interface LearnerQuestion {
 }
 
 export async function fetchRevisionChapterQuestions(chapterId: string) {
-  const order = getChapterOrderById(chapterId)
-  const localBank = order ? getLocalBankByChapterOrder(order) : null
-  if (localBank) {
-    return localBank.map((q) => toPublicLocalQuestion(q, chapterId))
-  }
+  // Source de vérité = API admin/serveur. Banques locales = secours hors-ligne uniquement.
   try {
     const data = await request<{ questions: LearnerQuestion[] }>(
       `/content/revision/chapters/${encodeURIComponent(chapterId)}/questions`,
       { auth: true },
     )
-    return data.questions
+    return data.questions || []
   } catch {
+    const order = getChapterOrderById(chapterId)
+    const localBank = order ? getLocalBankByChapterOrder(order) : null
+    if (localBank) {
+      return localBank.map((q) => toPublicLocalQuestion(q, chapterId))
+    }
     return []
   }
 }
@@ -197,31 +198,39 @@ export type LearnerTestSubjectSummary = {
 }
 
 export async function fetchRevisionChapterTestSubjects(chapterId: string) {
-  const order = getChapterOrderById(chapterId)
-  if (order && getLocalBankByChapterOrder(order)) {
-    return buildLocalSubjectSummaries(order, chapterId)
+  try {
+    return await request<{
+      publishedCount: number
+      questionsPerSubject: number
+      subjects: LearnerTestSubjectSummary[]
+    }>(`/content/revision/chapters/${encodeURIComponent(chapterId)}/test-subjects`, { auth: true })
+  } catch {
+    const order = getChapterOrderById(chapterId)
+    if (order && getLocalBankByChapterOrder(order)) {
+      return buildLocalSubjectSummaries(order, chapterId)
+    }
+    throw new ContentError('Impossible de charger les sujets test')
   }
-  return request<{
-    publishedCount: number
-    questionsPerSubject: number
-    subjects: LearnerTestSubjectSummary[]
-  }>(`/content/revision/chapters/${encodeURIComponent(chapterId)}/test-subjects`, { auth: true })
 }
 
 export async function fetchRevisionChapterTestSubject(chapterId: string, subjectNumber = 1) {
-  const order = getChapterOrderById(chapterId)
-  if (order && getLocalBankByChapterOrder(order)) {
-    const subject = buildLocalSubject(order, chapterId, subjectNumber)
-    if (!subject) throw new ContentError('Sujet test introuvable')
-    return subject
+  try {
+    const data = await request<{
+      subject: { number: number; label: string; questions: LearnerQuestion[] }
+    }>(
+      `/content/revision/chapters/${encodeURIComponent(chapterId)}/test-subjects/${encodeURIComponent(String(subjectNumber))}`,
+      { auth: true },
+    )
+    return data.subject
+  } catch (err) {
+    const order = getChapterOrderById(chapterId)
+    if (order && getLocalBankByChapterOrder(order)) {
+      const subject = buildLocalSubject(order, chapterId, subjectNumber)
+      if (subject) return subject
+    }
+    if (err instanceof ContentError) throw err
+    throw new ContentError('Sujet test introuvable')
   }
-  const data = await request<{
-    subject: { number: number; label: string; questions: LearnerQuestion[] }
-  }>(
-    `/content/revision/chapters/${encodeURIComponent(chapterId)}/test-subjects/${encodeURIComponent(String(subjectNumber))}`,
-    { auth: true },
-  )
-  return data.subject
 }
 
 export async function checkRevisionQuestionAnswers(
@@ -229,16 +238,21 @@ export async function checkRevisionQuestionAnswers(
   questionId: string,
   answerIds: string[],
 ) {
-  const local = checkLocalAnswers(questionId, answerIds)
-  if (local) return local
-  return request<{ isCorrect: boolean; correctAnswerIds: string[] }>(
-    `/content/revision/chapters/${encodeURIComponent(chapterId)}/questions/check`,
-    {
-      method: 'POST',
-      auth: true,
-      body: JSON.stringify({ questionId, answerIds }),
-    },
-  )
+  // Toujours vérifier côté serveur en ligne (évite des bonnes réponses obsolètes du bundle).
+  try {
+    return await request<{ isCorrect: boolean; correctAnswerIds: string[] }>(
+      `/content/revision/chapters/${encodeURIComponent(chapterId)}/questions/check`,
+      {
+        method: 'POST',
+        auth: true,
+        body: JSON.stringify({ questionId, answerIds }),
+      },
+    )
+  } catch {
+    const local = checkLocalAnswers(questionId, answerIds)
+    if (local) return local
+    throw new ContentError('Vérification impossible')
+  }
 }
 
 export function fetchRevisionProgressFull(chapterId?: string) {

@@ -17,7 +17,9 @@
     "build:learner-web": "vite build",
     "build:admin": "npm run build --prefix administration",
     "build:moniteur": "npm run build --prefix moniteur",
-    "lint": "npm run lint --prefix mobile"
+    "lint": "npm run lint --prefix mobile",
+    "check:banks-sync": "npm run check:banks-sync --prefix server",
+    "generate:learner-banks": "npm run generate:learner-banks --prefix server"
   },
   "dependencies": {
     "lucide-react": "^0.562.0",
