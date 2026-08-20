@@ -235,9 +235,11 @@ export function QuestionAudioSequence({
           const tryCreate = (sourceArg: number | { uri: string }) =>
             audio.createAudioPlayer(sourceArg, { downloadFirst: true }) as Player
 
-          localPlayer = promptUrl
-            ? tryCreate({ uri: promptUrl })
-            : tryCreate(promptModule as number)
+          // Module embarqué d’abord (fiable), URL API en secours (même fichier que l’admin).
+          localPlayer =
+            promptModule != null
+              ? tryCreate(promptModule)
+              : tryCreate({ uri: promptUrl })
 
           registerActiveAudioPlayer(localPlayer)
           if (typeof localPlayer.volume === 'number') localPlayer.volume = 1
@@ -246,8 +248,7 @@ export function QuestionAudioSequence({
           let loaded = await waitUntilLoaded(localPlayer, isCancelled)
           if (cancelledRef.current) return
 
-          // Si l’URL réseau échoue, bascule sur le MP3 embarqué (même fichier).
-          if (!loaded && !offlineOnly && promptModule != null && promptUrl) {
+          if (!loaded && promptModule != null && promptUrl && !offlineOnly) {
             try {
               localPlayer.pause?.()
               localPlayer.remove?.()
@@ -255,7 +256,7 @@ export function QuestionAudioSequence({
               // ignore
             }
             unregisterActiveAudioPlayer(localPlayer)
-            localPlayer = tryCreate(promptModule)
+            localPlayer = tryCreate({ uri: promptUrl })
             registerActiveAudioPlayer(localPlayer)
             if (typeof localPlayer.volume === 'number') localPlayer.volume = 1
             loaded = await waitUntilLoaded(localPlayer, isCancelled)

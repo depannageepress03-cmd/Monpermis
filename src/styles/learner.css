@@ -615,19 +615,26 @@
   align-items: center;
   justify-content: center;
   margin: 0.35rem 0 0.5rem;
-  padding: 0.7rem 1.15rem;
+  padding: 0.85rem 1.25rem;
   border: 0;
   border-radius: 999px;
-  background: #001030;
+  background: #00b050;
   color: #fff;
   font: inherit;
-  font-weight: 650;
-  font-size: 0.92rem;
+  font-weight: 700;
+  font-size: 0.95rem;
   cursor: pointer;
+  box-shadow: 0 8px 20px rgba(0, 176, 80, 0.28);
 }
 
-.learner-quiz-audio-play:hover {
-  filter: brightness(1.08);
+.learner-quiz-audio-play:disabled {
+  opacity: 0.7;
+  cursor: default;
+  box-shadow: none;
+}
+
+.learner-quiz-audio-play:hover:not(:disabled) {
+  filter: brightness(1.06);
 }
 
 .learner-quiz-countdown {

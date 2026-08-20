@@ -30,8 +30,9 @@ function contentAudioPath(chapterOrder: number, questionOrder: number, rawUrl?: 
 }
 
 /**
- * Même source que l’admin en ligne : `/content/code-audio/...` via l’API.
- * Bundle Vite = secours hors-ligne / examens offlineOnly.
+ * Même source que l’admin : `/content/code-audio/...`.
+ * En local (origin vide) → chemin relatif (proxy Vite `/content`).
+ * Bundle = secours offlineOnly / si pas d’URL réseau.
  */
 export function resolveCodeAudioUrl(
   url?: string | null,
@@ -44,14 +45,20 @@ export function resolveCodeAudioUrl(
   const questionOrder = fromUrl?.questionOrder || fromKey?.questionOrder
 
   if (chapterOrder && questionOrder) {
-    if (!offlineOnly) {
-      const apiUrl = resolveMediaUrl(contentAudioPath(chapterOrder, questionOrder, url))
-      if (apiUrl) return apiUrl
+    if (offlineOnly) {
+      const bundled = getBundledCodeAudioUrl(chapterOrder, questionOrder)
+      return bundled && isUsableBundledUrl(bundled) ? bundled : ''
     }
+
+    // 1) URL API (identique admin) — relative en local = proxy Vite
+    const apiPath = contentAudioPath(chapterOrder, questionOrder, url)
+    const apiUrl = resolveMediaUrl(apiPath)
+    if (apiUrl) return apiUrl
+
+    // 2) Bundle embarqué
     const bundled = getBundledCodeAudioUrl(chapterOrder, questionOrder)
     if (bundled && isUsableBundledUrl(bundled)) return bundled
-    if (offlineOnly) return ''
-    return resolveMediaUrl(contentAudioPath(chapterOrder, questionOrder, url))
+    return ''
   }
 
   if (offlineOnly) return ''
