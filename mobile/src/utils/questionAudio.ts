@@ -36,12 +36,19 @@ export function hasBundledQuestionAudio(
   return getCodeAudioModule(chapterOrder, questionOrder) != null
 }
 
-/** URI locale (fichier embarqué) ou, sauf offlineOnly, URL réseau. */
-export async function resolveQuestionPromptUri(
+export type ResolvedPromptAudio = {
+  /** Module `require(...)` embarqué — préféré pour expo-audio. */
+  module?: number
+  /** URI fichier local ou URL https. */
+  uri?: string
+}
+
+/** Source audio embarquée (module) ou, sauf offlineOnly, URL réseau. */
+export async function resolveQuestionPromptSource(
   questionId?: string | null,
   remoteAudioUrl?: string | null,
   options: ResolvePromptAudioOptions = {},
-): Promise<string | undefined> {
+): Promise<ResolvedPromptAudio | undefined> {
   const offlineOnly = Boolean(options.offlineOnly)
   const localQ = questionId ? findLocalQuestionById(questionId) : null
   const parsed = questionId ? parseLocalQuestionId(questionId) : null
@@ -52,7 +59,7 @@ export async function resolveQuestionPromptUri(
   if (chapterOrder && questionOrder) {
     const cacheKey = `${chapterOrder}:${questionOrder}`
     const cached = uriCache.get(cacheKey)
-    if (cached) return cached
+    if (cached) return { uri: cached }
 
     const mod = getCodeAudioModule(chapterOrder, questionOrder)
     if (mod != null) {
@@ -62,18 +69,33 @@ export async function resolveQuestionPromptUri(
         const uri = asset.localUri || asset.uri
         if (uri) {
           uriCache.set(cacheKey, uri)
-          return uri
+          return { module: mod, uri }
         }
+        return { module: mod }
       } catch {
-        // pas de fallback réseau en mode offline
+        return { module: mod }
       }
     }
 
     if (offlineOnly) return undefined
-    return resolveMediaUrl(`/content/code-audio/chapitre-${chapterOrder}/${questionOrder}.mp3`)
+    const uri = resolveMediaUrl(
+      `/content/code-audio/chapitre-${chapterOrder}/${questionOrder}.mp3`,
+    )
+    return uri ? { uri } : undefined
   }
 
   if (offlineOnly) return undefined
   if (/^(local|asset|file):\/\//i.test(String(remoteAudioUrl || ''))) return undefined
-  return resolveMediaUrl(remoteAudioUrl)
+  const uri = resolveMediaUrl(remoteAudioUrl)
+  return uri ? { uri } : undefined
+}
+
+/** URI locale (fichier embarqué) ou, sauf offlineOnly, URL réseau. */
+export async function resolveQuestionPromptUri(
+  questionId?: string | null,
+  remoteAudioUrl?: string | null,
+  options: ResolvePromptAudioOptions = {},
+): Promise<string | undefined> {
+  const source = await resolveQuestionPromptSource(questionId, remoteAudioUrl, options)
+  return source?.uri
 }

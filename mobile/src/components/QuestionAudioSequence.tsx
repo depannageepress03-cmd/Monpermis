@@ -3,7 +3,7 @@ import { Animated, Easing, StyleSheet, Text, View } from 'react-native'
 import { Mic, Pause, Play } from 'lucide-react-native'
 import { brand, dark, fonts, shadows } from '../theme'
 import { ensureAudioSession } from '../utils/audioSession'
-import { resolveQuestionPromptUri } from '../utils/questionAudio'
+import { resolveQuestionPromptSource } from '../utils/questionAudio'
 import {
   playCountdown5to0,
   playGongSound,
@@ -39,10 +39,6 @@ type AudioModule = typeof import('expo-audio')
 
 const PAUSE_MS = 600
 const WAVE_BARS = [0.35, 0.7, 0.5, 0.95, 0.45, 0.8, 0.55, 0.9, 0.4, 0.75, 0.6, 0.85, 0.5, 0.7, 0.4]
-
-function cleanUri(uri?: string | null) {
-  return uri?.trim() || ''
-}
 
 function wait(ms: number, isCancelled?: () => boolean) {
   return new Promise<void>((resolve) => {
@@ -221,18 +217,17 @@ export function QuestionAudioSequence({
         await ensureAudioSession()
         if (cancelledRef.current) return
 
-        const bundled = cleanUri(
-          await resolveQuestionPromptUri(questionKey, promptUri, { offlineOnly }),
-        )
-        const promptUrl = offlineOnly
-          ? bundled
-          : bundled || cleanUri(promptUri?.startsWith('http') ? promptUri : undefined)
+        const source = await resolveQuestionPromptSource(questionKey, promptUri, {
+          offlineOnly,
+        })
+        const promptUrl = source?.uri || ''
+        const promptModule = source?.module
 
-        if (promptUrl) {
+        if (promptModule != null || promptUrl) {
           const audio: AudioModule = await import('expo-audio')
           if (cancelledRef.current) return
           localPlayer = audio.createAudioPlayer(
-            { uri: promptUrl },
+            promptModule != null ? promptModule : { uri: promptUrl },
             { downloadFirst: true },
           ) as Player
           registerActiveAudioPlayer(localPlayer)

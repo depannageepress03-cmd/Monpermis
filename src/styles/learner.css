@@ -562,6 +562,26 @@
   color: #64748b;
 }
 
+.learner-quiz-audio-play {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0.35rem 0 0.5rem;
+  padding: 0.7rem 1.15rem;
+  border: 0;
+  border-radius: 999px;
+  background: #001030;
+  color: #fff;
+  font: inherit;
+  font-weight: 650;
+  font-size: 0.92rem;
+  cursor: pointer;
+}
+
+.learner-quiz-audio-play:hover {
+  filter: brightness(1.08);
+}
+
 .learner-quiz-countdown {
   display: flex;
   align-items: center;
