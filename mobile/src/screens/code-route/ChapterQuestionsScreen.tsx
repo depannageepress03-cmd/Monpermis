@@ -39,6 +39,7 @@ import { FadeUp } from '../../components/FadeUp'
 import { LegalFooter } from '../../components/LegalFooter'
 import { ScreenLoader } from '../../components/ScreenLoader'
 import { QuestionAudioSequence } from '../../components/QuestionAudioSequence'
+import { ProgressiveSubtitles } from '../../components/ProgressiveSubtitles'
 import { QuestionPromptHtml } from '../../components/QuestionPromptHtml'
 import { SkeletonList } from '../../components/Skeleton'
 import { useLeaveGuard } from '../../hooks/useLeaveGuard'
@@ -48,6 +49,7 @@ import type { RootStackParamList } from '../../navigation/types'
 import { brand, dark, fonts, shadows } from '../../theme'
 import { hapticError, hapticSelect, hapticSuccess } from '../../utils/haptics'
 import { playFailSound, playSuccessSound, stopAllQuizAudio } from '../../utils/quizSounds'
+import { getRevisionPracticeTranscript } from '../../data/codeRoute/questionTranscripts'
 import { rememberChapterOrder } from '../../data/codeRoute/chapterIndex'
 import { resolveQuestionImageUri } from '../../utils/questionImages'
 import { tracker } from '../../tracking/tracker'
@@ -140,6 +142,7 @@ export function ChapterQuestionsScreen() {
   const [savingTest, setSavingTest] = useState(false)
   const [testSaved, setTestSaved] = useState(false)
   const [sequenceLive, setSequenceLive] = useState(true)
+  const [subtitlePass, setSubtitlePass] = useState(1)
   const [reviewHistory, setReviewHistory] = useState<ReviewEntry[]>([])
   const [reviewing, setReviewing] = useState(false)
 
@@ -224,6 +227,7 @@ export function ChapterQuestionsScreen() {
     setSequenceLive(true)
     setSelectedIds(new Set())
     setResult(null)
+    setSubtitlePass(1)
     // Pas de stopAllQuizAudio ici : coupe la nouvelle séquence au montage.
     tracker.markQuestionStart()
   }, [index])
@@ -241,6 +245,14 @@ export function ChapterQuestionsScreen() {
   // Sélection d’une réponse : ne coupe PAS l’audio (2 lectures complètes jusqu’à Continuer / fin de séquence).
 
   const question = questions[index]
+  const practiceTranscript =
+    !isTest && question
+      ? getRevisionPracticeTranscript(question.prompt, {
+          id: question.id,
+          order: question.order,
+          chapterOrder: typeof chapterOrder === 'number' ? chapterOrder : undefined,
+        })
+      : ''
   const [resolvedImages, setResolvedImages] = useState<{ key: string; uri: string }[]>([])
 
   useEffect(() => {
@@ -565,9 +577,33 @@ export function ChapterQuestionsScreen() {
                       <X size={18} color={dark.coral} />
                     )}
                   </View>
-                  {entry.question.prompt.text ? (
-                    <QuestionPromptHtml text={entry.question.prompt.text} style={styles.promptText} />
-                  ) : null}
+                  {(() => {
+                    const entryTranscript = !isTest
+                      ? getRevisionPracticeTranscript(entry.question.prompt, {
+                          id: entry.question.id,
+                          order: entry.question.order,
+                          chapterOrder: typeof chapterOrder === 'number' ? chapterOrder : undefined,
+                        })
+                      : ''
+                    if (entryTranscript) {
+                      return (
+                        <ProgressiveSubtitles
+                          text={entryTranscript}
+                          resetKey={`${entry.question.id}-review`}
+                          progressive={false}
+                        />
+                      )
+                    }
+                    if (entry.question.prompt.text) {
+                      return (
+                        <QuestionPromptHtml
+                          text={entry.question.prompt.text}
+                          style={styles.promptText}
+                        />
+                      )
+                    }
+                    return null
+                  })()}
                   {entry.question.answers.map((answer) => {
                     const wasSelected = entry.selectedIds.includes(answer.id)
                     const isGood = entry.correctAnswerIds.includes(answer.id)
@@ -668,7 +704,7 @@ export function ChapterQuestionsScreen() {
                 </Text>
               ) : null}
 
-              {question.prompt.text ? (
+              {question.prompt.text && !practiceTranscript ? (
                 <View style={styles.promptTextCard}>
                   <QuestionPromptHtml text={question.prompt.text} style={styles.promptText} />
                 </View>
@@ -680,6 +716,17 @@ export function ChapterQuestionsScreen() {
                     questionKey={question.id}
                     promptUri={question.prompt?.audioUrl}
                     onSequenceComplete={handleSequenceComplete}
+                    onListenPass={(pass) => setSubtitlePass(pass)}
+                  />
+                </View>
+              ) : null}
+
+              {practiceTranscript ? (
+                <View style={styles.subtitlesWrap}>
+                  <ProgressiveSubtitles
+                    text={practiceTranscript}
+                    resetKey={`${question.id}-${subtitlePass}`}
+                    progressive={sequenceLive && !result}
                   />
                 </View>
               ) : null}
@@ -961,6 +1008,9 @@ const styles = StyleSheet.create({
   },
   audioWrap: {
     marginBottom: 10,
+  },
+  subtitlesWrap: {
+    marginBottom: 12,
   },
   images: {
     gap: 8,

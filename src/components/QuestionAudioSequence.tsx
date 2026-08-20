@@ -17,6 +17,8 @@ type Props = {
   offlineOnly?: boolean
   /** Après double lecture + décompte 5→0 + sonnerie (sauf si aborté). */
   onSequenceComplete?: () => void
+  /** Début de chaque lecture de l’énoncé (1 puis 2) — pour les sous-titres. */
+  onListenPass?: (pass: 1 | 2) => void
 }
 
 const PAUSE_MS = 600
@@ -49,11 +51,14 @@ export function QuestionAudioSequence({
   className,
   offlineOnly = false,
   onSequenceComplete,
+  onListenPass,
 }: Props) {
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const cancelledRef = useRef(false)
   const completeRef = useRef(onSequenceComplete)
   completeRef.current = onSequenceComplete
+  const listenPassRef = useRef(onListenPass)
+  listenPassRef.current = onListenPass
   const gestureResolverRef = useRef<(() => void) | null>(null)
   const [status, setStatus] = useState('')
   const [countdown, setCountdown] = useState<CountdownValue | null>(null)
@@ -72,8 +77,9 @@ export function QuestionAudioSequence({
     const el = audioRef.current
     registerActiveAudioElement(el)
 
-    const ensurePlaying = async (label: string) => {
+    const ensurePlaying = async (label: string, pass: 1 | 2) => {
       if (!el || cancelledRef.current) return
+      listenPassRef.current?.(pass)
       setStatus(label)
 
       const waitEnded = () =>
@@ -131,11 +137,11 @@ export function QuestionAudioSequence({
       if (cancelledRef.current) return
 
       if (promptUrl && el) {
-        await ensurePlaying('Première écoute…')
+        await ensurePlaying('Première écoute…', 1)
         if (cancelledRef.current) return
         await wait(PAUSE_MS, isCancelled)
         if (cancelledRef.current) return
-        await ensurePlaying('Deuxième écoute…')
+        await ensurePlaying('Deuxième écoute…', 2)
         if (cancelledRef.current) return
       }
 

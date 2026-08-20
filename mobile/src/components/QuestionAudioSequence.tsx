@@ -20,6 +20,8 @@ type Props = {
   /** Examens / hors-ligne : uniquement MP3 générés embarqués, jamais le réseau. */
   offlineOnly?: boolean
   onSequenceComplete?: () => void
+  /** Début de chaque lecture de l’énoncé (1 puis 2) — pour les sous-titres. */
+  onListenPass?: (pass: 1 | 2) => void
 }
 
 type Player = {
@@ -183,12 +185,15 @@ export function QuestionAudioSequence({
   promptUri,
   offlineOnly = false,
   onSequenceComplete,
+  onListenPass,
 }: Props) {
   const [status, setStatus] = useState('')
   const [countdown, setCountdown] = useState<CountdownValue | null>(null)
   const cancelledRef = useRef(false)
   const completeRef = useRef(onSequenceComplete)
   completeRef.current = onSequenceComplete
+  const listenPassRef = useRef(onListenPass)
+  listenPassRef.current = onListenPass
   const isCancelled = () => cancelledRef.current
 
   const listening =
@@ -261,6 +266,7 @@ export function QuestionAudioSequence({
             setStatus('Audio indisponible')
             await wait(800, isCancelled)
           } else {
+            listenPassRef.current?.(1)
             setStatus('Première écoute…')
             await playUntilEnd(localPlayer, isCancelled)
             if (cancelledRef.current) return
@@ -268,6 +274,7 @@ export function QuestionAudioSequence({
             await wait(PAUSE_MS, isCancelled)
             if (cancelledRef.current) return
 
+            listenPassRef.current?.(2)
             setStatus('Deuxième écoute…')
             await playUntilEnd(localPlayer, isCancelled)
             if (cancelledRef.current) return

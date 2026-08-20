@@ -11,6 +11,7 @@ import {
   type LearnerQuestion,
 } from '../../api/content'
 import { QuestionAudioSequence } from '../../components/QuestionAudioSequence'
+import { ProgressiveSubtitles } from '../../components/ProgressiveSubtitles'
 import { QuestionPromptHtml } from '../../components/QuestionPromptHtml'
 import { PageLoader } from '../../components/PageLoader'
 import { PageNavbar } from '../../components/PageNavbar'
@@ -18,6 +19,8 @@ import { QuizProgressRing } from '../../components/QuizProgressRing'
 import { SuccessCelebration } from '../../components/SuccessCelebration'
 import { useAuth } from '../../hooks/useAuth'
 import { useLeaveGuard } from '../../hooks/useLeaveGuard'
+import { getChapterOrderById } from '../../data/codeRoute/chapterIndex'
+import { getRevisionPracticeTranscript } from '../../data/codeRoute/questionTranscripts'
 import { playFailSound, playSuccessSound, stopAllQuizAudio } from '../../utils/quizSounds'
 import { resolveMediaUrl } from '../../utils/mediaUrl'
 import { resolveCodeImageUrl } from '../../utils/codeImageUrl'
@@ -68,6 +71,7 @@ export function LearnerChapterQuizPage({
   const [savingTest, setSavingTest] = useState(false)
   const [testSaved, setTestSaved] = useState(false)
   const [sequenceLive, setSequenceLive] = useState(true)
+  const [subtitlePass, setSubtitlePass] = useState(1)
   const [reviewHistory, setReviewHistory] = useState<
     {
       question: LearnerQuestion
@@ -148,6 +152,7 @@ export function LearnerChapterQuizPage({
     setSequenceLive(true)
     setSelectedIds([])
     setResult(null)
+    setSubtitlePass(1)
     // Ne pas appeler stopAllQuizAudio ici : l’effet parent tourne APRÈS
     // le montage de QuestionAudioSequence et vidait le <audio> (silence).
   }, [index])
@@ -159,6 +164,15 @@ export function LearnerChapterQuizPage({
   // Sélection d’une réponse : ne coupe PAS l’audio (2 lectures complètes jusqu’à Continuer / fin de séquence).
 
   const question = questions[index]
+  const practiceTranscript =
+    mode === 'practice' && question
+      ? getRevisionPracticeTranscript(question.prompt, {
+          id: question.id,
+          order: question.order,
+          chapterOrder: getChapterOrderById(chapterId) || undefined,
+        })
+      : ''
+
   const progressLabel = useMemo(() => {
     if (!questions.length) return ''
     if (isSingleQuestion && questionIndex != null) {
@@ -329,9 +343,31 @@ export function LearnerChapterQuizPage({
                   <p className="learner-quiz-progress">
                     Question {i + 1} — {entry.isCorrect ? 'Bonne réponse' : 'À revoir'}
                   </p>
-                  {entry.question.prompt?.text ? (
-                    <QuestionPromptHtml className="learner-quiz-prompt" text={entry.question.prompt?.text} />
-                  ) : null}
+                  {(() => {
+                    const entryTranscript = getRevisionPracticeTranscript(entry.question.prompt, {
+                      id: entry.question.id,
+                      order: entry.question.order,
+                      chapterOrder: getChapterOrderById(chapterId) || undefined,
+                    })
+                    if (entryTranscript) {
+                      return (
+                        <ProgressiveSubtitles
+                          text={entryTranscript}
+                          resetKey={`${entry.question.id}-review`}
+                          progressive={false}
+                        />
+                      )
+                    }
+                    if (entry.question.prompt?.text) {
+                      return (
+                        <QuestionPromptHtml
+                          className="learner-quiz-prompt"
+                          text={entry.question.prompt?.text}
+                        />
+                      )
+                    }
+                    return null
+                  })()}
                   <div className="learner-quiz-answers">
                     {entry.question.answers.map((answer) => {
                       const selected = entry.selectedIds.includes(answer.id)
@@ -433,16 +469,23 @@ export function LearnerChapterQuizPage({
                   ))}
                 </div>
               ) : null}
-              {question.prompt?.text ? (
-                <QuestionPromptHtml className="learner-quiz-prompt" text={question.prompt?.text} />
-              ) : null}
               {sequenceLive && !result ? (
                 <QuestionAudioSequence
                   key={question.id}
                   questionKey={question.id}
                   promptAudioUrl={question.prompt?.audioUrl}
                   onSequenceComplete={handleSequenceComplete}
+                  onListenPass={(pass) => setSubtitlePass(pass)}
                 />
+              ) : null}
+              {practiceTranscript ? (
+                <ProgressiveSubtitles
+                  text={practiceTranscript}
+                  resetKey={`${question.id}-${subtitlePass}`}
+                  progressive={sequenceLive && !result}
+                />
+              ) : question.prompt?.text ? (
+                <QuestionPromptHtml className="learner-quiz-prompt" text={question.prompt?.text} />
               ) : null}
               <p className="learner-quiz-answers-title">Choisissez la ou les bonnes réponses</p>
               {!result ? (
