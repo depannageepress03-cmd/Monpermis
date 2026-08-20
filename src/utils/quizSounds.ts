@@ -19,6 +19,26 @@ function getCtx(): AudioContext | null {
   return sharedCtx
 }
 
+/** À appeler dans le clic « ouvrir une question » pour autoriser la lecture auto ensuite. */
+export function unlockQuizAudio() {
+  if (typeof window === 'undefined') return
+  getCtx()
+  try {
+    const silent = new Audio(
+      'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA',
+    )
+    silent.volume = 0.001
+    void silent.play().then(
+      () => {
+        silent.pause()
+      },
+      () => undefined,
+    )
+  } catch {
+    // ignore
+  }
+}
+
 async function playTone(
   frequency: number,
   durationMs: number,

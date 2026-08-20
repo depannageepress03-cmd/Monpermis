@@ -21,7 +21,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { useLeaveGuard } from '../../hooks/useLeaveGuard'
 import { getChapterOrderById } from '../../data/codeRoute/chapterIndex'
 import { getRevisionPracticeTranscript } from '../../data/codeRoute/questionTranscripts'
-import { playFailSound, playSuccessSound, stopAllQuizAudio } from '../../utils/quizSounds'
+import { playFailSound, playSuccessSound, stopAllQuizAudio, unlockQuizAudio } from '../../utils/quizSounds'
 import { resolveMediaUrl } from '../../utils/mediaUrl'
 import { resolveCodeImageUrl } from '../../utils/codeImageUrl'
 import '../../styles/auth.css'
@@ -290,6 +290,7 @@ export function LearnerChapterQuizPage({
   const handleContinue = () => {
     const ids = selectedIdsRef.current
     if (ids.length === 0 || checking || result) return
+    unlockQuizAudio()
     setSequenceLive(false)
     stopAllQuizAudio()
     void resolveSelection(ids)
@@ -481,7 +482,7 @@ export function LearnerChapterQuizPage({
               {practiceTranscript ? (
                 <ProgressiveSubtitles
                   text={practiceTranscript}
-                  resetKey={`${question.id}-${subtitlePass}`}
+                  resetKey={`${question.id}-${subtitlePass}-${sequenceLive && !result ? 'live' : 'done'}`}
                   progressive={sequenceLive && !result}
                 />
               ) : question.prompt?.text ? (
@@ -490,7 +491,7 @@ export function LearnerChapterQuizPage({
               <p className="learner-quiz-answers-title">Choisissez la ou les bonnes réponses</p>
               {!result ? (
                 <p className="learner-quiz-audio-status">
-                  Audio : 2 lectures. Vous pouvez cocher pendant la lecture.
+                  Audio et sous-titres démarrent à l’ouverture. Vous pouvez cocher pendant la lecture.
                 </p>
               ) : null}
 

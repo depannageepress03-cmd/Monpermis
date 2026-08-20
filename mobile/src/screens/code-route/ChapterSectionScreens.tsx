@@ -147,7 +147,8 @@ export function ChapterQuestionsListScreen() {
 
   if (loading || !user) return <ScreenLoader />
 
-  const openQuestion = (questionIndex: number) =>
+  const openQuestion = (questionIndex: number) => {
+    void import('../../utils/audioSession').then((m) => m.ensureAudioSession())
     navigation.navigate('ChapterQuestions', {
       chapterId,
       chapterName,
@@ -155,6 +156,7 @@ export function ChapterQuestionsListScreen() {
       mode: 'practice',
       questionIndex,
     })
+  }
 
   return (
     <View style={qStyles.root}>

@@ -11,6 +11,7 @@ import {
 } from '../../api/content'
 import { PageNavbar } from '../../components/PageNavbar'
 import { useAuth } from '../../hooks/useAuth'
+import { unlockQuizAudio } from '../../utils/quizSounds'
 import '../../styles/auth.css'
 import '../../styles/learner.css'
 
@@ -141,6 +142,7 @@ export function LearnerChapterQuestionsListPage() {
                       className="learner-question-row"
                       to={`/code-de-la-route/revision-chapitres/${chapterId}/questions/${index}`}
                       state={{ chapterName }}
+                      onClick={() => unlockQuizAudio()}
                     >
                       <span className="learner-question-num">{index + 1}</span>
                       <span className="learner-question-excerpt">

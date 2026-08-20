@@ -3,7 +3,7 @@ import { resolveCodeAudioUrl } from '../utils/codeAudioUrl'
 import {
   playCountdown5to0,
   playGongSound,
-  stopAllQuizAudio,
+  unlockQuizAudio,
   type CountdownValue,
 } from '../utils/quizSounds'
 
@@ -37,8 +37,8 @@ function wait(ms: number, isCancelled?: () => boolean) {
 }
 
 /**
- * Lecture ×2 + décompte, démarrée par un clic utilisateur
- * (évite autoplay bloqué + bugs StrictMode sur <audio> auto-monté).
+ * Dès l’ouverture de la question : audio ×2 + sous-titres (via onListenPass), puis décompte.
+ * Pas de bouton « Écouter » — le clic sur la question (liste) débloque l’audio.
  */
 export function QuestionAudioSequence({
   questionKey,
@@ -49,152 +49,133 @@ export function QuestionAudioSequence({
   onListenPass,
 }: Props) {
   const audioRef = useRef<HTMLAudioElement | null>(null)
-  const cancelledRef = useRef(false)
-  const runningRef = useRef(false)
+  const runIdRef = useRef(0)
   const completeRef = useRef(onSequenceComplete)
   completeRef.current = onSequenceComplete
   const listenPassRef = useRef(onListenPass)
   listenPassRef.current = onListenPass
 
-  const [status, setStatus] = useState('Appuie sur Écouter pour démarrer')
+  const [status, setStatus] = useState('')
   const [countdown, setCountdown] = useState<CountdownValue | null>(null)
-  const [busy, setBusy] = useState(false)
 
   const promptUrl = resolveCodeAudioUrl(promptAudioUrl, { questionKey, offlineOnly })
-  const isCancelled = () => cancelledRef.current
 
   useEffect(() => {
-    cancelledRef.current = false
-    runningRef.current = false
-    setBusy(false)
+    const runId = ++runIdRef.current
+    const isCancelled = () => runIdRef.current !== runId
+
     setCountdown(null)
-    setStatus(promptUrl ? 'Appuie sur Écouter pour démarrer' : 'Aucun audio')
-    stopAllQuizAudio()
+    setStatus('')
+    unlockQuizAudio()
 
-    return () => {
-      cancelledRef.current = true
-      runningRef.current = false
-      const el = audioRef.current
-      if (el) {
-        el.pause()
-        el.currentTime = 0
-      }
-      stopAllQuizAudio()
-    }
-  }, [questionKey, promptUrl])
+    // Sous-titres dès le début (en même temps que l’audio)
+    listenPassRef.current?.(1)
 
-  const playOnce = (el: HTMLAudioElement, label: string, pass: 1 | 2) =>
-    new Promise<'ok' | 'error'>((resolve) => {
-      if (isCancelled()) {
-        resolve('error')
-        return
-      }
-      listenPassRef.current?.(pass)
-      setStatus(label)
+    const el = audioRef.current
 
-      const finish = (result: 'ok' | 'error') => {
-        el.removeEventListener('ended', onEnded)
-        el.removeEventListener('error', onError)
-        window.clearTimeout(safety)
-        resolve(result)
-      }
-      const onEnded = () => finish('ok')
-      const onError = () => finish('error')
-      el.addEventListener('ended', onEnded, { once: true })
-      el.addEventListener('error', onError, { once: true })
-      const safety = window.setTimeout(() => finish(el.currentTime > 0 ? 'ok' : 'error'), 180000)
-
-      try {
-        el.currentTime = 0
-      } catch {
-        // ignore
-      }
-
-      const tryPlay = () => {
-        if (isCancelled()) {
-          finish('error')
+    const playOnce = (label: string, pass: 1 | 2) =>
+      new Promise<void>((resolve) => {
+        if (!el || isCancelled() || !promptUrl) {
+          resolve()
           return
         }
-        void el.play().then(
-          () => undefined,
-          () => finish('error'),
-        )
-      }
+        listenPassRef.current?.(pass)
+        setStatus(label)
 
-      if (el.readyState >= 2) tryPlay()
-      else {
-        el.addEventListener('canplay', tryPlay, { once: true })
-        el.load()
-        window.setTimeout(tryPlay, 400)
-      }
-    })
+        const finish = () => {
+          el.removeEventListener('ended', finish)
+          el.removeEventListener('error', finish)
+          window.clearTimeout(safety)
+          resolve()
+        }
+        el.addEventListener('ended', finish, { once: true })
+        el.addEventListener('error', finish, { once: true })
+        const safety = window.setTimeout(finish, 180000)
 
-  const handleStart = () => {
-    if (!promptUrl || runningRef.current || isCancelled()) return
-    const el = audioRef.current
-    if (!el) {
-      setStatus('Lecteur audio indisponible')
-      return
-    }
+        try {
+          el.currentTime = 0
+        } catch {
+          // ignore
+        }
 
-    runningRef.current = true
-    setBusy(true)
-    cancelledRef.current = false
+        const tryPlay = () => {
+          if (isCancelled()) {
+            finish()
+            return
+          }
+          void el.play().then(
+            () => undefined,
+            () => finish(),
+          )
+        }
 
-    void (async () => {
-      try {
-        // Unlock / play within the click gesture
-        await playOnce(el, 'Première écoute…', 1)
+        if (el.readyState >= 2) tryPlay()
+        else {
+          el.addEventListener('canplay', tryPlay, { once: true })
+          window.setTimeout(tryPlay, 250)
+        }
+      })
+
+    const run = async () => {
+      // Laisse le <audio> se monter avec le src
+      await wait(30, isCancelled)
+      if (isCancelled()) return
+
+      if (promptUrl && el) {
+        setStatus('Première écoute…')
+        await playOnce('Première écoute…', 1)
         if (isCancelled()) return
         await wait(PAUSE_MS, isCancelled)
         if (isCancelled()) return
-        await playOnce(el, 'Deuxième écoute…', 2)
+        await playOnce('Deuxième écoute…', 2)
         if (isCancelled()) return
-
-        setStatus('Décompte…')
-        await playCountdown5to0((n) => {
-          if (!isCancelled()) setCountdown(n)
-        }, isCancelled)
-        if (isCancelled()) return
-
-        setStatus('Temps !')
-        await playGongSound()
-        if (isCancelled()) return
-
-        setCountdown(null)
-        setStatus('')
-        completeRef.current?.()
-      } finally {
-        runningRef.current = false
-        setBusy(false)
       }
-    })()
-  }
+
+      setStatus('Décompte…')
+      await playCountdown5to0((n) => {
+        if (!isCancelled()) setCountdown(n)
+      }, isCancelled)
+      if (isCancelled()) return
+
+      setStatus('Temps !')
+      await playGongSound()
+      if (isCancelled()) return
+
+      setCountdown(null)
+      setStatus('')
+      completeRef.current?.()
+    }
+
+    void run()
+
+    return () => {
+      runIdRef.current += 1
+      if (el) {
+        el.pause()
+        try {
+          el.currentTime = 0
+        } catch {
+          // ignore
+        }
+      }
+      setCountdown(null)
+      setStatus('')
+    }
+  }, [questionKey, promptUrl])
 
   return (
     <div className={className}>
-      {!promptUrl ? (
-        <p className="learner-quiz-audio-status">Aucun audio pour cette question</p>
+      {promptUrl ? (
+        <audio
+          ref={audioRef}
+          key={`${questionKey}:${promptUrl}`}
+          src={promptUrl}
+          preload="auto"
+          playsInline
+          hidden
+        />
       ) : (
-        <>
-          <audio
-            ref={audioRef}
-            key={`${questionKey}:${promptUrl}`}
-            src={promptUrl}
-            controls
-            preload="auto"
-            playsInline
-            className="learner-quiz-audio-el"
-          />
-          <button
-            type="button"
-            className="learner-quiz-audio-play"
-            onClick={handleStart}
-            disabled={busy}
-          >
-            {busy ? 'Lecture en cours…' : 'Écouter l’énoncé (2 fois)'}
-          </button>
-        </>
+        <p className="learner-quiz-audio-status">Aucun audio pour cette question</p>
       )}
       {countdown !== null ? (
         <div className="learner-quiz-countdown" aria-live="polite">
