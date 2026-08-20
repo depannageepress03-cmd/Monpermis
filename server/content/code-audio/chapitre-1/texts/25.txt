@@ -1,0 +1,1 @@
+A la vue du poids de du panneau triangulaire, pointe en bas à une intersection. Quel genre de panneau peuvent rencontrer les usages, venant de gauche et de droite ? A, panneau stop, B, panneau flèche barré, c'est, panneau lozange fronjone. D, panneau lozange fronjone barré.

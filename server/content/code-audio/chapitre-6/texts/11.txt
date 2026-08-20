@@ -1,0 +1,1 @@
+En langageant les véhicules en stationnement, à quoi doit-on faire attention ? A, au véhicule qui pourrait surgir, B, au pied temps qui pourrait surgir, C, au portière qui pourrait s'ouvrir, D, au véhicule qui pourrait quitter leur stationnement.

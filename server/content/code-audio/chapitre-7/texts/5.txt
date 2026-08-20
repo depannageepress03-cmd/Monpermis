@@ -1,0 +1,1 @@
+Avec mon permis de conduit catégorie B-A, je peux conduit tous les véhicules. B, je ne peux conduit que les véhicules dont le PTAC est compris entre 3,5 tonnes et 18 tonnes. C, je peux conduit un véhicule dont le PTAC est inférieur ou égal à 3,5 tonnes. D, je peux conduit une camionnette dont le PTAC est égal ou inférieur à 3,5 tonnes.

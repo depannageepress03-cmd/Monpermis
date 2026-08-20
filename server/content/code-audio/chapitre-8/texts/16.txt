@@ -1,0 +1,1 @@
+Le chargement de grande longueur peut dépasser au maximum l'extrémité arrière du véhicule de A3m, B5m, C3m50.

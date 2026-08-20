@@ -126,33 +126,26 @@ export function LearnerChapterQuestionsListPage() {
                   </div>
                 ) : null}
               </div>
-              <p className="subtitle">
-                {testEntry
-                  ? `Sujet test : ${testEntry.correct} / ${testEntry.total}`
-                  : `${count} question${count !== 1 ? 's' : ''} à travailler`}
-              </p>
+              {testEntry ? (
+                <p className="subtitle">
+                  Sujet test : {testEntry.correct} / {testEntry.total}
+                </p>
+              ) : null}
               <div className="learner-question-list">
-                {questions.map((question, index) => {
-                  const excerpt = question.prompt?.text
-                    ? question.prompt.text.replace(/<[^>]*>/g, '').slice(0, 70)
-                    : `Question ${index + 1}`
-                  return (
-                    <Link
-                      key={question.id}
-                      className="learner-question-row"
-                      to={`/code-de-la-route/revision-chapitres/${chapterId}/questions/${index}`}
-                      state={{ chapterName }}
-                      onClick={() => unlockQuizAudio()}
-                    >
-                      <span className="learner-question-num">{index + 1}</span>
-                      <span className="learner-question-excerpt">
-                        {excerpt}
-                        {excerpt.length >= 70 ? '…' : ''}
-                      </span>
-                      <ChevronRight size={16} aria-hidden />
-                    </Link>
-                  )
-                })}
+                {questions.map((question, index) => (
+                  <Link
+                    key={question.id}
+                    className="learner-question-row"
+                    to={`/code-de-la-route/revision-chapitres/${chapterId}/questions/${index}`}
+                    state={{ chapterName }}
+                    onClick={() => unlockQuizAudio()}
+                    aria-label={`Question ${index + 1}`}
+                  >
+                    <span className="learner-question-num">{index + 1}</span>
+                    <span className="learner-question-excerpt">Question {index + 1}</span>
+                    <ChevronRight size={16} aria-hidden />
+                  </Link>
+                ))}
               </div>
             </>
           ) : null}

@@ -1,0 +1,1 @@
+Sur cette image, le camion doit à passer sans danger, b faire un demi-tour si sa hauteur est supérieure à 4,5 mètres. C'est ralentir, vérifier à gauche et à droite, puis passer si sa hauteur ne dépasse pas 4,5 mètres.

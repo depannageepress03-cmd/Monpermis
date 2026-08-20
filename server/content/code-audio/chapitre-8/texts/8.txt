@@ -1,0 +1,1 @@
+Le chrono tachigrafe permet l'enregistrement. A, du temps de conduite et de repos. B, des tours des roues avant. C'est de la vitesse du véhicule et de la distance parcourue.

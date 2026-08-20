@@ -254,41 +254,36 @@ export function ChapterQuestionsListScreen() {
                       ]}
                     />
                   </View>
-                  <Text style={qStyles.progressCaption}>
-                    {testEntry
-                      ? `Sujet test : ${testEntry.correct} / ${testEntry.total}`
-                      : `${count} question${count !== 1 ? 's' : ''} à travailler`}
-                  </Text>
+                  {testEntry ? (
+                    <Text style={qStyles.progressCaption}>
+                      Sujet test : {testEntry.correct} / {testEntry.total}
+                    </Text>
+                  ) : null}
                 </View>
               </FadeUp>
 
               <FadeUp delay={160}>
                 <View style={qStyles.questionList}>
-                  {questions.map((q, qi) => {
-                    const excerpt = q.prompt?.text
-                      ? q.prompt.text.replace(/<[^>]*>/g, '').substring(0, 70)
-                      : `Question ${qi + 1}`
-                    return (
-                      <Pressable
-                        key={q.id}
-                        style={({ pressed }) => [
-                          qStyles.questionRow,
-                          pressed && qStyles.pressed,
-                        ]}
-                        onPress={() => openQuestion(qi)}
-                        accessibilityRole="button"
-                        accessibilityLabel={`Question ${qi + 1}`}
-                      >
-                        <View style={qStyles.questionNum}>
-                          <Text style={qStyles.questionNumText}>{qi + 1}</Text>
-                        </View>
-                        <Text style={qStyles.questionExcerpt} numberOfLines={2}>
-                          {excerpt}{excerpt.length >= 70 ? '…' : ''}
-                        </Text>
-                        <ChevronRight size={16} color={dark.textMuted} />
-                      </Pressable>
-                    )
-                  })}
+                  {questions.map((q, qi) => (
+                    <Pressable
+                      key={q.id}
+                      style={({ pressed }) => [
+                        qStyles.questionRow,
+                        pressed && qStyles.pressed,
+                      ]}
+                      onPress={() => openQuestion(qi)}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Question ${qi + 1}`}
+                    >
+                      <View style={qStyles.questionNum}>
+                        <Text style={qStyles.questionNumText}>{qi + 1}</Text>
+                      </View>
+                      <Text style={qStyles.questionExcerpt} numberOfLines={1}>
+                        Question {qi + 1}
+                      </Text>
+                      <ChevronRight size={16} color={dark.textMuted} />
+                    </Pressable>
+                  ))}
                 </View>
               </FadeUp>
             </>

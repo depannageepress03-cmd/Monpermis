@@ -1,0 +1,1 @@
+La ligne mixte autorise le dépassement A, si la chaussée est assez large, B, si la ligne continue est du plus proche du conducteur, C, si la ligne discontinue est plus proche du conducteur.

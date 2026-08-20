@@ -1,0 +1,1 @@
+qu'indique le panneau triangulaire pour tant une flèche barrée. A, arrière obligatoire, B, priorité de passage, C, priorité à gauche, D, priorité à droite.
