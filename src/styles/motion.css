@@ -428,6 +428,8 @@ html {
 }
 
 .home-app-bottom-anim {
+  margin-top: 0.5rem;
+  padding-bottom: calc(0.5rem + var(--safe-bottom, 0px));
   animation: auth-stagger-in 900ms var(--ease-out-expo) 520ms both;
 }
 
@@ -483,9 +485,11 @@ html {
   opacity: 0.85;
 }
 
-/* Code — cartes photo, banner, paywall */
+/* Code — cartes photo, banner, paywall
+   IMPORTANT: fill-mode doit rester `both` (pas seulement backwards),
+   sinon opacity:0 revient après l’animation et les cartes disparaissent. */
 .code-route-anim-card {
-  animation-fill-mode: backwards;
+  animation-fill-mode: both;
 }
 
 .category-card--photo {

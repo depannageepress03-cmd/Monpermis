@@ -22,7 +22,6 @@ import {
 } from '../api/accessRequests'
 import { fetchLearnerJourney, type LearnerJourney } from '../api/content'
 import { CodeRouteBanner } from '../components/CodeRouteBanner'
-import { HomeBottomAnimation } from '../components/HomeBottomAnimation'
 import { MobileMoneyCheckout } from '../components/MobileMoneyCheckout'
 import { CodeModuleIcon } from '../components/ModuleIcons'
 import { PageNavbar } from '../components/PageNavbar'
@@ -221,7 +220,7 @@ export function CodeRoutePage() {
               )}
             </p>
             </Reveal>
-            <div className="code-route-banner-wrap code-route-anim-card" style={{ animationDelay: '0.12s' }}>
+            <div className="code-route-banner-wrap">
               <CodeRouteBanner />
             </div>
             <div className="category-grid">
@@ -232,7 +231,7 @@ export function CodeRoutePage() {
                     key={category.id}
                     type="button"
                     className={`category-card category-card--photo ${category.className} code-route-anim-card`}
-                    style={{ animationDelay: `${0.2 + index * 0.08}s` }}
+                    style={{ animationDelay: `${0.12 + index * 0.07}s` }}
                     onClick={() => navigate(`/code-de-la-route/${category.id}`)}
                   >
                     <img src={category.image} alt="" className="category-card-image" draggable={false} />
@@ -251,7 +250,6 @@ export function CodeRoutePage() {
                 )
               })}
             </div>
-            <HomeBottomAnimation />
           </>
         )}
       </div>
