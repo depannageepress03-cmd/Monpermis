@@ -1,1 +1,4 @@
-Quelle est l'âge minimal du candidat au permis de conduire catégorissé? A17, B18, C21 en
+Quel est l'âge minimal du candidat au permis de conduire catégorie C ?
+A. 17 ans.
+B. 18 ans.
+C. 21 ans.

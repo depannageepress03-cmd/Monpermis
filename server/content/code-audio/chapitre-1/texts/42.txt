@@ -1,1 +1,5 @@
-Le panneau A-25 signifie A, K-4 à sens giratoire, B, terre plein à contourner par la droite, C-C-D le passage aux usagers venant de gauche, D-C-D le passage aux usagers venant de droite.
+Le panneau A25 signifie :
+A. Carrefour à sens giratoire.
+B. Terre-plein à contourner par la droite.
+C. Céder le passage aux usagers venant de gauche.
+D. Céder le passage aux usagers venant de droite.

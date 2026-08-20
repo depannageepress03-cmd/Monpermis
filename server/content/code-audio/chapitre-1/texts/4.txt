@@ -1,1 +1,4 @@
-La ligne discontinue blanche centrale, A interdit la circulation à droite, B, R, S, S, R réservé pour la rédébus, C, autorise le dépassement.
+La ligne discontinue blanche centrale :
+A. Interdit la circulation à droite.
+B. Est réservée pour les bus.
+C. Autorise le dépassement.

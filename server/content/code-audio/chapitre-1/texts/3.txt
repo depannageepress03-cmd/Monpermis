@@ -1,1 +1,4 @@
-La ligne continue blanche centrale, A, interdit le dépassement, B, autorise le dépassement, C, et votre père réservait pour l'arrêt des bus.
+La ligne continue blanche centrale :
+A. Interdit le dépassement.
+B. Autorise le dépassement.
+C. Est réservée pour l'arrêt des bus.

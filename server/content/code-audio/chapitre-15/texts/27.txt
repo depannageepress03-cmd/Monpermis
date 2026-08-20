@@ -1,1 +1,5 @@
-Un feu orange fixe signifie A, je peux accélérer pour passer, B, je m'arrête, sauf si je suis trop prêt pour le faire en sécurité, C, je claxonne, D, je tourne forcément à droite.
+Un feu orange fixe signifie :
+A. Je peux accélérer pour passer.
+B. Je m'arrête, sauf si je suis trop près pour le faire en sécurité.
+C. Je klaxonne.
+D. Je tourne forcément à droite.
