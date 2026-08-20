@@ -2,6 +2,7 @@ import { Router } from 'express'
 import jwt from 'jsonwebtoken'
 import { Moniteur } from '../models/Moniteur.js'
 import { requireMoniteurAuth } from '../middleware/moniteurAuth.js'
+import { moniteurLoginLimiter } from '../middleware/rateLimiters.js'
 import { logger } from '../utils/logger.js'
 
 const router = Router()
@@ -28,7 +29,7 @@ function createMoniteurToken(moniteurId) {
   )
 }
 
-router.post('/login', async (req, res) => {
+router.post('/login', moniteurLoginLimiter, async (req, res) => {
   try {
     const email = normalizeEmail(req.body.email)
     const password = String(req.body.password || '')

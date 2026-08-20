@@ -13,6 +13,12 @@ import { requireUserAuth } from '../middleware/userAuth.js'
 import { AccountDeleteBlockedError, deleteUserAccount } from '../utils/deleteUserAccount.js'
 import { logger } from '../utils/logger.js'
 import { logUserActivity } from '../utils/activityLog.js'
+import {
+  googleAuthLimiter,
+  learnerLoginLimiter,
+  learnerRegisterLimiter,
+  passwordResetLimiter,
+} from '../middleware/rateLimiters.js'
 
 const router = Router()
 
@@ -38,7 +44,7 @@ async function assertPhoneAvailable(normalizedPhone, excludeUserId = null) {
   }
 }
 
-router.post('/register', async (req, res) => {
+router.post('/register', learnerRegisterLimiter, async (req, res) => {
   try {
     const { firstName, lastName, phone, password } = req.body
     const rawEmail = String(req.body?.email || '').trim()
@@ -158,7 +164,7 @@ router.post('/register', async (req, res) => {
   }
 })
 
-router.post('/login', async (req, res) => {
+router.post('/login', learnerLoginLimiter, async (req, res) => {
   try {
     const password = req.body?.password
     const identifier = String(
@@ -334,7 +340,7 @@ router.post('/resend-verification', async (req, res) => {
   }
 })
 
-router.post('/forgot-password', async (req, res) => {
+router.post('/forgot-password', passwordResetLimiter, async (req, res) => {
   try {
     const { email } = req.body
     if (!email) {
@@ -362,7 +368,7 @@ router.post('/forgot-password', async (req, res) => {
   }
 })
 
-router.post('/reset-password', async (req, res) => {
+router.post('/reset-password', passwordResetLimiter, async (req, res) => {
   try {
     const { token, password } = req.body
 
@@ -533,7 +539,7 @@ router.get('/google/config', (_req, res) => {
   })
 })
 
-router.post('/google', async (req, res) => {
+router.post('/google', googleAuthLimiter, async (req, res) => {
   try {
     const idToken = String(req.body?.idToken || '').trim()
     const clientHeader = String(req.get('X-Client') || '').toLowerCase()

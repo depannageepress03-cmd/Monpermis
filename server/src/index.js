@@ -128,14 +128,7 @@ app.use(
     contentSecurityPolicy: false,
   }),
 )
-// Rate limiting
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 20,
-  message: { success: false, error: 'Trop de tentatives. R\u00e9essayez dans 15 minutes.' },
-  standardHeaders: true,
-  legacyHeaders: false,
-})
+// Rate limiting — login ciblé (voir middleware/rateLimiters.js), pas sur tout /auth
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: Math.max(120, Number(process.env.API_RATE_LIMIT_MAX) || 900),
@@ -230,9 +223,9 @@ app.use('/api', (req, res, next) => {
   return apiLimiter(req, res, next)
 })
 
-app.use('/api/auth', authLimiter, authRoutes)
-app.use('/api/admin/auth', authLimiter, adminAuthRoutes)
-app.use('/api/moniteur/auth', authLimiter, moniteurAuthRoutes)
+app.use('/api/auth', authRoutes)
+app.use('/api/admin/auth', adminAuthRoutes)
+app.use('/api/moniteur/auth', moniteurAuthRoutes)
 app.use('/api/moniteur', moniteurPortalRoutes)
 app.use('/api/admin/admins', adminAdminsRoutes)
 app.use('/api/admin/audit-logs', adminAuditLogsRoutes)

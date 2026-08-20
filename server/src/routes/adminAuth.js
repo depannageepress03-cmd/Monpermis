@@ -9,6 +9,7 @@ import {
   requireSuperAdmin,
 } from '../middleware/adminAuth.js'
 import { audit, logAdminAction } from '../middleware/audit.js'
+import { adminLoginLimiter } from '../middleware/rateLimiters.js'
 import { logger } from '../utils/logger.js'
 
 const router = Router()
@@ -152,7 +153,7 @@ router.post(
   },
 )
 
-router.post('/login', async (req, res) => {
+router.post('/login', adminLoginLimiter, async (req, res) => {
   try {
     const { phone, password } = req.body
 
