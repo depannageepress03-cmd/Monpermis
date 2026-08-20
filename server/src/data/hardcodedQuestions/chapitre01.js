@@ -25,7 +25,7 @@ function imageUrl(n) {
 }
 
 /** Images disponibles (N.png = question N). */
-const QUESTIONS_WITH_IMAGES = new Set([3, 4, 6, 14, 15, 16, 18, 19, 20, 22, 33, 36, 44, 45, 46, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 63, 64, 66, 68, 70, 72, 73, 74, 76, 77, 78, 80, 81, 96, 97, 98, 99, 100, 101, 102, 104, 106])
+const QUESTIONS_WITH_IMAGES = new Set([3, 4, 6, 7, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 22, 33, 36, 44, 45, 46, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 63, 64, 66, 68, 70, 71, 72, 73, 74, 76, 77, 78, 80, 81, 96, 97, 98, 99, 100, 101, 102, 104, 106])
 
 function answers(questionIndex, letters, correctLetters) {
   const correct = new Set(correctLetters.map((l) => l.toUpperCase()))

@@ -1,5 +1,5 @@
 /** Invalide le cache navigateur/CDN après un remplacement de MP3 au même chemin. */
-export const CODE_MEDIA_VERSION = '20260820'
+export const CODE_MEDIA_VERSION = '20260820d'
 
 function versioned(url) {
   const value = String(url || '').trim()
