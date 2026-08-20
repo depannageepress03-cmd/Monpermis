@@ -11,6 +11,45 @@ import img1_20 from '../../assets/code-images/chapitre-1/20.png?url'
 import img1_22 from '../../assets/code-images/chapitre-1/22.png?url'
 import img1_33 from '../../assets/code-images/chapitre-1/33.png?url'
 import img1_36 from '../../assets/code-images/chapitre-1/36.png?url'
+import img1_44 from '../../assets/code-images/chapitre-1/44.png?url'
+import img1_45 from '../../assets/code-images/chapitre-1/45.png?url'
+import img1_46 from '../../assets/code-images/chapitre-1/46.png?url'
+import img1_48 from '../../assets/code-images/chapitre-1/48.png?url'
+import img1_49 from '../../assets/code-images/chapitre-1/49.png?url'
+import img1_50 from '../../assets/code-images/chapitre-1/50.png?url'
+import img1_51 from '../../assets/code-images/chapitre-1/51.png?url'
+import img1_52 from '../../assets/code-images/chapitre-1/52.png?url'
+import img1_53 from '../../assets/code-images/chapitre-1/53.png?url'
+import img1_54 from '../../assets/code-images/chapitre-1/54.png?url'
+import img1_55 from '../../assets/code-images/chapitre-1/55.png?url'
+import img1_56 from '../../assets/code-images/chapitre-1/56.png?url'
+import img1_57 from '../../assets/code-images/chapitre-1/57.png?url'
+import img1_58 from '../../assets/code-images/chapitre-1/58.png?url'
+import img1_59 from '../../assets/code-images/chapitre-1/59.png?url'
+import img1_60 from '../../assets/code-images/chapitre-1/60.png?url'
+import img1_61 from '../../assets/code-images/chapitre-1/61.png?url'
+import img1_63 from '../../assets/code-images/chapitre-1/63.png?url'
+import img1_64 from '../../assets/code-images/chapitre-1/64.png?url'
+import img1_66 from '../../assets/code-images/chapitre-1/66.png?url'
+import img1_68 from '../../assets/code-images/chapitre-1/68.png?url'
+import img1_70 from '../../assets/code-images/chapitre-1/70.png?url'
+import img1_72 from '../../assets/code-images/chapitre-1/72.png?url'
+import img1_73 from '../../assets/code-images/chapitre-1/73.png?url'
+import img1_74 from '../../assets/code-images/chapitre-1/74.png?url'
+import img1_76 from '../../assets/code-images/chapitre-1/76.png?url'
+import img1_77 from '../../assets/code-images/chapitre-1/77.png?url'
+import img1_78 from '../../assets/code-images/chapitre-1/78.png?url'
+import img1_80 from '../../assets/code-images/chapitre-1/80.png?url'
+import img1_81 from '../../assets/code-images/chapitre-1/81.png?url'
+import img1_96 from '../../assets/code-images/chapitre-1/96.png?url'
+import img1_97 from '../../assets/code-images/chapitre-1/97.png?url'
+import img1_98 from '../../assets/code-images/chapitre-1/98.png?url'
+import img1_99 from '../../assets/code-images/chapitre-1/99.png?url'
+import img1_100 from '../../assets/code-images/chapitre-1/100.png?url'
+import img1_101 from '../../assets/code-images/chapitre-1/101.png?url'
+import img1_102 from '../../assets/code-images/chapitre-1/102.png?url'
+import img1_104 from '../../assets/code-images/chapitre-1/104.png?url'
+import img1_106 from '../../assets/code-images/chapitre-1/106.png?url'
 import img2_13 from '../../assets/code-images/chapitre-2/13.png?url'
 import img2_18 from '../../assets/code-images/chapitre-2/18.png?url'
 import img2_19 from '../../assets/code-images/chapitre-2/19.png?url'
@@ -46,57 +85,57 @@ import img17_1 from '../../assets/code-images/chapitre-17/1.png?url'
 
 const MAP: Record<number, Record<number, string>> = {
   1: {
-    3: new URL('../../../assets/code-images/chapitre-1/3.png', import.meta.url).href,
-    4: new URL('../../../assets/code-images/chapitre-1/4.png', import.meta.url).href,
-    6: new URL('../../../assets/code-images/chapitre-1/6.png', import.meta.url).href,
-    14: new URL('../../../assets/code-images/chapitre-1/14.png', import.meta.url).href,
-    15: new URL('../../../assets/code-images/chapitre-1/15.png', import.meta.url).href,
-    16: new URL('../../../assets/code-images/chapitre-1/16.png', import.meta.url).href,
-    18: new URL('../../../assets/code-images/chapitre-1/18.png', import.meta.url).href,
-    19: new URL('../../../assets/code-images/chapitre-1/19.png', import.meta.url).href,
-    20: new URL('../../../assets/code-images/chapitre-1/20.png', import.meta.url).href,
-    22: new URL('../../../assets/code-images/chapitre-1/22.png', import.meta.url).href,
-    33: new URL('../../../assets/code-images/chapitre-1/33.png', import.meta.url).href,
-    36: new URL('../../../assets/code-images/chapitre-1/36.png', import.meta.url).href,
-    44: new URL('../../../assets/code-images/chapitre-1/44.png', import.meta.url).href,
-    45: new URL('../../../assets/code-images/chapitre-1/45.png', import.meta.url).href,
-    46: new URL('../../../assets/code-images/chapitre-1/46.png', import.meta.url).href,
-    48: new URL('../../../assets/code-images/chapitre-1/48.png', import.meta.url).href,
-    49: new URL('../../../assets/code-images/chapitre-1/49.png', import.meta.url).href,
-    50: new URL('../../../assets/code-images/chapitre-1/50.png', import.meta.url).href,
-    51: new URL('../../../assets/code-images/chapitre-1/51.png', import.meta.url).href,
-    52: new URL('../../../assets/code-images/chapitre-1/52.png', import.meta.url).href,
-    53: new URL('../../../assets/code-images/chapitre-1/53.png', import.meta.url).href,
-    54: new URL('../../../assets/code-images/chapitre-1/54.png', import.meta.url).href,
-    55: new URL('../../../assets/code-images/chapitre-1/55.png', import.meta.url).href,
-    56: new URL('../../../assets/code-images/chapitre-1/56.png', import.meta.url).href,
-    57: new URL('../../../assets/code-images/chapitre-1/57.png', import.meta.url).href,
-    58: new URL('../../../assets/code-images/chapitre-1/58.png', import.meta.url).href,
-    59: new URL('../../../assets/code-images/chapitre-1/59.png', import.meta.url).href,
-    60: new URL('../../../assets/code-images/chapitre-1/60.png', import.meta.url).href,
-    61: new URL('../../../assets/code-images/chapitre-1/61.png', import.meta.url).href,
-    63: new URL('../../../assets/code-images/chapitre-1/63.png', import.meta.url).href,
-    64: new URL('../../../assets/code-images/chapitre-1/64.png', import.meta.url).href,
-    66: new URL('../../../assets/code-images/chapitre-1/66.png', import.meta.url).href,
-    68: new URL('../../../assets/code-images/chapitre-1/68.png', import.meta.url).href,
-    70: new URL('../../../assets/code-images/chapitre-1/70.png', import.meta.url).href,
-    72: new URL('../../../assets/code-images/chapitre-1/72.png', import.meta.url).href,
-    73: new URL('../../../assets/code-images/chapitre-1/73.png', import.meta.url).href,
-    74: new URL('../../../assets/code-images/chapitre-1/74.png', import.meta.url).href,
-    76: new URL('../../../assets/code-images/chapitre-1/76.png', import.meta.url).href,
-    77: new URL('../../../assets/code-images/chapitre-1/77.png', import.meta.url).href,
-    78: new URL('../../../assets/code-images/chapitre-1/78.png', import.meta.url).href,
-    80: new URL('../../../assets/code-images/chapitre-1/80.png', import.meta.url).href,
-    81: new URL('../../../assets/code-images/chapitre-1/81.png', import.meta.url).href,
-    96: new URL('../../../assets/code-images/chapitre-1/96.png', import.meta.url).href,
-    97: new URL('../../../assets/code-images/chapitre-1/97.png', import.meta.url).href,
-    98: new URL('../../../assets/code-images/chapitre-1/98.png', import.meta.url).href,
-    99: new URL('../../../assets/code-images/chapitre-1/99.png', import.meta.url).href,
-    100: new URL('../../../assets/code-images/chapitre-1/100.png', import.meta.url).href,
-    101: new URL('../../../assets/code-images/chapitre-1/101.png', import.meta.url).href,
-    102: new URL('../../../assets/code-images/chapitre-1/102.png', import.meta.url).href,
-    104: new URL('../../../assets/code-images/chapitre-1/104.png', import.meta.url).href,
-    106: new URL('../../../assets/code-images/chapitre-1/106.png', import.meta.url).href,
+    3: img1_3,
+    4: img1_4,
+    6: img1_6,
+    14: img1_14,
+    15: img1_15,
+    16: img1_16,
+    18: img1_18,
+    19: img1_19,
+    20: img1_20,
+    22: img1_22,
+    33: img1_33,
+    36: img1_36,
+    44: img1_44,
+    45: img1_45,
+    46: img1_46,
+    48: img1_48,
+    49: img1_49,
+    50: img1_50,
+    51: img1_51,
+    52: img1_52,
+    53: img1_53,
+    54: img1_54,
+    55: img1_55,
+    56: img1_56,
+    57: img1_57,
+    58: img1_58,
+    59: img1_59,
+    60: img1_60,
+    61: img1_61,
+    63: img1_63,
+    64: img1_64,
+    66: img1_66,
+    68: img1_68,
+    70: img1_70,
+    72: img1_72,
+    73: img1_73,
+    74: img1_74,
+    76: img1_76,
+    77: img1_77,
+    78: img1_78,
+    80: img1_80,
+    81: img1_81,
+    96: img1_96,
+    97: img1_97,
+    98: img1_98,
+    99: img1_99,
+    100: img1_100,
+    101: img1_101,
+    102: img1_102,
+    104: img1_104,
+    106: img1_106,
   },
   2: {
     13: img2_13,

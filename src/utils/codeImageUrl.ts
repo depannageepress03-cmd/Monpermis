@@ -9,13 +9,24 @@ function parseCodeImagePath(url: string): { chapterOrder: number; imageIndex: nu
   return null
 }
 
+function isUsableBundledUrl(href: string): boolean {
+  if (!href) return false
+  // new URL(..., import.meta.url) mal résolu → file:// hors du bundle Vite
+  if (/^file:/i.test(href)) return false
+  return true
+}
+
 /** Image embarquée en priorité, sinon URL API. */
 export function resolveCodeImageUrl(url?: string | null): string {
   if (!url?.trim()) return ''
   const parsed = parseCodeImagePath(url)
   if (parsed) {
     const bundled = getBundledCodeImageUrl(parsed.chapterOrder, parsed.imageIndex)
-    if (bundled) return bundled
+    if (bundled && isUsableBundledUrl(bundled)) return bundled
+    // Fallback API /content si le bundle est cassé ou absent
+    return resolveMediaUrl(
+      `/content/code-images/chapitre-${parsed.chapterOrder}/${parsed.imageIndex}.png`,
+    )
   }
   if (/^local:\/\//i.test(url)) return ''
   return resolveMediaUrl(url)

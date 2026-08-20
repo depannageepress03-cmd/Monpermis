@@ -8,6 +8,8 @@ type RevealProps = {
   /** Variante d’animation */
   variant?: 'up' | 'fade' | 'scale' | 'blur'
   as?: 'div' | 'section' | 'li'
+  /** Si true, révèle dès le mount (contenu above-the-fold) */
+  eager?: boolean
 }
 
 /**
@@ -20,6 +22,7 @@ export function Reveal({
   delay = 0,
   variant = 'up',
   as: Tag = 'div',
+  eager = false,
 }: RevealProps) {
   const ref = useRef<HTMLElement | null>(null)
 
@@ -27,27 +30,37 @@ export function Reveal({
     const el = ref.current
     if (!el) return
 
+    const reveal = () => el.classList.add('is-revealed')
+
     const reduced =
       typeof window !== 'undefined' &&
       window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
-    if (reduced) {
-      el.classList.add('is-revealed')
+    if (reduced || eager) {
+      reveal()
+      return
+    }
+
+    // Déjà visible au premier paint → pas d’opacity bloquée à 0
+    const rect = el.getBoundingClientRect()
+    const vh = window.innerHeight || document.documentElement.clientHeight
+    if (rect.top < vh * 0.95 && rect.bottom > 0) {
+      reveal()
       return
     }
 
     const io = new IntersectionObserver(
       ([entry]) => {
         if (!entry?.isIntersecting) return
-        el.classList.add('is-revealed')
+        reveal()
         io.disconnect()
       },
-      { threshold: 0.16, rootMargin: '0px 0px -8% 0px' },
+      { threshold: 0.05, rootMargin: '0px 0px 40px 0px' },
     )
 
     io.observe(el)
     return () => io.disconnect()
-  }, [])
+  }, [eager])
 
   const style = { '--reveal-delay': `${delay}ms` } as CSSProperties
 

@@ -204,7 +204,7 @@ export function CodeRoutePage() {
           </div>
         ) : (
           <>
-            <Reveal delay={60}>
+            <Reveal delay={60} eager>
             <div className="code-route-progress" aria-hidden="true">
               <span style={{ flex: Math.max(done, 0.15) }} />
               <span />
@@ -221,18 +221,18 @@ export function CodeRoutePage() {
               )}
             </p>
             </Reveal>
-            <Reveal delay={120}>
-            <CodeRouteBanner />
-            </Reveal>
+            <div className="code-route-banner-wrap code-route-anim-card" style={{ animationDelay: '0.12s' }}>
+              <CodeRouteBanner />
+            </div>
             <div className="category-grid">
               {categories.map((category, index) => {
                 const Icon = category.Icon
                 return (
-                  <Reveal key={category.id} delay={180 + index * 70} variant="scale">
                   <button
+                    key={category.id}
                     type="button"
                     className={`category-card category-card--photo ${category.className} code-route-anim-card`}
-                    style={{ animationDelay: `${0.28 + index * 0.09}s` }}
+                    style={{ animationDelay: `${0.2 + index * 0.08}s` }}
                     onClick={() => navigate(`/code-de-la-route/${category.id}`)}
                   >
                     <img src={category.image} alt="" className="category-card-image" draggable={false} />
@@ -248,13 +248,10 @@ export function CodeRoutePage() {
                       <ChevronRight size={16} />
                     </span>
                   </button>
-                  </Reveal>
                 )
               })}
             </div>
-            <Reveal delay={480}>
             <HomeBottomAnimation />
-            </Reveal>
           </>
         )}
       </div>
