@@ -20,7 +20,7 @@ import { SuccessCelebration } from '../../components/SuccessCelebration'
 import { useAuth } from '../../hooks/useAuth'
 import { useLeaveGuard } from '../../hooks/useLeaveGuard'
 import { getChapterOrderById } from '../../data/codeRoute/chapterIndex'
-import { getRevisionPracticeTranscript } from '../../data/codeRoute/questionTranscripts'
+import { getRevisionPracticePromptTranscript, enrichAnswersFromTranscript, resolveQuestionTranscript } from '../../data/codeRoute/questionTranscripts'
 import { playFailSound, playSuccessSound, stopAllQuizAudio, unlockQuizAudio } from '../../utils/quizSounds'
 import { resolveMediaUrl } from '../../utils/mediaUrl'
 import { resolveCodeImageUrl } from '../../utils/codeImageUrl'
@@ -164,14 +164,23 @@ export function LearnerChapterQuizPage({
   // Sélection d’une réponse : ne coupe PAS l’audio (2 lectures complètes jusqu’à Continuer / fin de séquence).
 
   const question = questions[index]
+  const chapterOrder = getChapterOrderById(chapterId) || undefined
   const practiceTranscript =
     mode === 'practice' && question
-      ? getRevisionPracticeTranscript(question.prompt, {
+      ? getRevisionPracticePromptTranscript(question.prompt, {
           id: question.id,
           order: question.order,
-          chapterOrder: getChapterOrderById(chapterId) || undefined,
+          chapterOrder,
         })
       : ''
+  const displayAnswers = useMemo(() => {
+    if (!question) return []
+    const transcript = resolveQuestionTranscript(
+      { id: question.id, order: question.order, prompt: question.prompt },
+      chapterOrder,
+    )
+    return enrichAnswersFromTranscript(question.answers, transcript)
+  }, [question, chapterOrder])
 
   const progressLabel = useMemo(() => {
     if (!questions.length) return ''
@@ -345,7 +354,7 @@ export function LearnerChapterQuizPage({
                     Question {i + 1} — {entry.isCorrect ? 'Bonne réponse' : 'À revoir'}
                   </p>
                   {(() => {
-                    const entryTranscript = getRevisionPracticeTranscript(entry.question.prompt, {
+                    const entryTranscript = getRevisionPracticePromptTranscript(entry.question.prompt, {
                       id: entry.question.id,
                       order: entry.question.order,
                       chapterOrder: getChapterOrderById(chapterId) || undefined,
@@ -370,7 +379,17 @@ export function LearnerChapterQuizPage({
                     return null
                   })()}
                   <div className="learner-quiz-answers">
-                    {entry.question.answers.map((answer) => {
+                    {enrichAnswersFromTranscript(
+                      entry.question.answers,
+                      resolveQuestionTranscript(
+                        {
+                          id: entry.question.id,
+                          order: entry.question.order,
+                          prompt: entry.question.prompt,
+                        },
+                        getChapterOrderById(chapterId) || undefined,
+                      ),
+                    ).map((answer) => {
                       const selected = entry.selectedIds.includes(answer.id)
                       const isCorrect = entry.correctAnswerIds.includes(answer.id)
                       let className = 'learner-quiz-answer'
@@ -496,7 +515,7 @@ export function LearnerChapterQuizPage({
               ) : null}
 
               <div className="learner-quiz-answers">
-                {question.answers.map((answer) => {
+                {displayAnswers.map((answer) => {
                   const selected = selectedIds.includes(answer.id)
                   const isCorrect = result?.correctAnswerIds.includes(answer.id)
                   let className = 'learner-quiz-answer'

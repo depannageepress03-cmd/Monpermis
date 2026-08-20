@@ -21,6 +21,7 @@ import { useFocusRefresh } from '../../hooks/useFocusRefresh'
 import { useLeaveGuard } from '../../hooks/useLeaveGuard'
 import { stopAllQuizAudio } from '../../utils/quizSounds'
 import { resolveCodeImageUrl } from '../../utils/codeImageUrl'
+import { enrichAnswersFromTranscript, resolveQuestionTranscript } from '../../data/codeRoute/questionTranscripts'
 import '../../styles/auth.css'
 import '../../styles/learner.css'
 
@@ -264,6 +265,15 @@ export function ExamensTestTakePage() {
   const questions = attempt?.questions || []
   questionsRef.current = questions
   const question = questions[index]
+  const displayAnswers = useMemo(() => {
+    if (!question) return []
+    const transcript = resolveQuestionTranscript({
+      id: question.id,
+      order: question.order,
+      prompt: question.prompt,
+    })
+    return enrichAnswersFromTranscript(question.answers, transcript)
+  }, [question])
   const progressLabel = useMemo(() => {
     if (!questions.length) return ''
     return `Question ${Math.min(index + 1, questions.length)} / ${questions.length}`
@@ -483,7 +493,7 @@ export function ExamensTestTakePage() {
               ) : null}
 
               <div className="learner-quiz-answers">
-                {question.answers.map((answer) => {
+                {displayAnswers.map((answer) => {
                   const selected = selectedIds.includes(answer.id)
                   let className = 'learner-quiz-answer'
                   if (selected) className += ' is-selected'
@@ -496,6 +506,7 @@ export function ExamensTestTakePage() {
                       onClick={() => toggleAnswer(answer.id)}
                       disabled={submitted || checking}
                     >
+                      <span className={`learner-quiz-check ${selected ? 'is-on' : ''}`} aria-hidden />
                       <strong>{answer.label.toUpperCase()}</strong>
                       {answer.text ? <span>{answer.text}</span> : null}
                     </button>

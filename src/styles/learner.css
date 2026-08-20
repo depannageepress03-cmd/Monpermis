@@ -526,9 +526,9 @@
   width: 100%;
   max-width: 100%;
   height: auto;
-  aspect-ratio: 16 / 10;
+  aspect-ratio: 2 / 1;
   border-radius: 12px;
-  object-fit: contain;
+  object-fit: cover;
   background: #eef1f5;
 }
 
@@ -689,15 +689,18 @@
   box-shadow: inset 0 0 0 2px #fff;
 }
 
+.learner-quiz-answer > span:not(.learner-quiz-check) {
+  grid-column: 2 / -1;
+  color: #334155;
+  line-height: 1.35;
+  font-weight: 500;
+}
+
 .learner-quiz-answer strong {
   font-size: 0.82rem;
   letter-spacing: 0.02em;
   grid-column: 2 / -1;
-}
-
-.learner-quiz-answer > span:not(.learner-quiz-check) {
-  grid-column: 2 / -1;
-  color: #334155;
+  color: #0f172a;
 }
 
 .learner-quiz-answer.is-selected {

@@ -79,7 +79,7 @@ export const CHAPITRE_01_QUESTIONS = [
   question(14, ['A', 'B', 'C', 'D'], ['D']),
   question(15, ['A', 'B', 'C'], ['B']),
   question(16, ['A', 'B', 'C', 'D'], ['D']),
-  question(17, ['A', 'B', 'C'], ['C']),
+  question(17, ['A', 'B', 'C'], ['B']),
   question(18, ['A', 'B', 'C', 'D'], ['B']),
   question(19, ['A', 'B', 'C'], ['C']),
   question(20, ['A', 'B', 'C'], ['B']),
@@ -168,5 +168,5 @@ export const CHAPITRE_01_QUESTIONS = [
   question(103, ['A', 'B', 'C', 'D'], ['A', 'D']),
   question(104, ['A', 'B', 'C', 'D'], ['D']),
   question(105, ['A', 'B', 'C', 'D'], ['B']),
-  question(106, ['A', 'B', 'C'], ['B']),
+  question(106, ['A', 'B', 'C'], ['A']),
 ]

@@ -28,6 +28,10 @@ import { PageNavbar } from '../../components/PageNavbar'
 import { QuestionAudioSequence } from '../../components/QuestionAudioSequence'
 import { QuestionPromptHtml } from '../../components/QuestionPromptHtml'
 import { ScreenLoader } from '../../components/ScreenLoader'
+import {
+  enrichAnswersFromTranscript,
+  resolveQuestionTranscript,
+} from '../../data/codeRoute/questionTranscripts'
 import { useFocusRefresh } from '../../hooks/useFocusRefresh'
 import { useLeaveGuard } from '../../hooks/useLeaveGuard'
 import { useRequireAuth } from '../../hooks/useRequireAuth'
@@ -333,6 +337,15 @@ export function ExamensTestTakeScreen() {
   const questions = attempt?.questions || []
   questionsRef.current = questions
   const question = questions[index]
+  const displayAnswers = useMemo(() => {
+    if (!question) return []
+    const transcript = resolveQuestionTranscript({
+      id: question.id,
+      order: question.order,
+      prompt: question.prompt,
+    })
+    return enrichAnswersFromTranscript(question.answers, transcript)
+  }, [question])
   const progressLabel = useMemo(() => {
     if (!questions.length) return ''
     return `Question ${Math.min(index + 1, questions.length)} / ${questions.length}`
@@ -571,7 +584,7 @@ export function ExamensTestTakeScreen() {
                   onSequenceComplete={handleSequenceComplete}
                 />
               ) : null}
-              {question.answers.map((answer) => {
+              {displayAnswers.map((answer) => {
                 const selected = selectedIds.includes(answer.id)
                 return (
                   <Pressable

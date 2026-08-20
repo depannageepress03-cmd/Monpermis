@@ -82,7 +82,7 @@ const CHAPITRE_1: LocalQuestion[] = [
   question(1, 14, ['A', 'B', 'C', 'D'], ['D'], [14]),
   question(1, 15, ['A', 'B', 'C'], ['B'], [15]),
   question(1, 16, ['A', 'B', 'C', 'D'], ['D'], [16]),
-  question(1, 17, ['A', 'B', 'C'], ['C'], [17]),
+  question(1, 17, ['A', 'B', 'C'], ['B'], [17]),
   question(1, 18, ['A', 'B', 'C', 'D'], ['B'], [18]),
   question(1, 19, ['A', 'B', 'C'], ['C'], [19]),
   question(1, 20, ['A', 'B', 'C'], ['B'], [20]),
@@ -171,7 +171,7 @@ const CHAPITRE_1: LocalQuestion[] = [
   question(1, 103, ['A', 'B', 'C', 'D'], ['A', 'D']),
   question(1, 104, ['A', 'B', 'C', 'D'], ['D'], [104]),
   question(1, 105, ['A', 'B', 'C', 'D'], ['B']),
-  question(1, 106, ['A', 'B', 'C'], ['B'], [106]),
+  question(1, 106, ['A', 'B', 'C'], ['A'], [106]),
 ]
 
 const CHAPITRE_2: LocalQuestion[] = [

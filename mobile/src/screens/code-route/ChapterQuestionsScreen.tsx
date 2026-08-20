@@ -49,7 +49,11 @@ import type { RootStackParamList } from '../../navigation/types'
 import { brand, dark, fonts, shadows } from '../../theme'
 import { hapticError, hapticSelect, hapticSuccess } from '../../utils/haptics'
 import { playFailSound, playSuccessSound, stopAllQuizAudio } from '../../utils/quizSounds'
-import { getRevisionPracticeTranscript } from '../../data/codeRoute/questionTranscripts'
+import {
+  enrichAnswersFromTranscript,
+  getRevisionPracticePromptTranscript,
+  resolveQuestionTranscript,
+} from '../../data/codeRoute/questionTranscripts'
 import { rememberChapterOrder } from '../../data/codeRoute/chapterIndex'
 import { resolveQuestionImageUri } from '../../utils/questionImages'
 import { tracker } from '../../tracking/tracker'
@@ -247,12 +251,20 @@ export function ChapterQuestionsScreen() {
   const question = questions[index]
   const practiceTranscript =
     !isTest && question
-      ? getRevisionPracticeTranscript(question.prompt, {
+      ? getRevisionPracticePromptTranscript(question.prompt, {
           id: question.id,
           order: question.order,
           chapterOrder: typeof chapterOrder === 'number' ? chapterOrder : undefined,
         })
       : ''
+  const displayAnswers = useMemo(() => {
+    if (!question) return []
+    const transcript = resolveQuestionTranscript(
+      { id: question.id, order: question.order, prompt: question.prompt },
+      typeof chapterOrder === 'number' ? chapterOrder : undefined,
+    )
+    return enrichAnswersFromTranscript(question.answers, transcript)
+  }, [question, chapterOrder])
   const [resolvedImages, setResolvedImages] = useState<{ key: string; uri: string }[]>([])
 
   useEffect(() => {
@@ -579,7 +591,7 @@ export function ChapterQuestionsScreen() {
                   </View>
                   {(() => {
                     const entryTranscript = !isTest
-                      ? getRevisionPracticeTranscript(entry.question.prompt, {
+                      ? getRevisionPracticePromptTranscript(entry.question.prompt, {
                           id: entry.question.id,
                           order: entry.question.order,
                           chapterOrder: typeof chapterOrder === 'number' ? chapterOrder : undefined,
@@ -604,7 +616,17 @@ export function ChapterQuestionsScreen() {
                     }
                     return null
                   })()}
-                  {entry.question.answers.map((answer) => {
+                  {enrichAnswersFromTranscript(
+                    entry.question.answers,
+                    resolveQuestionTranscript(
+                      {
+                        id: entry.question.id,
+                        order: entry.question.order,
+                        prompt: entry.question.prompt,
+                      },
+                      typeof chapterOrder === 'number' ? chapterOrder : undefined,
+                    ),
+                  ).map((answer) => {
                     const wasSelected = entry.selectedIds.includes(answer.id)
                     const isGood = entry.correctAnswerIds.includes(answer.id)
                     return (
@@ -738,7 +760,7 @@ export function ChapterQuestionsScreen() {
                       key={img.key}
                       source={{ uri: img.uri }}
                       style={styles.image}
-                      resizeMode="contain"
+                      resizeMode="cover"
                     />
                   ))}
                 </View>
@@ -751,7 +773,7 @@ export function ChapterQuestionsScreen() {
                 </Text>
               ) : null}
 
-              {question.answers.map((answer) => {
+              {displayAnswers.map((answer) => {
                 const selected = selectedIds.has(answer.id)
                 const isCorrectAnswer = result?.correctAnswerIds.includes(answer.id)
                 const showCorrect = Boolean(result && isCorrectAnswer)
@@ -1018,7 +1040,7 @@ const styles = StyleSheet.create({
   },
   image: {
     width: '100%',
-    aspectRatio: 16 / 10,
+    aspectRatio: 2 / 1,
     borderRadius: 12,
     backgroundColor: '#FFFFFF',
   },

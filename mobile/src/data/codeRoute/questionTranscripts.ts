@@ -905,6 +905,48 @@ function formatTranscript(text: string): string {
     .trim()
 }
 
+/** Découpe énoncé / choix (A–E) depuis une transcription TTS. */
+export function splitTranscriptParts(raw: string): {
+  prompt: string
+  choices: Record<string, string>
+} {
+  const text = formatTranscript(raw)
+  if (!text) return { prompt: '', choices: {} }
+
+  const choices: Record<string, string> = {}
+  const re = /(?:^|\n)\s*([A-E])\.\s+([^\n]+)/g
+  let firstChoiceAt = -1
+  let match: RegExpExecArray | null
+  while ((match = re.exec(text)) !== null) {
+    if (firstChoiceAt < 0) firstChoiceAt = match.index
+    const letter = match[1].toUpperCase()
+    const body = match[2].trim().replace(/[.;,\s]+$/g, '').trim()
+    if (body) choices[letter] = body
+  }
+
+  if (firstChoiceAt < 0) return { prompt: text, choices: {} }
+  return {
+    prompt: text.slice(0, firstChoiceAt).trim(),
+    choices,
+  }
+}
+
+/** Remplit `answer.text` depuis la transcription si la banque n’a que la lettre. */
+export function enrichAnswersFromTranscript<T extends { label: string; text?: string }>(
+  answers: T[],
+  transcript: string,
+): T[] {
+  if (!answers?.length) return answers
+  const { choices } = splitTranscriptParts(transcript)
+  if (!Object.keys(choices).length) return answers
+  return answers.map((answer) => {
+    if (String(answer.text || '').trim()) return answer
+    const letter = String(answer.label || '').trim().toUpperCase()
+    const text = choices[letter]
+    return text ? { ...answer, text } : answer
+  })
+}
+
 export function getQuestionTranscript(chapterOrder: number, questionOrder: number): string {
   const chapter = Number(chapterOrder)
   const order = Number(questionOrder)
@@ -956,4 +998,14 @@ export function getRevisionPracticeTranscript(
   meta?: { id?: string; order?: number; chapterOrder?: number } | null,
 ): string {
   return resolveQuestionTranscript({ id: meta?.id, order: meta?.order, prompt }, meta?.chapterOrder)
+}
+
+/** Sous-titres : énoncé seul (les choix s’affichent à côté des cases). */
+export function getRevisionPracticePromptTranscript(
+  prompt?: { text?: string; transcript?: string } | null,
+  meta?: { id?: string; order?: number; chapterOrder?: number } | null,
+): string {
+  const full = getRevisionPracticeTranscript(prompt, meta)
+  const { prompt: promptOnly } = splitTranscriptParts(full)
+  return promptOnly || full
 }
