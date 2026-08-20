@@ -15,6 +15,7 @@ import { CancelReservationModal } from '../components/CancelReservationModal'
 import { EmptyState } from '../components/EmptyState'
 import { PageNavbar } from '../components/PageNavbar'
 import { PageLoader } from '../components/PageLoader'
+import { Reveal } from '../components/Reveal'
 import { useAuth } from '../hooks/useAuth'
 import '../styles/auth.css'
 import '../styles/learner.css'
@@ -224,6 +225,7 @@ export function ConduitePage() {
           </div>
         ) : (
           <>
+        <Reveal delay={80}>
         <header className="auth-header learner-header learner-anim-header">
           <div className="learner-courses-accents" aria-hidden="true">
             <span className="learner-accent learner-accent-green" />
@@ -232,7 +234,9 @@ export function ConduitePage() {
           </div>
           <p>Tableau de bord, réservations et leçons pratiques.</p>
         </header>
+        </Reveal>
 
+        <Reveal delay={140}>
         <div className="auth-card learner-card conduite-card">
           {error ? <p className="form-error">{error}</p> : null}
 
@@ -342,6 +346,7 @@ export function ConduitePage() {
             </p>
           </div>
         </div>
+        </Reveal>
           </>
         )}
       </div>

@@ -49,7 +49,11 @@ export function CodeRouteBanner() {
         ))}
       </div>
       <div className="code-route-banner-fade" aria-hidden="true" />
-      <div className="code-route-banner-caption">
+      <span className="code-route-banner-badge">
+        <i />
+        Ton parcours
+      </span>
+      <div className="code-route-banner-caption" key={index}>
         <p className="code-route-banner-title">Code de la route</p>
         <p className="code-route-banner-text">
           Révision, sujets test et examen blanc — avance à ton rythme.

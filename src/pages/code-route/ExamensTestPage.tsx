@@ -11,8 +11,11 @@ import {
   type PracticeExamsOverview,
 } from '../../api/content'
 import { QuestionAudioSequence } from '../../components/QuestionAudioSequence'
+import { QuestionPromptHtml } from '../../components/QuestionPromptHtml'
 import { PageLoader } from '../../components/PageLoader'
 import { PageNavbar } from '../../components/PageNavbar'
+import { QuizProgressRing } from '../../components/QuizProgressRing'
+import { SuccessCelebration } from '../../components/SuccessCelebration'
 import { useAuth } from '../../hooks/useAuth'
 import { useFocusRefresh } from '../../hooks/useFocusRefresh'
 import { useLeaveGuard } from '../../hooks/useLeaveGuard'
@@ -187,6 +190,7 @@ export function ExamensTestTakePage() {
     passScore: number
   } | null>(null)
   const [sequenceLive, setSequenceLive] = useState(true)
+  const [pulseAnswerId, setPulseAnswerId] = useState<string | null>(null)
 
   const selectedIdsRef = useRef(selectedIds)
   selectedIdsRef.current = selectedIds
@@ -267,6 +271,8 @@ export function ExamensTestTakePage() {
 
   const toggleAnswer = (answerId: string) => {
     if (submitted || checking) return
+    setPulseAnswerId(answerId)
+    window.setTimeout(() => setPulseAnswerId(null), 420)
     setSelectedIds((current) =>
       current.includes(answerId)
         ? current.filter((id) => id !== answerId)
@@ -414,34 +420,43 @@ export function ExamensTestTakePage() {
           ) : null}
 
           {!loading && finished && finalScore ? (
-            <div className="learner-empty">
-              <h2>{finalScore.passed ? 'Examen réussi' : 'Examen non réussi'}</h2>
-              <p className="subtitle">
-                Note finale : <strong>{finalScore.scoreLabel}</strong> (moyenne{' '}
-                {finalScore.passScore}/20)
-              </p>
-              <div className="learner-quiz-actions">
-                <button
-                  type="button"
-                  className="btn-primary"
-                  onClick={() => navigate('/code-de-la-route/mes-notes')}
-                >
-                  Voir mes notes
-                </button>
-                <button
-                  type="button"
-                  className="btn-outline"
-                  onClick={() => navigate('/code-de-la-route/examens-test')}
-                >
-                  Retour aux examens
-                </button>
-              </div>
-            </div>
+            <SuccessCelebration
+              title={finalScore.passed ? 'Examen réussi' : 'Examen non réussi'}
+              subtitle={
+                <p className="subtitle">
+                  Note finale : <strong>{finalScore.scoreLabel}</strong> (moyenne{' '}
+                  {finalScore.passScore}/20)
+                </p>
+              }
+              passed={finalScore.passed}
+            >
+              <button
+                type="button"
+                className="btn-primary"
+                onClick={() => navigate('/code-de-la-route/mes-notes')}
+              >
+                Voir mes notes
+              </button>
+              <button
+                type="button"
+                className="btn-outline"
+                onClick={() => navigate('/code-de-la-route/examens-test')}
+              >
+                Retour aux examens
+              </button>
+            </SuccessCelebration>
           ) : null}
 
           {!loading && !error && question && !finished ? (
             <form className="learner-quiz">
-              <p className="learner-quiz-progress">{progressLabel}</p>
+              <div key={index} className="mp-quiz-enter">
+              <div className="learner-quiz-progress-row">
+                <QuizProgressRing
+                  current={Math.min(index + 1, questions.length)}
+                  total={questions.length}
+                />
+                <p className="learner-quiz-progress">{progressLabel}</p>
+              </div>
               {(question.correctCount ?? 1) > 1 ? (
                 <span className="learner-multi-badge">
                   {question.correctCount} bonnes réponses à cocher
@@ -455,7 +470,7 @@ export function ExamensTestTakePage() {
                 </div>
               ) : null}
               {question.prompt?.text ? (
-                <p className="learner-quiz-prompt">{question.prompt.text}</p>
+                <QuestionPromptHtml className="learner-quiz-prompt" text={question.prompt?.text} />
               ) : null}
               {sequenceLive && !submitted ? (
                 <QuestionAudioSequence
@@ -472,6 +487,7 @@ export function ExamensTestTakePage() {
                   const selected = selectedIds.includes(answer.id)
                   let className = 'learner-quiz-answer'
                   if (selected) className += ' is-selected'
+                  if (pulseAnswerId === answer.id) className += ' is-pulse'
                   return (
                     <button
                       key={answer.id}
@@ -504,6 +520,7 @@ export function ExamensTestTakePage() {
                     valide sans attendre. Sans choix à la fin : question ratée.
                   </p>
                 ) : null}
+              </div>
               </div>
             </form>
           ) : null}

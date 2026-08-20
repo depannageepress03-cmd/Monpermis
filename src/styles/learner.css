@@ -1760,3 +1760,33 @@
   margin: 0;
   color: #5b6470;
 }
+
+.learner-header.is-quiz-compact h1,
+.learner-header.is-quiz-compact p:not(.learner-kicker) {
+  display: none;
+}
+
+.learner-quiz-progress-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.learner-quiz-ring {
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  border: 3.5px solid rgba(0, 176, 80, 0.18);
+  box-shadow: inset 0 0 0 3px #00b050;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: #00b050;
+}
+
+.learner-quiz-prompt p {
+  margin: 0 0 8px;
+}

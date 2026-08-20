@@ -89,7 +89,7 @@ export function LoginPage() {
   }
 
   return (
-    <AuthStage tagline="Code, conduite, confiance — avance à ton rythme." imageSrc="/home/i2.jpg">
+    <AuthStage tagline="Code, conduite, confiance, avance à ton rythme." imageSrc="/home/i2.jpg">
       <p className="auth-stage-kicker">Connexion</p>
       <h2 className="auth-stage-heading">Content de te revoir</h2>
       <p className="auth-stage-lead">Connecte-toi pour reprendre ta préparation au permis.</p>
@@ -133,7 +133,7 @@ export function LoginPage() {
         </div>
 
         <p className="signin-forgot">
-          <Link to="/mot-de-passe-oublie">Code oublié ?</Link>
+          <Link to="/mot-de-passe-oublie">Mot de passe oublié ?</Link>
         </p>
 
         <button

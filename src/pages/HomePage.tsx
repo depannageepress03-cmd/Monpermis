@@ -1,27 +1,18 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import {
-  Bell,
-  ChevronRight,
-  CreditCard,
-  History,
-  Lock,
-  LogOut,
-  MessageCircle,
-  Settings,
-  User,
-  X,
-} from 'lucide-react'
+import { Bell, BookOpen, ChevronRight, Lock, User, Video } from 'lucide-react'
 import { supportWhatsAppUrl } from '../utils/support'
 import { clearSession } from '../api/auth'
 import { fetchUnreadCount } from '../api/notifications'
 import { fetchAccessMe, type AccessMe } from '../api/accessRequests'
+import { AccountSheet } from '../components/AccountSheet'
 import { BrandName } from '../components/BrandName'
 import { HomeBottomAnimation } from '../components/HomeBottomAnimation'
 import { PageSkeleton } from '../components/PageSkeleton'
 import { useAuth } from '../hooks/useAuth'
+import { ContentReveal } from '../components/ContentReveal'
 import { useFocusRefresh } from '../hooks/useFocusRefresh'
-import { getActiveSubscriptions } from '../utils/subscriptionSummary'
+import { useHeroParallax } from '../hooks/useHeroParallax'
 import '../styles/auth.css'
 import '../styles/learner.css'
 
@@ -39,6 +30,15 @@ export function HomePage() {
   const [accessMe, setAccessMe] = useState<AccessMe | null>(null)
   const [accessReady, setAccessReady] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
+  const [marqueeIndex, setMarqueeIndex] = useState(0)
+  const heroDecorRef = useRef<HTMLImageElement>(null)
+  useHeroParallax(heroDecorRef)
+
+  const loadUnread = () => {
+    void fetchUnreadCount()
+      .then(({ unreadCount: count }) => setUnreadCount(count))
+      .catch(() => setUnreadCount(0))
+  }
 
   useEffect(() => {
     if (!user) return
@@ -47,21 +47,27 @@ export function HomePage() {
       .then(setAccessMe)
       .catch(() => setAccessMe(null))
       .finally(() => setAccessReady(true))
-    void fetchUnreadCount()
-      .then(({ unreadCount: count }) => setUnreadCount(count))
-      .catch(() => setUnreadCount(0))
+    loadUnread()
   }, [user])
 
   useFocusRefresh(Boolean(user), () => {
     void fetchAccessMe().then(setAccessMe).catch(() => setAccessMe(null))
+    loadUnread()
   })
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setMarqueeIndex((value) => (value % 5) + 1)
+    }, 4200)
+    return () => window.clearInterval(timer)
+  }, [])
 
   const handleLogout = () => {
     clearSession()
     navigate('/intro', { replace: true })
   }
 
-  if (loading || !user || !accessReady) {
+  if (loading || !user) {
     return (
       <div className="home-app" data-home-layout="fullbleed-v3">
         <div className="home-app-inner">
@@ -71,150 +77,29 @@ export function HomePage() {
     )
   }
 
-  const activeSubscriptions = getActiveSubscriptions(accessMe)
-  const nearestSub = activeSubscriptions[0]
-
-  const fullName = `${user.firstName} ${user.lastName}`.trim()
-  const needsPhone = !String(user.phone || '').trim()
+  const greeting = greetingWord()
   const codeLocked = accessMe ? !accessMe.access.code : false
   const conduiteLocked = accessMe
     ? !(accessMe.access.conduite_videos || accessMe.access.conduite_heures || accessMe.user.soldeHeures > 0)
     : false
-  const hasActiveAccess =
-    Boolean(accessMe) &&
-    (Object.values(accessMe!.access).some(Boolean) || accessMe!.user.soldeHeures > 0)
-  const pendingRequest = accessMe?.pendingRequest
-
-  const subStrip = (
-    <section className="home-app-sub-strip">
-      {hasActiveAccess ? (
-        <>
-          <div>
-            <strong>Accès actifs</strong>
-            <span>
-              {nearestSub
-                ? `${nearestSub.label} · ${nearestSub.daysLeft} j restant${nearestSub.daysLeft > 1 ? 's' : ''}`
-                : 'Parcours accessibles'}
-            </span>
-          </div>
-          <button type="button" onClick={() => navigate('/abonnement')}>
-            {nearestSub && nearestSub.daysLeft <= 7 ? 'Renouveler' : 'Gérer'}
-          </button>
-        </>
-      ) : (
-        <>
-          <div>
-            <strong>{pendingRequest ? 'Paiement en validation' : 'Accès verrouillé'}</strong>
-            <span>
-              {pendingRequest ? 'En attente de validation' : 'Achetez un accès pour débloquer'}
-            </span>
-          </div>
-          <button type="button" onClick={() => navigate('/abonnement')}>
-            Voir les offres
-          </button>
-        </>
-      )}
-    </section>
-  )
-
-  const marquee = (
-    <div className="home-image-marquee home-app-marquee" aria-hidden="true">
-      <div className="home-image-marquee-track">
-        {[1, 2, 3, 4, 5, 1].map((n, i) => (
-          <img
-            key={`${n}-${i}`}
-            src={`/home/i${n}.jpg`}
-            alt=""
-            className="home-image-marquee-item"
-          />
-        ))}
-      </div>
-    </div>
-  )
-
-  const accessButton = (
-    <button
-      type="button"
-      className="home-app-path home-app-path--panel home-app-path--access home-app-access-top"
-      onClick={() => navigate('/abonnement')}
-    >
-      <span className="home-app-path-shade" aria-hidden="true" />
-      <span className="home-app-path-text">
-        <strong>Abonnement</strong>
-        <small>{hasActiveAccess ? 'Gérer mes accès' : 'Débloquer les parcours'}</small>
-      </span>
-      <ChevronRight size={22} className="home-app-path-chevron" />
-    </button>
-  )
-
-  const pathsSection = (
-    <section className="home-desk-paths home-app-paths-block">
-      <p className="home-app-section-label">Choisis ton parcours</p>
-      <div className="home-app-paths">
-        <button
-          type="button"
-          className={`home-app-path home-app-path--photo home-app-path--panel home-app-path--code${codeLocked ? ' is-locked' : ''}`}
-          onClick={() => navigate('/code-de-la-route')}
-        >
-          <img
-            src="/home/paths/code.jpg"
-            alt=""
-            className="home-app-path-image"
-            draggable={false}
-          />
-          <span className="home-app-path-shade" aria-hidden="true" />
-          <span className="home-app-path-text">
-            <strong>Code de la route</strong>
-            <small>
-              {codeLocked ? (
-                <>
-                  <Lock size={12} /> Accès requis
-                </>
-              ) : (
-                'Cours, quiz & examens'
-              )}
-            </small>
-          </span>
-          <ChevronRight size={22} className="home-app-path-chevron" />
-        </button>
-
-        <button
-          type="button"
-          className={`home-app-path home-app-path--photo home-app-path--panel home-app-path--drive${conduiteLocked ? ' is-locked' : ''}`}
-          onClick={() => navigate('/conduite')}
-        >
-          <img
-            src="/home/paths/conduite.jpg"
-            alt=""
-            className="home-app-path-image"
-            draggable={false}
-          />
-          <span className="home-app-path-shade" aria-hidden="true" />
-          <span className="home-app-path-text">
-            <strong>Conduite</strong>
-            <small>
-              {conduiteLocked ? (
-                <>
-                  <Lock size={12} /> Accès requis
-                </>
-              ) : (
-                'Leçons & réservations'
-              )}
-            </small>
-          </span>
-          <ChevronRight size={22} className="home-app-path-chevron" />
-        </button>
-      </div>
-    </section>
-  )
+  const needsPhone = !String(user.phone || '').trim()
+  const activeSlide = marqueeIndex === 0 ? 1 : marqueeIndex
 
   return (
-    <div className="home-app home-app--static" data-home-layout="route-claire">
+    <div className="home-app home-app--scroll" data-home-layout="route-claire">
+      <ContentReveal
+        loading={!accessReady}
+        skeleton={
+          <div className="home-app-inner">
+            <PageSkeleton variant="home" />
+          </div>
+        }
+      >
       <div className="home-app-inner">
         <header className="home-app-top">
           <div className="home-app-brand">
             <div className="home-app-logo-badge">
-              <img src="/logo.png" alt="" width={32} height={32} />
+              <img src="/logo.png" alt="" width={22} height={22} />
             </div>
             <BrandName as="h1" className="home-app-brand-name" />
           </div>
@@ -241,143 +126,138 @@ export function HomePage() {
           </div>
         </header>
 
+        <section className="home-app-hero home-app-hero-row home-app-hero--enter">
+          <div className="home-app-hero-copy">
+            <p className="home-app-eyebrow">{greeting},</p>
+            <h2 className="home-app-name">{user.firstName}</h2>
+            <p className="home-app-subtitle">Code, conduite, ta route vers le permis.</p>
+          </div>
+          <div className="home-app-hero-decor mp-hero-parallax" aria-hidden="true">
+            <img ref={heroDecorRef} src="/home/hero-permis.png" alt="" className="mp-hero-parallax-media" />
+          </div>
+        </section>
+
         {needsPhone ? (
-          <section
-            className="home-app-sub-strip home-app-sub-strip--warn"
-          >
-            <div>
-              <strong>Numéro manquant</strong>
-              <span>Ajoute ton téléphone pour Mobile Money et les rappels.</span>
-            </div>
-            <button type="button" onClick={() => navigate('/profil')}>
-              Compléter
-            </button>
-          </section>
+          <button type="button" className="home-app-phone-strip" onClick={() => navigate('/profil')}>
+            <span>Numéro manquant — ajoute ton téléphone</span>
+            <strong>Compléter</strong>
+            <ChevronRight size={16} />
+          </button>
         ) : null}
 
-        {/* Mobile: abonnement au-dessus, images, puis parcours — page fixe */}
-        <div className="home-mobile-stack">
-          <section className="home-app-hero home-app-hero--enter">
-            <p className="home-app-eyebrow">{greetingWord()}</p>
-            <h2 className="home-app-name">{user.firstName}</h2>
-            <p className="home-app-subtitle">Code, conduite — ta route vers le permis.</p>
-          </section>
-          {subStrip}
-          {accessButton}
-          <p className="home-app-section-label">Sur la route avec Monpermis</p>
-          {marquee}
-          {pathsSection}
-          <div className="home-app-bottom-anim">
-            <HomeBottomAnimation />
+        <p className="home-app-section-label">Sur la route avec Monpermis</p>
+        <div className="home-image-marquee home-app-marquee home-app-marquee--fade" aria-hidden="true">
+          {[1, 2, 3, 4, 5].map((n) => (
+            <img
+              key={n}
+              src={`/home/i${n}.jpg`}
+              alt=""
+              className={`home-image-marquee-fade${n === activeSlide ? ' is-active' : ''}`}
+            />
+          ))}
+          <div className="home-app-marquee-caption">
+            <p>Apprends, révise et réussis ton permis</p>
+            <span className="home-app-marquee-bar" />
+            <div className="home-app-marquee-dots">
+              {[1, 2, 3, 4, 5].map((n) => (
+                <i key={n} className={n === activeSlide ? 'is-active' : ''} />
+              ))}
+            </div>
           </div>
         </div>
 
-        {/* Desktop: intro + visuel, parcours sous le carrousel */}
-        <div className="home-desk-stage">
-          <div className="home-desk-intro">
-            <section className="home-app-hero home-app-hero--enter">
-              <p className="home-app-eyebrow">{greetingWord()}</p>
-              <h2 className="home-app-name">{user.firstName}</h2>
-              <p className="home-app-subtitle">Code, conduite — ta route vers le permis.</p>
-            </section>
-            {subStrip}
-            {accessButton}
-          </div>
-          <div className="home-desk-visual">
-            <p className="home-app-section-label">Sur la route avec Monpermis</p>
-            {marquee}
-          </div>
+        <p className="home-app-section-label">Choisis ton parcours</p>
+        <div className="home-app-paths home-app-paths--rows">
+          <button
+            type="button"
+            className={`home-app-path-row${codeLocked ? ' is-locked' : ''} is-code`}
+            onClick={() => navigate('/code-de-la-route')}
+          >
+            <span className="home-app-path-thumb">
+              <img src="/home/paths/code.jpg" alt="" />
+              <span className="home-app-path-badge is-green">
+                <BookOpen size={12} />
+              </span>
+            </span>
+            <span className="home-app-path-copy">
+              <strong>Code de la route</strong>
+              <small>
+                {codeLocked ? (
+                  <>
+                    <Lock size={12} /> Accès requis
+                  </>
+                ) : (
+                  'Cours, quiz & examens'
+                )}
+              </small>
+            </span>
+            <span className="home-app-path-arrow is-green">
+              <ChevronRight size={18} />
+            </span>
+          </button>
+
+          <button
+            type="button"
+            className={`home-app-path-row${conduiteLocked ? ' is-locked' : ''} is-drive`}
+            onClick={() => navigate('/conduite')}
+          >
+            <span className="home-app-path-thumb">
+              <img src="/home/paths/conduite.jpg" alt="" />
+              <span className="home-app-path-badge is-coral">
+                <Video size={12} />
+              </span>
+            </span>
+            <span className="home-app-path-copy">
+              <strong>Conduite</strong>
+              <small>
+                {conduiteLocked ? (
+                  <>
+                    <Lock size={12} /> Accès requis
+                  </>
+                ) : (
+                  'Leçons vidéo & réservations'
+                )}
+              </small>
+            </span>
+            <span className="home-app-path-arrow is-coral">
+              <ChevronRight size={18} />
+            </span>
+          </button>
         </div>
 
-        <div className="home-desk-only-paths">{pathsSection}</div>
+        <div className="home-app-bottom-anim">
+          <HomeBottomAnimation />
+        </div>
       </div>
 
-      {profileOpen ? (
-        <div className="home-profile-backdrop" role="presentation" onClick={() => setProfileOpen(false)}>
-          <div
-            className="home-profile-card home-profile-card--light"
-            role="dialog"
-            aria-label="Mon identité"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="home-profile-card-head">
-              <div className="home-profile-avatar">
-                <User size={28} />
-              </div>
-              <button
-                type="button"
-                className="home-profile-close"
-                onClick={() => setProfileOpen(false)}
-                aria-label="Fermer"
-              >
-                <X size={18} />
-              </button>
-            </div>
-            <p className="home-profile-kicker">Mon identité</p>
-            <h2 className="home-profile-name">{fullName}</h2>
-            <dl className="home-profile-rows">
-              <div>
-                <dt>Téléphone</dt>
-                <dd>{user.phone || '—'}</dd>
-              </div>
-              <div>
-                <dt>Compte</dt>
-                <dd>Téléphone / mot de passe</dd>
-              </div>
-            </dl>
-            <div className="home-profile-shortcuts">
-              <button
-                type="button"
-                className="home-profile-shortcut"
-                onClick={() => {
-                  setProfileOpen(false)
-                  navigate('/abonnement')
-                }}
-              >
-                <CreditCard size={16} />
-                Abonnement / Mes accès
-              </button>
-              <button
-                type="button"
-                className="home-profile-shortcut"
-                onClick={() => {
-                  setProfileOpen(false)
-                  navigate('/abonnement/historique')
-                }}
-              >
-                <History size={16} />
-                Historique des paiements
-              </button>
-              <a
-                className="home-profile-shortcut"
-                href={supportWhatsAppUrl('Bonjour Monpermis, j’ai besoin d’aide.')}
-                target="_blank"
-                rel="noreferrer"
-                onClick={() => setProfileOpen(false)}
-              >
-                <MessageCircle size={16} />
-                Support WhatsApp
-              </a>
-            </div>
-            <button
-              type="button"
-              className="btn-outline"
-              style={{ width: '100%', marginBottom: 10 }}
-              onClick={() => {
-                setProfileOpen(false)
-                navigate('/profil')
-              }}
-            >
-              <Settings size={16} />
-              Modifier mon profil
-            </button>
-            <button type="button" className="btn-primary" onClick={handleLogout}>
-              <LogOut size={16} />
-              Se déconnecter
-            </button>
-          </div>
-        </div>
-      ) : null}
+      <AccountSheet
+        visible={profileOpen}
+        user={user}
+        greeting={greeting}
+        onClose={() => setProfileOpen(false)}
+        onLogout={handleLogout}
+        onOpenAbonnement={() => {
+          setProfileOpen(false)
+          navigate('/abonnement')
+        }}
+        onOpenPayments={() => {
+          setProfileOpen(false)
+          navigate('/abonnement/historique')
+        }}
+        onOpenSupport={() => {
+          setProfileOpen(false)
+          window.open(
+            supportWhatsAppUrl('Bonjour Monpermis, j’ai besoin d’aide.'),
+            '_blank',
+            'noopener,noreferrer',
+          )
+        }}
+        onOpenProfile={() => {
+          setProfileOpen(false)
+          navigate('/profil')
+        }}
+      />
+      </ContentReveal>
     </div>
   )
 }

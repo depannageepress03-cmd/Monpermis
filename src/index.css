@@ -28,20 +28,20 @@
   --brand-navy: #001030;
   --brand-coral: #e85d3b;
   --brand-coral-soft: rgba(232, 93, 59, 0.12);
-  --intro-bg: #f4f7fb;
+  --intro-bg: #faf9f6;
   --cta-bg: var(--brand-green-gradient);
   --cta-fg: #ffffff;
   --hero-overlay: linear-gradient(
-    165deg,
-    rgba(0, 16, 48, 0.88) 0%,
-    rgba(0, 16, 48, 0.55) 45%,
-    rgba(0, 176, 80, 0.22) 100%
+    180deg,
+    rgba(0, 16, 48, 0.55) 0%,
+    rgba(0, 16, 48, 0.82) 55%,
+    #001030 100%
   );
   --page-max: 720px;
   --page-pad: 1.25rem;
-  --font-body: 'Manrope', system-ui, -apple-system, sans-serif;
-  --font-display: 'Poppins', 'Manrope', system-ui, sans-serif;
-  --font-heading: 'Poppins', 'Manrope', system-ui, sans-serif;
+  --font-body: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-display: 'Poppins', 'Inter', system-ui, sans-serif;
+  --font-heading: 'Poppins', 'Inter', system-ui, sans-serif;
   --radius-xs: 6px;
   --radius-sm: 10px;
   --radius-md: 14px;

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getStoredUser } from '../hooks/useAuth'
 import { IntroAnimation } from '../components/IntroAnimation'
+import { hasCompletedOnboarding } from '../utils/onboarding'
 
 export function IntroPage() {
   const navigate = useNavigate()
@@ -11,11 +12,15 @@ export function IntroPage() {
   const goNext = useCallback(() => {
     if (doneRef.current) return
     doneRef.current = true
-    navigate(user ? '/accueil' : '/', { replace: true })
+    if (user) {
+      navigate('/accueil', { replace: true })
+      return
+    }
+    navigate(hasCompletedOnboarding() ? '/' : '/bienvenue', { replace: true })
   }, [navigate, user])
 
   useEffect(() => {
-    const timeout = setTimeout(goNext, 6000)
+    const timeout = setTimeout(goNext, 5500)
     return () => clearTimeout(timeout)
   }, [goNext])
 

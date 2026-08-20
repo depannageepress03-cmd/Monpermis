@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes } from 'react-router-dom'
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { IntroPage } from './pages/IntroPage'
 import { CodeRoutePage } from './pages/CodeRoutePage'
 import { ConduitePage } from './pages/ConduitePage'
@@ -24,10 +24,13 @@ import { RevisionCourseDetailPage } from './pages/code-route/RevisionCourseDetai
 import { AbonnementPage } from './pages/AbonnementPage'
 import { PaymentHistoryPage } from './pages/PaymentHistoryPage'
 import { HomePage } from './pages/HomePage'
+import { OnboardingPage } from './pages/OnboardingPage'
 import { LoginPage } from './pages/LoginPage'
 import { RegisterPage } from './pages/RegisterPage'
+import { RegisterPasswordPage } from './pages/RegisterPasswordPage'
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage'
-import { RedirectToLogin } from './components/RedirectToLogin'
+import { ResetPasswordPage } from './pages/ResetPasswordPage'
+import { VerifyEmailPage } from './pages/VerifyEmailPage'
 import { TermsOfUsePage } from './pages/TermsOfUsePage'
 import { PrivacyPolicyPage } from './pages/PrivacyPolicyPage'
 import { MentionsLegalesPage } from './pages/MentionsLegalesPage'
@@ -37,37 +40,22 @@ import { ActualitesPage } from './pages/ActualitesPage'
 import { ActualiteDetailPage } from './pages/ActualiteDetailPage'
 
 export default function App() {
+  const location = useLocation()
+
   return (
-    <Routes>
+    <div key={location.pathname} className="mp-page-stage">
+      <Routes location={location}>
       <Route path="/intro" element={<IntroPage />} />
+      <Route path="/bienvenue" element={<OnboardingPage />} />
       <Route path="/" element={<LoginPage />} />
       <Route path="/connexion" element={<LoginPage />} />
       <Route path="/inscription" element={<RegisterPage />} />
+      <Route path="/inscription/mot-de-passe" element={<RegisterPasswordPage />} />
       <Route path="/mot-de-passe-oublie" element={<ForgotPasswordPage />} />
-      <Route
-        path="/reinitialiser-mot-de-passe"
-        element={
-          <RedirectToLogin message="La réinitialisation par e-mail n’est plus disponible. Utilise « Code oublié » ou contacte le support WhatsApp." />
-        }
-      />
-      <Route
-        path="/reset-password"
-        element={
-          <RedirectToLogin message="La réinitialisation par e-mail n’est plus disponible. Utilise « Code oublié » ou contacte le support WhatsApp." />
-        }
-      />
-      <Route
-        path="/verifier-email"
-        element={
-          <RedirectToLogin message="La vérification e-mail n’est plus nécessaire. Connecte-toi avec ton téléphone et ton code." />
-        }
-      />
-      <Route
-        path="/verify-email"
-        element={
-          <RedirectToLogin message="La vérification e-mail n’est plus nécessaire. Connecte-toi avec ton téléphone et ton code." />
-        }
-      />
+      <Route path="/reinitialiser-mot-de-passe" element={<ResetPasswordPage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
+      <Route path="/verifier-email" element={<VerifyEmailPage />} />
+      <Route path="/verify-email" element={<VerifyEmailPage />} />
       <Route path="/conditions-utilisation" element={<TermsOfUsePage />} />
       <Route path="/politique-de-confidentialite" element={<PrivacyPolicyPage />} />
       <Route path="/mentions-legales" element={<MentionsLegalesPage />} />
@@ -120,6 +108,7 @@ export default function App() {
         element={<ConduiteCourseDetailPage />}
       />
       <Route path="*" element={<Navigate to="/intro" replace />} />
-    </Routes>
+      </Routes>
+    </div>
   )
 }

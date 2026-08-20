@@ -17,6 +17,7 @@ import { EmptyState } from '../components/EmptyState'
 import { PageLoader } from '../components/PageLoader'
 import { PageNavbar } from '../components/PageNavbar'
 import { PageSkeleton } from '../components/PageSkeleton'
+import { Reveal } from '../components/Reveal'
 import { useAuth } from '../hooks/useAuth'
 import { useFocusRefresh } from '../hooks/useFocusRefresh'
 import {
@@ -178,6 +179,7 @@ export function AbonnementPage() {
             ) : null}
 
             {me ? (
+              <Reveal delay={60}>
               <section className="auth-card learner-card subscription-status-card">
                 <p className="learner-kicker">
                   <Clock size={14} style={{ verticalAlign: '-2px', marginRight: 4 }} />
@@ -224,8 +226,10 @@ export function AbonnementPage() {
                   </p>
                 ) : null}
               </section>
+              </Reveal>
             ) : null}
 
+            <Reveal delay={120}>
             <section className="subscription-catalog">
               <h2>Offres disponibles</h2>
               {sortedModules.filter((module) => PRIMARY_KEYS.includes(module.key)).length === 0 ? (
@@ -299,6 +303,7 @@ export function AbonnementPage() {
                 Payer {formatPrice(cartTotal)}
               </button>
             </section>
+            </Reveal>
 
             <section className="auth-card learner-card subscription-status-card">
               <p className="learner-kicker">Vous avez un code promo ?</p>

@@ -53,7 +53,7 @@ import { ensureStandardRevisionChaptersSafe } from './services/standardRevisionC
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const app = express()
-const PORT = process.env.PORT || 5000
+const PORT = process.env.PORT || 5001
 /** Build portail moniteur Vite copié ici au deploy Render (voir render.yaml). */
 const webDistPath = path.join(__dirname, '../web-dist')
 const serveWebApp = fs.existsSync(path.join(webDistPath, 'index.html'))

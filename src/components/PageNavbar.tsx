@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { ArrowLeft } from 'lucide-react'
+import { useStickyGlassNav } from '../hooks/useStickyGlassNav'
 import '../styles/auth.css'
 import '../styles/learner.css'
 
@@ -9,15 +10,19 @@ export function PageNavbar({
   onBack,
   tone = 'default',
   backLabel = 'Retour',
+  glass = true,
 }: {
   title: string
   icon: ReactNode
   onBack: () => void
   tone?: 'default' | 'drive'
   backLabel?: string
+  glass?: boolean
 }) {
+  const scrolled = useStickyGlassNav(glass)
+
   return (
-    <nav className="page-navbar learner-anim-nav">
+    <nav className={`page-navbar learner-anim-nav${scrolled ? ' is-glass' : ''}`}>
       <div className="page-nav-left">
         <span
           className={`page-nav-icon learner-anim-icon${tone === 'drive' ? ' page-nav-icon-drive' : ''}`}

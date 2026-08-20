@@ -50,6 +50,18 @@ export function IntroAnimation({ onDone }: { onDone: () => void }) {
         @keyframes intro-letter-in {
           to { opacity: 1; transform: translateY(0); }
         }
+        @keyframes intro-logo-resolve {
+          from {
+            opacity: 0;
+            filter: blur(14px);
+            transform: scale(0.92);
+          }
+          to {
+            opacity: 1;
+            filter: blur(0);
+            transform: scale(1);
+          }
+        }
       `}</style>
 
       <div style={{
@@ -61,7 +73,8 @@ export function IntroAnimation({ onDone }: { onDone: () => void }) {
 
       <div style={{
         position: 'relative', display: 'flex', flexDirection: 'column',
-        alignItems: 'center', animation: 'intro-drift 11s ease-in-out 3s infinite',
+        alignItems: 'center',
+        animation: 'intro-logo-resolve 1.1s cubic-bezier(.16, 1, .3, 1) forwards, intro-drift 11s ease-in-out 3s infinite',
       }}>
         <div style={{
           position: 'absolute', top: '56%', width: 180, height: 26,

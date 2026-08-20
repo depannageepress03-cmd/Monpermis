@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { CalendarPlus, Check } from 'lucide-react'
+import { CalendarPlus } from 'lucide-react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useHoldTimer } from '../../hooks/useHoldTimer'
 import {
@@ -20,6 +20,7 @@ import { fetchAccessMe } from '../../api/accessRequests'
 import { PageNavbar } from '../../components/PageNavbar'
 import { PageLoader } from '../../components/PageLoader'
 import { ReservationMobileMoneyCheckout } from '../../components/ReservationMobileMoneyCheckout'
+import { SuccessCelebration } from '../../components/SuccessCelebration'
 import { useAuth } from '../../hooks/useAuth'
 import { resolveMediaUrl } from '../../utils/mediaUrl'
 import '../../styles/auth.css'
@@ -614,18 +615,20 @@ export function ReservationPage() {
           ) : null}
 
           {step === 'success' ? (
-            <div className="success-box reservation-step">
-              <div className="success-icon">
-                <Check size={28} />
-              </div>
-              <h2>Séance réservée</h2>
-              <p className="subtitle">
-                Votre séance est confirmée et apparaît dans votre espace Conduite.
-              </p>
-              <p className="subtitle">
-                Pensez à ajouter la séance à votre agenda et, si besoin, à notifier votre
-                moniteur via WhatsApp.
-              </p>
+            <SuccessCelebration
+              title="Séance réservée"
+              subtitle={
+                <>
+                  <p className="subtitle">
+                    Votre séance est confirmée et apparaît dans votre espace Conduite.
+                  </p>
+                  <p className="subtitle">
+                    Pensez à ajouter la séance à votre agenda et, si besoin, à notifier votre
+                    moniteur via WhatsApp.
+                  </p>
+                </>
+              }
+            >
               {calendarUrl ? (
                 <a className="btn-outline" href={calendarUrl} target="_blank" rel="noreferrer">
                   Ajouter à mon agenda
@@ -639,7 +642,7 @@ export function ReservationPage() {
               <button type="button" className="btn-primary" onClick={() => navigate('/conduite')}>
                 Retour au tableau de bord
               </button>
-            </div>
+            </SuccessCelebration>
           ) : null}
         </div>
       </div>

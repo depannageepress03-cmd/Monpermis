@@ -18,6 +18,8 @@ import {
 import { EmptyState } from '../components/EmptyState'
 import { PageLoader } from '../components/PageLoader'
 import { PageNavbar } from '../components/PageNavbar'
+import { ContentReveal } from '../components/ContentReveal'
+import { SegmentedTabs } from '../components/SegmentedTabs'
 import { PageSkeleton } from '../components/PageSkeleton'
 import { useAuth } from '../hooks/useAuth'
 import '../styles/auth.css'
@@ -71,6 +73,7 @@ export function NotificationsPage() {
   const navigate = useNavigate()
   const { user, loading } = useAuth()
   const [items, setItems] = useState<AppNotification[]>([])
+  const [filter, setFilter] = useState<'all' | 'unread'>('all')
   const [fetching, setFetching] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -112,6 +115,8 @@ export function NotificationsPage() {
   if (loading || !user) return <PageLoader />
 
   const hasUnread = items.some((n) => !n.read)
+  const visible = filter === 'unread' ? items.filter((n) => !n.read) : items
+  const unreadCount = items.filter((n) => !n.read).length
 
   return (
     <div className="auth-page">
@@ -122,6 +127,19 @@ export function NotificationsPage() {
           onBack={() => navigate('/accueil')}
         />
 
+        <SegmentedTabs<'all' | 'unread'>
+          className="notif-tabs"
+          value={filter}
+          onChange={setFilter}
+          tabs={[
+            { id: 'all', label: 'Toutes' },
+            {
+              id: 'unread',
+              label: unreadCount ? `Non lues (${unreadCount})` : 'Non lues',
+            },
+          ]}
+        />
+
         {hasUnread ? (
           <button type="button" className="btn-outline home-mark-all" onClick={handleMarkAll}>
             <CheckCheck size={16} />
@@ -129,9 +147,11 @@ export function NotificationsPage() {
           </button>
         ) : null}
 
-        {fetching ? (
-          <PageSkeleton variant="list" />
-        ) : error ? (
+        <ContentReveal
+          loading={fetching}
+          skeleton={<PageSkeleton variant="list" />}
+        >
+        {error ? (
           <EmptyState
             tone="error"
             icon={<TriangleAlert size={28} />}
@@ -143,15 +163,19 @@ export function NotificationsPage() {
               </button>
             }
           />
-        ) : items.length === 0 ? (
+        ) : visible.length === 0 ? (
           <EmptyState
             icon={<Bell size={28} />}
-            title="Aucune notification"
-            message="Tu seras prévenu ici dès qu’un paiement est validé, une leçon confirmée ou une annonce publiée."
+            title={filter === 'unread' ? 'Tout est lu' : 'Aucune notification'}
+            message={
+              filter === 'unread'
+                ? 'Tu n’as plus de notifications non lues.'
+                : 'Tu seras prévenu ici dès qu’un paiement est validé, une leçon confirmée ou une annonce publiée.'
+            }
           />
         ) : (
           <div className="home-notif-list">
-            {items.map((n) => {
+            {visible.map((n) => {
               const Icon = iconFor[n.type] ?? Bell
               return (
                 <button
@@ -174,6 +198,7 @@ export function NotificationsPage() {
             })}
           </div>
         )}
+        </ContentReveal>
       </div>
     </div>
   )

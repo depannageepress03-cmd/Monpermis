@@ -11,8 +11,11 @@ import {
   type LearnerQuestion,
 } from '../../api/content'
 import { QuestionAudioSequence } from '../../components/QuestionAudioSequence'
+import { QuestionPromptHtml } from '../../components/QuestionPromptHtml'
 import { PageLoader } from '../../components/PageLoader'
 import { PageNavbar } from '../../components/PageNavbar'
+import { QuizProgressRing } from '../../components/QuizProgressRing'
+import { SuccessCelebration } from '../../components/SuccessCelebration'
 import { useAuth } from '../../hooks/useAuth'
 import { useLeaveGuard } from '../../hooks/useLeaveGuard'
 import { playFailSound, playSuccessSound, stopAllQuizAudio } from '../../utils/quizSounds'
@@ -74,6 +77,7 @@ export function LearnerChapterQuizPage({
     }[]
   >([])
   const [reviewing, setReviewing] = useState(false)
+  const [pulseAnswerId, setPulseAnswerId] = useState<string | null>(null)
 
   const selectedIdsRef = useRef(selectedIds)
   selectedIdsRef.current = selectedIds
@@ -164,6 +168,8 @@ export function LearnerChapterQuizPage({
 
   const toggleAnswer = (answerId: string) => {
     if (result || checking) return
+    setPulseAnswerId(answerId)
+    window.setTimeout(() => setPulseAnswerId(null), 420)
     setSelectedIds((current) =>
       current.includes(answerId)
         ? current.filter((id) => id !== answerId)
@@ -289,7 +295,7 @@ export function LearnerChapterQuizPage({
           }}
         />
 
-        <header className="auth-header learner-header">
+        <header className={`auth-header learner-header${question && !finished ? ' is-quiz-compact' : ''}`}>
           <p className="learner-kicker">{mode === 'test' ? 'Sujet test' : 'Entraînement'}</p>
           <h1>{mode === 'test' ? subjectLabel || 'Évaluation' : 'Questions'}</h1>
           <p>
@@ -323,7 +329,7 @@ export function LearnerChapterQuizPage({
                     Question {i + 1} — {entry.isCorrect ? 'Bonne réponse' : 'À revoir'}
                   </p>
                   {entry.question.prompt?.text ? (
-                    <p className="learner-quiz-prompt">{entry.question.prompt.text}</p>
+                    <QuestionPromptHtml className="learner-quiz-prompt" text={entry.question.prompt?.text} />
                   ) : null}
                   <div className="learner-quiz-answers">
                     {entry.question.answers.map((answer) => {
@@ -352,31 +358,37 @@ export function LearnerChapterQuizPage({
           ) : null}
 
           {!loading && !error && finished && !reviewing ? (
-            <div className="learner-empty">
-              <h2>
-                {score.total > 0 && score.correct / score.total >= 0.7
+            <SuccessCelebration
+              title={
+                score.total > 0 && score.correct / score.total >= 0.7
                   ? 'Bravo !'
                   : score.total > 0 && score.correct / score.total >= 0.5
                     ? 'Bien joué'
-                    : 'Terminé'}
-              </h2>
-              <div className="learner-quiz-recap">
-                <div>
-                  <span>Bonnes réponses</span>
-                  <strong>
-                    {score.correct} / {score.total}
-                  </strong>
-                </div>
-              </div>
-              {mode === 'test' ? (
-                <p className="subtitle">
-                  {savingTest
-                    ? 'Enregistrement du sujet test…'
-                    : testSaved
-                      ? 'Sujet test enregistré. Vous pouvez recommencer ou passer à un autre chapitre.'
-                      : 'Sujet test terminé.'}
-                </p>
-              ) : null}
+                    : 'Terminé'
+              }
+              subtitle={
+                <>
+                  <div className="learner-quiz-recap">
+                    <div>
+                      <span>Bonnes réponses</span>
+                      <strong>
+                        {score.correct} / {score.total}
+                      </strong>
+                    </div>
+                  </div>
+                  {mode === 'test' ? (
+                    <p className="subtitle">
+                      {savingTest
+                        ? 'Enregistrement du sujet test…'
+                        : testSaved
+                          ? 'Sujet test enregistré. Vous pouvez recommencer ou passer à un autre chapitre.'
+                          : 'Sujet test terminé.'}
+                    </p>
+                  ) : null}
+                </>
+              }
+              passed={score.total > 0 && score.correct / score.total >= 0.5}
+            >
               {reviewHistory.length > 0 ? (
                 <button type="button" className="btn-primary" onClick={() => setReviewing(true)}>
                   Mode correction
@@ -395,12 +407,19 @@ export function LearnerChapterQuizPage({
                   Recommencer
                 </button>
               )}
-            </div>
+            </SuccessCelebration>
           ) : null}
 
           {!loading && !error && question && !finished ? (
             <div className="learner-quiz">
-              <p className="learner-quiz-progress">{progressLabel}</p>
+              <div key={index} className="mp-quiz-enter">
+              <div className="learner-quiz-progress-row">
+                <QuizProgressRing
+                  current={Math.min(index + 1, questions.length)}
+                  total={questions.length}
+                />
+                <p className="learner-quiz-progress">{progressLabel}</p>
+              </div>
               {(question.correctCount ?? 1) > 1 ? (
                 <span className="learner-multi-badge">
                   {question.correctCount} bonnes réponses à cocher
@@ -414,7 +433,7 @@ export function LearnerChapterQuizPage({
                 </div>
               ) : null}
               {question.prompt?.text ? (
-                <p className="learner-quiz-prompt">{question.prompt.text}</p>
+                <QuestionPromptHtml className="learner-quiz-prompt" text={question.prompt?.text} />
               ) : null}
               {sequenceLive && !result ? (
                 <QuestionAudioSequence
@@ -439,6 +458,7 @@ export function LearnerChapterQuizPage({
                   if (selected) className += ' is-selected'
                   if (result && isCorrect) className += ' is-correct'
                   if (result && selected && !isCorrect) className += ' is-wrong'
+                  if (pulseAnswerId === answer.id) className += ' is-pulse'
                   return (
                     <button
                       key={answer.id}
@@ -481,6 +501,7 @@ export function LearnerChapterQuizPage({
                     {index + 1 >= questions.length ? 'Voir le score' : 'Question suivante'}
                   </button>
                 ) : null}
+              </div>
               </div>
             </div>
           ) : null}

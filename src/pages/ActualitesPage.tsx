@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { Megaphone } from 'lucide-react'
 import { fetchAnnouncements, type Announcement } from '../api/announcements'
 import { AnnouncementCard } from '../components/AnnouncementCard'
+import { ContentReveal } from '../components/ContentReveal'
+import { Reveal } from '../components/Reveal'
 import { EmptyState } from '../components/EmptyState'
 import { PageNavbar } from '../components/PageNavbar'
 import { PageLoader } from '../components/PageLoader'
@@ -44,9 +46,8 @@ export function ActualitesPage() {
           onBack={() => navigate('/accueil')}
         />
 
-        {fetching ? (
-          <PageSkeleton variant="list" />
-        ) : items.length === 0 ? (
+        <ContentReveal loading={fetching} skeleton={<PageSkeleton variant="list" />}>
+        {items.length === 0 ? (
           <EmptyState
             icon={<Megaphone size={28} />}
             title="Aucune actualité"
@@ -54,16 +55,19 @@ export function ActualitesPage() {
           />
         ) : (
           <div className="home-app-news-list home-news-feed">
-            {items.map((item) => (
+            {items.map((item, index) => (
+              <Reveal key={item.id} delay={index * 60} variant="up">
               <AnnouncementCard
-                key={item.id}
                 item={item}
                 compact
+                staggerIndex={index}
                 onOpen={() => navigate(`/actualites/${item.id}`)}
               />
+              </Reveal>
             ))}
           </div>
         )}
+        </ContentReveal>
       </div>
     </div>
   )

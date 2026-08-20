@@ -15,10 +15,12 @@ const KIND_LABELS: Record<Announcement['kind'], string> = {
 export function AnnouncementCard({
   item,
   compact = false,
+  staggerIndex = 0,
   onOpen,
 }: {
   item: Announcement
   compact?: boolean
+  staggerIndex?: number
   onOpen?: () => void
 }) {
   const isHtml = announcementLooksLikeHtml(item.body)
@@ -64,7 +66,8 @@ export function AnnouncementCard({
     return (
       <button
         type="button"
-        className={`home-app-news-card home-news-card--${item.kind} home-news-card-btn`}
+        className={`home-app-news-card home-news-card--${item.kind} home-news-card-btn mp-news-card`}
+        style={{ ['--stagger' as string]: staggerIndex }}
         onClick={onOpen}
       >
         {content}

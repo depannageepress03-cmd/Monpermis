@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import App from './App.tsx'
 import './index.css'
+import './styles/motion.css'
 
 // Purge agressive des anciens Service Workers / caches PWA
 if ('serviceWorker' in navigator) {
