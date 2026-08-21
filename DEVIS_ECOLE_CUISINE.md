@@ -2,7 +2,8 @@
 
 **N° :** DEV-2026-___  
 **Date :** ___ / ___ / 2026  
-**Validité :** 30 jours
+**Validité :** 30 jours  
+**Devise :** Franc CFA (XOF)
 
 ---
 
@@ -12,7 +13,7 @@
 |---|---|
 | **Raison sociale** | _______________________________ |
 | **Adresse** | _______________________________ |
-| **SIRET / RCCM** | _______________________________ |
+| **IFU / RCCM** | _______________________________ |
 | **Contact** | _______________________________ |
 | **E-mail / Tél.** | _______________________________ |
 
@@ -36,11 +37,11 @@ Accompagnement digital pour **accroître la visibilité, la crédibilité et la 
 2. l’**animation et le positionnement** sur **Facebook** et **TikTok** ;
 3. la mise en place et le pilotage de **campagnes publicitaires** (Meta Ads + TikTok Ads).
 
-Les montants ci-dessous sont alignés sur les **tarifs marché constatés en 2025–2026** (freelance / petite agence) pour une TPE–PME locale du secteur formation / restauration.
+Les montants ci-dessous sont en **francs CFA (XOF)**, calés sur les tarifs marché 2025–2026 (freelance / petite structure) pour une TPE–PME du secteur formation / restauration.  
+*Parité de référence utilisée : **1 EUR ≈ 655,957 F CFA** (arrondis commerciaux).*
 
 > **Tous les prix sont indiqués hors taxes (HT).**  
-> TVA / taxes locales à appliquer selon le régime du prestataire.  
-> *Si facturation en FCFA (XOF) : convertir au taux du jour (≈ 655,957 XOF = 1 EUR).*
+> TVA / taxes locales à appliquer selon le régime du prestataire.
 
 ---
 
@@ -82,14 +83,14 @@ Trois niveaux pour s’adapter au budget. **Recommandation pour une école de cu
 | A6 | Module prise de rendez-vous ou pré-inscription en ligne | — | Option / inclus selon besoin | Inclus |
 | A7 | Responsive (mobile / tablette / desktop) | ✓ | ✓ | ✓ |
 | A8 | SEO de base (balises, vitesse, Google Business, pages locales) | Basique | Renforcé | Avancé + plan éditorial blog |
-| A9 | RGPD / mentions légales / cookies | ✓ | ✓ | ✓ |
+| A9 | Mentions légales / cookies / conformité | ✓ | ✓ | ✓ |
 | A10 | Mise en ligne, nom de domaine*, hébergement 1ʳᵉ année* | ✓ | ✓ | ✓ |
 | A11 | Formation prise en main (1 h) | ✓ | 1 h 30 | 2 h |
-| | **Sous-total LOT A** | **2 400 €** | **3 900 €** | **5 800 €** |
+| | **Sous-total LOT A** | **1 575 000 F CFA** | **2 560 000 F CFA** | **3 805 000 F CFA** |
 
-\* Domaine + hébergement : forfait estimatif **80–150 € / an** inclus la 1ʳᵉ année ; renouvellement à la charge du client ensuite.
+\* Domaine + hébergement : forfait estimatif **55 000 – 100 000 F CFA / an** inclus la 1ʳᵉ année ; renouvellement à la charge du client ensuite.
 
-**Fourchette marché de référence :** site vitrine professionnel = **1 500 à 5 000 € HT** (freelance / petite agence) ; site premium / agence = **3 500 à 8 000 € HT**.
+**Fourchette marché de référence :** site vitrine professionnel ≈ **985 000 à 3 280 000 F CFA HT** (freelance / petite structure) ; site premium / agence ≈ **2 295 000 à 5 250 000 F CFA HT**.
 
 ---
 
@@ -108,10 +109,10 @@ Trois niveaux pour s’adapter au budget. **Recommandation pour une école de cu
 | B7 | Modération & réponses messages / commentaires (heures ouvrées) | Limité | Standard | Prioritaire |
 | B8 | Optimisation profils (bio, highlights, lien site, crédibilité) | ✓ | ✓ | ✓ |
 | B9 | Reporting mensuel (portée, engagement, leads) | ✓ | ✓ | ✓ + call mensuel |
-| | **Sous-total LOT B / mois** | **650 €** | **1 200 €** | **1 900 €** |
-| | **Setup initial (une fois)** | **350 €** | **500 €** | **750 €** |
+| | **Sous-total LOT B / mois** | **425 000 F CFA** | **790 000 F CFA** | **1 250 000 F CFA** |
+| | **Setup initial (une fois)** | **230 000 F CFA** | **330 000 F CFA** | **490 000 F CFA** |
 
-**Fourchette marché de référence :** community management 2 réseaux = **500 à 1 500 € HT / mois** (freelance) ; agence structurée = **800 à 3 000 € HT / mois**.
+**Fourchette marché de référence :** community management 2 réseaux ≈ **330 000 à 985 000 F CFA HT / mois** (freelance) ; agence structurée ≈ **525 000 à 1 970 000 F CFA HT / mois**.
 
 ---
 
@@ -121,14 +122,14 @@ Trois niveaux pour s’adapter au budget. **Recommandation pour une école de cu
 
 | Réf. | Prestation | Essentiel | Pro | Premium |
 |------|------------|-----------|-----|---------|
-| C1 | Setup Business Manager / Pixel / TikTok Pixel / événements | 400 € | 400 € | 400 € |
+| C1 | Setup Business Manager / Pixel / TikTok Pixel / événements | 260 000 F CFA | 260 000 F CFA | 260 000 F CFA |
 | C2 | Création campagnes (trafic, leads, inscriptions ateliers) | Inclus M1 | Inclus | Inclus |
-| C3 | Gestion & optimisation mensuelle (Meta + TikTok) | 350 € / mois | 550 € / mois | 800 € / mois |
+| C3 | Gestion & optimisation mensuelle (Meta + TikTok) | 230 000 F CFA / mois | 360 000 F CFA / mois | 525 000 F CFA / mois |
 | C4 | Créatifs publicitaires (visuels / scripts courts) | 2 / mois | 4 / mois | 6 / mois |
 | C5 | Reporting + recommandations | Mensuel | Mensuel | Bi-mensuel |
-| | **Budget média recommandé (payé aux plateformes)** | **400–600 € / mois** | **800–1 200 € / mois** | **1 500–2 500 € / mois** |
+| | **Budget média recommandé (payé aux plateformes)** | **260 000 – 395 000 F CFA / mois** | **525 000 – 790 000 F CFA / mois** | **985 000 – 1 640 000 F CFA / mois** |
 
-**Fourchette marché de référence :** frais de gestion Ads = **forfait 300–800 € / mois** ou **10–20 % du budget média**.
+**Fourchette marché de référence :** frais de gestion Ads = **forfait 200 000 – 525 000 F CFA / mois** ou **10–20 % du budget média**.
 
 ---
 
@@ -138,29 +139,29 @@ Trois niveaux pour s’adapter au budget. **Recommandation pour une école de cu
 
 | Poste | Essentiel | Pro | Premium |
 |-------|-----------|-----|---------|
-| LOT A — Site web | 2 400 € | 3 900 € | 5 800 € |
-| LOT B — Setup réseaux | 350 € | 500 € | 750 € |
-| LOT C — Setup pubs | 400 € | 400 € | 400 € |
-| **Total initial HT** | **3 150 €** | **4 800 €** | **6 950 €** |
+| LOT A — Site web | 1 575 000 F CFA | 2 560 000 F CFA | 3 805 000 F CFA |
+| LOT B — Setup réseaux | 230 000 F CFA | 330 000 F CFA | 490 000 F CFA |
+| LOT C — Setup pubs | 260 000 F CFA | 260 000 F CFA | 260 000 F CFA |
+| **Total initial HT** | **2 065 000 F CFA** | **3 150 000 F CFA** | **4 555 000 F CFA** |
 
 ### Abonnement mensuel (après livraison site)
 
 | Poste | Essentiel | Pro | Premium |
 |-------|-----------|-----|---------|
-| LOT B — Animation FB + TikTok | 650 € | 1 200 € | 1 900 € |
-| LOT C — Gestion publicitaire | 350 € | 550 € | 800 € |
-| **Total mensuel HT (prestations)** | **1 000 €** | **1 750 €** | **2 700 €** |
-| + Budget média (indicatif, hors devis prestataire) | 400–600 € | 800–1 200 € | 1 500–2 500 € |
+| LOT B — Animation FB + TikTok | 425 000 F CFA | 790 000 F CFA | 1 250 000 F CFA |
+| LOT C — Gestion publicitaire | 230 000 F CFA | 360 000 F CFA | 525 000 F CFA |
+| **Total mensuel HT (prestations)** | **655 000 F CFA** | **1 150 000 F CFA** | **1 775 000 F CFA** |
+| + Budget média (indicatif, hors devis prestataire) | 260 000 – 395 000 F CFA | 525 000 – 790 000 F CFA | 985 000 – 1 640 000 F CFA |
 
 ### Exemple budgétaire sur 3 mois — Formule Pro (recommandée)
 
 | | Montant HT |
 |---|------------|
-| Initial (site + setups) | 4 800 € |
-| 3 × animation & pubs (3 × 1 750 €) | 5 250 € |
-| **Total prestations HT (3 mois)** | **10 050 €** |
-| Budget média estimé (3 × ~1 000 €) | ~3 000 € |
-| **Enveloppe globale indicative client** | **≈ 13 000 € HT** |
+| Initial (site + setups) | 3 150 000 F CFA |
+| 3 × animation & pubs (3 × 1 150 000 F CFA) | 3 450 000 F CFA |
+| **Total prestations HT (3 mois)** | **6 600 000 F CFA** |
+| Budget média estimé (3 × ~655 000 F CFA) | ~1 965 000 F CFA |
+| **Enveloppe globale indicative client** | **≈ 8 565 000 F CFA HT** |
 
 ---
 
@@ -168,13 +169,13 @@ Trois niveaux pour s’adapter au budget. **Recommandation pour une école de cu
 
 | Option | Prix indicatif HT |
 |--------|-------------------|
-| Shooting photo / vidéo professionnel (½ journée) | 350 – 600 € |
-| Rédaction contenus site (pages + SEO) | 400 – 900 € |
-| Blog SEO : 4 articles / mois | 400 – 700 € / mois |
-| Maintenance site (mises à jour, sauvegardes, support) | 60 – 150 € / mois |
-| Refonte logo / charte graphique légère | 300 – 800 € |
+| Shooting photo / vidéo professionnel (½ journée) | 230 000 – 395 000 F CFA |
+| Rédaction contenus site (pages + SEO) | 260 000 – 590 000 F CFA |
+| Blog SEO : 4 articles / mois | 260 000 – 460 000 F CFA / mois |
+| Maintenance site (mises à jour, sauvegardes, support) | 40 000 – 100 000 F CFA / mois |
+| Refonte logo / charte graphique légère | 200 000 – 525 000 F CFA |
 | Google Ads (en plus de Meta / TikTok) | sur devis |
-| Multilingue (FR + EN) | +800 – 1 500 € |
+| Multilingue (FR + EN) | +525 000 – 985 000 F CFA |
 
 ---
 
@@ -200,9 +201,10 @@ Trois niveaux pour s’adapter au budget. **Recommandation pour une école de cu
 3. **Engagement réseaux + pubs :** minimum **3 mois** (recommandé pour mesurer un ROI crédible).  
 4. **Contenus client :** photos des locaux, des plats, des ateliers, tarifs et textes « À propos » fournis par le client (ou option rédaction).  
 5. **Budget publicitaire :** restant à la charge du client, rechargé sur les comptes Meta / TikTok.  
-6. **Révisions :** 2 tours de corrections inclus sur le design site ; au-delà, facturation au temps passé (**tarif journalier : 350–450 € HT**).  
+6. **Révisions :** 2 tours de corrections inclus sur le design site ; au-delà, facturation au temps passé (**tarif journalier : 230 000 – 295 000 F CFA HT**).  
 7. **Propriété :** le client devient propriétaire des livrables (site, visuels créés pour lui) après solde intégral.  
-8. **Validité du devis :** 30 jours.
+8. **Validité du devis :** 30 jours.  
+9. **Paiement :** Mobile Money, virement bancaire ou tout moyen convenu (à préciser sur facture).
 
 ---
 
@@ -224,12 +226,12 @@ Trois niveaux pour s’adapter au budget. **Recommandation pour une école de cu
 
 | | Montant HT |
 |---|------------|
-| Total initial | ________ € |
-| Total mensuel prestations | ________ € |
+| Total initial | ________ F CFA |
+| Total mensuel prestations | ________ F CFA |
 | Engagement | ________ mois |
-| **Total HT période engagée** | **________ €** |
-| Taxes applicables | ________ € |
-| **Total TTC** | **________ €** |
+| **Total HT période engagée** | **________ F CFA** |
+| Taxes applicables | ________ F CFA |
+| **Total TTC** | **________ F CFA** |
 
 Fait à _______________, le ___ / ___ / ______
 
@@ -245,12 +247,12 @@ Fait à _______________, le ___ / ___ / ______
 
 À usage du commercial / prestataire. Ne pas forcément transmettre au client.
 
-| Poste | Fourchette marché 2025–2026 | Positionnement de ce devis |
-|-------|------------------------------|----------------------------|
-| Site vitrine TPE | 1 500 – 5 000 € (freelance) / 3 000 – 8 000 € (agence) | Milieu de fourchette freelance / petite structure |
-| Community management 2 réseaux | 500 – 1 500 € / mois | Aligné |
-| Gestion Ads Meta + TikTok | 300 – 800 € / mois ou 10–20 % du média | Forfait clair, transparent |
-| Budget média école / formation locale | 400 – 2 500 € / mois | Selon ambition |
+| Poste | Fourchette marché (F CFA) | Positionnement de ce devis |
+|-------|---------------------------|----------------------------|
+| Site vitrine TPE | 985 000 – 3 280 000 (freelance) / 1 970 000 – 5 250 000 (agence) | Milieu de fourchette freelance / petite structure |
+| Community management 2 réseaux | 330 000 – 985 000 / mois | Aligné |
+| Gestion Ads Meta + TikTok | 200 000 – 525 000 / mois ou 10–20 % du média | Forfait clair, transparent |
+| Budget média école / formation locale | 260 000 – 1 640 000 / mois | Selon ambition |
 
 **Argumentaire commercial :**  
-Le site convertit (crédibilité + inscriptions). Les réseaux humanisent (cours, coulisses, élèves). La pub accélère (visibilité ciblée parents / passionnés cuisine dans la zone de chalandise). Séparer clairement **prestation** et **budget média** évite les malentendus et renforce le professionnalisme du devis.
+Le site convertit (crédibilité + inscriptions). Les réseaux humanisent (cours, coulisses, élèves). La pub accélère (visibilité ciblée dans la zone de chalandise). Séparer clairement **prestation** et **budget média** évite les malentendus et renforce le professionnalisme du devis.
