@@ -1,1 +1,6 @@
-La cinture de sécurité doit être portée par A, le conducteur, B, les passagers de l'autobus, C, les passagers de l'autocard, D, les enfants aborder un véhicule de transport d'enfant.
+La ceinture de sécurité doit être portée par :
+
+A. Le conducteur
+B. Les passagers de l'autobus
+C. Les passagers de l'autocar
+D. Les enfants à bord d'un véhicule de transport d'enfants

@@ -1,7 +1,7 @@
 /**
  * Banque questions en dur — Chapitre 5 (conduite, sécurité, premiers secours).
  * Audio : /content/code-audio/chapitre-5/{n}.mp3
- * Mis à jour — 2026-08-19.
+ * Mis à jour — 2026-08-20 (correction des bonnes réponses).
  */
 
 export const CHAPITRE_05_KEY = 'chapitre-5'
@@ -57,10 +57,10 @@ export const CHAPITRE_05_QUESTIONS = [
   question(1, ['A', 'B', 'C'], ['C']),
   question(2, ['A', 'B', 'C', 'D'], ['B', 'D']),
   question(3, ['A', 'B', 'C'], ['B']),
-  question(4, ['A', 'B', 'C', 'D', 'E'], ['A', 'D']),
+  question(4, ['A', 'B', 'C', 'D', 'E'], ['A', 'B', 'D']),
   question(5, ['A', 'B', 'C', 'D'], ['A', 'B', 'C']),
   question(6, ['A', 'B', 'C'], ['C']),
-  question(7, ['A', 'B', 'C'], ['C']),
+  question(7, ['A', 'B', 'C'], ['B', 'C']),
   question(8, ['A', 'B', 'C', 'D'], ['B']),
   question(9, ['A', 'B', 'C', 'D', 'E'], ['A', 'C', 'D', 'E']),
   question(10, ['A', 'B', 'C'], ['C']),
@@ -74,20 +74,20 @@ export const CHAPITRE_05_QUESTIONS = [
   question(18, ['A', 'B', 'C'], ['B', 'C']),
   question(19, ['A', 'B', 'C'], ['C']),
   question(20, ['A', 'B', 'C', 'D'], ['D']),
-  question(21, ['A', 'B', 'C', 'D', 'E'], ['B', 'C', 'D']),
-  question(22, ['A', 'B', 'C', 'D'], ['C']),
+  question(21, ['A', 'B', 'C', 'D', 'E'], ['B', 'C', 'D', 'E']),
+  question(22, ['A', 'B', 'C', 'D'], ['C', 'D']),
   question(23, ['A', 'B', 'C'], ['B']),
   question(24, ['A', 'B', 'C'], ['B']),
-  question(25, ['A', 'B', 'C'], ['A']),
+  question(25, ['A', 'B', 'C'], ['B']),
   question(26, ['A', 'B', 'C', 'D'], ['D']),
   question(27, ['A', 'B', 'C', 'D'], ['D']),
   question(28, ['A', 'B', 'C'], ['A', 'C']),
   question(29, ['A', 'B', 'C', 'D', 'E'], ['A', 'D', 'E']),
   question(30, ['A', 'B', 'C'], ['C']),
   question(31, ['A', 'B', 'C', 'D', 'E'], ['C']),
-  question(32, ['A', 'B', 'C'], ['A']),
+  question(32, ['A', 'B', 'C'], ['B']),
   question(33, ['A', 'B', 'C', 'D'], ['C']),
-  question(34, ['A', 'B', 'C', 'D'], ['D']),
+  question(34, ['A', 'B', 'C', 'D'], ['C']),
   question(35, ['A', 'B', 'C'], ['C']),
   question(36, ['A', 'B', 'C'], ['C']),
   question(37, ['A', 'B', 'C'], ['C']),
@@ -102,11 +102,11 @@ export const CHAPITRE_05_QUESTIONS = [
   question(46, ['A', 'B', 'C'], ['B']),
   question(47, ['A', 'B', 'C', 'D'], ['D']),
   question(48, ['A', 'B', 'C', 'D'], ['D']),
-  question(49, ['A', 'B', 'C'], ['A']),
+  question(49, ['A', 'B', 'C'], ['B']),
   question(50, ['A', 'B', 'C'], ['A', 'C']),
-  question(51, ['A', 'B', 'C', 'D'], ['A', 'B', 'C']),
-  question(52, ['A', 'B', 'C'], ['A', 'B', 'C']),
-  question(53, ['A', 'B', 'C'], ['B']),
-  question(54, ['A', 'B', 'C'], ['C']),
+  question(51, ['A', 'B', 'C', 'D'], ['D']),
+  question(52, ['A', 'B', 'C'], ['A']),
+  question(53, ['A', 'B', 'C'], ['A', 'C']),
+  question(54, ['A', 'B', 'C'], ['A', 'C']),
   question(55, ['A', 'B', 'C'], ['B']),
 ]

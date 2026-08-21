@@ -1,4 +1,5 @@
-Sur une pente, quel est le véhicule qui doit s'arrêter à temps à cause d'un croisement difficile ?
-A. Le véhicule descendant.
-B. Le véhicule montant.
-C. Le véhicule qui le désire.
+Sur une pente, quel est le véhicule qui doit s'arrêter le premier à cause d'un croisement difficile ?
+
+A. Le véhicule descendant
+B. Le véhicule montant
+C. Le véhicule qui le désire

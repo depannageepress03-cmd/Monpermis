@@ -1,1 +1,6 @@
-que faire un cas d'incendie d'un véhicule de transport en commun. A, rassurer les passagers pour éviter la panique. B, couper le circuit électrique, c'est mettre la feu de détresse. D, briser les issues de secours en utilisant le marteau brise vite.
+Que faire en cas d'incendie d'un véhicule de transport en commun ?
+
+A. Rassurer les passagers pour éviter la panique
+B. Couper le circuit électrique
+C. Mettre les feux de détresse
+D. Briser les issues de secours en utilisant le marteau brise-vitre

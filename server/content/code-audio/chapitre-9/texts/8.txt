@@ -1,1 +1,6 @@
-que faire un cas d'accinion d'un véhicule de transport en commun. A, attendre-là, Jean-Darmoury avant d'évacuer les blessés, B, arrêter le moteur, C, éviter la panique, D, faire évacuer les passagers.
+Que faire en cas d'accident d'un véhicule de transport en commun ?
+
+A. Attendre la gendarmerie avant d'évacuer les blessés
+B. Arrêter le moteur
+C. Éviter la panique
+D. Faire évacuer les passagers

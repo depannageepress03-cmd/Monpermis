@@ -60,7 +60,7 @@ function question(order, letterOptions, correctLetters) {
 
 /**
  * 48 questions.
- * Images : 1 tourner, 25 B34a, 26 B45, 27 B27, 28 chargement, 29 B10a.
+ * Images : 1 tourner, 25 B34a, 26 B45 (fin voie bus), 27 B27, 28 chargement, 29 B10a.
  */
 export const CHAPITRE_09_QUESTIONS = [
   question(1, ['A', 'B', 'C'], ['C']),
@@ -88,7 +88,7 @@ export const CHAPITRE_09_QUESTIONS = [
   question(23, ['A', 'B', 'C'], ['A']),
   question(24, ['A', 'B', 'C'], ['C']),
   question(25, ['A', 'B', 'C', 'D'], ['D']),
-  question(26, ['A', 'B', 'C', 'D'], ['A']),
+  question(26, ['A', 'B', 'C', 'D'], ['D']),
   question(27, ['A', 'B', 'C', 'D'], ['B']),
   question(28, ['A', 'B', 'C', 'D'], ['B', 'C', 'D']),
   question(29, ['A', 'B', 'C'], ['C']),

@@ -1,1 +1,6 @@
-Un conducteur de véhicule de transport en commun doit disposer d'une boîte de premier sucours. A, dans le coffre à bagage. B, sous son siège. C, C, caden assez, sous son siège. D, caden assez dans le porte-bagage intérieur.
+Un conducteur de véhicule de transport en commun doit disposer d'une boîte de premiers secours :
+
+A. Dans le coffre à bagages
+B. Sous son siège
+C. À portée de main, sous son siège
+D. À portée de main, dans le porte-bagages intérieur

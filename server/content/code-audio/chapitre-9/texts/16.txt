@@ -1,1 +1,6 @@
-En race campagne, quel est la vitesse maximale autorisée pour un véhicule de transport en commun, dont le poids est supérieur à 26 tonnes, à 85 km par heure, B, 65 km par heure, C, 60 km par heure, D, 65 km par heure.
+En rase campagne, quelle est la vitesse maximale autorisée pour un véhicule de transport en commun dont le poids est supérieur à 26 tonnes ?
+
+A. 85 km/h
+B. 65 km/h
+C. 60 km/h
+D. 55 km/h

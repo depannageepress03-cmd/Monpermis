@@ -1,1 +1,5 @@
-Quel est la profondeur minimale des réunures principales d'un pneumatique de poilours à 0,5 mm ? B1 mm. C'est 1,5 mm.
+Quelle est la profondeur minimale des rainures principales d'un pneumatique de poids lourd ?
+
+A. 0,5 mm
+B. 1 mm
+C. 1,5 mm

@@ -1,1 +1,6 @@
-à l'intérieur de l'autocard, je peux transporter. A mon sac à main, B des sacs de maïs, C des colis contenant des liquides inflamables, D des colis contenant des couteaux, et objets au pointu.
+À l'intérieur de l'autocar, je peux transporter :
+
+A. Mon sac à main
+B. Des sacs de maïs
+C. Des colis contenant des liquides inflammables
+D. Des colis contenant des couteaux et objets pointus

@@ -1,1 +1,5 @@
-Le coup de batterie permet d'isoler à l'effet du véhicule, b, l'effet de détresse, c'est l'alimentation électrique du moteur.
+Le coupe-batterie permet d'isoler :
+
+A. Les feux du véhicule
+B. Les feux de détresse
+C. L'alimentation électrique du moteur

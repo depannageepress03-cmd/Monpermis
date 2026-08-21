@@ -1,1 +1,6 @@
-Un véhicule de transport de marchandises peut-être utiliser pour le transport en commun de personnes si le conducteur est titulaire du pygmy. A, catégorie D, B, catégry C, C, catégry C, E, D, aucun permis de l'autorise.
+Un véhicule de transport de marchandises peut être utilisé pour le transport en commun de personnes si le conducteur est titulaire du permis :
+
+A. Catégorie D
+B. Catégorie C
+C. Catégorie C+E
+D. Aucun permis ne l'autorise

@@ -1,1 +1,6 @@
-Qu'elle est la durée maximale de conduite continue à 2 heures, des 4 heures 30 minutes, c'est 5 heures 30 minutes, des 6 heures.
+Quelle est la durée maximale de conduite continue ?
+
+A. 2 heures
+B. 4 heures 30 minutes
+C. 5 heures 30 minutes
+D. 6 heures

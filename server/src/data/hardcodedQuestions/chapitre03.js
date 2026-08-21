@@ -25,7 +25,7 @@ function imageUrl(n) {
 }
 
 /** Images disponibles (N.png = question N). */
-const QUESTIONS_WITH_IMAGES = new Set([2, 6, 8])
+const QUESTIONS_WITH_IMAGES = new Set([2, 8])
 
 const QUESTIONS_DATA = [
   {
@@ -73,8 +73,8 @@ const QUESTIONS_DATA = [
     prompt: 'En quoi consiste le stationnement ?',
     answers: [
       { label: 'A', text: 'À l\'immobilisation de longue durée d\'un véhicule.', correct: false },
-      { label: 'B', text: 'À l\'immobilisation momentanée d\'un véhicule, conducteur à côté.', correct: true },
-      { label: 'C', text: 'À l\'immobilisation momentanée d\'un véhicule, conducteur éloigné.', correct: false },
+      { label: 'B', text: 'À l\'immobilisation momentanée d\'un véhicule, conducteur à côté.', correct: false },
+      { label: 'C', text: 'À l\'immobilisation momentanée d\'un véhicule, conducteur éloigné.', correct: true },
       { label: 'D', text: 'À l\'immobilisation momentanée d\'un véhicule, conducteur à bord.', correct: false },
     ],
   },
@@ -82,8 +82,8 @@ const QUESTIONS_DATA = [
     prompt: 'En présence du panneau de stationnement interdit, je suis autorisé à :',
     answers: [
       { label: 'A', text: 'Stationner après le panneau.', correct: false },
-      { label: 'B', text: 'Stationner avant le panneau.', correct: false },
-      { label: 'C', text: 'Stationner avant la prochaine intersection.', correct: true },
+      { label: 'B', text: 'Stationner avant le panneau.', correct: true },
+      { label: 'C', text: 'Stationner avant la prochaine intersection.', correct: false },
     ],
   },
   {
@@ -97,10 +97,10 @@ const QUESTIONS_DATA = [
   {
     prompt: 'À la vue d\'un usager qui veut s\'insérer dans la circulation :',
     answers: [
-      { label: 'A', text: 'Je klaxonne.', correct: true },
+      { label: 'A', text: 'Je klaxonne.', correct: false },
       { label: 'B', text: 'Je ralentis.', correct: true },
       { label: 'C', text: 'Je fais un appel de feu.', correct: false },
-      { label: 'D', text: 'Je change de voie.', correct: false },
+      { label: 'D', text: 'Je change de voie.', correct: true },
     ],
   },
   {
@@ -245,8 +245,8 @@ const QUESTIONS_DATA = [
     prompt: 'On appelle stationnement gênant le fait de stationner :',
     answers: [
       { label: 'A', text: 'Sur un pont.', correct: false },
-      { label: 'B', text: 'Devant une sortie de propriété.', correct: false },
-      { label: 'C', text: 'Dans une voie réservée aux bus.', correct: false },
+      { label: 'B', text: 'Devant une sortie de propriété.', correct: true },
+      { label: 'C', text: 'Dans une voie réservée aux bus.', correct: true },
       { label: 'D', text: 'À proximité d\'une voie ferrée.', correct: false },
     ],
   },
@@ -261,8 +261,8 @@ const QUESTIONS_DATA = [
     prompt: 'Pour évaluer l\'allure d\'un autre usager venant en face, je prends en compte :',
     answers: [
       { label: 'A', text: 'Le type de véhicule.', correct: false },
-      { label: 'B', text: 'L\'état du conducteur.', correct: true },
-      { label: 'C', text: 'La vitesse de rapprochement.', correct: false },
+      { label: 'B', text: 'L\'état du conducteur.', correct: false },
+      { label: 'C', text: 'La vitesse de rapprochement.', correct: true },
     ],
   },
   {
@@ -276,7 +276,7 @@ const QUESTIONS_DATA = [
   {
     prompt: 'Le temps de réaction a une durée d\'environ :',
     answers: [
-      { label: 'A', text: 'Un dixième de seconde.', correct: true },
+      { label: 'A', text: 'Un dixième de seconde.', correct: false },
       { label: 'B', text: 'Une seconde.', correct: true },
       { label: 'C', text: 'Dix secondes.', correct: false },
     ],
@@ -284,17 +284,17 @@ const QUESTIONS_DATA = [
   {
     prompt: 'Sur chaussée mouillée ou glissante, il y a augmentation de la distance :',
     answers: [
-      { label: 'A', text: 'D\'arrêt.', correct: false },
-      { label: 'B', text: 'De freinage.', correct: false },
-      { label: 'C', text: 'Parcourue pendant le temps de réaction.', correct: true },
+      { label: 'A', text: 'D\'arrêt.', correct: true },
+      { label: 'B', text: 'De freinage.', correct: true },
+      { label: 'C', text: 'Parcourue pendant le temps de réaction.', correct: false },
     ],
   },
   {
     prompt: 'À 90 km/h, dans des conditions normales, ma distance d\'arrêt est d\'environ :',
     answers: [
-      { label: 'A', text: '25 mètres.', correct: true },
-      { label: 'B', text: '54 mètres.', correct: true },
-      { label: 'C', text: '81 mètres.', correct: false },
+      { label: 'A', text: '25 mètres.', correct: false },
+      { label: 'B', text: '54 mètres.', correct: false },
+      { label: 'C', text: '81 mètres.', correct: true },
     ],
   },
   {
@@ -308,33 +308,33 @@ const QUESTIONS_DATA = [
   {
     prompt: 'Je suis en infraction si je suis en stationnement :',
     answers: [
-      { label: 'A', text: 'Dangereux.', correct: false },
-      { label: 'B', text: 'Abusif.', correct: false },
-      { label: 'C', text: 'Gênant.', correct: false },
+      { label: 'A', text: 'Dangereux.', correct: true },
+      { label: 'B', text: 'Abusif.', correct: true },
+      { label: 'C', text: 'Gênant.', correct: true },
     ],
   },
   {
     prompt: 'Dans quel cas faut-il réduire sa vitesse ?',
     answers: [
       { label: 'A', text: 'Lorsqu\'il n\'y a pas de panneau de signalisation.', correct: false },
-      { label: 'B', text: 'À l\'approche des montées.', correct: true },
-      { label: 'C', text: 'Dans les descentes rapides.', correct: false },
-      { label: 'D', text: 'Lorsqu\'on aborde une intersection.', correct: false },
-      { label: 'E', text: 'Lorsque la route n\'apparaît pas libre.', correct: false },
+      { label: 'B', text: 'À l\'approche des montées.', correct: false },
+      { label: 'C', text: 'Dans les descentes rapides.', correct: true },
+      { label: 'D', text: 'Lorsqu\'on aborde une intersection.', correct: true },
+      { label: 'E', text: 'Lorsque la route n\'apparaît pas libre.', correct: true },
     ],
   },
   {
     prompt: 'Lorsque je quitte momentanément mon véhicule pour acheter mon journal, je suis considéré comme étant :',
     answers: [
-      { label: 'A', text: 'En arrêt.', correct: true },
-      { label: 'B', text: 'En stationnement.', correct: false },
+      { label: 'A', text: 'En arrêt.', correct: false },
+      { label: 'B', text: 'En stationnement.', correct: true },
     ],
   },
   {
     prompt: 'En général, se ranger en bataille s\'effectue :',
     answers: [
-      { label: 'A', text: 'En marche arrière.', correct: false },
-      { label: 'B', text: 'En marche avant.', correct: true },
+      { label: 'A', text: 'En marche arrière.', correct: true },
+      { label: 'B', text: 'En marche avant.', correct: false },
     ],
   },
   {
@@ -348,9 +348,9 @@ const QUESTIONS_DATA = [
   {
     prompt: 'En cas de visibilité réduite à 50 mètres, la vitesse ne peut excéder :',
     answers: [
-      { label: 'A', text: '50 km/h.', correct: false },
+      { label: 'A', text: '50 km/h.', correct: true },
       { label: 'B', text: '60 km/h.', correct: false },
-      { label: 'C', text: '90 km/h.', correct: true },
+      { label: 'C', text: '90 km/h.', correct: false },
     ],
   },
   {

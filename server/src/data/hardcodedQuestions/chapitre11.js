@@ -1,6 +1,7 @@
 /**
  * Banque questions en dur — Chapitre 11 (situations, marquage, priorités).
  * Audio : /content/code-audio/chapitre-11/{n}.mp3
+ * Images : /content/code-images/chapitre-11/{n}.png
  * 82 questions — 2026-08-19.
  *
  * Justes renseignées seulement quand la règle est générale (sans image).
@@ -21,6 +22,13 @@ export function matchesChapitre11(chapter) {
 function audioUrl(n) {
   return `/content/code-audio/chapitre-11/${n}.mp3`
 }
+
+function imageUrl(n) {
+  return `/content/code-images/chapitre-11/${n}.png`
+}
+
+/** Images disponibles (N.png = question N) — 1re partie. */
+const QUESTIONS_WITH_IMAGES = new Set([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12])
 
 function answers(questionIndex, letters, correctLetters) {
   const correct = new Set(correctLetters.map((l) => l.toUpperCase()))
@@ -47,7 +55,7 @@ function question(order, letterOptions, correctLetters) {
       text: '',
       audioUrl: audioUrl(order),
       audioPublicId: '',
-      imageUrls: [],
+      imageUrls: QUESTIONS_WITH_IMAGES.has(order) ? [imageUrl(order)] : [],
     },
     answers: answers(order, letterOptions, correctLetters),
   }

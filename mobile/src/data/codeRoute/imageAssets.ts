@@ -76,8 +76,17 @@ export const CODE_IMAGE_MODULES: Record<number, Record<number, number>> = {
   },
   3: {
     2: require('../../../assets/code-images/chapitre-3/2.png'),
-    6: require('../../../assets/code-images/chapitre-3/6.png'),
     8: require('../../../assets/code-images/chapitre-3/8.png'),
+  },
+  4: {
+    9: require('../../../assets/code-images/chapitre-4/9.png'),
+  },
+  6: {
+    24: require('../../../assets/code-images/chapitre-6/24.png'),
+    25: require('../../../assets/code-images/chapitre-6/25.png'),
+  },
+  7: {
+    4: require('../../../assets/code-images/chapitre-7/4.png'),
   },
   8: {
     22: require('../../../assets/code-images/chapitre-8/22.png'),
@@ -94,6 +103,20 @@ export const CODE_IMAGE_MODULES: Record<number, Record<number, number>> = {
     27: require('../../../assets/code-images/chapitre-9/27.png'),
     28: require('../../../assets/code-images/chapitre-9/28.png'),
     29: require('../../../assets/code-images/chapitre-9/29.png'),
+  },
+  11: {
+    1: require('../../../assets/code-images/chapitre-11/1.png'),
+    2: require('../../../assets/code-images/chapitre-11/2.png'),
+    3: require('../../../assets/code-images/chapitre-11/3.png'),
+    4: require('../../../assets/code-images/chapitre-11/4.png'),
+    5: require('../../../assets/code-images/chapitre-11/5.png'),
+    6: require('../../../assets/code-images/chapitre-11/6.png'),
+    7: require('../../../assets/code-images/chapitre-11/7.png'),
+    8: require('../../../assets/code-images/chapitre-11/8.png'),
+    9: require('../../../assets/code-images/chapitre-11/9.png'),
+    10: require('../../../assets/code-images/chapitre-11/10.png'),
+    11: require('../../../assets/code-images/chapitre-11/11.png'),
+    12: require('../../../assets/code-images/chapitre-11/12.png'),
   },
   15: {
     1: require('../../../assets/code-images/chapitre-15/1.png'),

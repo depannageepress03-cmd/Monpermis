@@ -1,1 +1,5 @@
-Dans la définition du poids avide d'un véhicule, on tient compte à du poids du poids du véhicule, les réservoirs, les réservoirs remplis avec les équipements de bord, bed du poids du véhicule, sans le carburant, sans basche, c'est du poids du véhicule, avec le réservoir rempli uniquement.
+Dans la définition du poids à vide d'un véhicule, on tient compte :
+
+A. Du poids du véhicule, réservoirs remplis, avec les équipements de bord
+B. Du poids du véhicule sans le carburant ni les batteries
+C. Du poids du véhicule avec le réservoir rempli uniquement

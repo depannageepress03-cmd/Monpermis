@@ -1,1 +1,5 @@
-Avec quel catégorie de permis de conduire, pourrez vous conduire un taxi. A catégorie B, B catégorie C, C catégorie D.
+Avec quelle catégorie de permis de conduire pouvez-vous conduire un taxi ?
+
+A. Catégorie B
+B. Catégorie C
+C. Catégorie D

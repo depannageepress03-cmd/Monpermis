@@ -1,1 +1,5 @@
-A partir de 55 ans, quel est la périodicité des visites médicales pour un conducteur de transport en commun ? A, un an, B, deux ans, C, 5 ans.
+À partir de 55 ans, quelle est la périodicité des visites médicales pour un conducteur de transport en commun ?
+
+A. Un an
+B. Deux ans
+C. Cinq ans

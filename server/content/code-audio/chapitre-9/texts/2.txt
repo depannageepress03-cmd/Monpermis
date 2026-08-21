@@ -1,1 +1,7 @@
-L'OTOCA est un véhicule de transport en commun de personnes destinées au A transport urbain. B transport de marchandises sur une longue distance. C'est transport de passagers assis uniquement. D transport de passagers du bout. E transport de passagers assis sur une longue distance.
+L'autocar est un véhicule de transport en commun de personnes destiné au :
+
+A. Transport urbain
+B. Transport de marchandises sur une longue distance
+C. Transport de passagers assis uniquement
+D. Transport de passagers debout
+E. Transport de passagers assis sur une longue distance

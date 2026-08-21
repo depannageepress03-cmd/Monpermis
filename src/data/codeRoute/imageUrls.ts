@@ -70,8 +70,11 @@ import img2_27 from '../../assets/code-images/chapitre-2/27.png?url'
 import img2_28 from '../../assets/code-images/chapitre-2/28.png?url'
 import img2_29 from '../../assets/code-images/chapitre-2/29.png?url'
 import img3_2 from '../../assets/code-images/chapitre-3/2.png?url'
-import img3_6 from '../../assets/code-images/chapitre-3/6.png?url'
 import img3_8 from '../../assets/code-images/chapitre-3/8.png?url'
+import img4_9 from '../../assets/code-images/chapitre-4/9.png?url'
+import img6_24 from '../../assets/code-images/chapitre-6/24.png?url'
+import img6_25 from '../../assets/code-images/chapitre-6/25.png?url'
+import img7_4 from '../../assets/code-images/chapitre-7/4.png?url'
 import img8_22 from '../../assets/code-images/chapitre-8/22.png?url'
 import img8_23 from '../../assets/code-images/chapitre-8/23.png?url'
 import img8_31 from '../../assets/code-images/chapitre-8/31.png?url'
@@ -84,6 +87,18 @@ import img9_26 from '../../assets/code-images/chapitre-9/26.png?url'
 import img9_27 from '../../assets/code-images/chapitre-9/27.png?url'
 import img9_28 from '../../assets/code-images/chapitre-9/28.png?url'
 import img9_29 from '../../assets/code-images/chapitre-9/29.png?url'
+import img11_1 from '../../assets/code-images/chapitre-11/1.png?url'
+import img11_2 from '../../assets/code-images/chapitre-11/2.png?url'
+import img11_3 from '../../assets/code-images/chapitre-11/3.png?url'
+import img11_4 from '../../assets/code-images/chapitre-11/4.png?url'
+import img11_5 from '../../assets/code-images/chapitre-11/5.png?url'
+import img11_6 from '../../assets/code-images/chapitre-11/6.png?url'
+import img11_7 from '../../assets/code-images/chapitre-11/7.png?url'
+import img11_8 from '../../assets/code-images/chapitre-11/8.png?url'
+import img11_9 from '../../assets/code-images/chapitre-11/9.png?url'
+import img11_10 from '../../assets/code-images/chapitre-11/10.png?url'
+import img11_11 from '../../assets/code-images/chapitre-11/11.png?url'
+import img11_12 from '../../assets/code-images/chapitre-11/12.png?url'
 import img15_1 from '../../assets/code-images/chapitre-15/1.png?url'
 import img15_2 from '../../assets/code-images/chapitre-15/2.png?url'
 import img15_3 from '../../assets/code-images/chapitre-15/3.png?url'
@@ -167,8 +182,17 @@ const MAP: Record<number, Record<number, string>> = {
   },
   3: {
     2: img3_2,
-    6: img3_6,
     8: img3_8,
+  },
+  4: {
+    9: img4_9,
+  },
+  6: {
+    24: img6_24,
+    25: img6_25,
+  },
+  7: {
+    4: img7_4,
   },
   8: {
     22: img8_22,
@@ -185,6 +209,20 @@ const MAP: Record<number, Record<number, string>> = {
     27: img9_27,
     28: img9_28,
     29: img9_29,
+  },
+  11: {
+    1: img11_1,
+    2: img11_2,
+    3: img11_3,
+    4: img11_4,
+    5: img11_5,
+    6: img11_6,
+    7: img11_7,
+    8: img11_8,
+    9: img11_9,
+    10: img11_10,
+    11: img11_11,
+    12: img11_12,
   },
   15: {
     1: img15_1,

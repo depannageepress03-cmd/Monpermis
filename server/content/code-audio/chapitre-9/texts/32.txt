@@ -1,1 +1,5 @@
-De combien de mètres moins chargement de grande longueur, peut-il dépasser l'extrimité avant du véhicule A 1 m, B 0,5 m, C 0 m ?
+De combien de mètres un chargement de grande longueur peut-il dépasser l'extrémité avant du véhicule ?
+
+A. 1 m
+B. 0,5 m
+C. 0 m

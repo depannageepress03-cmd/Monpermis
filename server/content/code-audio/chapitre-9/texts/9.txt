@@ -1,1 +1,6 @@
-que faire en cas de panne d'un véhicule de transport en commun. A, alerté la gendarmerie, B, fermé le robinet du carburant, C, coupé le circuit électrique, D, placé la triangle de pré signalisation.
+Que faire en cas de panne d'un véhicule de transport en commun ?
+
+A. Alerter la gendarmerie
+B. Fermer le robinet du carburant
+C. Couper le circuit électrique
+D. Placer le triangle de pré-signalisation

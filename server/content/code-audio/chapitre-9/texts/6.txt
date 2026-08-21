@@ -1,1 +1,6 @@
-Quelle est l'âge minimum du candidat à l'examen du permis de conduire catégorie D à 18, b 20 ans, c'est 21 ans, d 25 ans.
+Quel est l'âge minimum du candidat à l'examen du permis de conduire catégorie D ?
+
+A. 18 ans
+B. 20 ans
+C. 21 ans
+D. 25 ans

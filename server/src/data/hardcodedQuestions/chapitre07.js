@@ -1,8 +1,8 @@
 /**
  * Banque questions en dur — Chapitre 7.
  * Audio : /content/code-audio/chapitre-7/{n}.mp3
- * (anciennement chapitre 8 — décalage catalogue 20 chapitres)
- * Corrections réponses fournies 2026-07-30.
+ * Images : /content/code-images/chapitre-7/{n}.png
+ * Mis à jour — 2026-08-20 (réponses + image Q4 B14).
  */
 
 export const CHAPITRE_07_KEY = 'chapitre-7'
@@ -19,6 +19,13 @@ export function matchesChapitre07(chapter) {
 function audioUrl(n) {
   return `/content/code-audio/chapitre-7/${n}.mp3`
 }
+
+function imageUrl(n) {
+  return `/content/code-images/chapitre-7/${n}.png`
+}
+
+/** Images disponibles (N.png = question N). */
+const QUESTIONS_WITH_IMAGES = new Set([4])
 
 function answers(questionIndex, letters, correctLetters) {
   const correct = new Set(correctLetters.map((l) => l.toUpperCase()))
@@ -45,13 +52,13 @@ function question(order, letterOptions, correctLetters) {
       text: '',
       audioUrl: audioUrl(order),
       audioPublicId: '',
-      imageUrls: [],
+      imageUrls: QUESTIONS_WITH_IMAGES.has(order) ? [imageUrl(order)] : [],
     },
     answers: answers(order, letterOptions, correctLetters),
   }
 }
 
-/** 9 questions — énoncé audio uniquement. */
+/** 9 questions. */
 export const CHAPITRE_07_QUESTIONS = [
   question(1, ['A', 'B', 'C'], ['A', 'C']),
   question(2, ['A', 'B', 'C'], ['C']),
@@ -60,6 +67,6 @@ export const CHAPITRE_07_QUESTIONS = [
   question(5, ['A', 'B', 'C', 'D'], ['C', 'D']),
   question(6, ['A', 'B', 'C'], ['B']),
   question(7, ['A', 'B', 'C'], ['B']),
-  question(8, ['A', 'B', 'C', 'D'], ['D']),
+  question(8, ['A', 'B', 'C', 'D'], ['B']),
   question(9, ['A', 'B', 'C'], ['C']),
 ]
