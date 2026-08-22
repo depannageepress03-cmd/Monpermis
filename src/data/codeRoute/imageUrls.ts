@@ -99,6 +99,28 @@ import img11_9 from '../../assets/code-images/chapitre-11/9.png?url'
 import img11_10 from '../../assets/code-images/chapitre-11/10.png?url'
 import img11_11 from '../../assets/code-images/chapitre-11/11.png?url'
 import img11_12 from '../../assets/code-images/chapitre-11/12.png?url'
+import img11_34 from '../../assets/code-images/chapitre-11/34.png?url'
+import img11_33 from '../../assets/code-images/chapitre-11/33.png?url'
+import img11_32 from '../../assets/code-images/chapitre-11/32.png?url'
+import img11_31 from '../../assets/code-images/chapitre-11/31.png?url'
+import img11_30 from '../../assets/code-images/chapitre-11/30.png?url'
+import img11_29 from '../../assets/code-images/chapitre-11/29.png?url'
+import img11_28 from '../../assets/code-images/chapitre-11/28.png?url'
+import img11_27 from '../../assets/code-images/chapitre-11/27.png?url'
+import img11_26 from '../../assets/code-images/chapitre-11/26.png?url'
+import img11_25 from '../../assets/code-images/chapitre-11/25.png?url'
+import img11_24 from '../../assets/code-images/chapitre-11/24.png?url'
+import img11_23 from '../../assets/code-images/chapitre-11/23.png?url'
+import img11_22 from '../../assets/code-images/chapitre-11/22.png?url'
+import img11_21 from '../../assets/code-images/chapitre-11/21.png?url'
+import img11_20 from '../../assets/code-images/chapitre-11/20.png?url'
+import img11_19 from '../../assets/code-images/chapitre-11/19.png?url'
+import img11_18 from '../../assets/code-images/chapitre-11/18.png?url'
+import img11_17 from '../../assets/code-images/chapitre-11/17.png?url'
+import img11_16 from '../../assets/code-images/chapitre-11/16.png?url'
+import img11_15 from '../../assets/code-images/chapitre-11/15.png?url'
+import img11_14 from '../../assets/code-images/chapitre-11/14.png?url'
+import img11_13 from '../../assets/code-images/chapitre-11/13.png?url'
 import img15_1 from '../../assets/code-images/chapitre-15/1.png?url'
 import img15_2 from '../../assets/code-images/chapitre-15/2.png?url'
 import img15_3 from '../../assets/code-images/chapitre-15/3.png?url'
@@ -223,6 +245,28 @@ const MAP: Record<number, Record<number, string>> = {
     10: img11_10,
     11: img11_11,
     12: img11_12,
+    13: img11_13,
+    14: img11_14,
+    15: img11_15,
+    16: img11_16,
+    17: img11_17,
+    18: img11_18,
+    19: img11_19,
+    20: img11_20,
+    21: img11_21,
+    22: img11_22,
+    23: img11_23,
+    24: img11_24,
+    25: img11_25,
+    26: img11_26,
+    27: img11_27,
+    28: img11_28,
+    29: img11_29,
+    30: img11_30,
+    31: img11_31,
+    32: img11_32,
+    33: img11_33,
+    34: img11_34,
   },
   15: {
     1: img15_1,
