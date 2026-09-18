@@ -25,6 +25,11 @@ export type RootStackParamList = {
   HistoriquePaiements: undefined
   CodeRoute: undefined
   RevisionChapitres: undefined
+  RevisionPanneaux: undefined
+  RevisionPanneauxCategory: {
+    categoryId: string
+    categoryLabel: string
+  }
   /** Liste des cours autonomes. */
   CodeCours: undefined
   ChapterCourses: {

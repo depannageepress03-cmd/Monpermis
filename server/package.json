@@ -15,7 +15,8 @@
     "audit:audios": "node scripts/audit-question-audios.mjs",
     "generate:learner-banks": "node scripts/generate-learner-banks.mjs",
     "generate:transcripts": "node scripts/export-question-transcripts.mjs",
-    "check:banks-sync": "node scripts/check-learner-banks-sync.mjs"
+    "check:banks-sync": "node scripts/check-learner-banks-sync.mjs",
+    "generate:panneaux": "python3 scripts/build-panneaux-catalog.py"
   },
   "engines": {
     "node": ">=20"

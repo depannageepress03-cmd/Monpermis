@@ -943,6 +943,10 @@
   text-decoration: none;
 }
 
+.learner-question-row--num-only {
+  justify-content: space-between;
+}
+
 .learner-question-row:hover {
   border-color: rgba(0, 176, 80, 0.45);
 }
@@ -959,13 +963,6 @@
   font-weight: 700;
   font-size: 0.85rem;
   flex-shrink: 0;
-}
-
-.learner-question-excerpt {
-  flex: 1;
-  min-width: 0;
-  font-size: 0.92rem;
-  color: #334155;
 }
 
 .learner-quiz-review {
@@ -1867,4 +1864,123 @@
 
 .learner-quiz-prompt p {
   margin: 0 0 8px;
+}
+
+/* —— Révision panneaux —— */
+.learner-panneaux-hero {
+  margin: -0.25rem -0.25rem 1rem;
+  border-radius: 1rem;
+  overflow: hidden;
+  background: #f8fafc;
+  border: 1px solid rgba(0, 16, 48, 0.06);
+}
+
+.learner-panneaux-hero img {
+  display: block;
+  width: 100%;
+  max-height: 180px;
+  object-fit: contain;
+  padding: 0.75rem;
+}
+
+.learner-panneaux-cats {
+  gap: 0.55rem;
+}
+
+.learner-panneaux-prefix {
+  width: 2.6rem !important;
+  font-size: 0.72rem !important;
+  letter-spacing: 0.02em;
+  background: rgba(14, 165, 233, 0.14) !important;
+  color: #0284c7 !important;
+}
+
+.learner-panneaux-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.learner-panneau-card {
+  display: grid;
+  grid-template-columns: 112px 1fr;
+  gap: 0.85rem;
+  align-items: center;
+  padding: 0.75rem;
+  border-radius: 1rem;
+  border: 1px solid rgba(0, 16, 48, 0.1);
+  background: #fff;
+}
+
+.learner-panneau-card-media {
+  position: relative;
+  width: 112px;
+  height: 100px;
+  border-radius: 0.85rem;
+  background: #f8fafc;
+  border: 1px solid rgba(0, 16, 48, 0.06);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.learner-panneau-card-media img {
+  width: 88px;
+  height: 78px;
+  object-fit: contain;
+}
+
+.learner-panneau-play {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  border: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(2, 132, 199, 0.95);
+  color: #fff;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.35);
+}
+
+.learner-panneau-play:hover {
+  background: #0369a1;
+}
+
+.learner-panneau-play.is-playing {
+  background: #0f172a;
+}
+
+.learner-panneau-card-body {
+  min-width: 0;
+}
+
+.learner-panneau-card-code {
+  margin: 0 0 0.25rem;
+  font-weight: 800;
+  font-size: 0.95rem;
+  color: #0284c7;
+}
+
+.learner-panneau-card-def {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.4;
+  color: #334155;
+}
+
+@media (max-width: 520px) {
+  .learner-panneau-card {
+    grid-template-columns: 96px 1fr;
+    gap: 0.65rem;
+  }
+  .learner-panneau-card-media {
+    width: 96px;
+    height: 88px;
+  }
 }

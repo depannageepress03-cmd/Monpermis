@@ -269,6 +269,7 @@ export function ChapterQuestionsListScreen() {
                       key={q.id}
                       style={({ pressed }) => [
                         qStyles.questionRow,
+                        qStyles.questionRowNumOnly,
                         pressed && qStyles.pressed,
                       ]}
                       onPress={() => openQuestion(qi)}
@@ -278,9 +279,6 @@ export function ChapterQuestionsListScreen() {
                       <View style={qStyles.questionNum}>
                         <Text style={qStyles.questionNumText}>{qi + 1}</Text>
                       </View>
-                      <Text style={qStyles.questionExcerpt} numberOfLines={1}>
-                        Question {qi + 1}
-                      </Text>
                       <ChevronRight size={16} color={dark.textMuted} />
                     </Pressable>
                   ))}
@@ -580,6 +578,9 @@ const qStyles = StyleSheet.create({
     paddingHorizontal: 12,
     borderRadius: 14,
   },
+  questionRowNumOnly: {
+    justifyContent: 'space-between',
+  },
   questionNum: {
     width: 32,
     height: 32,
@@ -592,13 +593,6 @@ const qStyles = StyleSheet.create({
     fontFamily: fonts.bodyBold,
     fontSize: 13,
     color: dark.green,
-  },
-  questionExcerpt: {
-    flex: 1,
-    fontFamily: fonts.body,
-    fontSize: 14,
-    lineHeight: 19,
-    color: dark.textPrimary,
   },
   footerAnim: {
     marginTop: 4,

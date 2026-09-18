@@ -9,6 +9,7 @@ import {
   Pencil,
   ShieldCheck,
   Smartphone,
+  TriangleAlert,
   Trophy,
 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
@@ -40,6 +41,14 @@ const categoriesBase = [
     className: 'category-pink',
     image: '/code-route/cards/revision.jpg',
     Icon: Pencil,
+  },
+  {
+    id: 'revision-panneaux',
+    label: 'Révision panneaux',
+    subtitle: 'Apprends tous les panneaux par catégorie.',
+    className: 'category-cyan',
+    image: '/code-route/cards/panneaux.png',
+    Icon: TriangleAlert,
   },
   {
     id: 'examens-test',

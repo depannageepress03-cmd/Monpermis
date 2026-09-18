@@ -728,6 +728,10 @@
   background: linear-gradient(160deg, #7c3aed, #c4b5fd);
 }
 
+.category-cyan {
+  background: linear-gradient(160deg, #0284c7, #38bdf8);
+}
+
 .category-card--photo.category-pink .category-card-shade {
   background: linear-gradient(to top, rgba(157, 23, 77, 0.92), rgba(219, 39, 119, 0.28), transparent);
 }
@@ -742,6 +746,10 @@
 
 .category-card--photo.category-purple .category-card-shade {
   background: linear-gradient(to top, rgba(91, 33, 182, 0.92), rgba(124, 58, 237, 0.28), transparent);
+}
+
+.category-card--photo.category-cyan .category-card-shade {
+  background: linear-gradient(to top, rgba(3, 105, 161, 0.92), rgba(2, 132, 199, 0.28), transparent);
 }
 
 .category-icon {

@@ -48,6 +48,10 @@ import { PaymentHistoryScreen } from '../screens/PaymentHistoryScreen'
 import { CodeRouteScreen } from '../screens/CodeRouteScreen'
 import { CodeCoursesScreen } from '../screens/code-route/CodeCoursesScreen'
 import { RevisionChapitresScreen } from '../screens/code-route/RevisionChapitresScreen'
+import {
+  RevisionPanneauxCategoryScreen,
+  RevisionPanneauxScreen,
+} from '../screens/code-route/RevisionPanneauxScreens'
 import { ChapterCoursesScreen } from '../screens/code-route/ChapterCoursesScreen'
 import { CourseDetailScreen } from '../screens/code-route/CourseDetailScreen'
 import { ChapterQuestionsListScreen, ChapterTestSubjectScreen } from '../screens/code-route/ChapterSectionScreens'
@@ -89,6 +93,8 @@ const linking: LinkingOptions<RootStackParamList> = {
       HistoriquePaiements: 'abonnement/historique',
       CodeRoute: 'code-de-la-route',
       RevisionChapitres: 'code-de-la-route/revision-chapitres',
+      RevisionPanneaux: 'code-de-la-route/revision-panneaux',
+      RevisionPanneauxCategory: 'code-de-la-route/revision-panneaux/:categoryId',
       CodeCours: 'code-de-la-route/cours',
       ChapterCourses: 'code-de-la-route/revision-chapitres/cours',
       CourseDetail: 'code-de-la-route/revision-chapitres/cours/detail',
@@ -198,6 +204,14 @@ function AppNavigator() {
       <Stack.Screen
         name="RevisionChapitres"
         component={RevisionChapitresScreen}
+      />
+      <Stack.Screen
+        name="RevisionPanneaux"
+        component={RevisionPanneauxScreen}
+      />
+      <Stack.Screen
+        name="RevisionPanneauxCategory"
+        component={RevisionPanneauxCategoryScreen}
       />
       <Stack.Screen
         name="CodeCours"

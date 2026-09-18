@@ -135,14 +135,13 @@ export function LearnerChapterQuestionsListPage() {
                 {questions.map((question, index) => (
                   <Link
                     key={question.id}
-                    className="learner-question-row"
+                    className="learner-question-row learner-question-row--num-only"
                     to={`/code-de-la-route/revision-chapitres/${chapterId}/questions/${index}`}
                     state={{ chapterName }}
                     onClick={() => unlockQuizAudio()}
                     aria-label={`Question ${index + 1}`}
                   >
                     <span className="learner-question-num">{index + 1}</span>
-                    <span className="learner-question-excerpt">Question {index + 1}</span>
                     <ChevronRight size={16} aria-hidden />
                   </Link>
                 ))}

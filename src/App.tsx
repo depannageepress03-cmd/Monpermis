@@ -21,6 +21,10 @@ import {
   RevisionChapterTestSubjectPage,
 } from './pages/code-route/RevisionChapterQuizPages'
 import { RevisionCourseDetailPage } from './pages/code-route/RevisionCourseDetailPage'
+import {
+  RevisionPanneauxCategoryPage,
+  RevisionPanneauxPage,
+} from './pages/code-route/RevisionPanneauxPages'
 import { AbonnementPage } from './pages/AbonnementPage'
 import { PaymentHistoryPage } from './pages/PaymentHistoryPage'
 import { HomePage } from './pages/HomePage'
@@ -91,6 +95,11 @@ export default function App() {
       <Route
         path="/code-de-la-route/revision-chapitres/:chapterId/cours/:courseId"
         element={<RevisionCourseDetailPage />}
+      />
+      <Route path="/code-de-la-route/revision-panneaux" element={<RevisionPanneauxPage />} />
+      <Route
+        path="/code-de-la-route/revision-panneaux/:categoryId"
+        element={<RevisionPanneauxCategoryPage />}
       />
       <Route path="/code-de-la-route/examens-test" element={<ExamensTestPage />} />
       <Route path="/code-de-la-route/examens-test/:examNumber" element={<ExamensTestTakePage />} />

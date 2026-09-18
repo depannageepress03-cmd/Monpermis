@@ -24,6 +24,7 @@ mobile/credentials/*.local.txt
 
 # Python / outils locaux
 .venv-img/
+.venv-tts/
 .venv/
 __pycache__/
 
