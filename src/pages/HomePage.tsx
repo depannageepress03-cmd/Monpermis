@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Bell, BookOpen, ChevronRight, Lock, User, Video } from 'lucide-react'
 import { supportWhatsAppUrl } from '../utils/support'
 import { clearSession } from '../api/auth'
+import { tracker } from '../utils/tracker'
 import { fetchUnreadCount } from '../api/notifications'
 import { fetchAccessMe, type AccessMe } from '../api/accessRequests'
 import { AccountSheet } from '../components/AccountSheet'
@@ -64,6 +65,7 @@ export function HomePage() {
 
   const handleLogout = () => {
     clearSession()
+    tracker.reset()
     navigate('/intro', { replace: true })
   }
 

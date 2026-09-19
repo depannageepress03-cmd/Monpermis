@@ -1,4 +1,6 @@
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import { useEffect, useRef } from 'react'
+import { tracker } from './utils/tracker'
 import { IntroPage } from './pages/IntroPage'
 import { CodeRoutePage } from './pages/CodeRoutePage'
 import { ConduitePage } from './pages/ConduitePage'
@@ -45,6 +47,15 @@ import { ActualiteDetailPage } from './pages/ActualiteDetailPage'
 
 export default function App() {
   const location = useLocation()
+  const startedRef = useRef(false)
+
+  useEffect(() => {
+    if (!startedRef.current) {
+      startedRef.current = true
+      tracker.start()
+    }
+    tracker.track('screen_view', { screen: location.pathname })
+  }, [location.pathname])
 
   return (
     <div key={location.pathname} className="mp-page-stage">

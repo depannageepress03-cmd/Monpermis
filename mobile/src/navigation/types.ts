@@ -107,7 +107,8 @@ export type RootStackParamList = {
   ExamensTestTake: { examNumber: number }
   MesNotes: undefined
   Conduite: undefined
-  ReservationFlow: undefined
+  ReservationFlow: { moniteurId?: string } | undefined
+  MoniteurProfile: { id: string; name?: string }
   MesReservations: undefined
   ReservationConfirm: {
     reservationId: string

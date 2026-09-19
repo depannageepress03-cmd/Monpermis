@@ -1,4 +1,4 @@
-import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
+import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
 import { BookOpen, Check, ChevronRight } from 'lucide-react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import {

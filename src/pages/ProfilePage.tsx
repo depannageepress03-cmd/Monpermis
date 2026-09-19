@@ -6,7 +6,8 @@ import {
   deleteAccount,
   updateProfile,
 } from '../api/auth-password'
-import { clearSession } from '../api/auth'
+import { clearSession, type AuthUser } from '../api/auth'
+import { tracker } from '../utils/tracker'
 import { PageNavbar } from '../components/PageNavbar'
 import { PageLoader } from '../components/PageLoader'
 import { useAuth } from '../hooks/useAuth'
@@ -80,7 +81,7 @@ export function ProfilePage() {
         lastName: lastName.trim(),
         phone: normalizePhone(phone),
       })
-      updateUser({ ...user, ...updated })
+      updateUser({ ...user, ...updated } as AuthUser)
       setProfileMsg('Profil mis à jour')
       if (String(updated.phone || '').trim()) setPhoneHint('')
     } catch (err) {
@@ -133,6 +134,7 @@ export function ProfilePage() {
         password: deletePassword,
       })
       clearSession()
+      tracker.reset()
       navigate('/', { replace: true })
     } catch (err) {
       setDeleteError(err instanceof Error ? err.message : 'Suppression impossible')

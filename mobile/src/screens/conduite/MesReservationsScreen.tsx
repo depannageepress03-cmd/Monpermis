@@ -181,14 +181,14 @@ export function MesReservationsScreen() {
                   </Pressable>
                   {item.canCancel ? (
                     <Pressable
-                      style={styles.cancelBtn}
+                      style={styles.cancelLink}
                       onPress={() => {
                         setError(null)
                         setCancelReason('')
                         setCancelTarget(item)
                       }}
                     >
-                      <Text style={styles.cancelBtnText}>Annuler</Text>
+                      <Text style={styles.cancelLinkText}>Annuler</Text>
                     </Pressable>
                   ) : null}
                 </View>
@@ -213,14 +213,14 @@ export function MesReservationsScreen() {
                 </Text>
                 {item.canCancel ? (
                   <Pressable
-                    style={styles.cancelBtn}
+                    style={styles.cancelLink}
                     onPress={() => {
                       setError(null)
                       setCancelReason('')
                       setCancelTarget(item)
                     }}
                   >
-                    <Text style={styles.cancelBtnText}>Annuler</Text>
+                    <Text style={styles.cancelLinkText}>Annuler</Text>
                   </Pressable>
                 ) : null}
               </View>

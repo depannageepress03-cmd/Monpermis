@@ -22,7 +22,7 @@ import { useLeaveGuard } from '../../hooks/useLeaveGuard'
 import { getChapterOrderById } from '../../data/codeRoute/chapterIndex'
 import { getRevisionPracticePromptTranscript, enrichAnswersFromTranscript, resolveQuestionTranscript } from '../../data/codeRoute/questionTranscripts'
 import { playFailSound, playSuccessSound, stopAllQuizAudio, unlockQuizAudio } from '../../utils/quizSounds'
-import { resolveMediaUrl } from '../../utils/mediaUrl'
+import { tracker } from '../../utils/tracker'
 import { resolveCodeImageUrl } from '../../utils/codeImageUrl'
 import '../../styles/auth.css'
 import '../../styles/learner.css'
@@ -114,19 +114,31 @@ export function LearnerChapterQuizPage({
       } else {
         setChapterName(stateChapterName)
       }
+      let loaded = questionsRef.current
       if (mode === 'test') {
         const subject = await fetchRevisionChapterTestSubject(chapterId, subjectNumber)
         setSubjectLabel(subject.label || `Sujet ${subjectNumber}`)
-        setQuestions(subject.questions || [])
+        loaded = subject.questions || []
+        setQuestions(loaded)
       } else {
         setSubjectLabel('')
         const all = await fetchRevisionChapterQuestions(chapterId)
-        setQuestions(
+        loaded =
           questionIndex != null && questionIndex >= 0 && questionIndex < all.length
             ? [all[questionIndex]]
-            : all,
-        )
+            : all
+        setQuestions(loaded)
       }
+      const startContext = {
+        chapterId,
+        subjectNumber: mode === 'test' ? subjectNumber : undefined,
+        mode,
+      }
+      tracker.setActiveSession(startContext)
+      tracker.track(mode === 'test' ? 'test_start' : 'practice_start', startContext, {
+        count: loaded.length,
+      })
+      tracker.markQuestionStart()
       setIndex(0)
       setSelectedIds([])
       setResult(null)
@@ -153,9 +165,16 @@ export function LearnerChapterQuizPage({
     setSelectedIds([])
     setResult(null)
     setSubtitlePass(1)
+    tracker.markQuestionStart()
     // Ne pas appeler stopAllQuizAudio ici : l’effet parent tourne APRÈS
     // le montage de QuestionAudioSequence et vidait le <audio> (silence).
   }, [index])
+
+  useEffect(() => {
+    return () => {
+      tracker.setActiveSession(null)
+    }
+  }, [])
 
   useEffect(() => {
     if (finished) stopAllQuizAudio()
@@ -209,6 +228,17 @@ export function LearnerChapterQuizPage({
         stopAllQuizAudio()
         setSequenceLive(false)
         setFinished(true)
+        const completeEvent = mode === 'test' ? 'test_complete' : 'practice_complete'
+        tracker.track(
+          completeEvent,
+          {
+            chapterId,
+            subjectNumber: mode === 'test' ? subjectNumber : undefined,
+            mode,
+          },
+          { correct: nextScore.correct, total: nextScore.total },
+        )
+        tracker.setActiveSession(null)
         if (mode === 'test' && !testSavedRef.current) {
           setSavingTest(true)
           try {
@@ -228,7 +258,7 @@ export function LearnerChapterQuizPage({
       setResult(null)
       setSequenceLive(true)
     },
-    [chapterId, mode],
+    [chapterId, mode, subjectNumber],
   )
 
   const skipMissed = useCallback(async () => {
@@ -237,6 +267,17 @@ export function LearnerChapterQuizPage({
     setSequenceLive(false)
     stopAllQuizAudio()
     try {
+      const currentQuestion = questionsRef.current[indexRef.current]
+      tracker.track(
+        mode === 'test' ? 'test_skip' : 'practice_skip',
+        {
+          chapterId,
+          subjectNumber: mode === 'test' ? subjectNumber : undefined,
+          mode,
+          questionId: currentQuestion?.id || '',
+        },
+        { index: indexRef.current, elapsedMs: tracker.consumeElapsedMs() },
+      )
       setResult({ isCorrect: false, correctAnswerIds: [] })
       const nextScore = {
         correct: scoreRef.current.correct,
@@ -247,7 +288,7 @@ export function LearnerChapterQuizPage({
     } finally {
       setChecking(false)
     }
-  }, [])
+  }, [chapterId, mode, subjectNumber])
 
   const resolveSelection = useCallback(
     async (ids: string[]) => {
@@ -259,6 +300,21 @@ export function LearnerChapterQuizPage({
       stopAllQuizAudio()
       try {
         const data = await checkRevisionQuestionAnswers(chapterId, currentQuestion.id, ids)
+        tracker.track(
+          mode === 'test' ? 'test_answer' : 'practice_answer',
+          {
+            chapterId,
+            subjectNumber: mode === 'test' ? subjectNumber : undefined,
+            mode,
+            questionId: currentQuestion.id,
+          },
+          {
+            answerIds: ids,
+            isCorrect: data.isCorrect,
+            index: indexRef.current,
+            elapsedMs: tracker.consumeElapsedMs(),
+          },
+        )
         setResult(data)
         setReviewHistory((current) => [
           ...current,
@@ -283,7 +339,7 @@ export function LearnerChapterQuizPage({
         setChecking(false)
       }
     },
-    [chapterId],
+    [chapterId, mode, subjectNumber],
   )
 
   const handleSequenceComplete = useCallback(() => {

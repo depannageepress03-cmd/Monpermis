@@ -20,6 +20,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { useFocusRefresh } from '../../hooks/useFocusRefresh'
 import { useLeaveGuard } from '../../hooks/useLeaveGuard'
 import { stopAllQuizAudio } from '../../utils/quizSounds'
+import { tracker } from '../../utils/tracker'
 import { resolveCodeImageUrl } from '../../utils/codeImageUrl'
 import { enrichAnswersFromTranscript, resolveQuestionTranscript } from '../../data/codeRoute/questionTranscripts'
 import '../../styles/auth.css'
@@ -228,6 +229,25 @@ export function ExamensTestTakePage() {
       setAnsweredCount(answered)
       setFinished(started.status === 'completed')
       setSequenceLive(started.status !== 'completed')
+      const baseContext = {
+        attemptId: started.id,
+        examNumber: number,
+        examType: 'practice' as const,
+      }
+      if (started.status !== 'completed') {
+        tracker.setActiveSession(baseContext)
+        if (answered > 0) {
+          tracker.track('exam_resume', baseContext, {
+            answeredCount: answered,
+            index: Math.min(answered, Math.max((started.questions?.length || 1) - 1, 0)),
+          })
+        } else {
+          tracker.track('exam_start', baseContext, { answeredCount: 0 })
+        }
+        tracker.markQuestionStart()
+      } else {
+        tracker.setActiveSession(null)
+      }
       if (started.status === 'completed') {
         setFinalScore({
           correct: started.correct,
@@ -253,8 +273,15 @@ export function ExamensTestTakePage() {
     setSequenceLive(true)
     setSelectedIds([])
     setSubmitted(false)
+    tracker.markQuestionStart()
     // Ne pas couper l’audio ici — course avec QuestionAudioSequence (voir quizSounds).
   }, [index])
+
+  useEffect(() => {
+    return () => {
+      tracker.setActiveSession(null)
+    }
+  }, [])
 
   useEffect(() => {
     if (finished) stopAllQuizAudio()
@@ -301,6 +328,21 @@ export function ExamensTestTakePage() {
       setSequenceLive(false)
       try {
         const { attempt: score } = await completePracticeExam(currentAttempt.id)
+        tracker.track(
+          'exam_complete',
+          {
+            attemptId: currentAttempt.id,
+            examNumber: number,
+            examType: 'practice',
+          },
+          {
+            correct: score.correct,
+            total: score.total,
+            passed: score.passed,
+            scoreLabel: score.scoreLabel,
+          },
+        )
+        tracker.setActiveSession(null)
         setFinalScore(score)
         setFinished(true)
       } catch (err) {
@@ -313,7 +355,7 @@ export function ExamensTestTakePage() {
     setSelectedIds([])
     setSubmitted(false)
     setSequenceLive(true)
-  }, [])
+  }, [number])
 
   const skipMissed = useCallback(async () => {
     const currentAttempt = attemptRef.current
@@ -332,6 +374,16 @@ export function ExamensTestTakePage() {
     stopAllQuizAudio()
     try {
       const data = await checkPracticeExamAnswer(currentAttempt.id, currentQuestion.id, [])
+      tracker.track(
+        'exam_skip',
+        {
+          attemptId: currentAttempt.id,
+          examNumber: number,
+          examType: 'practice',
+          questionId: currentQuestion.id,
+        },
+        { index: indexRef.current, elapsedMs: tracker.consumeElapsedMs() },
+      )
       setAnsweredCount(data.answeredCount)
       await finishOrAdvance()
     } catch (err) {
@@ -340,7 +392,7 @@ export function ExamensTestTakePage() {
     } finally {
       setChecking(false)
     }
-  }, [finishOrAdvance])
+  }, [finishOrAdvance, number])
 
   const resolveSelection = useCallback(
     async (ids: string[]) => {
@@ -361,6 +413,22 @@ export function ExamensTestTakePage() {
       stopAllQuizAudio()
       try {
         const data = await checkPracticeExamAnswer(currentAttempt.id, currentQuestion.id, ids)
+        tracker.track(
+          'exam_answer',
+          {
+            attemptId: currentAttempt.id,
+            examNumber: number,
+            examType: 'practice',
+            questionId: currentQuestion.id,
+          },
+          {
+            answerIds: ids,
+            isCorrect: data.isCorrect,
+            index: indexRef.current,
+            answeredCount: data.answeredCount,
+            elapsedMs: tracker.consumeElapsedMs(),
+          },
+        )
         setAnsweredCount(data.answeredCount)
         await finishOrAdvance()
       } catch (err) {
@@ -371,7 +439,7 @@ export function ExamensTestTakePage() {
         setChecking(false)
       }
     },
-    [finishOrAdvance],
+    [finishOrAdvance, number],
   )
 
   const handleSequenceComplete = useCallback(() => {
@@ -408,6 +476,23 @@ export function ExamensTestTakePage() {
           icon={<ClipboardList size={22} />}
           onBack={() => {
             if (!confirmLeave()) return
+            const currentAttempt = attemptRef.current
+            if (currentAttempt && !finished) {
+              tracker.track(
+                'exam_quit',
+                {
+                  attemptId: currentAttempt.id,
+                  examNumber: number,
+                  examType: 'practice',
+                },
+                {
+                  answeredCount,
+                  index: indexRef.current,
+                  elapsedMs: tracker.consumeElapsedMs(),
+                },
+              )
+              tracker.setActiveSession(null)
+            }
             navigate('/code-de-la-route/examens-test')
           }}
         />

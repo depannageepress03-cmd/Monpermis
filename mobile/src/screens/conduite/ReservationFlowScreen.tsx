@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useFocusEffect, useNavigation } from '@react-navigation/native'
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
+import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native'
+import type {
+  NativeStackNavigationProp,
+  NativeStackScreenProps,
+} from '@react-navigation/native-stack'
 import { setStatusBarStyle } from 'expo-status-bar'
 import {
   Bell,
@@ -148,6 +151,7 @@ const STEP_META = [
 
 export function ReservationFlowScreen() {
   const navigation = useNavigation<Nav>()
+  const route = useRoute<NativeStackScreenProps<RootStackParamList, 'ReservationFlow'>['route']>()
   const { width: windowWidth } = useWindowDimensions()
   const { user, loading } = useRequireAuth(navigation)
   const unreadCount = useUnreadNotifications(Boolean(user))
@@ -263,6 +267,15 @@ export function ReservationFlowScreen() {
   useEffect(() => {
     if (step === 'moniteur') void loadMoniteurs()
   }, [step, loadMoniteurs])
+
+  // Présélection depuis la fiche moniteur (« Choisir ce moniteur »).
+  const initialMoniteurId = route.params?.moniteurId
+  const appliedInitialMoniteur = useRef<string | null>(null)
+  useEffect(() => {
+    if (!initialMoniteurId || appliedInitialMoniteur.current === initialMoniteurId) return
+    appliedInitialMoniteur.current = initialMoniteurId
+    void loadProfile(initialMoniteurId)
+  }, [initialMoniteurId, loadProfile])
 
   useEffect(() => {
     if (step === 'duration' || step === 'slots') void loadAvailability()
@@ -1267,6 +1280,17 @@ export function ReservationFlowScreen() {
 
         {step === 'profile' && profile ? (
           <View style={styles.profileSticky}>
+            <Pressable
+              style={styles.secondaryBtn}
+              onPress={() =>
+                navigation.navigate('MoniteurProfile', {
+                  id: profile.id,
+                  name: profile.fullName,
+                })
+              }
+            >
+              <Text style={styles.secondaryBtnText}>Voir la fiche complète</Text>
+            </Pressable>
             <Bouncy scaleTo={0.98} onPress={() => setStep('duration')}>
               <View style={styles.primaryBtn}>
                 <Text style={styles.primaryBtnText}>Continuer</Text>

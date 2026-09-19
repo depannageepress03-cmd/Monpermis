@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { AuthUser } from '../api/auth'
 import { clearSession, onSessionInvalidated } from '../api/auth'
+import { tracker } from '../utils/tracker'
 
 export function getStoredUser(): AuthUser | null {
   const raw = localStorage.getItem('user') ?? sessionStorage.getItem('user')
@@ -41,6 +42,7 @@ export function useAuth() {
     return onSessionInvalidated(() => {
       setUser(null)
       clearSession()
+      tracker.reset()
       navigate('/', {
         replace: true,
         state: { message: 'Session expirée. Reconnecte-toi pour continuer.' },

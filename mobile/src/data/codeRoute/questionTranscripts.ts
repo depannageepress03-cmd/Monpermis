@@ -997,7 +997,10 @@ export function getRevisionPracticeTranscript(
   prompt?: { text?: string; transcript?: string } | null,
   meta?: { id?: string; order?: number; chapterOrder?: number } | null,
 ): string {
-  return resolveQuestionTranscript({ id: meta?.id, order: meta?.order, prompt }, meta?.chapterOrder)
+  return resolveQuestionTranscript(
+    { id: meta?.id, order: meta?.order, prompt: prompt ?? undefined },
+    meta?.chapterOrder,
+  )
 }
 
 /** Sous-titres : énoncé seul (les choix s’affichent à côté des cases). */
