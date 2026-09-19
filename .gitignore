@@ -53,6 +53,7 @@ server/uploads/vehicles/
 
 # Artefacts locaux générés
 build-output/
+server/web-dist/
 
 # Config locale d'outils (Claude Code, etc.)
 .claude/
