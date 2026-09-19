@@ -6,6 +6,7 @@ import { ChevronLeft, ChevronRight, Pause, Play, TriangleAlert } from 'lucide-re
 import { useCallback, useMemo, useState } from 'react'
 import {
   FlatList,
+  Animated,
   Image,
   Pressable,
   ScrollView,
@@ -14,8 +15,10 @@ import {
   View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import { Bouncy } from '../../components/Bouncy'
 import { FadeUp } from '../../components/FadeUp'
 import { useRequireAuth } from '../../hooks/useRequireAuth'
+import { useHeaderFade } from '../../hooks/useHeaderFade'
 import {
   getPanneauCategory,
   PANNEAUX_CATEGORIES,
@@ -37,6 +40,7 @@ type CatRoute = RouteProp<RootStackParamList, 'RevisionPanneauxCategory'>
 export function RevisionPanneauxScreen() {
   const navigation = useNavigation<ListNav>()
   const { user, loading } = useRequireAuth(navigation)
+  const { onScroll, dividerOpacity } = useHeaderFade()
   const total = useMemo(
     () => PANNEAUX_CATEGORIES.reduce((sum, cat) => sum + cat.count, 0),
     [],
@@ -71,8 +75,14 @@ export function RevisionPanneauxScreen() {
           </View>
           <View style={styles.backBtnPlaceholder} />
         </View>
+        <Animated.View style={[styles.barDivider, { opacity: dividerOpacity }]} />
 
-        <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          contentContainerStyle={styles.scroll}
+          showsVerticalScrollIndicator={false}
+          onScroll={onScroll}
+          scrollEventThrottle={16}
+        >
           <FadeUp>
             <Text style={styles.kicker}>Signalisation</Text>
             <Text style={styles.title}>Révision des panneaux</Text>
@@ -93,10 +103,12 @@ export function RevisionPanneauxScreen() {
 
           <FadeUp delay={120}>
             <View style={styles.list}>
-              {PANNEAUX_CATEGORIES.map((cat) => (
-                <Pressable
-                  key={cat.id}
-                  style={({ pressed }) => [styles.row, pressed && styles.pressed]}
+              {PANNEAUX_CATEGORIES.map((cat, catIndex) => (
+                <FadeUp key={cat.id} delay={140 + Math.min(catIndex, 8) * 40}>
+                <Bouncy
+                  scaleTo={0.97}
+                  style={styles.row}
+                  innerStyle={styles.rowInner}
                   onPress={() =>
                     navigation.navigate('RevisionPanneauxCategory', {
                       categoryId: cat.id,
@@ -114,7 +126,8 @@ export function RevisionPanneauxScreen() {
                     </Text>
                   </View>
                   <ChevronRight size={16} color={dark.textMuted} />
-                </Pressable>
+                </Bouncy>
+                </FadeUp>
               ))}
             </View>
           </FadeUp>
@@ -128,6 +141,7 @@ export function RevisionPanneauxCategoryScreen() {
   const navigation = useNavigation<CatNav>()
   const route = useRoute<CatRoute>()
   const { user, loading } = useRequireAuth(navigation)
+  const { onScroll, dividerOpacity } = useHeaderFade()
   const category = getPanneauCategory(route.params.categoryId)
   const [playingCode, setPlayingCode] = useState<string | null>(null)
 
@@ -198,10 +212,13 @@ export function RevisionPanneauxCategoryScreen() {
           </Text>
           <View style={styles.backBtnPlaceholder} />
         </View>
+        <Animated.View style={[styles.barDivider, { opacity: dividerOpacity }]} />
 
         <FlatList
           data={category.signs}
           keyExtractor={(item) => item.code}
+          onScroll={onScroll}
+          scrollEventThrottle={16}
           contentContainerStyle={styles.cards}
           ListHeaderComponent={
             <View style={styles.catHeader}>
@@ -226,18 +243,18 @@ export function RevisionPanneauxCategoryScreen() {
                   ) : (
                     <View style={styles.cardImage} />
                   )}
-                  <Pressable
+                  <Bouncy
+                    scaleTo={0.9}
                     style={[styles.playBtn, playing && styles.playBtnActive]}
+                    innerStyle={styles.playBtnInner}
                     onPress={() => togglePlay(item)}
-                    accessibilityRole="button"
-                    accessibilityLabel={playing ? `Arrêter ${item.code}` : `Écouter ${item.code}`}
                   >
                     {playing ? (
                       <Pause size={14} color="#FFFFFF" />
                     ) : (
                       <Play size={14} color="#FFFFFF" />
                     )}
-                  </Pressable>
+                  </Bouncy>
                 </View>
                 <View style={styles.cardBody}>
                   <Text style={styles.cardCode}>{item.code}</Text>
@@ -331,6 +348,17 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: 'rgba(0,16,48,0.08)',
   },
+  rowInner: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  barDivider: {
+    height: 1,
+    marginHorizontal: 18,
+    backgroundColor: 'rgba(0,16,48,0.10)',
+  },
   pressed: { opacity: 0.85 },
   prefix: {
     width: 42,
@@ -390,6 +418,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   playBtnActive: { backgroundColor: '#0F172A' },
+  playBtnInner: {
+    width: 28,
+    height: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   cardBody: { flex: 1, minWidth: 0 },
   cardCode: {
     fontFamily: fonts.bodyBold,

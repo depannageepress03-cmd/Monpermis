@@ -11,6 +11,7 @@ import {
 } from '../../api/content'
 import { useAuth } from '../../hooks/useAuth'
 import { PageNavbar } from '../../components/PageNavbar'
+import { Reveal } from '../../components/Reveal'
 import '../../styles/auth.css'
 import '../../styles/learner.css'
 
@@ -123,7 +124,8 @@ export function LearnerChapterListPage({
                   const questionsTo = questionsPath?.(chapter.id)
                   const testTo = testSubjectPath?.(chapter.id)
                   return (
-                    <div key={chapter.id} className="learner-chapter-card learner-chapter-card--revision">
+                    <Reveal key={chapter.id} delay={Math.min(index, 8) * 45}>
+                    <div className="learner-chapter-card learner-chapter-card--revision">
                       {questionsTo ? (
                         <Link
                           to={questionsTo}
@@ -170,12 +172,14 @@ export function LearnerChapterListPage({
                         ) : null}
                       </div>
                     </div>
+                    </Reveal>
                   )
                 }
 
                 if (showQuizActions) {
                   return (
-                    <div key={chapter.id} className="learner-chapter-card">
+                    <Reveal key={chapter.id} delay={Math.min(index, 8) * 45}>
+                    <div className="learner-chapter-card">
                       <div className="learner-chapter-card-top">
                         <span className="learner-item-icon">{index + 1}</span>
                         <span className="learner-item-body">
@@ -224,14 +228,15 @@ export function LearnerChapterListPage({
                         ) : null}
                       </div>
                     </div>
+                    </Reveal>
                   )
                 }
 
                 if (!coursesPath) return null
 
                 return (
+                  <Reveal key={chapter.id} delay={Math.min(index, 8) * 45}>
                   <Link
-                    key={chapter.id}
                     to={coursesPath(chapter.id)}
                     state={{ chapter: { ...chapter, name: numberedName } }}
                     className="learner-item"
@@ -242,6 +247,7 @@ export function LearnerChapterListPage({
                       <small>{chapter.courses.length} cours</small>
                     </span>
                   </Link>
+                  </Reveal>
                 )
               })}
             </div>

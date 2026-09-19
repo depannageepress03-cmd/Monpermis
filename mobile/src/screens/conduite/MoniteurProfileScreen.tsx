@@ -31,6 +31,7 @@ import {
   type MoniteurProfile,
 } from '../../api/reservations'
 import { DarkHeader, DarkScreen } from '../../components/DarkScreen'
+import { Bouncy } from '../../components/Bouncy'
 import { ScreenLoader } from '../../components/ScreenLoader'
 import { useRequireAuth } from '../../hooks/useRequireAuth'
 import type { RootStackParamList } from '../../navigation/types'
@@ -251,13 +252,15 @@ export function MoniteurProfileScreen() {
             )}
           </View>
 
-          <Pressable
+          <Bouncy
+            scaleTo={0.97}
             style={styles.cta}
+            innerStyle={styles.ctaInner}
             onPress={() => navigation.navigate('ReservationFlow', { moniteurId: moniteur.id })}
           >
             <Text style={styles.ctaText}>Choisir ce moniteur</Text>
             <ChevronRight size={16} color="#0B0F1A" />
-          </Pressable>
+          </Bouncy>
           <View style={styles.bottomSpace} />
         </ScrollView>
       )}
@@ -431,6 +434,12 @@ const styles = StyleSheet.create({
     backgroundColor: dark.green,
     borderRadius: 999,
     paddingVertical: 14,
+  },
+  ctaInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
   },
   ctaText: {
     fontFamily: fonts.bodyBold,

@@ -15,6 +15,7 @@ import {
   Timer,
 } from 'lucide-react-native'
 import {
+  Animated,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -42,8 +43,10 @@ import { HomeBottomAnimation } from '../../components/HomeBottomAnimation'
 import { ScreenLoader } from '../../components/ScreenLoader'
 import { SkeletonList } from '../../components/Skeleton'
 import { useRequireAuth } from '../../hooks/useRequireAuth'
+import { useHeaderFade } from '../../hooks/useHeaderFade'
 import type { RootStackParamList } from '../../navigation/types'
 import { getActiveSubscriptions } from '../../utils/subscriptionSummary'
+import { animateLayout } from '../../utils/layoutAnim'
 import { dark, fonts, radii, shadows } from '../../theme'
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'RevisionChapitres'>
@@ -86,6 +89,7 @@ export function RevisionChapitresScreen() {
   const [accessMe, setAccessMe] = useState<AccessMe | null>(null)
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
+  const { onScroll, dividerOpacity } = useHeaderFade()
   const [error, setError] = useState<string | null>(null)
   const hasDataRef = useRef(false)
 
@@ -102,6 +106,7 @@ export function RevisionChapitresScreen() {
       const journeyPromise = fetchLearnerJourney().catch(() => null)
       const accessPromise = fetchAccessMe().catch(() => null)
       await fetchRevisionChaptersSWR((data, meta) => {
+        animateLayout()
         setChapters(data)
         if (data.length > 0) hasDataRef.current = true
         if (meta.fromCache) setLoading(false)
@@ -220,10 +225,13 @@ export function RevisionChapitresScreen() {
           </View>
           <View style={styles.roundBtnSpacer} accessibilityElementsHidden />
         </View>
+        <Animated.View style={[styles.barDivider, { opacity: dividerOpacity }]} />
 
         <ScrollView
           contentContainerStyle={styles.scroll}
           showsVerticalScrollIndicator={false}
+          onScroll={onScroll}
+          scrollEventThrottle={16}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -440,6 +448,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     paddingTop: 4,
     paddingBottom: 24,
+  },
+  barDivider: {
+    height: 1,
+    marginHorizontal: 18,
+    backgroundColor: 'rgba(0,16,48,0.10)',
   },
   intro: {
     flexDirection: 'row',

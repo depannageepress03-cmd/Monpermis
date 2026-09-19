@@ -8,6 +8,7 @@ import {
   type LearnerTestSubjectSummary,
 } from '../../api/content'
 import { PageNavbar } from '../../components/PageNavbar'
+import { Reveal } from '../../components/Reveal'
 import { useAuth } from '../../hooks/useAuth'
 import '../../styles/auth.css'
 import '../../styles/learner.css'
@@ -79,6 +80,7 @@ export function RevisionChapterTestSubjectsPage() {
           {loading ? <p className="subtitle">Chargement…</p> : null}
           {error ? <p className="form-error">{error}</p> : null}
 
+          <Reveal delay={60}>
           <div className="learner-hub-duo">
             <Link
               className="learner-hub-duo-card learner-hub-duo-card--green"
@@ -106,6 +108,7 @@ export function RevisionChapterTestSubjectsPage() {
               </span>
             </span>
           </div>
+          </Reveal>
 
           {!loading && !error && subjects.length === 0 ? (
             <div className="learner-empty">
@@ -118,9 +121,9 @@ export function RevisionChapterTestSubjectsPage() {
 
           {!loading && !error && subjects.length > 0 ? (
             <div className="learner-chapter-actions" style={{ display: 'grid', gap: 12 }}>
-              {subjects.map((subject) => (
+              {subjects.map((subject, subjectIndex) => (
+                <Reveal key={subject.id || subject.number} delay={100 + Math.min(subjectIndex, 6) * 50}>
                 <Link
-                  key={subject.id || subject.number}
                   className="btn-primary"
                   to={`/code-de-la-route/revision-chapitres/${chapterId}/sujet-test/${subject.number}`}
                   state={{ chapterName }}
@@ -131,6 +134,7 @@ export function RevisionChapterTestSubjectsPage() {
                     {subject.questionCount} question{subject.questionCount !== 1 ? 's' : ''}
                   </span>
                 </Link>
+                </Reveal>
               ))}
             </div>
           ) : null}

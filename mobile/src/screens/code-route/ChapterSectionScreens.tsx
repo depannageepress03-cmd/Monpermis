@@ -15,6 +15,7 @@ import {
   Trophy,
 } from 'lucide-react-native'
 import {
+  Animated,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -32,6 +33,7 @@ import {
   type TestProgressEntry,
 } from '../../api/revision'
 import { rememberChapterOrder } from '../../data/codeRoute/chapterIndex'
+import { Bouncy } from '../../components/Bouncy'
 import { EmptyState } from '../../components/EmptyState'
 import { FadeUp } from '../../components/FadeUp'
 import { HomeBottomAnimation } from '../../components/HomeBottomAnimation'
@@ -39,8 +41,10 @@ import { LegalFooter } from '../../components/LegalFooter'
 import { ScreenLoader } from '../../components/ScreenLoader'
 import { SkeletonList } from '../../components/Skeleton'
 import { useRequireAuth } from '../../hooks/useRequireAuth'
+import { useHeaderFade } from '../../hooks/useHeaderFade'
 import type { RootStackParamList } from '../../navigation/types'
 import { dark, fonts, radii, shadows } from '../../theme'
+import { animateLayout } from '../../utils/layoutAnim'
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'ChapterQuestionsList'>
 type Route = RouteProp<RootStackParamList, 'ChapterQuestionsList'>
@@ -104,6 +108,7 @@ export function ChapterQuestionsListScreen() {
   const [testEntry, setTestEntry] = useState<TestProgressEntry | null>(null)
   const [loadingList, setLoadingList] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const { onScroll, dividerOpacity } = useHeaderFade()
 
   const load = useCallback(async () => {
     setLoadingList(true)
@@ -114,6 +119,7 @@ export function ChapterQuestionsListScreen() {
         fetchChapterQuestions(chapterId),
         fetchLearnerProgress(chapterId).catch(() => null),
       ])
+      animateLayout()
       setQuestions(list)
       const entry =
         progress?.completedTests?.find((item) => item.chapterId === chapterId) || null
@@ -180,10 +186,13 @@ export function ChapterQuestionsListScreen() {
           </View>
           <View style={qStyles.roundBtnSpacer} accessibilityElementsHidden />
         </View>
+        <Animated.View style={[qStyles.barDivider, { opacity: dividerOpacity }]} />
 
         <ScrollView
           contentContainerStyle={qStyles.scroll}
           showsVerticalScrollIndicator={false}
+          onScroll={onScroll}
+          scrollEventThrottle={16}
         >
           <FadeUp delay={40}>
             <View style={qStyles.introRow}>
@@ -215,6 +224,7 @@ export function ChapterQuestionsListScreen() {
 
           {!loadingList && !error && count > 0 ? (
             <>
+            <FadeUp delay={60}>
               <View style={duoStyles.duo}>
                 <View style={[duoStyles.card, duoStyles.cardGreen, duoStyles.cardActive]}>
                   <View style={duoStyles.icon}>
@@ -223,12 +233,10 @@ export function ChapterQuestionsListScreen() {
                   <Text style={duoStyles.title}>Questions</Text>
                   <Text style={duoStyles.sub}>{count} questions</Text>
                 </View>
-                <Pressable
-                  style={({ pressed }) => [
-                    duoStyles.card,
-                    duoStyles.cardGold,
-                    pressed && qStyles.pressed,
-                  ]}
+                <Bouncy
+                  scaleTo={0.96}
+                  style={[duoStyles.card, duoStyles.cardGold]}
+                  innerStyle={duoStyles.cardInner}
                   onPress={() =>
                     navigation.navigate('ChapterTestSubject', {
                       chapterId,
@@ -236,8 +244,6 @@ export function ChapterQuestionsListScreen() {
                       chapterOrder,
                     })
                   }
-                  accessibilityRole="button"
-                  accessibilityLabel="Aller au sujet test"
                 >
                   <View style={duoStyles.chevron}>
                     <ChevronRight size={16} color={dark.textMuted} />
@@ -251,8 +257,9 @@ export function ChapterQuestionsListScreen() {
                       ? `${testEntry.correct}/${testEntry.total}`
                       : 'Validez le chapitre'}
                   </Text>
-                </Pressable>
+                </Bouncy>
               </View>
+            </FadeUp>
               <FadeUp delay={100}>
                 <View style={qStyles.statsCard}>
                   <View style={qStyles.statsRow}>
@@ -351,6 +358,7 @@ export function ChapterTestSubjectScreen() {
   >([])
   const [loadingList, setLoadingList] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const { onScroll, dividerOpacity } = useHeaderFade()
 
   const load = useCallback(async () => {
     setLoadingList(true)
@@ -359,6 +367,7 @@ export function ChapterTestSubjectScreen() {
       rememberChapterOrder(chapterId, chapterOrder, chapterName)
       const data = await fetchChapterTestSubjects(chapterId)
       const list = Array.isArray(data?.subjects) ? data.subjects : []
+      animateLayout()
       setSubjects(list)
     } catch (err) {
       setError(err instanceof ContentError ? err.message : 'Chargement impossible')
@@ -398,8 +407,14 @@ export function ChapterTestSubjectScreen() {
           </View>
           <View style={tStyles.roundBtnSpacer} accessibilityElementsHidden />
         </View>
+        <Animated.View style={[tStyles.barDivider, { opacity: dividerOpacity }]} />
 
-        <ScrollView contentContainerStyle={tStyles.scroll} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          contentContainerStyle={tStyles.scroll}
+          showsVerticalScrollIndicator={false}
+          onScroll={onScroll}
+          scrollEventThrottle={16}
+        >
           <View style={tStyles.header}>
             <Text style={tStyles.kicker}>Évaluation</Text>
             <Text style={tStyles.title}>Sujets test</Text>
@@ -414,13 +429,12 @@ export function ChapterTestSubjectScreen() {
           {error ? <Text style={tStyles.errorText}>{error}</Text> : null}
 
           {!loadingList && !error ? (
+            <FadeUp delay={60}>
             <View style={duoStyles.duo}>
-              <Pressable
-                style={({ pressed }) => [
-                  duoStyles.card,
-                  duoStyles.cardGreen,
-                  pressed && tStyles.pressed,
-                ]}
+              <Bouncy
+                scaleTo={0.96}
+                style={[duoStyles.card, duoStyles.cardGreen]}
+                innerStyle={duoStyles.cardInner}
                 onPress={() =>
                   navigation.navigate('ChapterQuestionsList', {
                     chapterId,
@@ -428,8 +442,6 @@ export function ChapterTestSubjectScreen() {
                     chapterOrder,
                   })
                 }
-                accessibilityRole="button"
-                accessibilityLabel="Aller aux questions"
               >
                 <View style={duoStyles.chevron}>
                   <ChevronRight size={16} color={dark.textMuted} />
@@ -439,7 +451,7 @@ export function ChapterTestSubjectScreen() {
                 </View>
                 <Text style={duoStyles.title}>Questions</Text>
                 <Text style={duoStyles.sub}>Entraînement</Text>
-              </Pressable>
+              </Bouncy>
               <View style={[duoStyles.card, duoStyles.cardGold, duoStyles.cardActive]}>
                 <View style={duoStyles.icon}>
                   <ClipboardList size={20} color="#B45309" />
@@ -452,6 +464,7 @@ export function ChapterTestSubjectScreen() {
                 </Text>
               </View>
             </View>
+            </FadeUp>
           ) : null}
 
           {!loadingList && !error && subjects.length === 0 ? (
@@ -463,10 +476,12 @@ export function ChapterTestSubjectScreen() {
           ) : null}
 
           {!loadingList && !error
-            ? subjects.map((subject) => (
-                <Pressable
-                  key={subject.id || `sujet-${subject.number}`}
-                  style={({ pressed }) => [tStyles.subjectBtn, pressed && tStyles.pressed]}
+            ? subjects.map((subject, sIndex) => (
+                <FadeUp key={subject.id || `sujet-${subject.number}`} delay={100 + Math.min(sIndex, 6) * 60}>
+                <Bouncy
+                  scaleTo={0.97}
+                  style={tStyles.subjectBtn}
+                  innerStyle={tStyles.subjectBtnInner}
                   onPress={() =>
                     navigation.navigate('ChapterQuestions', {
                       chapterId,
@@ -476,8 +491,6 @@ export function ChapterTestSubjectScreen() {
                       subjectNumber: subject.number,
                     })
                   }
-                  accessibilityRole="button"
-                  accessibilityLabel={subject.label}
                 >
                   <ClipboardList size={20} color={dark.textPrimary} />
                   <View style={tStyles.subjectCopy}>
@@ -488,7 +501,8 @@ export function ChapterTestSubjectScreen() {
                     </Text>
                   </View>
                   <ChevronRight size={20} color={dark.textPrimary} />
-                </Pressable>
+                </Bouncy>
+                </FadeUp>
               ))
             : null}
         </ScrollView>
@@ -673,6 +687,11 @@ const qStyles = StyleSheet.create({
     fontSize: 13,
     color: dark.green,
   },
+  barDivider: {
+    height: 1,
+    marginHorizontal: 18,
+    backgroundColor: 'rgba(0,16,48,0.10)',
+  },
   footerAnim: {
     marginTop: 4,
     marginBottom: 4,
@@ -760,6 +779,11 @@ const tStyles = StyleSheet.create({
     paddingTop: 8,
     paddingBottom: 28,
   },
+  barDivider: {
+    height: 1,
+    marginHorizontal: 22,
+    backgroundColor: 'rgba(0,16,48,0.10)',
+  },
   header: {
     marginBottom: 24,
   },
@@ -794,6 +818,12 @@ const tStyles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 16,
     marginBottom: 12,
+  },
+  subjectBtnInner: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
   },
   subjectBtnText: {
     color: '#0B0F1A',
@@ -867,6 +897,10 @@ const duoStyles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 6,
     elevation: 2,
+  },
+  cardInner: {
+    alignItems: 'center',
+    gap: 6,
   },
   chevron: {
     position: 'absolute',

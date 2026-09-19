@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { ChevronRight, Pause, Play, TriangleAlert } from 'lucide-react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { PageNavbar } from '../../components/PageNavbar'
+import { Reveal } from '../../components/Reveal'
 import {
   getPanneauCategory,
   PANNEAUX_CATEGORIES,
@@ -49,9 +50,9 @@ export function RevisionPanneauxPage() {
             <img src="/code-route/cards/panneaux.png" alt="" draggable={false} />
           </div>
           <div className="learner-list learner-panneaux-cats">
-            {PANNEAUX_CATEGORIES.map((cat) => (
+            {PANNEAUX_CATEGORIES.map((cat, catIndex) => (
+              <Reveal key={cat.id} delay={Math.min(catIndex, 8) * 40}>
               <Link
-                key={cat.id}
                 className="learner-item"
                 to={`/code-de-la-route/revision-panneaux/${cat.id}`}
               >
@@ -64,6 +65,7 @@ export function RevisionPanneauxPage() {
                 </span>
                 <ChevronRight size={16} aria-hidden />
               </Link>
+              </Reveal>
             ))}
           </div>
         </div>
@@ -143,14 +145,15 @@ export function RevisionPanneauxCategoryPage() {
 
         <div className="auth-card learner-card">
           <div className="learner-panneaux-cards">
-            {category.signs.map((sign) => {
+            {category.signs.map((sign, signIndex) => {
               const def =
                 sign.definition && sign.definition !== sign.code
                   ? sign.definition
                   : 'Définition à compléter pour ce panneau.'
               const playing = playingCode === sign.code
               return (
-                <article key={sign.code} className="learner-panneau-card">
+                <Reveal key={sign.code} delay={Math.min(signIndex, 8) * 40}>
+                <article className="learner-panneau-card">
                   <div className="learner-panneau-card-media">
                     <img src={resolveMediaUrl(sign.image)} alt={sign.code} loading="lazy" />
                     <button
@@ -167,6 +170,7 @@ export function RevisionPanneauxCategoryPage() {
                     <p className="learner-panneau-card-def">{def}</p>
                   </div>
                 </article>
+                </Reveal>
               )
             })}
           </div>

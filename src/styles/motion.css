@@ -1074,7 +1074,13 @@ html {
   .code-route-banner-caption,
   .mp-news-card,
   .segmented-tabs-pill,
-  .learner-quiz-ring-fill {
+  .learner-quiz-ring-fill,
+  .learner-item,
+  .learner-quiz-answer,
+  .learner-chapter-action,
+  .learner-hub-duo-card,
+  .btn-outline,
+  .btn-primary {
     animation: none !important;
     transition: none !important;
     transform: none !important;

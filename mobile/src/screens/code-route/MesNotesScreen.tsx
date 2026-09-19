@@ -4,6 +4,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { BookOpen, Car, FileText } from 'lucide-react-native'
 import {
   ActivityIndicator,
+  Animated,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -12,13 +13,16 @@ import {
 } from 'react-native'
 import { ContentError, fetchLearnerJourney, type LearnerJourney } from '../../api/revision'
 import { DarkScreen } from '../../components/DarkScreen'
+import { FadeUp } from '../../components/FadeUp'
 import { LegalFooter } from '../../components/LegalFooter'
 import { PageNavbar } from '../../components/PageNavbar'
 import { ScreenLoader } from '../../components/ScreenLoader'
 import { useFocusRefresh } from '../../hooks/useFocusRefresh'
+import { useHeaderFade } from '../../hooks/useHeaderFade'
 import { useRequireAuth } from '../../hooks/useRequireAuth'
 import type { RootStackParamList } from '../../navigation/types'
 import { brand, dark, fonts, shadows } from '../../theme'
+import { animateLayout } from '../../utils/layoutAnim'
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'MesNotes'>
 
@@ -29,12 +33,15 @@ export function MesNotesScreen() {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const { onScroll, dividerOpacity } = useHeaderFade()
 
   const load = useCallback(async (silent = false) => {
     if (!silent) setLoading(true)
     setError(null)
     try {
-      setJourney(await fetchLearnerJourney())
+      const data = await fetchLearnerJourney()
+      animateLayout()
+      setJourney(data)
     } catch (err) {
       setError(err instanceof ContentError ? err.message : 'Chargement impossible')
       setJourney(null)
@@ -85,9 +92,12 @@ export function MesNotesScreen() {
         icon={FileText}
         onBack={() => navigation.navigate('CodeRoute')}
       />
+      <Animated.View style={[styles.barDivider, { opacity: dividerOpacity }]} />
 
       <ScrollView
         contentContainerStyle={styles.scroll}
+        onScroll={onScroll}
+        scrollEventThrottle={16}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -99,6 +109,7 @@ export function MesNotesScreen() {
           />
         }
       >
+        <FadeUp delay={40}>
         <View style={styles.head}>
           <Text style={styles.kicker}>Progression</Text>
           <Text style={styles.title}>Mes notes</Text>
@@ -106,12 +117,14 @@ export function MesNotesScreen() {
             Avancée du parcours et notes mises à jour en temps réel.
           </Text>
         </View>
+        </FadeUp>
 
         {loading ? <ActivityIndicator color={dark.green} /> : null}
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
         {journey ? (
           <>
+            <FadeUp delay={80}>
             <View style={styles.stats}>
               <View style={styles.stat}>
                 <Text style={styles.statValue}>{averageLabel}</Text>
@@ -126,7 +139,9 @@ export function MesNotesScreen() {
                 <Text style={styles.statLabel}>Passés</Text>
               </View>
             </View>
+            </FadeUp>
 
+            <FadeUp delay={130}>
             <View style={[styles.track, styles.trackCode]}>
               <View style={styles.trackTop}>
                 <View style={styles.trackIcon}>
@@ -152,7 +167,9 @@ export function MesNotesScreen() {
                 {journey.code.chaptersDone}/{journey.code.chaptersTotal} chapitres validés
               </Text>
             </View>
+            </FadeUp>
 
+            <FadeUp delay={170}>
             <View style={[styles.track, styles.trackDrive]}>
               <View style={styles.trackTop}>
                 <View style={styles.trackIcon}>
@@ -179,8 +196,11 @@ export function MesNotesScreen() {
                 terminés
               </Text>
             </View>
+            </FadeUp>
 
+            <FadeUp delay={210}>
             <Text style={styles.sectionTitle}>Examens test · sur 20</Text>
+            </FadeUp>
             {practice ? (
               <Text style={styles.sectionSub}>
                 {practice.completedCount}/{practice.examTotal} passés ·{' '}
@@ -232,7 +252,9 @@ export function MesNotesScreen() {
               ))
             )}
 
+            <FadeUp delay={250}>
             <Text style={styles.sectionTitle}>Sujets test · chapitres</Text>
+            </FadeUp>
             {journey.testScores.length === 0 ? (
               <View style={styles.emptyBox}>
                 <Text style={styles.emptyTitle}>Aucune note de sujet chapitre</Text>
@@ -276,6 +298,11 @@ export function MesNotesScreen() {
 
 const styles = StyleSheet.create({
   scroll: { paddingHorizontal: 18, paddingBottom: 28 },
+  barDivider: {
+    height: 1,
+    marginHorizontal: 18,
+    backgroundColor: 'rgba(0,16,48,0.10)',
+  },
   head: { alignItems: 'center', marginBottom: 16 },
   kicker: {
     fontFamily: fonts.bodySemiBold,

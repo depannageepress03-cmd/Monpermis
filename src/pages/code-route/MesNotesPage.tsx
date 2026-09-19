@@ -5,6 +5,7 @@ import { ContentError, fetchLearnerJourney, type LearnerJourney } from '../../ap
 import { useAuth } from '../../hooks/useAuth'
 import { useFocusRefresh } from '../../hooks/useFocusRefresh'
 import { PageNavbar } from '../../components/PageNavbar'
+import { Reveal } from '../../components/Reveal'
 import '../../styles/auth.css'
 import '../../styles/learner.css'
 
@@ -78,6 +79,7 @@ export function MesNotesPage() {
 
           {journey ? (
             <>
+              <Reveal delay={60}>
               <div className="mesnotes-stats">
                 <div className="mesnotes-stat">
                   <p className="mesnotes-stat-value">{averageLabel}</p>
@@ -92,7 +94,9 @@ export function MesNotesPage() {
                   <p className="mesnotes-stat-label">Passés</p>
                 </div>
               </div>
+              </Reveal>
 
+              <Reveal delay={120}>
               <div className="mesnotes-track mesnotes-track--code">
                 <div className="mesnotes-track-top">
                   <span className="mesnotes-track-icon">
@@ -112,7 +116,9 @@ export function MesNotesPage() {
                   {journey.code.chaptersDone}/{journey.code.chaptersTotal} chapitres validés
                 </p>
               </div>
+              </Reveal>
 
+              <Reveal delay={160}>
               <div className="mesnotes-track mesnotes-track--drive">
                 <div className="mesnotes-track-top">
                   <span className="mesnotes-track-icon">
@@ -133,8 +139,11 @@ export function MesNotesPage() {
                   terminés
                 </p>
               </div>
+              </Reveal>
 
+              <Reveal delay={200}>
               <h2 className="mesnotes-section-title">Examens test · sur 20</h2>
+              </Reveal>
               {practice ? (
                 <p className="subtitle" style={{ textAlign: 'center' }}>
                   {practice.completedCount}/{practice.examTotal} passés · {practice.passedCount}{' '}
@@ -147,8 +156,9 @@ export function MesNotesPage() {
                   <p>Passez un examen blanc pour voir votre note ici en direct.</p>
                 </div>
               ) : (
-                examScores.map((score) => (
-                  <div key={score.id} className="mesnotes-score">
+                examScores.map((score, scoreIndex) => (
+                  <Reveal key={score.id} delay={220 + Math.min(scoreIndex, 6) * 50}>
+                  <div className="mesnotes-score">
                     <span
                       className={`mesnotes-badge${score.passed ? ' mesnotes-badge--pass' : ' mesnotes-badge--fail'}`}
                     >
@@ -164,6 +174,7 @@ export function MesNotesPage() {
                       {score.passed ? 'Réussi' : 'À revoir'}
                     </span>
                   </div>
+                  </Reveal>
                 ))
               )}
 
@@ -174,11 +185,12 @@ export function MesNotesPage() {
                   <p>Validez un sujet test pour voir votre score ici.</p>
                 </div>
               ) : (
-                journey.testScores.map((score) => {
+                journey.testScores.map((score, testIndex) => {
                   const ratio = score.total > 0 ? score.correct / score.total : 0
                   const good = ratio >= 0.5
                   return (
-                    <div key={score.chapterId} className="mesnotes-score">
+                    <Reveal key={score.chapterId} delay={220 + Math.min(testIndex, 6) * 50}>
+                    <div className="mesnotes-score">
                       <span
                         className={`mesnotes-badge${good ? ' mesnotes-badge--pass' : ' mesnotes-badge--fail'}`}
                       >
@@ -191,6 +203,7 @@ export function MesNotesPage() {
                         </small>
                       </span>
                     </div>
+                    </Reveal>
                   )
                 })
               )}

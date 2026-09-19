@@ -8,12 +8,19 @@ export function Bouncy({
   children,
   style,
   scaleTo = 0.95,
+  innerStyle,
+  accessibilityRole,
+  accessibilityLabel,
 }: {
   onPress?: () => void
   disabled?: boolean
   children: ReactNode
   style?: StyleProp<ViewStyle>
   scaleTo?: number
+  /** Style du conteneur intérieur (l'animation scale l'enveloppe). */
+  innerStyle?: StyleProp<ViewStyle>
+  accessibilityRole?: 'button' | 'link' | 'none'
+  accessibilityLabel?: string
 }) {
   const scale = useRef(new Animated.Value(1)).current
 
@@ -42,8 +49,12 @@ export function Bouncy({
       onPressIn={pressIn}
       onPressOut={pressOut}
       style={style}
+      accessibilityRole={accessibilityRole}
+      accessibilityLabel={accessibilityLabel}
     >
-      <Animated.View style={{ transform: [{ scale }] }}>{children}</Animated.View>
+      <Animated.View style={[innerStyle, { transform: [{ scale }] }]}>
+        {children}
+      </Animated.View>
     </Pressable>
   )
 }

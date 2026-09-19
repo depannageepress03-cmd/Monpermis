@@ -10,6 +10,7 @@ import {
   type TestProgressEntry,
 } from '../../api/content'
 import { PageNavbar } from '../../components/PageNavbar'
+import { Reveal } from '../../components/Reveal'
 import { useAuth } from '../../hooks/useAuth'
 import { unlockQuizAudio } from '../../utils/quizSounds'
 import '../../styles/auth.css'
@@ -94,6 +95,7 @@ export function LearnerChapterQuestionsListPage() {
         <div className="auth-card learner-card">
           {error ? <p className="form-error">{error}</p> : null}
 
+          <Reveal delay={60}>
           <div className="learner-hub-duo">
             <span className="learner-hub-duo-card learner-hub-duo-card--green learner-hub-duo-card--active">
               <span className="learner-hub-duo-icon">
@@ -124,6 +126,7 @@ export function LearnerChapterQuestionsListPage() {
               </span>
             </Link>
           </div>
+          </Reveal>
 
           {!loading && !error && count === 0 ? (
             <div className="learner-empty">
@@ -164,8 +167,11 @@ export function LearnerChapterQuestionsListPage() {
               ) : null}
               <div className="learner-question-list">
                 {questions.map((question, index) => (
-                  <Link
+                  <Reveal
                     key={question.id}
+                    delay={100 + Math.min(index, 10) * 30}
+                  >
+                  <Link
                     className="learner-question-row learner-question-row--num-only"
                     to={`/code-de-la-route/revision-chapitres/${chapterId}/questions/${index}`}
                     state={{ chapterName }}
@@ -175,6 +181,7 @@ export function LearnerChapterQuestionsListPage() {
                     <span className="learner-question-num">{index + 1}</span>
                     <ChevronRight size={16} aria-hidden />
                   </Link>
+                  </Reveal>
                 ))}
               </div>
             </>

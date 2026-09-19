@@ -15,6 +15,7 @@ import { QuestionPromptHtml } from '../../components/QuestionPromptHtml'
 import { PageLoader } from '../../components/PageLoader'
 import { PageNavbar } from '../../components/PageNavbar'
 import { QuizProgressRing } from '../../components/QuizProgressRing'
+import { Reveal } from '../../components/Reveal'
 import { SuccessCelebration } from '../../components/SuccessCelebration'
 import { useAuth } from '../../hooks/useAuth'
 import { useFocusRefresh } from '../../hooks/useFocusRefresh'
@@ -131,8 +132,9 @@ export function ExamensTestPage() {
                   {data.message ? <p className="subtitle">{data.message}</p> : null}
 
                   <div className="practice-exam-list">
-                    {data.exams.map((exam) => (
-                      <article key={exam.id} className={`practice-exam-card is-${exam.status}`}>
+                    {data.exams.map((exam, examIndex) => (
+                      <Reveal key={exam.id} delay={Math.min(examIndex, 8) * 45}>
+                      <article className={`practice-exam-card is-${exam.status}`}>
                         <div>
                           <strong>Sujet {exam.examNumber}</strong>
                           <small>
@@ -159,6 +161,7 @@ export function ExamensTestPage() {
                                 : 'Commencer'}
                         </button>
                       </article>
+                      </Reveal>
                     ))}
                   </div>
                 </>
