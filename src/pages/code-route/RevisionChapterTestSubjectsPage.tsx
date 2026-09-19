@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { ClipboardList } from 'lucide-react'
+import { ChevronRight, ClipboardList, HelpCircle } from 'lucide-react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import {
   ContentError,
@@ -78,6 +78,34 @@ export function RevisionChapterTestSubjectsPage() {
         <div className="auth-card learner-card">
           {loading ? <p className="subtitle">Chargement…</p> : null}
           {error ? <p className="form-error">{error}</p> : null}
+
+          <div className="learner-hub-duo">
+            <Link
+              className="learner-hub-duo-card learner-hub-duo-card--green"
+              to={`/code-de-la-route/revision-chapitres/${chapterId}/questions`}
+              state={{ chapterName }}
+            >
+              <span className="learner-hub-duo-chevron" aria-hidden>
+                <ChevronRight size={16} />
+              </span>
+              <span className="learner-hub-duo-icon">
+                <HelpCircle size={20} aria-hidden />
+              </span>
+              <span className="learner-hub-duo-title">Questions</span>
+              <span className="learner-hub-duo-sub">Entraînement</span>
+            </Link>
+            <span className="learner-hub-duo-card learner-hub-duo-card--gold learner-hub-duo-card--active">
+              <span className="learner-hub-duo-icon">
+                <ClipboardList size={20} aria-hidden />
+              </span>
+              <span className="learner-hub-duo-title">Sujet test</span>
+              <span className="learner-hub-duo-sub">
+                {subjects.length > 0
+                  ? `${subjects.length} sujet${subjects.length > 1 ? 's' : ''}`
+                  : 'Évaluation'}
+              </span>
+            </span>
+          </div>
 
           {!loading && !error && subjects.length === 0 ? (
             <div className="learner-empty">

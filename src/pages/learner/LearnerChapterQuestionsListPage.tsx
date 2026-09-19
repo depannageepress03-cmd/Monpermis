@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { ChevronRight, HelpCircle, Target, Trophy } from 'lucide-react'
+import { ChevronRight, ClipboardList, HelpCircle, Target, Trophy } from 'lucide-react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import {
   ContentError,
@@ -93,6 +93,37 @@ export function LearnerChapterQuestionsListPage() {
 
         <div className="auth-card learner-card">
           {error ? <p className="form-error">{error}</p> : null}
+
+          <div className="learner-hub-duo">
+            <span className="learner-hub-duo-card learner-hub-duo-card--green learner-hub-duo-card--active">
+              <span className="learner-hub-duo-icon">
+                <HelpCircle size={20} aria-hidden />
+              </span>
+              <span className="learner-hub-duo-title">Questions</span>
+              <span className="learner-hub-duo-sub">
+                {count > 0 ? `${count} questions` : 'Entraînement'}
+              </span>
+            </span>
+            <Link
+              className="learner-hub-duo-card learner-hub-duo-card--gold"
+              to={`/code-de-la-route/revision-chapitres/${chapterId}/sujet-test`}
+              state={{ chapterName }}
+              onClick={() => unlockQuizAudio()}
+            >
+              <span className="learner-hub-duo-chevron" aria-hidden>
+                <ChevronRight size={16} />
+              </span>
+              <span className="learner-hub-duo-icon">
+                <ClipboardList size={20} aria-hidden />
+              </span>
+              <span className="learner-hub-duo-title">Sujet test</span>
+              <span className="learner-hub-duo-sub">
+                {testEntry
+                  ? `${testEntry.correct}/${testEntry.total}`
+                  : 'Validez le chapitre'}
+              </span>
+            </Link>
+          </div>
 
           {!loading && !error && count === 0 ? (
             <div className="learner-empty">

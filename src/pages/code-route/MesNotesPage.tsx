@@ -39,19 +39,37 @@ export function MesNotesPage() {
   if (authLoading || !user) return null
 
   const practice = journey?.practiceExams
+  const examScores = practice?.scores ?? []
+  const average20 =
+    examScores.length > 0
+      ? (examScores.reduce((sum, s) => sum + (s.total > 0 ? s.correct / s.total : 0), 0) /
+          examScores.length) *
+        20
+      : null
+  const averageLabel =
+    average20 == null ? '—' : average20.toFixed(1).replace('.', ',')
+  const codeRatio =
+    journey && journey.code.chaptersTotal > 0
+      ? Math.max(0, Math.min(1, journey.code.chaptersDone / journey.code.chaptersTotal))
+      : 0
+  const conduiteRatio =
+    journey && journey.conduite.chaptersTotal > 0
+      ? Math.max(0, Math.min(1, journey.conduite.chaptersDone / journey.conduite.chaptersTotal))
+      : 0
 
   return (
     <div className="auth-page">
       <div className="auth-container learner-container">
         <PageNavbar
-          title="Mes notes & avancée"
+          title="Mes notes"
           icon={<FileText size={22} />}
           onBack={() => navigate('/code-de-la-route')}
         />
 
-        <header className="auth-header learner-header">
+        <header className="auth-header learner-header mesnotes-head">
           <p className="learner-kicker">Progression</p>
-          <p>Avancée du parcours et notes des examens test mises à jour en temps réel.</p>
+          <h1>Mes notes</h1>
+          <p>Avancée du parcours et notes mises à jour en temps réel.</p>
         </header>
 
         <div className="auth-card learner-card">
@@ -60,80 +78,122 @@ export function MesNotesPage() {
 
           {journey ? (
             <>
-              <section className="learner-notes-block">
-                <h2>Où j’en suis</h2>
-                <div className="learner-notes-stop">
-                  <strong>Code de la route</strong>
-                  <p>{journey.code.currentStop?.label ?? 'Aucun parcours code'}</p>
-                  <small>
-                    {journey.code.chaptersDone}/{journey.code.chaptersTotal} chapitres validés
-                  </small>
+              <div className="mesnotes-stats">
+                <div className="mesnotes-stat">
+                  <p className="mesnotes-stat-value">{averageLabel}</p>
+                  <p className="mesnotes-stat-label">Moyenne / 20</p>
                 </div>
-                <div className="learner-notes-stop">
-                  <strong>Conduite / pratique</strong>
-                  <p>{journey.conduite.currentStop?.label ?? 'Aucun parcours conduite'}</p>
-                  <small>
-                    {journey.conduite.chaptersDone}/{journey.conduite.chaptersTotal} chapitres
-                    terminés
-                  </small>
+                <div className="mesnotes-stat">
+                  <p className="mesnotes-stat-value">{practice?.passedCount ?? 0}</p>
+                  <p className="mesnotes-stat-label">Réussis</p>
                 </div>
-              </section>
+                <div className="mesnotes-stat">
+                  <p className="mesnotes-stat-value">{practice?.completedCount ?? 0}</p>
+                  <p className="mesnotes-stat-label">Passés</p>
+                </div>
+              </div>
 
-              <section className="learner-notes-block">
-                <h2>Examens test (sur 20)</h2>
-                {practice ? (
-                  <p className="subtitle">
-                    {practice.completedCount}/{practice.examTotal} passés · {practice.passedCount}{' '}
-                    réussis (seuil {practice.passScore}/20)
-                  </p>
-                ) : null}
-                {!practice || practice.scores.length === 0 ? (
-                  <p className="subtitle">
-                    Aucune note d’examen test pour le moment. Passez un examen blanc pour la voir
-                    ici en direct.
-                  </p>
-                ) : (
-                  <div className="learner-list">
-                    {practice.scores.map((score) => (
-                      <div
-                        key={score.id}
-                        className={`learner-item${score.passed ? ' is-done' : ''}`}
+              <div className="mesnotes-track mesnotes-track--code">
+                <div className="mesnotes-track-top">
+                  <span className="mesnotes-track-icon">
+                    <FileText size={18} aria-hidden />
+                  </span>
+                  <div>
+                    <p className="mesnotes-track-title">Code de la route</p>
+                    <p className="mesnotes-track-stop">
+                      {journey.code.currentStop?.label ?? 'Aucun parcours code'}
+                    </p>
+                  </div>
+                </div>
+                <div className="mesnotes-progress">
+                  <span style={{ width: `${Math.round(codeRatio * 100)}%` }} />
+                </div>
+                <p className="mesnotes-progress-label">
+                  {journey.code.chaptersDone}/{journey.code.chaptersTotal} chapitres validés
+                </p>
+              </div>
+
+              <div className="mesnotes-track mesnotes-track--drive">
+                <div className="mesnotes-track-top">
+                  <span className="mesnotes-track-icon">
+                    <FileText size={18} aria-hidden />
+                  </span>
+                  <div>
+                    <p className="mesnotes-track-title">Conduite / pratique</p>
+                    <p className="mesnotes-track-stop">
+                      {journey.conduite.currentStop?.label ?? 'Aucun parcours conduite'}
+                    </p>
+                  </div>
+                </div>
+                <div className="mesnotes-progress">
+                  <span style={{ width: `${Math.round(conduiteRatio * 100)}%` }} />
+                </div>
+                <p className="mesnotes-progress-label">
+                  {journey.conduite.chaptersDone}/{journey.conduite.chaptersTotal} chapitres
+                  terminés
+                </p>
+              </div>
+
+              <h2 className="mesnotes-section-title">Examens test · sur 20</h2>
+              {practice ? (
+                <p className="subtitle" style={{ textAlign: 'center' }}>
+                  {practice.completedCount}/{practice.examTotal} passés · {practice.passedCount}{' '}
+                  réussis (seuil {practice.passScore}/20)
+                </p>
+              ) : null}
+              {examScores.length === 0 ? (
+                <div className="mesnotes-empty">
+                  <strong>Aucune note pour le moment</strong>
+                  <p>Passez un examen blanc pour voir votre note ici en direct.</p>
+                </div>
+              ) : (
+                examScores.map((score) => (
+                  <div key={score.id} className="mesnotes-score">
+                    <span
+                      className={`mesnotes-badge${score.passed ? ' mesnotes-badge--pass' : ' mesnotes-badge--fail'}`}
+                    >
+                      {score.scoreLabel}
+                    </span>
+                    <span className="mesnotes-score-body">
+                      <strong>Examen {score.examNumber}</strong>
+                      <small>Seuil {score.passScore}/20</small>
+                    </span>
+                    <span
+                      className={`mesnotes-pill${score.passed ? ' mesnotes-pill--pass' : ' mesnotes-pill--fail'}`}
+                    >
+                      {score.passed ? 'Réussi' : 'À revoir'}
+                    </span>
+                  </div>
+                ))
+              )}
+
+              <h2 className="mesnotes-section-title">Sujets test · chapitres</h2>
+              {journey.testScores.length === 0 ? (
+                <div className="mesnotes-empty">
+                  <strong>Aucune note de sujet chapitre</strong>
+                  <p>Validez un sujet test pour voir votre score ici.</p>
+                </div>
+              ) : (
+                journey.testScores.map((score) => {
+                  const ratio = score.total > 0 ? score.correct / score.total : 0
+                  const good = ratio >= 0.5
+                  return (
+                    <div key={score.chapterId} className="mesnotes-score">
+                      <span
+                        className={`mesnotes-badge${good ? ' mesnotes-badge--pass' : ' mesnotes-badge--fail'}`}
                       >
-                        <span className="learner-item-icon">{score.scoreLabel}</span>
-                        <span className="learner-item-body">
-                          <strong>Examen {score.examNumber}</strong>
-                          <small>
-                            {score.passed ? 'Réussi' : 'Non réussi'} · seuil {score.passScore}/20
-                          </small>
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </section>
-
-              <section className="learner-notes-block">
-                <h2>Notes des sujets test (chapitres)</h2>
-                {journey.testScores.length === 0 ? (
-                  <p className="subtitle">
-                    Aucune note de sujet chapitre pour le moment.
-                  </p>
-                ) : (
-                  <div className="learner-list">
-                    {journey.testScores.map((score) => (
-                      <div key={score.chapterId} className="learner-item is-done">
-                        <span className="learner-item-icon">{score.scoreLabel}</span>
-                        <span className="learner-item-body">
-                          <strong>{score.chapterName}</strong>
-                          <small>
-                            {score.correct}/{score.total} bonnes réponses
-                          </small>
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </section>
+                        {score.scoreLabel}
+                      </span>
+                      <span className="mesnotes-score-body">
+                        <strong>{score.chapterName}</strong>
+                        <small>
+                          {score.correct}/{score.total} bonnes réponses
+                        </small>
+                      </span>
+                    </div>
+                  )
+                })
+              )}
             </>
           ) : null}
         </div>

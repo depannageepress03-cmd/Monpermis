@@ -1984,3 +1984,249 @@
     height: 88px;
   }
 }
+
+/* ===== Duo Questions / Sujet test — style i7 (cartes teintées centrées) ===== */
+.learner-hub-duo {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.learner-hub-duo-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  border-radius: 24px;
+  padding: 20px 12px 16px;
+  text-decoration: none;
+  border: 1.5px solid rgba(0, 16, 48, 0.08);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.learner-hub-duo-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px rgba(0, 16, 48, 0.1);
+}
+.learner-hub-duo-card--green {
+  background: #e8f8ef;
+}
+.learner-hub-duo-card--gold {
+  background: #fff8e6;
+}
+.learner-hub-duo-card--active {
+  border-color: #00b050;
+  box-shadow: 0 0 0 2px rgba(0, 176, 80, 0.25);
+}
+.learner-hub-duo-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: #ffffff;
+  border: 1px solid rgba(0, 16, 48, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #00b050;
+  margin-bottom: 4px;
+}
+.learner-hub-duo-card--gold .learner-hub-duo-icon {
+  color: #b45309;
+}
+.learner-hub-duo-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 800;
+  color: #001030;
+  text-align: center;
+}
+.learner-hub-duo-sub {
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.35;
+  color: #3d5a73;
+  text-align: center;
+}
+.learner-hub-duo-chevron {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  color: #3d5a73;
+  opacity: 0.7;
+}
+
+/* ===== Mes notes v2 — style i7 ===== */
+.mesnotes-head {
+  text-align: center;
+  margin-bottom: 16px;
+}
+.mesnotes-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.mesnotes-stat {
+  background: #ffffff;
+  border: 1px solid rgba(0, 16, 48, 0.08);
+  border-radius: 20px;
+  padding: 14px 8px;
+  text-align: center;
+  box-shadow: 0 4px 14px rgba(0, 16, 48, 0.05);
+}
+.mesnotes-stat-value {
+  margin: 0;
+  font-size: 1.45rem;
+  font-weight: 800;
+  color: #001030;
+}
+.mesnotes-stat-label {
+  margin: 4px 0 0;
+  font-size: 0.72rem;
+  color: #3d5a73;
+}
+.mesnotes-track {
+  border-radius: 24px;
+  padding: 18px 16px;
+  margin-bottom: 12px;
+  border: 1px solid rgba(0, 16, 48, 0.08);
+}
+.mesnotes-track--code {
+  background: #e8f8ef;
+}
+.mesnotes-track--drive {
+  background: #fff8e6;
+}
+.mesnotes-track-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.mesnotes-track-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 13px;
+  background: #ffffff;
+  border: 1px solid rgba(0, 16, 48, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #00b050;
+  flex-shrink: 0;
+}
+.mesnotes-track--drive .mesnotes-track-icon {
+  color: #b45309;
+}
+.mesnotes-track-title {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #001030;
+}
+.mesnotes-track-stop {
+  margin: 2px 0 0;
+  font-size: 0.82rem;
+  color: #3d5a73;
+}
+.mesnotes-progress {
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(0, 16, 48, 0.1);
+  overflow: hidden;
+  margin-top: 10px;
+}
+.mesnotes-progress > span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: #00b050;
+}
+.mesnotes-track--drive .mesnotes-progress > span {
+  background: #f59e0b;
+}
+.mesnotes-progress-label {
+  margin: 6px 0 0;
+  font-size: 0.75rem;
+  color: #3d5a73;
+  text-align: right;
+}
+.mesnotes-section-title {
+  margin: 20px 0 10px;
+  font-size: 1.02rem;
+  font-weight: 800;
+  color: #001030;
+  text-align: center;
+}
+.mesnotes-score {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #ffffff;
+  border: 1px solid rgba(0, 16, 48, 0.08);
+  border-radius: 20px;
+  padding: 12px 14px;
+  margin-bottom: 10px;
+  box-shadow: 0 4px 14px rgba(0, 16, 48, 0.05);
+}
+.mesnotes-badge {
+  width: 56px;
+  height: 56px;
+  border-radius: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 0.95rem;
+  color: #001030;
+  flex-shrink: 0;
+}
+.mesnotes-badge--pass {
+  background: #e8f8ef;
+  color: #007a3a;
+}
+.mesnotes-badge--fail {
+  background: #fdecea;
+  color: #c2410c;
+}
+.mesnotes-score-body {
+  flex: 1;
+  min-width: 0;
+}
+.mesnotes-score-body strong {
+  display: block;
+  font-size: 0.95rem;
+  color: #001030;
+}
+.mesnotes-score-body small {
+  font-size: 0.78rem;
+  color: #3d5a73;
+}
+.mesnotes-pill {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.mesnotes-pill--pass {
+  background: #e8f8ef;
+  color: #007a3a;
+}
+.mesnotes-pill--fail {
+  background: #fdecea;
+  color: #c2410c;
+}
+.mesnotes-empty {
+  text-align: center;
+  background: #f8fafc;
+  border: 1px dashed rgba(0, 16, 48, 0.15);
+  border-radius: 20px;
+  padding: 22px 16px;
+  margin-bottom: 10px;
+}
+.mesnotes-empty p {
+  margin: 6px 0 0;
+  font-size: 0.85rem;
+  color: #3d5a73;
+}

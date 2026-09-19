@@ -215,6 +215,44 @@ export function ChapterQuestionsListScreen() {
 
           {!loadingList && !error && count > 0 ? (
             <>
+              <View style={duoStyles.duo}>
+                <View style={[duoStyles.card, duoStyles.cardGreen, duoStyles.cardActive]}>
+                  <View style={duoStyles.icon}>
+                    <HelpCircle size={20} color={dark.green} />
+                  </View>
+                  <Text style={duoStyles.title}>Questions</Text>
+                  <Text style={duoStyles.sub}>{count} questions</Text>
+                </View>
+                <Pressable
+                  style={({ pressed }) => [
+                    duoStyles.card,
+                    duoStyles.cardGold,
+                    pressed && qStyles.pressed,
+                  ]}
+                  onPress={() =>
+                    navigation.navigate('ChapterTestSubject', {
+                      chapterId,
+                      chapterName,
+                      chapterOrder,
+                    })
+                  }
+                  accessibilityRole="button"
+                  accessibilityLabel="Aller au sujet test"
+                >
+                  <View style={duoStyles.chevron}>
+                    <ChevronRight size={16} color={dark.textMuted} />
+                  </View>
+                  <View style={duoStyles.icon}>
+                    <ClipboardList size={20} color="#B45309" />
+                  </View>
+                  <Text style={duoStyles.title}>Sujet test</Text>
+                  <Text style={duoStyles.sub}>
+                    {testEntry
+                      ? `${testEntry.correct}/${testEntry.total}`
+                      : 'Validez le chapitre'}
+                  </Text>
+                </Pressable>
+              </View>
               <FadeUp delay={100}>
                 <View style={qStyles.statsCard}>
                   <View style={qStyles.statsRow}>
@@ -374,6 +412,47 @@ export function ChapterTestSubjectScreen() {
 
           {loadingList ? <SkeletonList count={3} /> : null}
           {error ? <Text style={tStyles.errorText}>{error}</Text> : null}
+
+          {!loadingList && !error ? (
+            <View style={duoStyles.duo}>
+              <Pressable
+                style={({ pressed }) => [
+                  duoStyles.card,
+                  duoStyles.cardGreen,
+                  pressed && tStyles.pressed,
+                ]}
+                onPress={() =>
+                  navigation.navigate('ChapterQuestionsList', {
+                    chapterId,
+                    chapterName,
+                    chapterOrder,
+                  })
+                }
+                accessibilityRole="button"
+                accessibilityLabel="Aller aux questions"
+              >
+                <View style={duoStyles.chevron}>
+                  <ChevronRight size={16} color={dark.textMuted} />
+                </View>
+                <View style={duoStyles.icon}>
+                  <HelpCircle size={20} color={dark.green} />
+                </View>
+                <Text style={duoStyles.title}>Questions</Text>
+                <Text style={duoStyles.sub}>Entraînement</Text>
+              </Pressable>
+              <View style={[duoStyles.card, duoStyles.cardGold, duoStyles.cardActive]}>
+                <View style={duoStyles.icon}>
+                  <ClipboardList size={20} color="#B45309" />
+                </View>
+                <Text style={duoStyles.title}>Sujet test</Text>
+                <Text style={duoStyles.sub}>
+                  {subjects.length > 0
+                    ? `${subjects.length} sujet${subjects.length > 1 ? 's' : ''}`
+                    : 'Évaluation'}
+                </Text>
+              </View>
+            </View>
+          ) : null}
 
           {!loadingList && !error && subjects.length === 0 ? (
             <EmptyState
@@ -755,5 +834,67 @@ const tStyles = StyleSheet.create({
   pressed: {
     opacity: 0.88,
     transform: [{ scale: 0.99 }],
+  },
+})
+
+const duoStyles = StyleSheet.create({
+  duo: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 14,
+  },
+  card: {
+    flex: 1,
+    position: 'relative',
+    alignItems: 'center',
+    gap: 6,
+    borderRadius: 24,
+    paddingVertical: 20,
+    paddingHorizontal: 12,
+    borderWidth: 1.5,
+    borderColor: 'rgba(0,16,48,0.08)',
+  },
+  cardGreen: {
+    backgroundColor: '#E8F8EF',
+  },
+  cardGold: {
+    backgroundColor: '#FFF8E6',
+  },
+  cardActive: {
+    borderColor: dark.green,
+    shadowColor: '#00B050',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  chevron: {
+    position: 'absolute',
+    top: 14,
+    right: 14,
+    opacity: 0.7,
+  },
+  icon: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: 'rgba(0,16,48,0.10)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+  },
+  title: {
+    fontFamily: fonts.bodyBold,
+    fontSize: 15,
+    color: dark.textPrimary,
+    textAlign: 'center',
+  },
+  sub: {
+    fontFamily: fonts.body,
+    fontSize: 12,
+    color: dark.textMuted,
+    textAlign: 'center',
   },
 })
