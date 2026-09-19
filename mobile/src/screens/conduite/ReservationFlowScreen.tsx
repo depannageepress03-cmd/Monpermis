@@ -192,6 +192,9 @@ export function ReservationFlowScreen() {
     () => moniteurs.find((item) => item.id === moniteurId) ?? profile,
     [moniteurs, moniteurId, profile],
   )
+  // URIs résolues une fois : jamais d'Image avec uri undefined (crash natif).
+  const profilePhotoUri = resolveMediaUrl(profile?.photoUrl)
+  const selectedPhotoUri = resolveMediaUrl(selectedMoniteur?.photoUrl)
 
   const vehicleType = selectedMoniteur?.vehicleTypes?.[0] || 'voiture'
 
@@ -253,8 +256,8 @@ export function ReservationFlowScreen() {
     setError(null)
     try {
       const data = await fetchMoniteurAvailability({ moniteurId, days: 14 })
-      setAvailabilityDays(data.days)
-      setHourlyPriceFcfa(data.hourlyPriceFcfa || data.moniteur.defaultPriceFcfa || 5000)
+      setAvailabilityDays(data.days ?? [])
+      setHourlyPriceFcfa(data.hourlyPriceFcfa || data.moniteur?.defaultPriceFcfa || 5000)
       if (data.hoursDiscountFcfa !== undefined) setHoursDiscount(data.hoursDiscountFcfa)
       if (data.hoursDiscountMinHours !== undefined) setHoursDiscountMin(data.hoursDiscountMinHours)
     } catch (err) {
@@ -371,6 +374,12 @@ export function ReservationFlowScreen() {
         endTime: selectedEnd,
         vehicleType: vehicleType || 'voiture',
       })
+
+      if (!data.creneau) {
+        throw new ReservationError(
+          'Ce créneau vient d’être pris. Choisissez un autre horaire.',
+        )
+      }
 
       if (currentSolde !== null && currentSolde >= durationHours) {
         const result = await createReservation({
@@ -583,26 +592,29 @@ export function ReservationFlowScreen() {
                 const priceLabel = moniteur.defaultPriceFcfa
                   ? `${moniteur.defaultPriceFcfa.toLocaleString('fr-FR')} F/h`
                   : null
+                const displayName = moniteur.fullName || 'Moniteur'
+                const photoUri = resolveMediaUrl(moniteur.photoUrl)
+                const vehicleUri = resolveMediaUrl(moniteur.vehiclePhotoUrl)
                 return (
                   <FadeUp key={moniteur.id} delay={100 + index * 40}>
                     <Bouncy scaleTo={0.98} onPress={() => void loadProfile(moniteur.id)}>
                       <View style={styles.choice}>
                         <View style={styles.moniteurRow}>
                           <View style={styles.avatarWrap}>
-                            {moniteur.photoUrl ? (
+                            {photoUri ? (
                               <Image
-                                source={{ uri: resolveMediaUrl(moniteur.photoUrl) }}
+                                source={{ uri: photoUri }}
                                 style={styles.listAvatar}
                               />
-                            ) : moniteur.vehiclePhotoUrl ? (
+                            ) : vehicleUri ? (
                               <Image
-                                source={{ uri: resolveMediaUrl(moniteur.vehiclePhotoUrl) }}
+                                source={{ uri: vehicleUri }}
                                 style={styles.listAvatar}
                               />
                             ) : (
                               <View style={[styles.listAvatar, styles.carPlaceholder]}>
                                 <Text style={styles.avatarInitial}>
-                                  {moniteur.fullName.slice(0, 1).toUpperCase()}
+                                  {displayName.slice(0, 1).toUpperCase()}
                                 </Text>
                               </View>
                             )}
@@ -611,7 +623,7 @@ export function ReservationFlowScreen() {
                             </View>
                           </View>
                           <View style={{ flex: 1, minWidth: 0 }}>
-                            <Text style={styles.choiceText}>{moniteur.fullName}</Text>
+                            <Text style={styles.choiceText}>{displayName}</Text>
                             <Text style={styles.brandText}>
                               {moniteur.vehicleBrand || 'Marque non renseignée'}
                             </Text>
@@ -686,15 +698,15 @@ export function ReservationFlowScreen() {
             <FadeUp delay={100}>
               <View style={styles.profileHero}>
                 <View style={styles.avatarWrap}>
-                  {profile.photoUrl ? (
+                  {profilePhotoUri ? (
                     <Image
-                      source={{ uri: resolveMediaUrl(profile.photoUrl) }}
+                      source={{ uri: profilePhotoUri }}
                       style={styles.profileAvatar}
                     />
                   ) : (
                     <View style={[styles.profileAvatar, styles.coverPlaceholder]}>
                       <Text style={styles.avatarInitial}>
-                        {profile.fullName.slice(0, 1).toUpperCase()}
+                        {(profile.fullName || '?').slice(0, 1).toUpperCase()}
                       </Text>
                     </View>
                   )}
@@ -729,7 +741,9 @@ export function ReservationFlowScreen() {
               const vehicleImages = [
                 profile.vehiclePhotoUrl,
                 ...(profile.photos || []),
-              ].filter((uri): uri is string => Boolean(uri?.trim()))
+              ]
+                .map((raw) => resolveMediaUrl(raw))
+                .filter((uri): uri is string => Boolean(uri))
               const safeIndex = Math.min(vehicleImageIndex, Math.max(0, vehicleImages.length - 1))
               const currentVehicleUri = vehicleImages[safeIndex]
 
@@ -760,7 +774,7 @@ export function ReservationFlowScreen() {
                         {vehicleImages.map((uri) => (
                           <Image
                             key={uri}
-                            source={{ uri: resolveMediaUrl(uri) }}
+                            source={{ uri }}
                             style={[styles.vehiclePhoto, { width: vehicleSlideWidth }]}
                           />
                         ))}
@@ -844,13 +858,16 @@ export function ReservationFlowScreen() {
                       showsHorizontalScrollIndicator={false}
                       contentContainerStyle={styles.galleryRow}
                     >
-                      {profile.photos.map((photo) => (
-                        <Image
-                          key={photo}
-                          source={{ uri: resolveMediaUrl(photo) }}
-                          style={styles.galleryPhoto}
-                        />
-                      ))}
+                      {(profile.photos || []).map((photo) => {
+                        const galleryUri = resolveMediaUrl(photo)
+                        return galleryUri ? (
+                          <Image
+                            key={photo}
+                            source={{ uri: galleryUri }}
+                            style={styles.galleryPhoto}
+                          />
+                        ) : null
+                      })}
                     </ScrollView>
                   ) : (
                     <Text style={styles.infoRowSubtitle}>Pas encore de galerie photo.</Text>
@@ -917,15 +934,15 @@ export function ReservationFlowScreen() {
               <FadeUp delay={100}>
                 <View style={styles.durationMoniteurCard}>
                   <View style={styles.avatarWrap}>
-                    {selectedMoniteur.photoUrl ? (
+                    {selectedPhotoUri ? (
                       <Image
-                        source={{ uri: resolveMediaUrl(selectedMoniteur.photoUrl) }}
+                        source={{ uri: selectedPhotoUri }}
                         style={styles.durationMoniteurAvatar}
                       />
                     ) : (
                       <View style={[styles.durationMoniteurAvatar, styles.coverPlaceholder]}>
                         <Text style={styles.avatarInitial}>
-                          {selectedMoniteur.fullName.slice(0, 1).toUpperCase()}
+                          {(selectedMoniteur.fullName || '?').slice(0, 1).toUpperCase()}
                         </Text>
                       </View>
                     )}
@@ -1065,9 +1082,9 @@ export function ReservationFlowScreen() {
               <View style={styles.slotsRecapCard}>
                 <View style={styles.slotsRecapMain}>
                   <View style={styles.avatarWrap}>
-                    {selectedMoniteur?.photoUrl ? (
+                    {selectedPhotoUri ? (
                       <Image
-                        source={{ uri: resolveMediaUrl(selectedMoniteur.photoUrl) }}
+                        source={{ uri: selectedPhotoUri }}
                         style={styles.slotsRecapAvatar}
                       />
                     ) : (

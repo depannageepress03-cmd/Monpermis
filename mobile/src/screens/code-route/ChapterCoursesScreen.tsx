@@ -33,7 +33,8 @@ export function ChapterCoursesScreen() {
   const navigation = useNavigation<Nav>()
   const route = useRoute<Route>()
   const { user, loading } = useRequireAuth(navigation)
-  const { chapterId, chapterName, courses } = route.params
+  const { chapterId = '', chapterName = '', courses: coursesParam } = route.params ?? {}
+  const courses = coursesParam ?? []
 
   const [completedIds, setCompletedIds] = useState<Set<string>>(new Set())
   const [progressLoading, setProgressLoading] = useState(true)

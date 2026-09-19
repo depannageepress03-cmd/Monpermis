@@ -64,8 +64,11 @@ export function CourseDetailScreen() {
   const { user, loading } = useRequireAuth(navigation)
   const { isOffline, enqueue } = useOffline()
   const unreadCount = useUnreadNotifications(Boolean(user))
-  const { chapterId, chapterName, course, courses: coursesParam } = route.params
-  const courses = coursesParam?.length ? coursesParam : [course]
+  const { chapterId = '', chapterName = '', course: courseParam, courses: coursesParam } =
+    route.params ?? {}
+  const course =
+    courseParam ?? ({ id: '', title: '', modules: [] } as typeof courseParam)
+  const courses = coursesParam?.length ? coursesParam : courseParam ? [courseParam] : []
   const isStandalone = chapterId === STANDALONE_CHAPTER
 
   const [completedIds, setCompletedIds] = useState<Set<string>>(new Set())
@@ -178,6 +181,20 @@ export function CourseDetailScreen() {
   }
 
   if (loading || !user) return <ScreenLoader />
+
+  if (!courseParam) {
+    return (
+      <View style={styles.root}>
+        <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+          <EmptyState
+            icon={<BookOpen size={30} color={dark.textMuted} />}
+            title="Cours introuvable"
+            message="Ouvrez ce cours depuis la liste du chapitre."
+          />
+        </SafeAreaView>
+      </View>
+    )
+  }
 
   const headerTitle = formatCourseHeading(courseIndex, course.title)
 

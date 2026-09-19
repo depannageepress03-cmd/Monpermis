@@ -936,7 +936,7 @@ export function enrichAnswersFromTranscript<T extends { label: string; text?: st
   answers: T[],
   transcript: string,
 ): T[] {
-  if (!answers?.length) return answers
+  if (!answers?.length) return answers ?? []
   const { choices } = splitTranscriptParts(transcript)
   if (!Object.keys(choices).length) return answers
   return answers.map((answer) => {

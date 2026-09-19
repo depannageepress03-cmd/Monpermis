@@ -38,7 +38,12 @@ interface FormErrors {
 export function RegisterPasswordScreen() {
   const navigation = useNavigation<Nav>()
   const route = useRoute<Route>()
-  const { firstName, lastName, phone } = route.params
+  const { firstName = '', lastName = '', phone = '' } = route.params ?? {}
+
+  // Accès direct (deep link) sans étape 1 : retour à l'inscription.
+  useEffect(() => {
+    if (!phone.trim()) navigation.replace('Register')
+  }, [phone, navigation])
 
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')

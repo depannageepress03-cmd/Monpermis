@@ -39,15 +39,21 @@ export function ActualiteDetailScreen() {
   const [fetching, setFetching] = useState(true)
 
   const load = useCallback(async () => {
+    const announcementId = route.params?.id
+    if (!announcementId) {
+      setItem(null)
+      setFetching(false)
+      return
+    }
     try {
-      const data = await fetchAnnouncement(route.params.id)
+      const data = await fetchAnnouncement(announcementId)
       setItem(data)
     } catch {
       setItem(null)
     } finally {
       setFetching(false)
     }
-  }, [route.params.id])
+  }, [route.params?.id])
 
   useFocusEffect(
     useCallback(() => {

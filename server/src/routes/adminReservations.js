@@ -309,10 +309,14 @@ router.post('/creneaux/generate', audit('generate', 'creneau'), async (req, res)
     const moniteurId = req.body.moniteurId
     const fromDate = String(req.body.fromDate || '').trim()
     const toDate = String(req.body.toDate || '').trim()
-    const slotMinutes = Number(req.body.slotMinutes) || 60
+    const slotMinutes = Math.floor(Number(req.body.slotMinutes) || 60)
 
     if (!moniteurId || !fromDate || !toDate) {
       return res.status(400).json({ success: false, error: 'Moniteur et dates requis' })
+    }
+    // Garde anti-boucle infinie / DoS : durée positive bornée, plage ≤ 92 jours.
+    if (!Number.isFinite(slotMinutes) || slotMinutes < 15 || slotMinutes > 480) {
+      return res.status(400).json({ success: false, error: 'Durée de créneau invalide (15–480 min)' })
     }
 
     const moniteur = await Moniteur.findById(moniteurId)
@@ -331,6 +335,10 @@ router.post('/creneaux/generate', audit('generate', 'creneau'), async (req, res)
     if (!start || !end || end < start) {
       return res.status(400).json({ success: false, error: 'Plage de dates invalide' })
     }
+    const spanDays = Math.round((end.getTime() - start.getTime()) / 86400000) + 1
+    if (spanDays > 92) {
+      return res.status(400).json({ success: false, error: 'Plage limitée à 92 jours' })
+    }
 
     const created = []
     const cursor = new Date(start)
@@ -344,8 +352,11 @@ router.post('/creneaux/generate', audit('generate', 'creneau'), async (req, res)
       for (const window of windows) {
         const [sh, sm] = String(window.start || '08:00').split(':').map(Number)
         const [eh, em] = String(window.end || '18:00').split(':').map(Number)
+        // Fenêtre malformée (admin) : ignorée au lieu de produire des créneaux absurdes.
+        if (![sh, sm, eh, em].every((n) => Number.isFinite(n) && n >= 0)) continue
         let minutes = sh * 60 + (sm || 0)
         const endMinutes = eh * 60 + (em || 0)
+        if (endMinutes <= minutes) continue
 
         while (minutes + slotMinutes <= endMinutes) {
           const startH = String(Math.floor(minutes / 60)).padStart(2, '0')

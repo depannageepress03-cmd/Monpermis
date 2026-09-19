@@ -1,5 +1,6 @@
 import { getApiBase } from '../api/config'
 import { getStoredToken } from '../api/auth'
+import { fetchWithTimeout } from '../api/http'
 
 /**
  * Traqueur des faits et gestes de l'apprenant sur le web.
@@ -228,7 +229,7 @@ class Tracker {
     this.flushing = true
     const batch = this.buffer.splice(0, FLUSH_THRESHOLD)
     try {
-      const response = await fetch(`${getApiBase()}/tracking/events`, {
+      const response = await fetchWithTimeout(`${getApiBase()}/tracking/events`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

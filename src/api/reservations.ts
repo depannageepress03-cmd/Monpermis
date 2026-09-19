@@ -1,4 +1,5 @@
 import { getApiBase } from './config'
+import { fetchWithTimeout } from './http'
 import { getStoredToken, invalidateSessionIfUnauthorized } from './auth'
 
 function getToken() {
@@ -21,7 +22,7 @@ export class ReservationError extends Error {
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const token = getToken()
   if (!token) throw new ReservationError('Authentification requise')
-  const response = await fetch(`${getApiBase()}${path}`, {
+  const response = await fetchWithTimeout(`${getApiBase()}${path}`, {
     ...options,
     headers: {
       'Content-Type': 'application/json',

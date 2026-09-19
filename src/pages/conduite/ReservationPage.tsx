@@ -161,11 +161,12 @@ export function ReservationPage() {
     setError(null)
     try {
       const data = await fetchMoniteurAvailability({ moniteurId, days: 14 })
-      setAvailabilityDays(data.days)
-      setHourlyPriceFcfa(data.hourlyPriceFcfa || data.moniteur.defaultPriceFcfa || 5000)
+      const days = data.days ?? []
+      setAvailabilityDays(days)
+      setHourlyPriceFcfa(data.hourlyPriceFcfa || data.moniteur?.defaultPriceFcfa || 5000)
       if (data.hoursDiscountFcfa !== undefined) setHoursDiscount(data.hoursDiscountFcfa)
       if (data.hoursDiscountMinHours !== undefined) setHoursDiscountMin(data.hoursDiscountMinHours)
-      const first = data.days[0]
+      const first = days[0]
       if (first) {
         setSelectedDate(first.date)
         setStartTime(first.windows[0]?.start || '')
@@ -230,6 +231,9 @@ export function ReservationPage() {
         endTime,
         vehicleType,
       })
+      if (!data.creneau) {
+        throw new ReservationError('Ce créneau vient d’être pris. Choisissez un autre horaire.')
+      }
       setSelected(data.creneau)
       setSelectedAmount(data.amountFcfa ?? data.creneau.priceFcfa)
       setSlotLockedUntil(data.lockedUntil || null)

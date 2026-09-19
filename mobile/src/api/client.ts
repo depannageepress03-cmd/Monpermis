@@ -30,10 +30,15 @@ export type ApiRequestOptions = RequestInit & {
   retries?: number
   /** Allow success:false / missing data without throwing — caller inspects body. */
   raw?: boolean
+  /** Per-attempt timeout in ms (default 25000). */
+  timeoutMs?: number
 }
 
 const NETWORK_MSG =
   'Impossible de joindre le serveur. Vérifiez votre connexion internet.'
+
+const NETWORK_TIMEOUT_MSG =
+  'Délai de réponse dépassé. Vérifiez votre connexion internet.'
 
 function mergeHeaders(
   base: Record<string, string>,
@@ -59,16 +64,27 @@ async function fetchWithRetries(
   url: string,
   init: RequestInit,
   retries: number,
+  timeoutMs = 25000,
 ): Promise<Response> {
   let lastError: unknown
   for (let attempt = 0; attempt <= retries; attempt++) {
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), timeoutMs)
     try {
-      return await fetch(url, init)
+      return await fetch(url, {
+        ...init,
+        signal: init.signal ?? controller.signal,
+      })
     } catch (error) {
-      lastError = error
+      lastError =
+        error instanceof Error && error.name === 'AbortError' && !init.signal?.aborted
+          ? new Error(NETWORK_TIMEOUT_MSG)
+          : error
       if (attempt < retries) {
         await new Promise((r) => setTimeout(r, 1500 * (attempt + 1)))
       }
+    } finally {
+      clearTimeout(timer)
     }
   }
   throw lastError instanceof Error ? lastError : new Error(NETWORK_MSG)
@@ -84,7 +100,7 @@ export async function apiRequest<T>(
   path: string,
   options: ApiRequestOptions = {},
 ): Promise<T> {
-  const { auth = false, retries = 0, raw: _raw, headers, ...rest } = options
+  const { auth = false, retries = 0, raw: _raw, headers, timeoutMs, ...rest } = options
 
   const requestHeaders: Record<string, string> = mergeHeaders(
     {
@@ -102,7 +118,7 @@ export async function apiRequest<T>(
 
   let response: Response
   try {
-    response = await fetchWithRetries(`${getApiBase()}${path}`, { ...rest, headers: requestHeaders }, retries)
+    response = await fetchWithRetries(`${getApiBase()}${path}`, { ...rest, headers: requestHeaders }, retries, timeoutMs)
   } catch {
     throw new ApiError(NETWORK_MSG)
   }

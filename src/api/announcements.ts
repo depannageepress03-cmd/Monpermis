@@ -1,4 +1,5 @@
 import { getApiBase } from './config'
+import { fetchWithTimeout } from './http'
 import { getStoredToken, invalidateSessionIfUnauthorized } from './auth'
 
 interface ApiResponse<T> {
@@ -27,7 +28,7 @@ export async function fetchAnnouncements(limit = 20): Promise<Announcement[]> {
   const token = getToken()
   if (!token) return []
   try {
-    const response = await fetch(
+    const response = await fetchWithTimeout(
       `${getApiBase()}/content/announcements?limit=${Math.min(limit, 50)}`,
       {
         headers: {
@@ -53,7 +54,7 @@ export async function fetchAnnouncement(id: string): Promise<Announcement | null
   const token = getToken()
   if (!token || !id) return null
   try {
-    const response = await fetch(`${getApiBase()}/content/announcements/${encodeURIComponent(id)}`, {
+    const response = await fetchWithTimeout(`${getApiBase()}/content/announcements/${encodeURIComponent(id)}`, {
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
@@ -76,7 +77,7 @@ export async function recordAnnouncementView(id: string): Promise<void> {
   const token = getToken()
   if (!token || !id) return
   try {
-    await fetch(`${getApiBase()}/content/announcements/${encodeURIComponent(id)}/view`, {
+    await fetchWithTimeout(`${getApiBase()}/content/announcements/${encodeURIComponent(id)}/view`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

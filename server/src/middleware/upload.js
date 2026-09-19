@@ -166,7 +166,7 @@ async function sendMediaAsset(req, res, next) {
 
 export const imageUpload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 5 * 1024 * 1024 },
+  limits: { fileSize: 5 * 1024 * 1024, files: 3, fields: 20, parts: 30 },
   fileFilter: (_req, file, cb) => {
     // file.buffer n’existe pas encore ici (memoryStorage le remplit après)
     if (!IMAGE_MIMES.has(String(file.mimetype || '').toLowerCase())) {
@@ -179,7 +179,7 @@ export const imageUpload = multer({
 
 export const audioUpload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 15 * 1024 * 1024 },
+  limits: { fileSize: 15 * 1024 * 1024, files: 3, fields: 20, parts: 30 },
   fileFilter: (_req, file, cb) => {
     if (!AUDIO_MIMES.has(String(file.mimetype || '').toLowerCase())) {
       cb(new Error('Format audio non supporté (MP3, WAV, OGG, WebM)'))
@@ -192,7 +192,7 @@ export const audioUpload = multer({
 /** Vidéos cours (code / conduite) → Cloudinary. Limite 100 Mo (plafond typique free). */
 export const videoUpload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 100 * 1024 * 1024 },
+  limits: { fileSize: 100 * 1024 * 1024, files: 1, fields: 20, parts: 30 },
   fileFilter: (_req, file, cb) => {
     if (!VIDEO_MIMES.has(String(file.mimetype || '').toLowerCase())) {
       cb(new Error('Format vidéo non supporté (MP4, WebM, MOV)'))

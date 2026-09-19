@@ -1,4 +1,5 @@
 import { getApiBase } from './config'
+import { fetchWithTimeout } from './http'
 import { getStoredToken, invalidateSessionIfUnauthorized } from './auth'
 
 function getToken() {
@@ -16,7 +17,7 @@ async function parseJson(res: Response) {
 }
 
 export async function forgotPassword(email: string): Promise<void> {
-  const res = await fetch(`${getApiBase()}/auth/forgot-password`, {
+  const res = await fetchWithTimeout(`${getApiBase()}/auth/forgot-password`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email }),
@@ -28,7 +29,7 @@ export async function forgotPassword(email: string): Promise<void> {
 }
 
 export async function resetPassword(token: string, password: string): Promise<void> {
-  const res = await fetch(`${getApiBase()}/auth/reset-password`, {
+  const res = await fetchWithTimeout(`${getApiBase()}/auth/reset-password`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ token, password }),
@@ -40,7 +41,7 @@ export async function resetPassword(token: string, password: string): Promise<vo
 }
 
 export async function verifyEmail(token: string): Promise<void> {
-  const res = await fetch(`${getApiBase()}/auth/verify-email`, {
+  const res = await fetchWithTimeout(`${getApiBase()}/auth/verify-email`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ token }),
@@ -52,7 +53,7 @@ export async function verifyEmail(token: string): Promise<void> {
 }
 
 export async function resendVerificationEmail(email: string): Promise<void> {
-  const res = await fetch(`${getApiBase()}/auth/resend-verification`, {
+  const res = await fetchWithTimeout(`${getApiBase()}/auth/resend-verification`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email }),
@@ -65,7 +66,7 @@ export async function resendVerificationEmail(email: string): Promise<void> {
 
 export async function changePassword(currentPassword: string, newPassword: string): Promise<void> {
   const token = getToken()
-  const res = await fetch(`${getApiBase()}/auth/change-password`, {
+  const res = await fetchWithTimeout(`${getApiBase()}/auth/change-password`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
     body: JSON.stringify({ currentPassword, newPassword }),
@@ -92,7 +93,7 @@ export async function updateProfile(data: {
   createdAt: string
 }> {
   const token = getToken()
-  const res = await fetch(`${getApiBase()}/auth/profile`, {
+  const res = await fetchWithTimeout(`${getApiBase()}/auth/profile`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
     body: JSON.stringify(data),
@@ -116,7 +117,7 @@ export async function updateProfile(data: {
 
 export async function deleteAccount(data: { password?: string; confirm: boolean }): Promise<void> {
   const token = getToken()
-  const res = await fetch(`${getApiBase()}/auth/account`, {
+  const res = await fetchWithTimeout(`${getApiBase()}/auth/account`, {
     method: 'DELETE',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
     body: JSON.stringify(data),

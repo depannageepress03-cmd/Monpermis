@@ -132,7 +132,7 @@ export function ExamensTestPage() {
                   {data.message ? <p className="subtitle">{data.message}</p> : null}
 
                   <div className="practice-exam-list">
-                    {data.exams.map((exam, examIndex) => (
+                    {(data.exams ?? []).map((exam, examIndex) => (
                       <Reveal key={exam.id} delay={Math.min(examIndex, 8) * 45}>
                       <article className={`practice-exam-card is-${exam.status}`}>
                         <div>
@@ -595,7 +595,7 @@ export function ExamensTestTakePage() {
                       disabled={submitted || checking}
                     >
                       <span className={`learner-quiz-check ${selected ? 'is-on' : ''}`} aria-hidden />
-                      <strong>{answer.label.toUpperCase()}</strong>
+                      <strong>{(answer.label ?? '').toUpperCase()}</strong>
                       {answer.text ? <span>{answer.text}</span> : null}
                     </button>
                   )

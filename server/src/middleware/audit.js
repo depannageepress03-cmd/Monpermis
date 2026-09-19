@@ -44,8 +44,7 @@ function clientIp(req) {
   return req.ip || req.socket?.remoteAddress || undefined
 }
 
-function clientUserAgent(req) {
-  const ua = req.headers?.['user-agent']
+function clientUserAgent(req) {  const ua = req.headers?.['user-agent']
   return typeof ua === 'string' ? ua.slice(0, 500) : undefined
 }
 
@@ -91,7 +90,11 @@ export function logAdminAction(req, options = {}) {
     ...(options.before !== undefined ? { before: options.before } : {}),
     ...(options.after !== undefined ? { after: options.after } : {}),
     method: req.method,
-    path: req.originalUrl || req.url,
+    // Ne jamais persister de token en clair (?token= des liens email).
+    path: String(req.originalUrl || req.url || '').replace(
+      /([?&])(token|emailVerificationToken|passwordResetToken|access_token)=[^&]*/gi,
+      '$1$2=[redacted]',
+    ),
   })
 
   const action = String(options.action || 'unknown')

@@ -60,7 +60,7 @@ export function MoniteurProfileScreen() {
   const navigation = useNavigation<Nav>()
   const route = useRoute<Props['route']>()
   const { user, loading } = useRequireAuth(navigation)
-  const moniteurId = route.params.id
+  const moniteurId = route.params?.id ?? ''
   const [moniteur, setMoniteur] = useState<MoniteurProfile | null>(null)
   const [availabilityDays, setAvailabilityDays] = useState<AvailabilityDay[]>([])
   const [fetching, setFetching] = useState(true)
@@ -107,6 +107,18 @@ export function MoniteurProfileScreen() {
 
   if (loading || !user) return <ScreenLoader />
 
+  if (!moniteurId) {
+    return (
+      <DarkScreen>
+        <DarkHeader title="Profil du moniteur" onBack={() => navigation.goBack()} icon={User} />
+        <View style={styles.empty}>
+          <User size={28} color={dark.textMuted} />
+          <Text style={styles.emptyTitle}>Moniteur introuvable</Text>
+        </View>
+      </DarkScreen>
+    )
+  }
+
   const photos = moniteur?.photos ?? []
   const lightboxPhoto = lightboxIndex != null ? photos[lightboxIndex] : null
   const portrait = moniteur ? resolveMediaUrl(moniteur.photoUrl) : undefined
@@ -137,12 +149,12 @@ export function MoniteurProfileScreen() {
               ) : (
                 <View style={[styles.avatar, styles.avatarPlaceholder]}>
                   <Text style={styles.avatarLetter}>
-                    {moniteur.fullName.slice(0, 1).toUpperCase()}
+                    {(moniteur.fullName || '?').slice(0, 1).toUpperCase()}
                   </Text>
                 </View>
               )}
               <View style={styles.identity}>
-                <Text style={styles.name}>{moniteur.fullName}</Text>
+                <Text style={styles.name}>{moniteur.fullName || 'Moniteur'}</Text>
                 {moniteur.city ? (
                   <Text style={styles.meta}>
                     <MapPin size={13} color={dark.textMuted} /> {moniteur.city}

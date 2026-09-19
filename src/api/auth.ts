@@ -1,4 +1,5 @@
 import { getApiBase } from './config'
+import { fetchWithTimeout } from './http'
 
 interface ApiResponse<T> {
   success: boolean
@@ -49,7 +50,7 @@ export function getAuthErrorDetails(error: unknown): { code?: string; email?: st
 }
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const response = await fetch(`${getApiBase()}${path}`, {
+  const response = await fetchWithTimeout(`${getApiBase()}${path}`, {
     ...options,
     headers: { 'Content-Type': 'application/json', ...options?.headers },
   })

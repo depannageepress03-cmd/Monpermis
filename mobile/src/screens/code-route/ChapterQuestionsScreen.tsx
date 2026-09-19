@@ -119,13 +119,13 @@ export function ChapterQuestionsScreen() {
   const { user, loading } = useRequireAuth(navigation)
   const { isOffline, enqueue } = useOffline()
   const {
-    chapterId,
-    chapterName,
+    chapterId = '',
+    chapterName = '',
     chapterOrder,
     mode = 'practice',
     subjectNumber: subjectNumberParam,
     questionIndex: questionIndexParam,
-  } = route.params
+  } = route.params ?? {}
   const isTest = mode === 'test'
   const subjectNumber = Math.max(1, Number(subjectNumberParam) || 1)
   const isSingleQuestion = !isTest && questionIndexParam != null
@@ -483,6 +483,20 @@ export function ChapterQuestionsScreen() {
 
   if (loading || !user) return <ScreenLoader />
 
+  if (!chapterId) {
+    return (
+      <View style={styles.root}>
+        <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+          <EmptyState
+            icon={<HelpCircle size={30} color={dark.textMuted} />}
+            title="Chapitre introuvable"
+            message="Ouvrez les questions depuis la liste du chapitre."
+          />
+        </SafeAreaView>
+      </View>
+    )
+  }
+
   return (
     <View style={styles.root}>
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
@@ -638,7 +652,7 @@ export function ChapterQuestionsScreen() {
                           wasSelected && !isGood && styles.answerWrong,
                         ]}
                       >
-                        <Text style={styles.answerLabel}>{answer.label.toUpperCase()}</Text>
+                        <Text style={styles.answerLabel}>{(answer.label ?? '').toUpperCase()}</Text>
                         {answer.text ? <Text style={styles.answerText}>{answer.text}</Text> : null}
                         <Text style={styles.reviewHint}>
                           {isGood ? 'Bonne réponse' : wasSelected ? 'Ta réponse' : ''}
@@ -804,7 +818,7 @@ export function ChapterQuestionsScreen() {
                         <Square size={24} color="rgba(0,16,48,0.28)" />
                       )}
                       <View style={styles.answerCopy}>
-                        <Text style={styles.answerLabel}>{answer.label.toUpperCase()}</Text>
+                        <Text style={styles.answerLabel}>{(answer.label ?? '').toUpperCase()}</Text>
                         {answer.text ? (
                           <Text style={styles.answerText}>{answer.text}</Text>
                         ) : null}

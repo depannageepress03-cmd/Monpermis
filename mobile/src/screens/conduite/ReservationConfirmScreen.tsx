@@ -29,17 +29,17 @@ export function ReservationConfirmScreen() {
   const navigation = useNavigation<Nav>()
   const route = useRoute<Route>()
   const {
-    moniteurName,
+    moniteurName = '',
     vehicleBrand,
-    date,
-    startTime,
-    endTime,
-    hours,
-    priceFcfa,
-    paymentMethod,
+    date = '',
+    startTime = '',
+    endTime = '',
+    hours = 0,
+    priceFcfa = 0,
+    paymentMethod = 'mobile_money',
     whatsappLink,
     fromList,
-  } = route.params
+  } = route.params ?? {}
 
   const calendarUrl = useMemo(() => {
     if (!date || !startTime || !endTime) return ''
@@ -49,6 +49,31 @@ export function ReservationConfirmScreen() {
       'Séance de conduite — Monpermis.bj',
     )}&dates=${start}/${end}`
   }, [date, startTime, endTime])
+
+  if (!date || !moniteurName) {
+    return (
+      <DarkScreen>
+        <PageNavbar
+          title="Réservation"
+          icon={CalendarPlus}
+          onBack={() => navigation.navigate('MesReservations')}
+          tone="drive"
+        />
+        <View style={styles.emptyBox}>
+          <Text style={styles.emptyTitle}>Séance introuvable</Text>
+          <Text style={styles.emptyText}>
+            Ouvrez cette confirmation depuis vos réservations.
+          </Text>
+          <Pressable
+            style={styles.primaryBtn}
+            onPress={() => navigation.navigate('MesReservations')}
+          >
+            <Text style={styles.primaryBtnText}>Voir mes réservations</Text>
+          </Pressable>
+        </View>
+      </DarkScreen>
+    )
+  }
 
   return (
     <DarkScreen>
@@ -192,6 +217,29 @@ const styles = StyleSheet.create({
     color: '#0B0F1A',
     fontFamily: fonts.displayBold,
     fontSize: 15,
+  },
+  emptyBox: {
+    margin: 22,
+    backgroundColor: dark.surface,
+    borderWidth: 1,
+    borderColor: dark.border,
+    borderRadius: 18,
+    padding: 22,
+    alignItems: 'center',
+    gap: 8,
+  },
+  emptyTitle: {
+    fontFamily: fonts.displayBold,
+    fontSize: 17,
+    color: dark.textPrimary,
+    textAlign: 'center',
+  },
+  emptyText: {
+    fontFamily: fonts.body,
+    fontSize: 14,
+    lineHeight: 20,
+    color: dark.textMuted,
+    textAlign: 'center',
   },
   secondaryBtn: {
     marginTop: 10,

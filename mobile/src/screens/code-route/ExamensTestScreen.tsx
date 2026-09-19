@@ -174,7 +174,7 @@ export function ExamensTestScreen() {
                     <Text style={styles.empty}>{data.message}</Text>
                   ) : null}
 
-                  {data.exams.map((exam) => (
+                  {(data.exams ?? []).map((exam) => (
                     <View
                       key={exam.id}
                       style={[
@@ -223,7 +223,7 @@ export function ExamensTestScreen() {
 export function ExamensTestTakeScreen() {
   const navigation = useNavigation<TakeNav>()
   const route = useRoute<TakeRoute>()
-  const { examNumber } = route.params
+  const { examNumber } = route.params ?? {}
   const { user, loading: authLoading } = useRequireAuth(navigation)
   const [attempt, setAttempt] = useState<PracticeExamAttempt | null>(null)
   const [loading, setLoading] = useState(true)
@@ -593,7 +593,7 @@ export function ExamensTestTakeScreen() {
                     onPress={() => toggleAnswer(answer.id)}
                     disabled={submitted || checking}
                   >
-                    <Text style={styles.answerLabel}>{answer.label.toUpperCase()}</Text>
+                    <Text style={styles.answerLabel}>{(answer.label ?? '').toUpperCase()}</Text>
                     {answer.text ? <Text style={styles.answerMeta}>{answer.text}</Text> : null}
                   </Pressable>
                 )

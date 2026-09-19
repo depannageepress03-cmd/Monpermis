@@ -102,16 +102,20 @@ export function stopPanneauSpeech() {
 }
 
 async function speakSystem(code: string, definition: string, onEnd?: () => void) {
-  const voice = await pickFrenchVoiceId()
-  Speech.stop()
-  Speech.speak(speechText(code, definition), {
-    language: 'fr-FR',
-    rate: 0.92,
-    voice,
-    onDone: () => onEnd?.(),
-    onStopped: () => onEnd?.(),
-    onError: () => onEnd?.(),
-  })
+  try {
+    const voice = await pickFrenchVoiceId()
+    Speech.stop()
+    Speech.speak(speechText(code, definition), {
+      language: 'fr-FR',
+      rate: 0.92,
+      voice,
+      onDone: () => onEnd?.(),
+      onStopped: () => onEnd?.(),
+      onError: () => onEnd?.(),
+    })
+  } catch {
+    onEnd?.()
+  }
 }
 
 export function resolvePanneauAudioUrl(audio?: string | null) {

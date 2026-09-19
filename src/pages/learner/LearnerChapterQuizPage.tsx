@@ -453,7 +453,7 @@ export function LearnerChapterQuizPage({
                       if (selected && !isCorrect) className += ' is-wrong'
                       return (
                         <div key={answer.id} className={className}>
-                          <strong>{answer.label.toUpperCase()}</strong>
+                          <strong>{(answer.label ?? '').toUpperCase()}</strong>
                           {answer.text ? <span>{answer.text}</span> : null}
                           <small>
                             {isCorrect ? 'Bonne réponse' : selected ? 'Ta réponse' : ''}
@@ -588,7 +588,7 @@ export function LearnerChapterQuizPage({
                       disabled={Boolean(result) || checking}
                     >
                       <span className={`learner-quiz-check ${selected ? 'is-on' : ''}`} aria-hidden />
-                      <strong>{answer.label.toUpperCase()}</strong>
+                      <strong>{(answer.label ?? '').toUpperCase()}</strong>
                       {answer.text ? <span>{answer.text}</span> : null}
                     </button>
                   )

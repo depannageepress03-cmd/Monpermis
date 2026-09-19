@@ -83,8 +83,11 @@ export function LeconDetailScreen() {
   const navigation = useNavigation<Nav>()
   const route = useRoute<Route>()
   const { user, loading } = useRequireAuth(navigation)
-  const { chapterId, chapterName, course, courses: coursesParam } = route.params
-  const courses = coursesParam?.length ? coursesParam : [course]
+  const { chapterId = '', chapterName = '', course: courseParam, courses: coursesParam } =
+    route.params ?? {}
+  const course =
+    courseParam ?? ({ id: '', title: '', modules: [] } as typeof courseParam)
+  const courses = coursesParam?.length ? coursesParam : courseParam ? [courseParam] : []
 
   const [completedIds, setCompletedIds] = useState<Set<string>>(new Set())
   const [progressLoading, setProgressLoading] = useState(true)
@@ -164,6 +167,20 @@ export function LeconDetailScreen() {
   }
 
   if (loading || !user) return <ScreenLoader />
+
+  if (!courseParam) {
+    return (
+      <View style={styles.root}>
+        <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+          <EmptyState
+            icon={<BookOpen size={30} color={dark.textMuted} />}
+            title="Leçon introuvable"
+            message="Ouvrez cette leçon depuis la liste du chapitre."
+          />
+        </SafeAreaView>
+      </View>
+    )
+  }
 
   const headerTitle = formatCourseHeading(courseIndex, course.title)
 

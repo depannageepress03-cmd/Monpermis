@@ -18,6 +18,7 @@ import {
   learnerLoginLimiter,
   learnerRegisterLimiter,
   passwordResetLimiter,
+  emailVerifyLimiter,
 } from '../middleware/rateLimiters.js'
 
 const router = Router()
@@ -269,7 +270,7 @@ error: 'Téléphone ou mot de passe incorrect',
   }
 })
 
-router.post('/verify-email', async (req, res) => {
+router.post('/verify-email', emailVerifyLimiter, async (req, res) => {
   try {
     const { token } = req.body
     if (!token) {
@@ -301,7 +302,7 @@ router.post('/verify-email', async (req, res) => {
   }
 })
 
-router.post('/resend-verification', async (req, res) => {
+router.post('/resend-verification', emailVerifyLimiter, async (req, res) => {
   try {
     const email = String(req.body?.email || '')
       .trim()

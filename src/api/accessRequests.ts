@@ -1,4 +1,5 @@
 import { getApiBase } from './config'
+import { fetchWithTimeout } from './http'
 import { getStoredToken, invalidateSessionIfUnauthorized } from './auth'
 
 interface ApiResponse<T> {
@@ -26,7 +27,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const token = getToken()
   if (!token) throw new AccessRequestError('Authentification requise')
 
-  const response = await fetch(`${getApiBase()}${path}`, {
+  const response = await fetchWithTimeout(`${getApiBase()}${path}`, {
     ...options,
     headers: {
       'Content-Type': 'application/json',

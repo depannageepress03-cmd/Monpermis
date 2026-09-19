@@ -25,18 +25,17 @@ router.post('/', async (req, res) => {
   } catch (error) {
     const missingSecret = /FEDAPAY_WEBHOOK_SECRET/i.test(String(error.message || ''))
     logger.error('Webhook FedaPay signature invalide', {
-      error: error.message,
-      missingSecret,
+      error: missingSecret ? 'FEDAPAY_WEBHOOK_SECRET manquant (config serveur)' : error.message,
       hasSignature: Boolean(signature),
       bodyType: Buffer.isBuffer(req.body) ? 'buffer' : typeof req.body,
       bodyLength: Buffer.isBuffer(req.body)
         ? req.body.length
         : String(req.body || '').length,
     })
-    // Secret manquant = config serveur (503) ; sinon signature/payload invalide (400).
-    return res.status(missingSecret ? 503 : 400).json({
+    // Réponse générique : ne révèle jamais si le secret est configuré.
+    return res.status(400).json({
       success: false,
-      error: error.message,
+      error: 'Signature invalide',
     })
   }
 

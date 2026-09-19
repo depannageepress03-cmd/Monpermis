@@ -54,6 +54,16 @@ import { ensureStandardRevisionChaptersSafe } from './services/standardRevisionC
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const app = express()
 const PORT = process.env.PORT || 5001
+
+// Fail-fast : sans JWT_SECRET, sign/verify lèveraient à chaque requête.
+// Sans MONGODB_URI, le retry existant s'applique (log d'alerte ici).
+if (!String(process.env.JWT_SECRET || '').trim()) {
+  logger.error('JWT_SECRET manquant — démarrage refusé (auth inutilisable)')
+  process.exit(1)
+}
+if (!String(process.env.MONGODB_URI || '').trim()) {
+  logger.error('MONGODB_URI manquant — l’API démarrera sans base (retry 15s)')
+}
 /** Build portail moniteur Vite copié ici au deploy Render (voir render.yaml). */
 const webDistPath = path.join(__dirname, '../web-dist')
 const serveWebApp = fs.existsSync(path.join(webDistPath, 'index.html'))
@@ -98,6 +108,8 @@ function isOriginAllowed(origin) {
 
 // Render / reverse-proxy : sans ça, toutes les requêtes partagent la même IP → 429 globaux
 app.set('trust proxy', 1)
+// Pas de parsing imbriqué (?a[b]=) : atténue les attaques via qs (pollution prototype / ReDoS).
+app.set('query parser', 'simple')
 
 // CORS manuel — plus fiable qu’avec Express 5 + package cors sur OPTIONS
 app.use((req, res, next) => {
@@ -140,10 +152,10 @@ const apiLimiter = rateLimit({
 // Toujours raw sur ce path (ne dépend pas du Content-Type exact de FedaPay).
 app.use(
   '/api/webhooks/fedapay',
-  express.raw({ type: () => true }),
+  express.raw({ type: () => true, limit: '1mb' }),
   fedapayWebhooksRoutes,
 )
-app.use(express.json())
+app.use(express.json({ limit: '1mb' }))
 // Disque local d’abord, puis MongoDB (Render n’a pas de disque persistant).
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')))
 app.get('/uploads/:kind/:filename', sendMediaAsset)
@@ -269,9 +281,13 @@ app.use('/api/admin/tracking', adminTrackingRoutes)
 
 // Hors SW (navigateFallback ignore /api) : purge cache client puis redirige
 app.get('/api/client-reset', (req, res) => {
-  const next = typeof req.query.next === 'string' && req.query.next.startsWith('/')
-    ? req.query.next
+  const rawNext = typeof req.query.next === 'string' ? req.query.next : ''
+  // Redirection ouverte/sortie de l'attribut href interdites : chemin interne strict.
+  const safeNext = /^\/[A-Za-z0-9\-_./?=&%]*$/.test(rawNext) && !rawNext.startsWith('//')
+    ? rawNext
     : '/code-de-la-route'
+  const next = safeNext.replace(/["<>\\]/g, '')
+  const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
   res.setHeader('Clear-Site-Data', '"cache", "storage"')
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate')
   res.setHeader('Pragma', 'no-cache')
@@ -285,7 +301,7 @@ app.get('/api/client-reset', (req, res) => {
 <div>
   <p style="font-size:1.25rem;font-weight:700;margin:0 0 .5rem">Cache vidé</p>
   <p style="opacity:.85;margin:0 0 1.25rem">Chargement de la nouvelle version…</p>
-  <p style="font-size:.85rem;opacity:.55">Si rien ne se passe, <a href="${next}" style="color:#ffc000">cliquez ici</a>.</p>
+  <p style="font-size:.85rem;opacity:.55">Si rien ne se passe, <a href="${esc(next)}" style="color:#ffc000">cliquez ici</a>.</p>
 </div>
 <script>
 (async function () {
@@ -308,6 +324,11 @@ app.get('/api/client-reset', (req, res) => {
 })()
 </script>
 </body></html>`)
+})
+
+// 404 JSON pour /api (évite le HTML défaut d'Express sur les routes inconnues).
+app.use('/api', (_req, res) => {
+  res.status(404).json({ success: false, error: 'Route introuvable' })
 })
 
 // Portail moniteur (SPA) — servi à la racine de monpermis-api.onrender.com
@@ -367,6 +388,40 @@ if (serveWebApp) {
 } else {
   logger.info('SPA moniteur absente (web-dist) — API seule')
 }
+
+// Gestionnaire d'erreurs global (en dernier) : JSON uniforme, jamais de stack en production.
+app.use((err, req, res, _next) => {
+  if (err?.type === 'entity.too.large' || err?.status === 413) {
+    return res.status(413).json({ success: false, error: 'Corps de requête trop volumineux' })
+  }
+  if (err instanceof SyntaxError && 'body' in err) {
+    return res.status(400).json({ success: false, error: 'JSON invalide' })
+  }
+  if (err?.name === 'CastError') {
+    return res.status(400).json({ success: false, error: 'Identifiant invalide' })
+  }
+  if (err?.name === 'ValidationError') {
+    return res.status(400).json({ success: false, error: 'Données invalides' })
+  }
+  if (err?.code === 'LIMIT_FILE_SIZE') {
+    return res.status(413).json({ success: false, error: 'Fichier trop volumineux' })
+  }
+  if (err?.code === 'LIMIT_UNEXPECTED_FILE') {
+    return res.status(400).json({ success: false, error: 'Champ de fichier inattendu' })
+  }
+  const status = err?.status || err?.statusCode || 500
+  const safeStatus = status >= 400 && status < 600 ? status : 500
+  logger.error('Erreur non gérée', {
+    error: err?.message,
+    path: req?.originalUrl,
+    method: req?.method,
+  })
+  const expose = process.env.NODE_ENV !== 'production' ? err?.message : undefined
+  return res.status(safeStatus >= 500 ? 500 : safeStatus).json({
+    success: false,
+    error: safeStatus >= 500 ? 'Erreur interne du serveur' : (expose || 'Requête invalide'),
+  })
+})
 
 async function connectMongo() {
   await mongoose.connect(process.env.MONGODB_URI, {

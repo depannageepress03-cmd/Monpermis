@@ -1,4 +1,5 @@
 import { getApiBase } from './config'
+import { fetchWithTimeout } from './http'
 import type { AccessModuleKey } from './accessRequests'
 import { getStoredToken, invalidateSessionIfUnauthorized } from './auth'
 
@@ -83,7 +84,7 @@ export async function fetchMyPayments() {
   const token = getToken()
   if (!token) throw new PaymentHistoryError('Authentification requise')
 
-  const response = await fetch(`${getApiBase()}/payments/me`, {
+  const response = await fetchWithTimeout(`${getApiBase()}/payments/me`, {
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
   })
   const body = (await response.json().catch(() => ({}))) as ApiResponse<{

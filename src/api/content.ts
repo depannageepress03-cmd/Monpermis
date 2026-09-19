@@ -1,4 +1,5 @@
 import { getApiBase } from './config'
+import { fetchWithTimeout } from './http'
 import { getStoredToken, invalidateSessionIfUnauthorized } from './auth'
 import {
   checkLocalAnswers,
@@ -46,7 +47,7 @@ async function request<T>(path: string, options?: RequestInit & { auth?: boolean
     headers.Authorization = `Bearer ${token}`
   }
 
-  const response = await fetch(`${getApiBase()}${path}`, {
+  const response = await fetchWithTimeout(`${getApiBase()}${path}`, {
     ...options,
     headers,
   })

@@ -102,7 +102,7 @@ export function ChapterQuestionsListScreen() {
   const navigation = useNavigation<Nav>()
   const route = useRoute<Route>()
   const { user, loading } = useRequireAuth(navigation)
-  const { chapterId, chapterName, chapterOrder } = route.params
+  const { chapterId = '', chapterName = '', chapterOrder } = route.params ?? {}
 
   const [questions, setQuestions] = useState<RevisionQuestion[]>([])
   const [testEntry, setTestEntry] = useState<TestProgressEntry | null>(null)
@@ -152,6 +152,20 @@ export function ChapterQuestionsListScreen() {
       : null
 
   if (loading || !user) return <ScreenLoader />
+
+  if (!chapterId) {
+    return (
+      <View style={qStyles.root}>
+        <SafeAreaView style={qStyles.safe} edges={['top', 'bottom']}>
+          <EmptyState
+            icon={<HelpCircle size={30} color={dark.textMuted} />}
+            title="Chapitre introuvable"
+            message="Ouvrez les questions depuis la liste des chapitres."
+          />
+        </SafeAreaView>
+      </View>
+    )
+  }
 
   const openQuestion = (questionIndex: number) => {
     void import('../../utils/audioSession').then((m) => m.ensureAudioSession())
@@ -351,7 +365,7 @@ export function ChapterTestSubjectScreen() {
   const navigation = useNavigation<TestNav>()
   const route = useRoute<TestRoute>()
   const { user, loading } = useRequireAuth(navigation)
-  const { chapterId, chapterName, chapterOrder } = route.params
+  const { chapterId = '', chapterName = '', chapterOrder } = route.params ?? {}
 
   const [subjects, setSubjects] = useState<
     { number: number; id: string; label: string; questionCount: number }[]
@@ -384,6 +398,20 @@ export function ChapterTestSubjectScreen() {
   )
 
   if (loading || !user) return <ScreenLoader />
+
+  if (!chapterId) {
+    return (
+      <View style={tStyles.root}>
+        <SafeAreaView style={tStyles.safe} edges={['top', 'bottom']}>
+          <EmptyState
+            icon={<ClipboardList size={30} color={dark.textMuted} />}
+            title="Chapitre introuvable"
+            message="Ouvrez le sujet test depuis la liste des chapitres."
+          />
+        </SafeAreaView>
+      </View>
+    )
+  }
 
   return (
     <View style={tStyles.root}>

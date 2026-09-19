@@ -66,3 +66,12 @@ export const googleAuthLimiter = rateLimit({
   legacyHeaders: false,
   message: authAttemptMessage(),
 })
+
+/** Vérification email / renvoi (anti-énumération + anti email-bombing). */
+export const emailVerifyLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: limitMax(20, 'AUTH_VERIFY_RATE_LIMIT_MAX'),
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, error: 'Trop de demandes. Réessayez dans 15 minutes.' },
+})
