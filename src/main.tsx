@@ -2,9 +2,11 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import App from './App.tsx'
+import './styles/tokens.css'
 import './index.css'
 import './styles/motion.css'
 import './styles/premium.css'
+import './components/ui/ui.css'
 
 // Purge agressive des anciens Service Workers / caches PWA
 if ('serviceWorker' in navigator) {

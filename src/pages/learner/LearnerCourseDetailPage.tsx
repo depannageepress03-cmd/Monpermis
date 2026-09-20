@@ -17,6 +17,8 @@ import {
 } from '../../api/content'
 import { useAuth } from '../../hooks/useAuth'
 import { PageNavbar } from '../../components/PageNavbar'
+import { AppShell, userInitialsOf } from '../../components/layout/AppShell'
+import { Badge, Button, Card, SectionTitle } from '../../components/ui'
 import { formatChapterHeading, formatCourseHeading } from '../../utils/chapterLabel'
 import { resolveVideoEmbed } from '../../utils/mediaEmbed'
 import { resolveMediaUrl } from '../../utils/mediaUrl'
@@ -164,13 +166,22 @@ export function LearnerCourseDetailPage({
     }
   }
 
+  const shellTab = track === 'conduite' ? 'conduite' : 'code'
+  const shellTone = track === 'conduite' ? 'orange' : 'green'
+
   if (authLoading) {
     return (
+      <AppShell
+        activeTab={shellTab}
+        onOpenNotifications={() => navigate('/notifications')}
+        onOpenProfile={() => navigate('/profil')}
+      >
       <div className="auth-page">
         <div className="auth-container learner-container">
           <p className="subtitle">Chargement…</p>
         </div>
       </div>
+      </AppShell>
     )
   }
 
@@ -178,6 +189,12 @@ export function LearnerCourseDetailPage({
 
   if (accessBlocked) {
     return (
+      <AppShell
+        activeTab={shellTab}
+        userInitials={userInitialsOf(user?.firstName, user?.lastName)}
+        onOpenNotifications={() => navigate('/notifications')}
+        onOpenProfile={() => navigate('/profil')}
+      >
       <div className="auth-page">
         <div className="auth-container learner-container">
           <PageNavbar
@@ -188,16 +205,23 @@ export function LearnerCourseDetailPage({
           />
           <div className="auth-card learner-card">
             <div className="learner-empty">
-              <h2>Cours verrouillé</h2>
+              <SectionTitle>Cours verrouillé</SectionTitle>
               <p className="subtitle">Terminez le cours précédent pour accéder à celui-ci.</p>
             </div>
           </div>
         </div>
       </div>
+      </AppShell>
     )
   }
 
   return (
+    <AppShell
+      activeTab={shellTab}
+      userInitials={userInitialsOf(user?.firstName, user?.lastName)}
+      onOpenNotifications={() => navigate('/notifications')}
+      onOpenProfile={() => navigate('/profil')}
+    >
     <div className="auth-page">
       <div className="auth-container learner-container">
         <PageNavbar
@@ -209,7 +233,7 @@ export function LearnerCourseDetailPage({
 
         <header className="auth-header learner-header">
           {chapterName ? (
-            <p className="learner-chapter-name">{formatChapterHeading(chapterName)}</p>
+            <SectionTitle>{formatChapterHeading(chapterName)}</SectionTitle>
           ) : null}
         </header>
 
@@ -222,9 +246,9 @@ export function LearnerCourseDetailPage({
             const video = hasVideoLink ? resolveVideoEmbed(module.videoUrl) : null
 
             return (
-            <article key={module.id} className="learner-module">
+            <Card key={module.id} className="learner-module">
               {(module.title || module.name) && (
-                <h3>{module.title || module.name}</h3>
+                <SectionTitle>{module.title || module.name}</SectionTitle>
               )}
               {video ? (
                 <div className="learner-media">
@@ -260,7 +284,7 @@ export function LearnerCourseDetailPage({
                   dangerouslySetInnerHTML={{ __html: module.text }}
                 />
               ) : null}
-            </article>
+            </Card>
             )
           })}
 
@@ -270,13 +294,17 @@ export function LearnerCourseDetailPage({
 
           {course ? (
             <form onSubmit={handleComplete} className="learner-actions">
-              <p className="subtitle">
-                {isCompleted
-                  ? 'Cours validé. Le cours suivant est débloqué.'
-                  : secondsRemaining > 0
+              {isCompleted ? (
+                <Badge tone="green" icon={<Check size={14} aria-hidden />}>
+                  Cours validé. Le cours suivant est débloqué.
+                </Badge>
+              ) : (
+                <p className="subtitle">
+                  {secondsRemaining > 0
                     ? `Restez au moins 5 minutes sur ce cours. Encore ${formatSeconds(secondsRemaining)}.`
                     : 'Vous pouvez maintenant valider ce cours.'}
-              </p>
+                </p>
+              )}
               <label
                 className={`learner-check${isCompleted ? ' is-done' : ''}${
                   !canValidate && !isCompleted ? ' is-locked' : ''
@@ -301,9 +329,9 @@ export function LearnerCourseDetailPage({
               </label>
 
               {isCompleted && nextCourse ? (
-                <button
-                  type="button"
-                  className="btn-primary"
+                <Button
+                  variant="cta"
+                  tone={shellTone}
                   onClick={() =>
                     navigate(
                       track === 'revision'
@@ -322,13 +350,12 @@ export function LearnerCourseDetailPage({
                 >
                   Cours suivant
                   <ChevronRight size={18} />
-                </button>
+                </Button>
               ) : null}
 
               {isCompleted && allCompleted && !nextCourse ? (
-                <button
-                  type="button"
-                  className="btn-outline"
+                <Button
+                  variant="outline"
                   onClick={() =>
                     navigate(
                       track === 'revision'
@@ -341,12 +368,13 @@ export function LearnerCourseDetailPage({
                   }
                 >
                   {track === 'revision' ? 'Accéder au sujet test' : 'Retour aux cours'}
-                </button>
+                </Button>
               ) : null}
             </form>
           ) : null}
         </div>
       </div>
     </div>
+    </AppShell>
   )
 }

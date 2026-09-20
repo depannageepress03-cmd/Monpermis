@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { ClipboardList, HelpCircle } from 'lucide-react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { CheckCircle2, ClipboardList, HelpCircle } from 'lucide-react'
+import { useNavigate, useParams } from 'react-router-dom'
 import {
   checkPracticeExamAnswer,
   completePracticeExam,
@@ -16,6 +16,8 @@ import { PageLoader } from '../../components/PageLoader'
 import { PageNavbar } from '../../components/PageNavbar'
 import { QuizProgressRing } from '../../components/QuizProgressRing'
 import { Reveal } from '../../components/Reveal'
+import { AppShell, userInitialsOf } from '../../components/layout/AppShell'
+import { Badge, Button, Card, IconBadge, StatCard } from '../../components/ui'
 import { SuccessCelebration } from '../../components/SuccessCelebration'
 import { useAuth } from '../../hooks/useAuth'
 import { useFocusRefresh } from '../../hooks/useFocusRefresh'
@@ -76,6 +78,12 @@ export function ExamensTestPage() {
   if (authLoading || !user) return <PageLoader />
 
   return (
+    <AppShell
+      activeTab="code"
+      userInitials={userInitialsOf(user?.firstName, user?.lastName)}
+      onOpenNotifications={() => navigate('/notifications')}
+      onOpenProfile={() => navigate('/profil')}
+    >
     <div className="auth-page">
       <div className="auth-container learner-container">
         <PageNavbar
@@ -99,56 +107,72 @@ export function ExamensTestPage() {
           {data ? (
             <>
               {data.unlocked === false ? (
-                <div className="learner-empty">
+                <Card className="learner-empty">
                   <h2>Examens test verrouillés</h2>
                   <p className="subtitle">
                     {data.message ||
                       'Terminez tous les cours de chaque chapitre pour débloquer les examens test. Vous pouvez encore répondre aux questions et passer le sujet test de chaque chapitre.'}
                   </p>
-                  <Link to="/code-de-la-route/revision-chapitres" className="btn-primary">
+                  <Button
+                    variant="cta"
+                    tone="green"
+                    onClick={() => navigate('/code-de-la-route/revision-chapitres')}
+                  >
                     Continuer la révision
-                  </Link>
-                </div>
+                  </Button>
+                </Card>
               ) : (
                 <>
-                  <div className="practice-progress-banner">
-                    <div>
-                      <strong>
-                        {data.completedCount}/{data.examTotal}
-                      </strong>
-                      <span>examens passés</span>
-                    </div>
-                    <div>
-                      <strong>
-                        {data.passedCount}/{data.examTotal}
-                      </strong>
-                      <span>réussis (≥ {data.passScore}/20)</span>
-                    </div>
-                    <Link to="/code-de-la-route/mes-notes" className="btn-outline">
+                  <Card className="practice-progress-banner">
+                    <StatCard
+                      icon={<ClipboardList size={14} />}
+                      label="examens passés"
+                      value={`${data.completedCount}/${data.examTotal}`}
+                    />
+                    <StatCard
+                      icon={<CheckCircle2 size={14} />}
+                      label={`réussis (≥ ${data.passScore}/20)`}
+                      value={`${data.passedCount}/${data.examTotal}`}
+                    />
+                    <Button
+                      variant="outline"
+                      tone="green"
+                      onClick={() => navigate('/code-de-la-route/mes-notes')}
+                    >
                       Voir mes notes
-                    </Link>
-                  </div>
+                    </Button>
+                  </Card>
 
                   {data.message ? <p className="subtitle">{data.message}</p> : null}
 
                   <div className="practice-exam-list">
                     {(data.exams ?? []).map((exam, examIndex) => (
                       <Reveal key={exam.id} delay={Math.min(examIndex, 8) * 45}>
-                      <article className={`practice-exam-card is-${exam.status}`}>
+                      <Card className={`practice-exam-card is-${exam.status}`}>
+                        <IconBadge icon={<ClipboardList size={18} />} tone="green" />
                         <div>
                           <strong>Sujet {exam.examNumber}</strong>
                           <small>
                             {exam.questionCount} questions
                             {exam.score
-                              ? ` · ${exam.score.scoreLabel}${exam.score.passed ? ' · Réussi' : ' · À retravailler'}`
+                              ? ` · ${exam.score.scoreLabel}`
                               : exam.status === 'in_progress'
                                 ? ' · En cours'
                                 : ' · Disponible'}
                           </small>
+                          {exam.score ? (
+                            <Badge tone={exam.score.passed ? 'green' : 'orange'}>
+                              {exam.score.passed ? 'Réussi' : 'À retravailler'}
+                            </Badge>
+                          ) : exam.status === 'in_progress' ? (
+                            <Badge tone="orange">En cours</Badge>
+                          ) : (
+                            <Badge tone="green">Disponible</Badge>
+                          )}
                         </div>
-                        <button
-                          type="button"
-                          className="btn-primary btn-primary-inline"
+                        <Button
+                          variant="cta"
+                          tone="green"
                           disabled={starting === exam.examNumber || data.examCount === 0}
                           onClick={() => void handleStart(exam.examNumber)}
                         >
@@ -159,8 +183,8 @@ export function ExamensTestPage() {
                               : exam.status === 'in_progress'
                                 ? 'Continuer'
                                 : 'Commencer'}
-                        </button>
-                      </article>
+                        </Button>
+                      </Card>
                       </Reveal>
                     ))}
                   </div>
@@ -171,6 +195,7 @@ export function ExamensTestPage() {
         </div>
       </div>
     </div>
+    </AppShell>
   )
 }
 
@@ -472,6 +497,12 @@ export function ExamensTestTakePage() {
   if (authLoading || !user) return <PageLoader />
 
   return (
+    <AppShell
+      activeTab="code"
+      userInitials={userInitialsOf(user?.firstName, user?.lastName)}
+      onOpenNotifications={() => navigate('/notifications')}
+      onOpenProfile={() => navigate('/profil')}
+    >
     <div className="auth-page">
       <div className="auth-container learner-container">
         <PageNavbar
@@ -528,20 +559,20 @@ export function ExamensTestTakePage() {
               }
               passed={finalScore.passed}
             >
-              <button
-                type="button"
-                className="btn-primary"
+              <Button
+                variant="cta"
+                tone="green"
                 onClick={() => navigate('/code-de-la-route/mes-notes')}
               >
                 Voir mes notes
-              </button>
-              <button
-                type="button"
-                className="btn-outline"
+              </Button>
+              <Button
+                variant="outline"
+                tone="green"
                 onClick={() => navigate('/code-de-la-route/examens-test')}
               >
                 Retour aux examens
-              </button>
+              </Button>
             </SuccessCelebration>
           ) : null}
 
@@ -556,9 +587,9 @@ export function ExamensTestTakePage() {
                 <p className="learner-quiz-progress">{progressLabel}</p>
               </div>
               {(question.correctCount ?? 1) > 1 ? (
-                <span className="learner-multi-badge">
+                <Badge tone="green">
                   {question.correctCount} bonnes réponses à cocher
-                </span>
+                </Badge>
               ) : null}
               {question.prompt?.imageUrls?.length ? (
                 <div className="learner-quiz-images">
@@ -604,14 +635,14 @@ export function ExamensTestTakePage() {
 
               <div className="learner-quiz-actions">
                 {!submitted && selectedIds.length > 0 ? (
-                  <button
-                    type="button"
-                    className="btn-primary"
+                  <Button
+                    variant="cta"
+                    tone="green"
                     disabled={checking}
                     onClick={handleContinue}
                   >
                     {checking ? 'Enregistrement…' : 'Continuer'}
-                  </button>
+                  </Button>
                 ) : null}
                 {!submitted && selectedIds.length === 0 ? (
                   <p className="learner-quiz-audio-status">
@@ -626,5 +657,6 @@ export function ExamensTestTakePage() {
         </div>
       </div>
     </div>
+    </AppShell>
   )
 }

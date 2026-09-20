@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { ClipboardList, HelpCircle } from 'lucide-react'
+import { ClipboardList, HelpCircle, Trophy } from 'lucide-react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import {
   checkRevisionQuestionAnswers,
@@ -15,6 +15,8 @@ import { ProgressiveSubtitles } from '../../components/ProgressiveSubtitles'
 import { QuestionPromptHtml } from '../../components/QuestionPromptHtml'
 import { PageLoader } from '../../components/PageLoader'
 import { PageNavbar } from '../../components/PageNavbar'
+import { AppShell, userInitialsOf } from '../../components/layout/AppShell'
+import { Badge, Button, Card, SectionTitle, StatCard } from '../../components/ui'
 import { QuizProgressRing } from '../../components/QuizProgressRing'
 import { SuccessCelebration } from '../../components/SuccessCelebration'
 import { useAuth } from '../../hooks/useAuth'
@@ -365,6 +367,12 @@ export function LearnerChapterQuizPage({
   if (authLoading || !user) return <PageLoader />
 
   return (
+    <AppShell
+      activeTab="code"
+      userInitials={userInitialsOf(user?.firstName, user?.lastName)}
+      onOpenNotifications={() => navigate('/notifications')}
+      onOpenProfile={() => navigate('/profil')}
+    >
     <div className="auth-page">
       <div className="auth-container learner-container">
         <PageNavbar
@@ -378,7 +386,7 @@ export function LearnerChapterQuizPage({
 
         <header className={`auth-header learner-header${question && !finished ? ' is-quiz-compact' : ''}`}>
           <p className="learner-kicker">{mode === 'test' ? 'Sujet test' : 'Entraînement'}</p>
-          <h1>{mode === 'test' ? subjectLabel || 'Évaluation' : 'Questions'}</h1>
+          <SectionTitle>{mode === 'test' ? subjectLabel || 'Évaluation' : 'Questions'}</SectionTitle>
           <p>
             {mode === 'test'
               ? `${chapterName} — répondez à chaque question à votre rythme.`
@@ -392,7 +400,7 @@ export function LearnerChapterQuizPage({
 
           {!loading && !error && questions.length === 0 ? (
             <div className="learner-empty">
-              <h2>{mode === 'test' ? 'Aucun sujet test' : 'Aucune question'}</h2>
+              <SectionTitle>{mode === 'test' ? 'Aucun sujet test' : 'Aucune question'}</SectionTitle>
               <p className="subtitle">
                 {mode === 'test'
                   ? 'Aucune question publiée pour ce chapitre. Publiez des questions dans l’admin pour activer le sujet test automatique.'
@@ -403,9 +411,9 @@ export function LearnerChapterQuizPage({
 
           {!loading && !error && finished && reviewing ? (
             <div className="learner-quiz">
-              <h2>Mode correction</h2>
+              <SectionTitle>Mode correction</SectionTitle>
               {reviewHistory.map((entry, i) => (
-                <div key={`${entry.question.id}-${i}`} className="learner-quiz-review">
+                <Card key={`${entry.question.id}-${i}`} className="learner-quiz-review">
                   <p className="learner-quiz-progress">
                     Question {i + 1} — {entry.isCorrect ? 'Bonne réponse' : 'À revoir'}
                   </p>
@@ -462,11 +470,11 @@ export function LearnerChapterQuizPage({
                       )
                     })}
                   </div>
-                </div>
+                </Card>
               ))}
-              <button type="button" className="btn-primary" onClick={() => setReviewing(false)}>
+              <Button variant="cta" tone="green" onClick={() => setReviewing(false)}>
                 Retour au score
-              </button>
+              </Button>
             </div>
           ) : null}
 
@@ -482,12 +490,11 @@ export function LearnerChapterQuizPage({
               subtitle={
                 <>
                   <div className="learner-quiz-recap">
-                    <div>
-                      <span>Bonnes réponses</span>
-                      <strong>
-                        {score.correct} / {score.total}
-                      </strong>
-                    </div>
+                    <StatCard
+                      icon={<Trophy size={14} aria-hidden />}
+                      label="Bonnes réponses"
+                      value={`${score.correct} / ${score.total}`}
+                    />
                   </div>
                   {mode === 'test' ? (
                     <p className="subtitle">
@@ -503,28 +510,28 @@ export function LearnerChapterQuizPage({
               passed={score.total > 0 && score.correct / score.total >= 0.5}
             >
               {reviewHistory.length > 0 ? (
-                <button type="button" className="btn-primary" onClick={() => setReviewing(true)}>
+                <Button variant="cta" tone="green" onClick={() => setReviewing(true)}>
                   Mode correction
-                </button>
+                </Button>
               ) : null}
               {isSingleQuestion ? (
-                <button
-                  type="button"
-                  className="btn-primary"
+                <Button
+                  variant="cta"
+                  tone="green"
                   onClick={() => navigate(backTo(chapterId), { state: { chapterName } })}
                 >
                   Retour à la liste
-                </button>
+                </Button>
               ) : (
-                <button type="button" className="btn-primary" onClick={() => void load()}>
+                <Button variant="cta" tone="green" onClick={() => void load()}>
                   Recommencer
-                </button>
+                </Button>
               )}
             </SuccessCelebration>
           ) : null}
 
           {!loading && !error && question && !finished ? (
-            <div className="learner-quiz">
+            <Card className="learner-quiz">
               <div key={index} className="mp-quiz-enter">
               <div className="learner-quiz-progress-row">
                 <QuizProgressRing
@@ -534,9 +541,9 @@ export function LearnerChapterQuizPage({
                 <p className="learner-quiz-progress">{progressLabel}</p>
               </div>
               {(question.correctCount ?? 1) > 1 ? (
-                <span className="learner-multi-badge">
+                <Badge tone="green">
                   {question.correctCount} bonnes réponses à cocher
-                </span>
+                </Badge>
               ) : null}
               {question.prompt?.imageUrls?.length ? (
                 <div className="learner-quiz-images">
@@ -603,30 +610,31 @@ export function LearnerChapterQuizPage({
 
               <div className="learner-quiz-actions">
                 {!result && selectedIds.length > 0 ? (
-                  <button
-                    type="button"
-                    className="btn-primary"
+                  <Button
+                    variant="cta"
+                    tone="green"
                     disabled={checking}
                     onClick={handleContinue}
                   >
                     {checking ? 'Vérification…' : 'Valider'}
-                  </button>
+                  </Button>
                 ) : null}
                 {result ? (
-                  <button
-                    type="button"
-                    className="btn-primary"
+                  <Button
+                    variant="cta"
+                    tone="green"
                     onClick={() => void finishOrAdvance(score)}
                   >
                     {index + 1 >= questions.length ? 'Voir le score' : 'Question suivante'}
-                  </button>
+                  </Button>
                 ) : null}
               </div>
               </div>
-            </div>
+            </Card>
           ) : null}
         </div>
       </div>
     </div>
+    </AppShell>
   )
 }

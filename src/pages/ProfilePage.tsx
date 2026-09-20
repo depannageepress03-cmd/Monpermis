@@ -12,9 +12,19 @@ import { PageNavbar } from '../components/PageNavbar'
 import { PageLoader } from '../components/PageLoader'
 import { useAuth } from '../hooks/useAuth'
 import { normalizePhone, PHONE_PLACEHOLDER, validateName, validatePhone } from '../utils/validation'
+import { AppShell, userInitialsOf, type AppTab } from '../components/layout/AppShell'
+import { Button, Card, SectionTitle } from '../components/ui'
 import '../styles/auth.css'
 import '../styles/learner.css'
 import '../styles/login.css'
+
+const TAB_ROUTES: Record<AppTab, string> = {
+  accueil: '/accueil',
+  code: '/code-de-la-route',
+  conduite: '/conduite',
+  progres: '/code-de-la-route/mes-notes',
+  profil: '/profil',
+}
 
 export function ProfilePage() {
   const navigate = useNavigate()
@@ -144,112 +154,122 @@ export function ProfilePage() {
   }
 
   return (
-    <div className="auth-page">
-      <div className="auth-container learner-container">
-        <PageNavbar title="Mon profil" icon={<User size={20} />} onBack={() => navigate('/accueil')} />
+    <AppShell
+      activeTab="profil"
+      userInitials={userInitialsOf(user?.firstName, user?.lastName)}
+      onNavigate={(tab) => navigate(TAB_ROUTES[tab])}
+      onOpenNotifications={() => navigate('/notifications')}
+      onOpenProfile={() => navigate('/profil')}
+    >
+      <div className="auth-page">
+        <div className="auth-container learner-container">
+          <PageNavbar title="Mon profil" icon={<User size={20} />} onBack={() => navigate('/accueil')} />
 
-        <form className="auth-card learner-card" onSubmit={handleSaveProfile} style={{ marginBottom: 12 }}>
-          <h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 12 }}>Mes informations</h2>
-          {phoneHint || phoneMissing ? (
-            <p className="signin-banner signin-banner--err" style={{ marginBottom: 12 }}>
-              {phoneHint ||
-                'Ajoute ton numéro de téléphone pour payer en Mobile Money et recevoir les rappels.'}
+          <Card>
+            <form onSubmit={handleSaveProfile}>
+              <SectionTitle>Mes informations</SectionTitle>
+              {phoneHint || phoneMissing ? (
+                <p className="signin-banner signin-banner--err" style={{ marginBottom: 12 }}>
+                  {phoneHint ||
+                    'Ajoute ton numéro de téléphone pour payer en Mobile Money et recevoir les rappels.'}
+                </p>
+              ) : null}
+              {profileError ? <p className="signin-form-error">{profileError}</p> : null}
+              {profileMsg ? <p style={{ color: '#16a34a', fontWeight: 600 }}>{profileMsg}</p> : null}
+              <div className="signin-fields">
+                <input
+                  className="auth-input"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  placeholder="Prénom"
+                />
+                <input
+                  className="auth-input"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  placeholder="Nom"
+                />
+                <input
+                  className="auth-input"
+                  value={phone}
+                  onChange={(e) => setPhone(normalizePhone(e.target.value))}
+                  placeholder={PHONE_PLACEHOLDER}
+                  aria-invalid={phoneMissing}
+                />
+              </div>
+              <Button variant="cta" tone="green" type="submit" disabled={savingProfile} style={{ marginTop: 14 }}>
+                {savingProfile ? 'Enregistrement…' : 'Enregistrer'}
+              </Button>
+            </form>
+          </Card>
+
+          <Card>
+            <form onSubmit={handleChangePassword}>
+              <SectionTitle>Changer de mot de passe</SectionTitle>
+              {pwError ? <p className="signin-form-error">{pwError}</p> : null}
+              {pwMsg ? <p style={{ color: '#16a34a', fontWeight: 600 }}>{pwMsg}</p> : null}
+              <div className="signin-fields">
+                <input
+                  type="password"
+                  className="auth-input"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  placeholder="Mot de passe actuel"
+                />
+                <input
+                  type="password"
+                  className="auth-input"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="Nouveau mot de passe"
+                />
+                <input
+                  type="password"
+                  className="auth-input"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Confirmer le mot de passe"
+                />
+              </div>
+              <Button variant="cta" tone="green" type="submit" disabled={savingPw} style={{ marginTop: 14 }}>
+                {savingPw ? 'Modification…' : 'Modifier le mot de passe'}
+              </Button>
+            </form>
+          </Card>
+
+          <Card>
+            <SectionTitle>Zone sensible</SectionTitle>
+            <p style={{ color: '#6b7280', fontSize: 14 }}>
+              La suppression du compte est définitive (profil, abonnements liés, notifications).
             </p>
-          ) : null}
-          {profileError ? <p className="signin-form-error">{profileError}</p> : null}
-          {profileMsg ? <p style={{ color: '#16a34a', fontWeight: 600 }}>{profileMsg}</p> : null}
-          <div className="signin-fields">
-            <input
-              className="auth-input"
-              value={firstName}
-              onChange={(e) => setFirstName(e.target.value)}
-              placeholder="Prénom"
-            />
-            <input
-              className="auth-input"
-              value={lastName}
-              onChange={(e) => setLastName(e.target.value)}
-              placeholder="Nom"
-            />
-            <input
-              className="auth-input"
-              value={phone}
-              onChange={(e) => setPhone(normalizePhone(e.target.value))}
-              placeholder={PHONE_PLACEHOLDER}
-              aria-invalid={phoneMissing}
-            />
-          </div>
-          <button type="submit" className="btn-primary" disabled={savingProfile} style={{ marginTop: 14 }}>
-            {savingProfile ? 'Enregistrement…' : 'Enregistrer'}
-          </button>
-        </form>
-
-        <form className="auth-card learner-card" onSubmit={handleChangePassword} style={{ marginBottom: 12 }}>
-          <h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 12 }}>Changer de mot de passe</h2>
-          {pwError ? <p className="signin-form-error">{pwError}</p> : null}
-          {pwMsg ? <p style={{ color: '#16a34a', fontWeight: 600 }}>{pwMsg}</p> : null}
-          <div className="signin-fields">
-            <input
-              type="password"
-              className="auth-input"
-              value={currentPassword}
-              onChange={(e) => setCurrentPassword(e.target.value)}
-              placeholder="Mot de passe actuel"
-            />
-            <input
-              type="password"
-              className="auth-input"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              placeholder="Nouveau mot de passe"
-            />
-            <input
-              type="password"
-              className="auth-input"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              placeholder="Confirmer le mot de passe"
-            />
-          </div>
-          <button type="submit" className="btn-primary" disabled={savingPw} style={{ marginTop: 14 }}>
-            {savingPw ? 'Modification…' : 'Modifier le mot de passe'}
-          </button>
-        </form>
-
-        <div className="auth-card learner-card" style={{ borderColor: '#fecaca' }}>
-          <h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 8, color: '#b91c1c' }}>
-            Zone sensible
-          </h2>
-          <p style={{ color: '#6b7280', fontSize: 14 }}>
-            La suppression du compte est définitive (profil, abonnements liés, notifications).
-          </p>
-          {deleteError ? <p className="signin-form-error">{deleteError}</p> : null}
-          {confirmDelete ? (
-            <input
-              type="password"
-              className="auth-input"
-              value={deletePassword}
-              onChange={(e) => setDeletePassword(e.target.value)}
-              placeholder="Mot de passe pour confirmer"
-              style={{ marginBottom: 12 }}
-            />
-          ) : null}
-          <button
-            type="button"
-            className="btn-outline"
-            style={{ color: '#b91c1c', borderColor: '#fecaca' }}
-            disabled={deleting}
-            onClick={() => void handleDelete()}
-          >
-            <Trash2 size={16} />
-            {deleting
-              ? 'Suppression…'
-              : confirmDelete
-                ? 'Confirmer la suppression'
-                : 'Supprimer mon compte'}
-          </button>
+            {deleteError ? <p className="signin-form-error">{deleteError}</p> : null}
+            {confirmDelete ? (
+              <input
+                type="password"
+                className="auth-input"
+                value={deletePassword}
+                onChange={(e) => setDeletePassword(e.target.value)}
+                placeholder="Mot de passe pour confirmer"
+                style={{ marginBottom: 12 }}
+              />
+            ) : null}
+            <Button
+              variant="outline"
+              type="button"
+              style={{ color: '#b91c1c', borderColor: '#fecaca' }}
+              disabled={deleting}
+              onClick={() => void handleDelete()}
+              icon={<Trash2 size={16} />}
+            >
+              {deleting
+                ? 'Suppression…'
+                : confirmDelete
+                  ? 'Confirmer la suppression'
+                  : 'Supprimer mon compte'}
+            </Button>
+          </Card>
         </div>
       </div>
-    </div>
+    </AppShell>
   )
 }

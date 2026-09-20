@@ -1,17 +1,5 @@
 .accueil {
-  --mp-navy: #0F2A4A;
-  --mp-green: #2FB673;
-  --mp-green-dark: #1F8A56;
-  --mp-green-tint: #E7F6ED;
-  --mp-orange: #C24A24;
-  --mp-orange-tint: #FDECE5;
-  --mp-amber-tint: #FDF1E7;
-  --mp-bg: #F6F9F7;
-  --mp-border: #E1E6E2;
-  --mp-border-soft: #F0F3F1;
-  --mp-text-muted: #647069;
-  --mp-text-mutedlight: #8B958F;
-  --mp-metric-bg: #EFF3F0;
+  /* Tokens centralisés dans src/styles/tokens.css (:root) — valeurs identiques. */
   max-width: 430px;
   margin: 0 auto;
   background: var(--mp-bg);

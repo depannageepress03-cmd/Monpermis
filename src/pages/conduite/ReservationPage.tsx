@@ -22,10 +22,20 @@ import { PageLoader } from '../../components/PageLoader'
 import { ReservationMobileMoneyCheckout } from '../../components/ReservationMobileMoneyCheckout'
 import { SuccessCelebration } from '../../components/SuccessCelebration'
 import { useAuth } from '../../hooks/useAuth'
+import { AppShell, userInitialsOf, type AppTab } from '../../components/layout/AppShell'
+import { Badge, Button, Card, IconBadge, SectionTitle, StatCard } from '../../components/ui'
 import { resolveMediaUrl } from '../../utils/mediaUrl'
 import '../../styles/auth.css'
 import '../../styles/learner.css'
 import '../../styles/reservation.css'
+
+const TAB_ROUTES: Record<AppTab, string> = {
+  accueil: '/accueil',
+  code: '/code-de-la-route',
+  conduite: '/conduite',
+  progres: '/code-de-la-route/mes-notes',
+  profil: '/profil',
+}
 
 type Step = 'moniteur' | 'calendar' | 'payment' | 'success'
 
@@ -293,6 +303,13 @@ export function ReservationPage() {
   if (loading || !user) return <PageLoader />
 
   return (
+    <AppShell
+      activeTab="conduite"
+      userInitials={userInitialsOf(user?.firstName, user?.lastName)}
+      onNavigate={(tab) => navigate(TAB_ROUTES[tab])}
+      onOpenNotifications={() => navigate('/notifications')}
+      onOpenProfile={() => navigate('/profil')}
+    >
     <div className="auth-page">
       <div className="auth-container learner-container">
         <PageNavbar
@@ -302,13 +319,13 @@ export function ReservationPage() {
           onBack={() => navigate('/conduite')}
         />
 
-        <div className="auth-card learner-card reservation-card">
+        <Card className="reservation-card">
           {error ? <p className="form-error">{error}</p> : null}
 
           {step === 'moniteur' ? (
             <div className="reservation-step">
               <div className="reservation-intro">
-                <h2>Réserver votre prochaine séance</h2>
+                <SectionTitle>Réserver votre prochaine séance</SectionTitle>
                 <p>
                   Choisissez d’abord le moniteur avec lequel vous souhaitez conduire. Touchez une
                   carte pour consulter son profil complet (photo, véhicule) avant de décider.
@@ -319,7 +336,7 @@ export function ReservationPage() {
                 </p>
               </div>
 
-              <h3 className="section-title">1. Choisissez un moniteur</h3>
+              <SectionTitle>1. Choisissez un moniteur</SectionTitle>
               {busy ? <p className="subtitle">Chargement des moniteurs…</p> : null}
               {!busy && moniteurs.length === 0 ? (
                 <p className="subtitle">
@@ -359,8 +376,8 @@ export function ReservationPage() {
                   const typeLabel = moniteur.vehicleTypes?.[0] || 'Véhicule'
                   const photo = moniteurPhoto(moniteur)
                   return (
+                    <Card key={moniteur.id}>
                     <button
-                      key={moniteur.id}
                       type="button"
                       className="moniteur-choice"
                       onClick={() => navigate(`/conduite/moniteurs/${moniteur.id}`)}
@@ -376,15 +393,16 @@ export function ReservationPage() {
                           {moniteur.city ? `${moniteur.city} · ` : ''}
                           {moniteur.vehicleBrand || 'Marque non renseignée'}
                         </small>
-                        <em>{typeLabel}</em>
+                        <em><Badge tone="orange">{typeLabel}</Badge></em>
                       </span>
                     </button>
+                    </Card>
                   )
                 })}
               </div>
 
-              <div className="reservation-tips">
-                <h4>À savoir avant de réserver</h4>
+              <Card className="reservation-tips">
+                <SectionTitle>À savoir avant de réserver</SectionTitle>
                 <ul>
                   <li>Présentez-vous à l’heure avec vos documents d’identité.</li>
                   <li>Vous pouvez annuler jusqu’à 24 h avant la séance, avec une justification.</li>
@@ -393,23 +411,24 @@ export function ReservationPage() {
                     Conduite et chez l’administration.
                   </li>
                 </ul>
-              </div>
+              </Card>
             </div>
           ) : null}
 
           {step === 'calendar' ? (
             <div className="reservation-step">
               <div className="reservation-intro">
-                <h2>Choisissez vos horaires</h2>
+                <SectionTitle>Choisissez vos horaires</SectionTitle>
                 <p>
                   Voici les jours où le moniteur est libre. Sélectionnez un jour, puis indiquez
                   de quelle heure à quelle heure vous souhaitez conduire dans sa disponibilité.
                 </p>
               </div>
 
-              <h3 className="section-title">2. Jour et plage horaire</h3>
+              <SectionTitle>2. Jour et plage horaire</SectionTitle>
               {selectedMoniteur ? (
-                <div className="moniteur-recap-strip">
+                <Card className="moniteur-recap-strip">
+                  <IconBadge icon={<CalendarPlus size={18} />} tone="orange" />
                   {moniteurPhoto(selectedMoniteur) ? (
                     <img src={mediaSrc(moniteurPhoto(selectedMoniteur))} alt="" />
                   ) : null}
@@ -419,7 +438,7 @@ export function ReservationPage() {
                       {selectedMoniteur.vehicleBrand || 'Véhicule'} · {vehicleType}
                     </small>
                   </div>
-                </div>
+                </Card>
               ) : null}
 
               {busy ? <p className="subtitle">Chargement des disponibilités…</p> : null}
@@ -444,7 +463,7 @@ export function ReservationPage() {
               </div>
 
               {selectedDay ? (
-                <div className="day-card availability-panel">
+                <Card className="availability-panel">
                   <strong>{formatDateLabel(selectedDay.date)}</strong>
                   <p className="subtitle" style={{ marginTop: 6 }}>
                     Plages libres — touchez pour préremplir, puis ajustez si besoin.
@@ -498,39 +517,45 @@ export function ReservationPage() {
                     </p>
                   ) : null}
                   {previewHours > 0 ? (
-                    <p className="availability-duration">
-                      Durée : {previewHours} h · environ{' '}
-                      {new Intl.NumberFormat('fr-FR', {
+                    <>
+                    <StatCard
+                      icon={<CalendarPlus size={14} />}
+                      label={`Durée : ${previewHours} h`}
+                      value={new Intl.NumberFormat('fr-FR', {
                         style: 'currency',
                         currency: 'XOF',
                         maximumFractionDigits: 0,
                       }).format(previewPrice)}
-                      {previewDiscount > 0
-                        ? ` (remise ${new Intl.NumberFormat('fr-FR').format(previewDiscount)} FCFA incluse)`
-                        : ''}
-                    </p>
+                    />
+                    {previewDiscount > 0 ? (
+                      <p className="subtitle">
+                        Remise {new Intl.NumberFormat('fr-FR').format(previewDiscount)} FCFA incluse
+                      </p>
+                    ) : null}
+                    </>
                   ) : null}
-                  <button
-                    type="button"
-                    className="btn-primary"
+                  <Button
+                    variant="cta"
+                    tone="orange"
+                    icon={<CalendarPlus size={16} />}
                     disabled={busy || !startTime || !endTime || visibleWindows.length === 0}
                     onClick={() => void onRequestSlot()}
                   >
                     {busy ? 'Vérification…' : 'Continuer vers le paiement'}
-                  </button>
-                </div>
+                  </Button>
+                </Card>
               ) : null}
 
-              <button type="button" className="btn-outline" onClick={() => setStep('moniteur')}>
+              <Button variant="outline" onClick={() => setStep('moniteur')}>
                 Changer de moniteur
-              </button>
+              </Button>
             </div>
           ) : null}
 
           {step === 'payment' && selected ? (
             <div className="reservation-step">
               <div className="reservation-intro">
-                <h2>Confirmez votre réservation</h2>
+                <SectionTitle>Confirmez votre réservation</SectionTitle>
                 <p>Vérifiez le récapitulatif ci-dessous, puis réglez cette séance pour la confirmer.</p>
               </div>
 
@@ -547,8 +572,8 @@ export function ReservationPage() {
                 </div>
               ) : null}
 
-              <h3 className="section-title">3. Récapitulatif</h3>
-              <div className="recap-card">
+              <SectionTitle>3. Récapitulatif</SectionTitle>
+              <Card className="recap-card">
                 {selectedMoniteur && moniteurPhoto(selectedMoniteur) ? (
                   <img className="recap-photo" src={mediaSrc(moniteurPhoto(selectedMoniteur))} alt="" />
                 ) : selected.moniteur?.vehiclePhotoUrl ? (
@@ -562,51 +587,50 @@ export function ReservationPage() {
                   {selectedMoniteur?.vehicleBrand || selected.moniteur?.vehicleBrand || 'Véhicule'} ·{' '}
                   {selected.vehicleType || vehicleType}
                 </p>
-                <p className="price">
-                  {new Intl.NumberFormat('fr-FR', {
+                <StatCard
+                  icon={<CalendarPlus size={14} />}
+                  label="Montant à régler"
+                  value={new Intl.NumberFormat('fr-FR', {
                     style: 'currency',
                     currency: 'XOF',
                     maximumFractionDigits: 0,
                   }).format(selectedAmount)}
-                </p>
+                />
                 {selected.priceFcfa > selectedAmount ? (
                   <p className="subtitle">
                     Remise de {new Intl.NumberFormat('fr-FR').format(selected.priceFcfa - selectedAmount)}{' '}
                     FCFA appliquée dès {hoursDiscountMin} h.
                   </p>
                 ) : null}
-              </div>
+              </Card>
 
               <div className="payment-choice">
                 {soldeHeures !== null && soldeHeures >= selectedHoursNeeded && selectedHoursNeeded > 0 ? (
-                  <button
-                    type="button"
-                    className="btn-primary reservation-calendar-btn"
+                  <Button
+                    variant="cta"
+                    tone="orange"
+                    className="reservation-calendar-btn"
                     disabled={busy}
                     onClick={() => void onConfirm()}
                   >
                     {busy
                       ? 'Confirmation…'
                       : `Payer avec mon solde (${soldeHeures} h disponible${soldeHeures > 1 ? 's' : ''})`}
-                  </button>
+                  </Button>
                 ) : null}
-                <button
-                  type="button"
-                  className={
-                    soldeHeures !== null && soldeHeures >= selectedHoursNeeded
-                      ? 'btn-outline reservation-calendar-btn'
-                      : 'btn-primary reservation-calendar-btn'
-                  }
+                <Button
+                  variant={soldeHeures !== null && soldeHeures >= selectedHoursNeeded ? 'outline' : 'cta'}
+                  tone="orange"
+                  className="reservation-calendar-btn"
                   disabled={busy}
                   onClick={() => setShowMobileMoney(true)}
                 >
                   Payer maintenant (Mobile Money)
-                </button>
+                </Button>
               </div>
 
-              <button
-                type="button"
-                className="btn-outline"
+              <Button
+                variant="outline"
                 onClick={() => {
                   setSlotLockedUntil(null)
                   setSelected(null)
@@ -614,7 +638,7 @@ export function ReservationPage() {
                 }}
               >
                 Changer d’horaire
-              </button>
+              </Button>
             </div>
           ) : null}
 
@@ -643,12 +667,12 @@ export function ReservationPage() {
                   Notifier par WhatsApp
                 </a>
               ) : null}
-              <button type="button" className="btn-primary" onClick={() => navigate('/conduite')}>
+              <Button variant="cta" tone="green" onClick={() => navigate('/conduite')}>
                 Retour au tableau de bord
-              </button>
+              </Button>
             </SuccessCelebration>
           ) : null}
-        </div>
+        </Card>
       </div>
 
       {selected && moniteurId ? (
@@ -678,5 +702,6 @@ export function ReservationPage() {
         />
       ) : null}
     </div>
+    </AppShell>
   )
 }

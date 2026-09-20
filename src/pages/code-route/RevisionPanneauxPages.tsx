@@ -3,6 +3,8 @@ import { ChevronRight, Pause, Play, TriangleAlert } from 'lucide-react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { PageNavbar } from '../../components/PageNavbar'
 import { Reveal } from '../../components/Reveal'
+import { AppShell, userInitialsOf } from '../../components/layout/AppShell'
+import { Button, Card, IconBadge } from '../../components/ui'
 import {
   getPanneauCategory,
   PANNEAUX_CATEGORIES,
@@ -28,6 +30,12 @@ export function RevisionPanneauxPage() {
   if (loading || !user) return null
 
   return (
+    <AppShell
+      activeTab="code"
+      userInitials={userInitialsOf(user?.firstName, user?.lastName)}
+      onOpenNotifications={() => navigate('/notifications')}
+      onOpenProfile={() => navigate('/profil')}
+    >
     <div className="auth-page">
       <div className="auth-container learner-container">
         <PageNavbar
@@ -56,14 +64,16 @@ export function RevisionPanneauxPage() {
                 className="learner-item"
                 to={`/code-de-la-route/revision-panneaux/${cat.id}`}
               >
-                <span className="learner-item-icon learner-panneaux-prefix">{cat.codePrefix}</span>
+                <IconBadge icon={<span>{cat.codePrefix}</span>} tone="green" />
                 <span className="learner-item-body">
                   <strong>{cat.label}</strong>
                   <small>
                     {cat.count} {cat.count > 1 ? 'panneaux' : 'panneau'}
                   </small>
                 </span>
-                <ChevronRight size={16} aria-hidden />
+                <Button variant="icon" tone="green" aria-label={`Ouvrir ${cat.label}`} tabIndex={-1} style={{ pointerEvents: 'none' }}>
+                  <ChevronRight size={16} aria-hidden />
+                </Button>
               </Link>
               </Reveal>
             ))}
@@ -71,6 +81,7 @@ export function RevisionPanneauxPage() {
         </div>
       </div>
     </div>
+    </AppShell>
   )
 }
 
@@ -87,6 +98,12 @@ export function RevisionPanneauxCategoryPage() {
 
   if (!category) {
     return (
+      <AppShell
+        activeTab="code"
+        userInitials={userInitialsOf(user?.firstName, user?.lastName)}
+        onOpenNotifications={() => navigate('/notifications')}
+        onOpenProfile={() => navigate('/profil')}
+      >
       <div className="auth-page">
         <div className="auth-container learner-container">
           <PageNavbar
@@ -95,11 +112,14 @@ export function RevisionPanneauxCategoryPage() {
             onBack={() => navigate('/code-de-la-route/revision-panneaux')}
           />
           <div className="auth-card learner-card learner-empty">
-            <h2>Catégorie introuvable</h2>
-            <p className="subtitle">Cette famille de panneaux n’existe pas.</p>
+            <Card>
+              <h2>Catégorie introuvable</h2>
+              <p className="subtitle">Cette famille de panneaux n’existe pas.</p>
+            </Card>
           </div>
         </div>
       </div>
+      </AppShell>
     )
   }
 
@@ -123,6 +143,12 @@ export function RevisionPanneauxCategoryPage() {
   }
 
   return (
+    <AppShell
+      activeTab="code"
+      userInitials={userInitialsOf(user?.firstName, user?.lastName)}
+      onOpenNotifications={() => navigate('/notifications')}
+      onOpenProfile={() => navigate('/profil')}
+    >
     <div className="auth-page">
       <div className="auth-container learner-container">
         <PageNavbar
@@ -153,23 +179,24 @@ export function RevisionPanneauxCategoryPage() {
               const playing = playingCode === sign.code
               return (
                 <Reveal key={sign.code} delay={Math.min(signIndex, 8) * 40}>
-                <article className="learner-panneau-card">
+                <Card className="learner-panneau-card">
                   <div className="learner-panneau-card-media">
                     <img src={resolveMediaUrl(sign.image)} alt={sign.code} loading="lazy" />
-                    <button
-                      type="button"
+                    <Button
+                      variant="icon"
+                      tone="green"
                       className={`learner-panneau-play${playing ? ' is-playing' : ''}`}
                       aria-label={playing ? `Arrêter ${sign.code}` : `Écouter ${sign.code}`}
                       onClick={() => togglePlay(sign.code, def, sign.audio)}
                     >
                       {playing ? <Pause size={14} /> : <Play size={14} />}
-                    </button>
+                    </Button>
                   </div>
                   <div className="learner-panneau-card-body">
                     <p className="learner-panneau-card-code">{sign.code}</p>
                     <p className="learner-panneau-card-def">{def}</p>
                   </div>
-                </article>
+                </Card>
                 </Reveal>
               )
             })}
@@ -177,5 +204,6 @@ export function RevisionPanneauxCategoryPage() {
         </div>
       </div>
     </div>
+    </AppShell>
   )
 }

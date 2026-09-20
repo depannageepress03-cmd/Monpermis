@@ -22,10 +22,20 @@ import { ContentReveal } from '../components/ContentReveal'
 import { SegmentedTabs } from '../components/SegmentedTabs'
 import { PageSkeleton } from '../components/PageSkeleton'
 import { useAuth } from '../hooks/useAuth'
+import { AppShell, userInitialsOf, type AppTab } from '../components/layout/AppShell'
+import { Badge, Button, Card, IconBadge } from '../components/ui'
 import '../styles/auth.css'
 import '../styles/learner.css'
 
 type IconComp = ComponentType<SVGProps<SVGSVGElement> & { size?: number }>
+
+const TAB_ROUTES: Record<AppTab, string> = {
+  accueil: '/accueil',
+  code: '/code-de-la-route',
+  conduite: '/conduite',
+  progres: '/code-de-la-route/mes-notes',
+  profil: '/profil',
+}
 
 const iconFor: Record<string, IconComp> = {
   subscription_activated: CreditCard,
@@ -36,6 +46,17 @@ const iconFor: Record<string, IconComp> = {
   reservation_cancelled: TriangleAlert,
   announcement: Megaphone,
   general: Bell,
+}
+
+function toneFor(type: string): 'green' | 'orange' {
+  if (
+    type === 'subscription_pending' ||
+    type === 'subscription_expiring' ||
+    type === 'reservation_cancelled'
+  ) {
+    return 'orange'
+  }
+  return 'green'
 }
 
 const linkToPath: Record<string, string> = {
@@ -119,87 +140,100 @@ export function NotificationsPage() {
   const unreadCount = items.filter((n) => !n.read).length
 
   return (
-    <div className="auth-page">
-      <div className="auth-container learner-container">
-        <PageNavbar
-          title="Notifications"
-          icon={<Bell size={20} />}
-          onBack={() => navigate('/accueil')}
-        />
-
-        <SegmentedTabs<'all' | 'unread'>
-          className="notif-tabs"
-          value={filter}
-          onChange={setFilter}
-          tabs={[
-            { id: 'all', label: 'Toutes' },
-            {
-              id: 'unread',
-              label: unreadCount ? `Non lues (${unreadCount})` : 'Non lues',
-            },
-          ]}
-        />
-
-        {hasUnread ? (
-          <button type="button" className="btn-outline home-mark-all" onClick={handleMarkAll}>
-            <CheckCheck size={16} />
-            Tout marquer comme lu
-          </button>
-        ) : null}
-
-        <ContentReveal
-          loading={fetching}
-          skeleton={<PageSkeleton variant="list" />}
-        >
-        {error ? (
-          <EmptyState
-            tone="error"
-            icon={<TriangleAlert size={28} />}
-            title="Chargement impossible"
-            message={error}
-            action={
-              <button type="button" className="btn-primary" onClick={() => void load()}>
-                Réessayer
-              </button>
-            }
+    <AppShell
+      activeTab="profil"
+      userInitials={userInitialsOf(user?.firstName, user?.lastName)}
+      hasUnread={hasUnread}
+      onNavigate={(tab) => navigate(TAB_ROUTES[tab])}
+      onOpenNotifications={() => navigate('/notifications')}
+      onOpenProfile={() => navigate('/profil')}
+    >
+      <div className="auth-page">
+        <div className="auth-container learner-container">
+          <PageNavbar
+            title="Notifications"
+            icon={<Bell size={20} />}
+            onBack={() => navigate('/accueil')}
           />
-        ) : visible.length === 0 ? (
-          <EmptyState
-            icon={<Bell size={28} />}
-            title={filter === 'unread' ? 'Tout est lu' : 'Aucune notification'}
-            message={
-              filter === 'unread'
-                ? 'Tu n’as plus de notifications non lues.'
-                : 'Tu seras prévenu ici dès qu’un paiement est validé, une leçon confirmée ou une annonce publiée.'
-            }
+
+          <SegmentedTabs<'all' | 'unread'>
+            className="notif-tabs"
+            value={filter}
+            onChange={setFilter}
+            tabs={[
+              { id: 'all', label: 'Toutes' },
+              {
+                id: 'unread',
+                label: unreadCount ? `Non lues (${unreadCount})` : 'Non lues',
+              },
+            ]}
           />
-        ) : (
-          <div className="home-notif-list">
-            {visible.map((n) => {
-              const Icon = iconFor[n.type] ?? Bell
-              return (
-                <button
-                  key={n.id}
-                  type="button"
-                  className={`home-notif-card${n.read ? '' : ' is-unread'}`}
-                  onClick={() => void handleTap(n)}
-                >
-                  <span className="home-notif-icon">
-                    <Icon size={18} />
-                  </span>
-                  <span className="home-notif-body">
-                    <strong>{n.title}</strong>
-                    {n.body ? <small>{n.body}</small> : null}
-                    <em>{timeAgo(n.createdAt)}</em>
-                  </span>
-                  {!n.read ? <span className="home-notif-dot" /> : null}
-                </button>
-              )
-            })}
-          </div>
-        )}
-        </ContentReveal>
+
+          {hasUnread ? (
+            <Button
+              variant="cta"
+              tone="green"
+              icon={<CheckCheck size={16} />}
+              onClick={handleMarkAll}
+              className="home-mark-all"
+            >
+              Tout marquer comme lu
+            </Button>
+          ) : null}
+
+          <ContentReveal
+            loading={fetching}
+            skeleton={<PageSkeleton variant="list" />}
+          >
+          {error ? (
+            <EmptyState
+              tone="error"
+              icon={<TriangleAlert size={28} />}
+              title="Chargement impossible"
+              message={error}
+              action={
+                <Button variant="cta" tone="green" onClick={() => void load()}>
+                  Réessayer
+                </Button>
+              }
+            />
+          ) : visible.length === 0 ? (
+            <EmptyState
+              icon={<Bell size={28} />}
+              title={filter === 'unread' ? 'Tout est lu' : 'Aucune notification'}
+              message={
+                filter === 'unread'
+                  ? 'Tu n’as plus de notifications non lues.'
+                  : 'Tu seras prévenu ici dès qu’un paiement est validé, une leçon confirmée ou une annonce publiée.'
+              }
+            />
+          ) : (
+            <div className="home-notif-list">
+              {visible.map((n) => {
+                const Icon = iconFor[n.type] ?? Bell
+                return (
+                  <Card key={n.id}>
+                    <button
+                      type="button"
+                      className={`home-notif-card${n.read ? '' : ' is-unread'}`}
+                      onClick={() => void handleTap(n)}
+                    >
+                      <IconBadge icon={<Icon size={18} />} tone={toneFor(n.type)} />
+                      <span className="home-notif-body">
+                        <strong>{n.title}</strong>
+                        {n.body ? <small>{n.body}</small> : null}
+                        <em>{timeAgo(n.createdAt)}</em>
+                      </span>
+                      {!n.read ? <Badge tone="orange">Non lue</Badge> : null}
+                    </button>
+                  </Card>
+                )
+              })}
+            </div>
+          )}
+          </ContentReveal>
+        </div>
       </div>
-    </div>
+    </AppShell>
   )
 }

@@ -11,6 +11,8 @@ import {
 } from '../../api/content'
 import { PageNavbar } from '../../components/PageNavbar'
 import { Reveal } from '../../components/Reveal'
+import { AppShell, userInitialsOf } from '../../components/layout/AppShell'
+import { Badge, Button, Card, IconBadge, SectionTitle, StatCard } from '../../components/ui'
 import { useAuth } from '../../hooks/useAuth'
 import { unlockQuizAudio } from '../../utils/quizSounds'
 import '../../styles/auth.css'
@@ -72,6 +74,12 @@ export function LearnerChapterQuestionsListPage() {
       : null
 
   return (
+    <AppShell
+      activeTab="code"
+      userInitials={userInitialsOf(user?.firstName, user?.lastName)}
+      onOpenNotifications={() => navigate('/notifications')}
+      onOpenProfile={() => navigate('/profil')}
+    >
     <div className="auth-page">
       <div className="auth-container learner-container">
         <PageNavbar
@@ -82,7 +90,7 @@ export function LearnerChapterQuestionsListPage() {
 
         <header className="auth-header learner-header">
           <p className="learner-kicker">Entraînement</p>
-          <h1>Questions</h1>
+          <SectionTitle>Questions</SectionTitle>
           <p>
             {loading
               ? 'Chargement…'
@@ -97,40 +105,36 @@ export function LearnerChapterQuestionsListPage() {
 
           <Reveal delay={60}>
           <div className="learner-hub-duo">
-            <span className="learner-hub-duo-card learner-hub-duo-card--green learner-hub-duo-card--active">
-              <span className="learner-hub-duo-icon">
-                <HelpCircle size={20} aria-hidden />
-              </span>
+            <Card className="learner-hub-duo-card learner-hub-duo-card--green learner-hub-duo-card--active">
+              <IconBadge icon={<HelpCircle size={20} aria-hidden />} tone="green" />
               <span className="learner-hub-duo-title">Questions</span>
-              <span className="learner-hub-duo-sub">
+              <Badge tone="green">
                 {count > 0 ? `${count} questions` : 'Entraînement'}
-              </span>
-            </span>
+              </Badge>
+            </Card>
             <Link
               className="learner-hub-duo-card learner-hub-duo-card--gold"
               to={`/code-de-la-route/revision-chapitres/${chapterId}/sujet-test`}
               state={{ chapterName }}
               onClick={() => unlockQuizAudio()}
             >
-              <span className="learner-hub-duo-chevron" aria-hidden>
-                <ChevronRight size={16} />
-              </span>
-              <span className="learner-hub-duo-icon">
-                <ClipboardList size={20} aria-hidden />
-              </span>
+              <Button variant="icon" tone="orange" aria-label="Aller au sujet test" tabIndex={-1}>
+                <ChevronRight size={16} aria-hidden />
+              </Button>
+              <IconBadge icon={<ClipboardList size={20} aria-hidden />} tone="orange" />
               <span className="learner-hub-duo-title">Sujet test</span>
-              <span className="learner-hub-duo-sub">
+              <Badge tone="orange">
                 {testEntry
                   ? `${testEntry.correct}/${testEntry.total}`
                   : 'Validez le chapitre'}
-              </span>
+              </Badge>
             </Link>
           </div>
           </Reveal>
 
           {!loading && !error && count === 0 ? (
             <div className="learner-empty">
-              <h2>Aucune question</h2>
+              <SectionTitle>Aucune question</SectionTitle>
               <p className="subtitle">Les questions publiées de ce chapitre apparaîtront ici.</p>
             </div>
           ) : null}
@@ -138,32 +142,30 @@ export function LearnerChapterQuestionsListPage() {
           {!loading && !error && count > 0 ? (
             <>
               <div className="learner-quiz-stats">
-                <div className="learner-quiz-stat">
-                  <HelpCircle size={14} aria-hidden />
-                  <strong>{count}</strong>
-                  <span>Questions</span>
-                </div>
+                <StatCard
+                  icon={<HelpCircle size={14} aria-hidden />}
+                  label="Questions"
+                  value={String(count)}
+                />
                 {testRatio != null ? (
-                  <div className="learner-quiz-stat">
-                    <Target size={14} aria-hidden />
-                    <strong>{Math.round(testRatio * 100)}%</strong>
-                    <span>Sujet test</span>
-                  </div>
+                  <StatCard
+                    icon={<Target size={14} aria-hidden />}
+                    label="Sujet test"
+                    value={`${Math.round(testRatio * 100)}%`}
+                  />
                 ) : null}
                 {testEntry ? (
-                  <div className="learner-quiz-stat">
-                    <Trophy size={14} aria-hidden />
-                    <strong>
-                      {testEntry.correct}/{testEntry.total}
-                    </strong>
-                    <span>Meilleur score</span>
-                  </div>
+                  <StatCard
+                    icon={<Trophy size={14} aria-hidden />}
+                    label="Meilleur score"
+                    value={`${testEntry.correct}/${testEntry.total}`}
+                  />
                 ) : null}
               </div>
               {testEntry ? (
-                <p className="subtitle">
+                <Badge tone="green">
                   Sujet test : {testEntry.correct} / {testEntry.total}
-                </p>
+                </Badge>
               ) : null}
               <div className="learner-question-list">
                 {questions.map((question, index) => (
@@ -171,6 +173,7 @@ export function LearnerChapterQuestionsListPage() {
                     key={question.id}
                     delay={100 + Math.min(index, 10) * 30}
                   >
+                  <Card className="learner-question-card">
                   <Link
                     className="learner-question-row learner-question-row--num-only"
                     to={`/code-de-la-route/revision-chapitres/${chapterId}/questions/${index}`}
@@ -178,9 +181,12 @@ export function LearnerChapterQuestionsListPage() {
                     onClick={() => unlockQuizAudio()}
                     aria-label={`Question ${index + 1}`}
                   >
-                    <span className="learner-question-num">{index + 1}</span>
-                    <ChevronRight size={16} aria-hidden />
+                    <IconBadge icon={<span>{index + 1}</span>} tone="green" />
+                    <Button variant="icon" tone="green" aria-label={`Ouvrir la question ${index + 1}`} tabIndex={-1}>
+                      <ChevronRight size={16} aria-hidden />
+                    </Button>
                   </Link>
+                  </Card>
                   </Reveal>
                 ))}
               </div>
@@ -189,5 +195,6 @@ export function LearnerChapterQuestionsListPage() {
         </div>
       </div>
     </div>
+    </AppShell>
   )
 }

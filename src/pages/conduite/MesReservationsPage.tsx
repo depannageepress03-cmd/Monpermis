@@ -12,9 +12,19 @@ import { EmptyState } from '../../components/EmptyState'
 import { PageLoader } from '../../components/PageLoader'
 import { PageNavbar } from '../../components/PageNavbar'
 import { useAuth } from '../../hooks/useAuth'
+import { AppShell, userInitialsOf, type AppTab } from '../../components/layout/AppShell'
+import { Badge, Button, Card, SectionTitle, StatCard } from '../../components/ui'
 import '../../styles/auth.css'
 import '../../styles/learner.css'
 import '../../styles/reservation.css'
+
+const TAB_ROUTES: Record<AppTab, string> = {
+  accueil: '/accueil',
+  code: '/code-de-la-route',
+  conduite: '/conduite',
+  progres: '/code-de-la-route/mes-notes',
+  profil: '/profil',
+}
 
 function formatDateLabel(date: string) {
   try {
@@ -93,6 +103,13 @@ export function MesReservationsPage() {
   )
 
   return (
+    <AppShell
+      activeTab="conduite"
+      userInitials={userInitialsOf(user?.firstName, user?.lastName)}
+      onNavigate={(tab) => navigate(TAB_ROUTES[tab])}
+      onOpenNotifications={() => navigate('/notifications')}
+      onOpenProfile={() => navigate('/profil')}
+    >
     <div className="auth-page">
       <div className="auth-container learner-container">
         <PageNavbar
@@ -107,7 +124,13 @@ export function MesReservationsPage() {
           <p>Séances confirmées et paiements en cours. Annulation possible jusqu’à 24 h avant.</p>
         </header>
 
-        <div className="auth-card learner-card conduite-card">
+        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+          <StatCard icon={<CalendarCheck size={14} />} label="Confirmées" value={String(confirmed.length)} />
+          <StatCard icon={<CalendarCheck size={14} />} label="En attente moniteur" value={String(awaitingMoniteur.length)} />
+          <StatCard icon={<CalendarCheck size={14} />} label="En attente paiement" value={String(pending.length)} />
+        </div>
+
+        <Card className="conduite-card">
           {error ? <p className="form-error">{error}</p> : null}
           {busy ? <p className="subtitle">Chargement…</p> : null}
 
@@ -116,23 +139,25 @@ export function MesReservationsPage() {
               title="Aucune réservation"
               message="Vos séances confirmées apparaîtront ici après réservation."
               action={
-                <button
-                  type="button"
-                  className="btn-primary"
+                <Button
+                  variant="cta"
+                  tone="orange"
+                  icon={<CalendarCheck size={16} />}
                   onClick={() => navigate('/conduite/reservation')}
                 >
                   Réserver une séance
-                </button>
+                </Button>
               }
             />
           ) : null}
 
           {!busy && confirmed.length > 0 ? (
             <section className="upcoming-block">
-              <h3 className="section-title">Confirmées</h3>
+              <SectionTitle>Confirmées</SectionTitle>
               <ul className="upcoming-list">
                 {confirmed.map((item) => (
                   <li key={String(item.id)}>
+                    <Card>
                     <div className="upcoming-item-main">
                       <strong>
                         {item.creneau
@@ -140,13 +165,13 @@ export function MesReservationsPage() {
                           : 'Séance'}
                       </strong>
                       <span>
-                        {item.moniteur?.fullName || 'Moniteur'} · {statusLabel(item)}
+                        {item.moniteur?.fullName || 'Moniteur'} ·{' '}
+                        <Badge tone="green">{statusLabel(item)}</Badge>
                       </span>
                     </div>
                     {item.canCancel ? (
-                      <button
-                        type="button"
-                        className="upcoming-cancel-btn"
+                      <Button
+                        variant="outline"
                         onClick={() => {
                           setError(null)
                           setCancelReason('')
@@ -154,8 +179,9 @@ export function MesReservationsPage() {
                         }}
                       >
                         Annuler
-                      </button>
+                      </Button>
                     ) : null}
+                    </Card>
                   </li>
                 ))}
               </ul>
@@ -164,10 +190,11 @@ export function MesReservationsPage() {
 
           {!busy && awaitingMoniteur.length > 0 ? (
             <section className="upcoming-block" style={{ marginTop: '1.25rem' }}>
-              <h3 className="section-title">En attente du moniteur</h3>
+              <SectionTitle>En attente du moniteur</SectionTitle>
               <ul className="upcoming-list">
                 {awaitingMoniteur.map((item) => (
                   <li key={String(item.id)}>
+                    <Card>
                     <div className="upcoming-item-main">
                       <strong>
                         {item.creneau
@@ -175,13 +202,13 @@ export function MesReservationsPage() {
                           : 'Séance'}
                       </strong>
                       <span>
-                        {item.moniteur?.fullName || 'Moniteur'} · {statusLabel(item)}
+                        {item.moniteur?.fullName || 'Moniteur'} ·{' '}
+                        <Badge tone="orange">{statusLabel(item)}</Badge>
                       </span>
                     </div>
                     {item.canCancel ? (
-                      <button
-                        type="button"
-                        className="upcoming-cancel-btn"
+                      <Button
+                        variant="outline"
                         onClick={() => {
                           setError(null)
                           setCancelReason('')
@@ -189,8 +216,9 @@ export function MesReservationsPage() {
                         }}
                       >
                         Annuler
-                      </button>
+                      </Button>
                     ) : null}
+                    </Card>
                   </li>
                 ))}
               </ul>
@@ -199,10 +227,11 @@ export function MesReservationsPage() {
 
           {!busy && pending.length > 0 ? (
             <section className="upcoming-block" style={{ marginTop: '1.25rem' }}>
-              <h3 className="section-title">En attente de paiement</h3>
+              <SectionTitle>En attente de paiement</SectionTitle>
               <ul className="upcoming-list">
                 {pending.map((item) => (
                   <li key={String(item.id)}>
+                    <Card>
                     <div className="upcoming-item-main">
                       <strong>
                         {item.creneau
@@ -210,13 +239,13 @@ export function MesReservationsPage() {
                           : 'Séance'}
                       </strong>
                       <span>
-                        {item.moniteur?.fullName || 'Moniteur'} · {statusLabel(item)}
+                        {item.moniteur?.fullName || 'Moniteur'} ·{' '}
+                        <Badge tone="orange">{statusLabel(item)}</Badge>
                       </span>
                     </div>
                     {item.canCancel ? (
-                      <button
-                        type="button"
-                        className="upcoming-cancel-btn"
+                      <Button
+                        variant="outline"
                         onClick={() => {
                           setError(null)
                           setCancelReason('')
@@ -224,23 +253,25 @@ export function MesReservationsPage() {
                         }}
                       >
                         Annuler
-                      </button>
+                      </Button>
                     ) : null}
+                    </Card>
                   </li>
                 ))}
               </ul>
             </section>
           ) : null}
 
-          <button
-            type="button"
-            className="btn-primary"
+          <Button
+            variant="cta"
+            tone="orange"
+            icon={<CalendarCheck size={16} />}
             style={{ marginTop: '1.25rem', width: '100%' }}
             onClick={() => navigate('/conduite/reservation')}
           >
             Nouvelle réservation
-          </button>
-        </div>
+          </Button>
+        </Card>
       </div>
 
       {cancelTarget ? (
@@ -254,5 +285,6 @@ export function MesReservationsPage() {
         />
       ) : null}
     </div>
+    </AppShell>
   )
 }

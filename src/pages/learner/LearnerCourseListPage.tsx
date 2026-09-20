@@ -12,6 +12,8 @@ import {
 } from '../../api/content'
 import { useAuth } from '../../hooks/useAuth'
 import { PageNavbar } from '../../components/PageNavbar'
+import { AppShell, userInitialsOf } from '../../components/layout/AppShell'
+import { Badge, Button, Card, IconBadge, SectionTitle, StatCard } from '../../components/ui'
 import { formatChapterHeading, formatCourseHeading } from '../../utils/chapterLabel'
 import '../../styles/auth.css'
 import '../../styles/learner.css'
@@ -80,17 +82,34 @@ export function LearnerCourseListPage({
 
   if (authLoading) {
     return (
+      <AppShell
+        activeTab={track === 'conduite' ? 'conduite' : 'code'}
+        onOpenNotifications={() => navigate('/notifications')}
+        onOpenProfile={() => navigate('/profil')}
+      >
       <div className="auth-page">
         <div className="auth-container learner-container">
           <p className="subtitle">Chargement…</p>
         </div>
       </div>
+      </AppShell>
     )
   }
 
   if (!user) return null
 
+  const shellTone = track === 'conduite' ? 'orange' : 'green'
+  const doneCount = courses.filter((course) =>
+    completedIds.has(String(course.id)),
+  ).length
+
   return (
+    <AppShell
+      activeTab={track === 'conduite' ? 'conduite' : 'code'}
+      userInitials={userInitialsOf(user?.firstName, user?.lastName)}
+      onOpenNotifications={() => navigate('/notifications')}
+      onOpenProfile={() => navigate('/profil')}
+    >
     <div className="auth-page">
       <div className="auth-container learner-container">
         <PageNavbar
@@ -106,12 +125,17 @@ export function LearnerCourseListPage({
             <span className="learner-accent learner-accent-gold" />
             <span className="learner-accent learner-accent-navy" />
           </div>
-          <p className="learner-courses-lead">
-            Accédez aux cours librement, à votre rythme.
-          </p>
+          <SectionTitle>Accédez aux cours librement, à votre rythme.</SectionTitle>
           <p className="learner-courses-detail">
             Prenez le temps de bien comprendre chaque notion.
           </p>
+          {!loading && !error && courses.length > 0 ? (
+            <StatCard
+              icon={<Check size={14} aria-hidden />}
+              label="Cours terminés"
+              value={`${doneCount}/${courses.length}`}
+            />
+          ) : null}
         </header>
 
         <div className="auth-card learner-card">
@@ -120,7 +144,7 @@ export function LearnerCourseListPage({
           {lockHint ? <p className="form-error">{lockHint}</p> : null}
           {!loading && !error && courses.length === 0 ? (
             <div className="learner-empty">
-              <h2>Aucun cours</h2>
+              <SectionTitle>Aucun cours</SectionTitle>
               <p className="subtitle">Ce chapitre ne contient pas encore de cours publiés.</p>
             </div>
           ) : null}
@@ -130,28 +154,47 @@ export function LearnerCourseListPage({
               const completed = completedIds.has(String(course.id))
               const content = (
                 <>
-                  <span className={`learner-item-icon${unlocked ? '' : ' is-locked'}`}>
-                    {!unlocked ? <Lock size={20} /> : completed ? <Check size={20} /> : index + 1}
-                  </span>
+                  <IconBadge
+                    icon={
+                      !unlocked ? (
+                        <Lock size={20} />
+                      ) : completed ? (
+                        <Check size={20} />
+                      ) : (
+                        <span>{index + 1}</span>
+                      )
+                    }
+                    tone={track === 'conduite' && !completed ? 'orange' : 'green'}
+                  />
                   <span className="learner-item-body">
                     <strong>{formatCourseHeading(index, course.title)}</strong>
-                    <small>
-                      {completed
-                        ? 'Terminé'
-                        : !unlocked
-                          ? 'Verrouillé — terminez le cours précédent'
-                          : 'Appuyez pour ouvrir'}
-                    </small>
+                    {completed ? (
+                      <Badge tone="green" icon={<Check size={12} aria-hidden />}>
+                        Terminé
+                      </Badge>
+                    ) : !unlocked ? (
+                      <Badge tone="orange" icon={<Lock size={12} aria-hidden />}>
+                        Verrouillé — terminez le cours précédent
+                      </Badge>
+                    ) : (
+                      <small>Appuyez pour ouvrir</small>
+                    )}
                   </span>
-                  {unlocked ? <ChevronRight size={18} /> : <Lock size={16} />}
+                  {unlocked ? (
+                    <Button variant="icon" tone={shellTone} aria-label="Ouvrir le cours" tabIndex={-1}>
+                      <ChevronRight size={18} aria-hidden />
+                    </Button>
+                  ) : (
+                    <Lock size={16} />
+                  )}
                 </>
               )
 
               if (!unlocked) {
                 return (
-                  <button
+                  <Button
                     key={course.id}
-                    type="button"
+                    variant="outline"
                     className="learner-item is-disabled learner-anim-item"
                     style={{ animationDelay: `${0.22 + index * 0.08}s` }}
                     onClick={() =>
@@ -161,13 +204,13 @@ export function LearnerCourseListPage({
                     }
                   >
                     {content}
-                  </button>
+                  </Button>
                 )
               }
 
               return (
+                <Card key={course.id} className="learner-item-card">
                 <Link
-                  key={course.id}
                   to={detailPath(chapterId, String(course.id))}
                   state={{ chapter, course, courses }}
                   className={`learner-item${completed ? ' is-done' : ''} learner-anim-item`}
@@ -176,11 +219,13 @@ export function LearnerCourseListPage({
                 >
                   {content}
                 </Link>
+                </Card>
               )
             })}
           </div>
         </div>
       </div>
     </div>
+    </AppShell>
   )
 }

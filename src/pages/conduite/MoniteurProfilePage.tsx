@@ -10,11 +10,21 @@ import {
 } from '../../api/reservations'
 import { PageNavbar } from '../../components/PageNavbar'
 import { useAuth } from '../../hooks/useAuth'
+import { AppShell, userInitialsOf, type AppTab } from '../../components/layout/AppShell'
+import { Badge, Button, Card, IconBadge, SectionTitle, StatCard } from '../../components/ui'
 import { resolveMoniteurVideoEmbed } from '../../utils/mediaEmbed'
 import { resolveMediaUrl } from '../../utils/mediaUrl'
 import '../../styles/auth.css'
 import '../../styles/learner.css'
 import '../../styles/reservation.css'
+
+const TAB_ROUTES: Record<AppTab, string> = {
+  accueil: '/accueil',
+  code: '/code-de-la-route',
+  conduite: '/conduite',
+  progres: '/code-de-la-route/mes-notes',
+  profil: '/profil',
+}
 
 function mediaSrc(url: string) {
   return resolveMediaUrl(url)
@@ -104,6 +114,13 @@ export function MoniteurProfilePage() {
   const lightboxPhoto = lightboxIndex != null ? photos[lightboxIndex] : null
 
   return (
+    <AppShell
+      activeTab="conduite"
+      userInitials={userInitialsOf(user?.firstName, user?.lastName)}
+      onNavigate={(tab) => navigate(TAB_ROUTES[tab])}
+      onOpenNotifications={() => navigate('/notifications')}
+      onOpenProfile={() => navigate('/profil')}
+    >
     <div className="auth-page">
       <div className="auth-container learner-container">
         <PageNavbar
@@ -113,7 +130,7 @@ export function MoniteurProfilePage() {
           onBack={() => navigate('/conduite/reservation')}
         />
 
-        <div className="auth-card learner-card reservation-card">
+        <Card className="reservation-card">
           {error ? <p className="form-error">{error}</p> : null}
           {busy ? <p className="subtitle">Chargement du profil…</p> : null}
 
@@ -123,7 +140,7 @@ export function MoniteurProfilePage() {
 
           {moniteur ? (
             <div className="reservation-step">
-              <div className="moniteur-profile-head moniteur-profile-head--split">
+              <Card className="moniteur-profile-head moniteur-profile-head--split">
                 <div className="moniteur-profile-portrait">
                   {moniteur.photoUrl ? (
                     <img
@@ -140,21 +157,23 @@ export function MoniteurProfilePage() {
                     <h2>{moniteur.fullName}</h2>
                     {moniteur.city ? (
                       <p className="subtitle">
-                        <MapPin size={15} /> {moniteur.city}
+                        <IconBadge icon={<MapPin size={15} />} tone="orange" /> {moniteur.city}
                       </p>
                     ) : null}
-                    <p className="subtitle moniteur-profile-price">
-                      {moniteur.defaultPriceFcfa.toLocaleString('fr-FR')} FCFA/h
-                    </p>
+                    <StatCard
+                      icon={<Car size={14} />}
+                      label="Tarif horaire"
+                      value={`${moniteur.defaultPriceFcfa.toLocaleString('fr-FR')} FCFA/h`}
+                    />
                     <p className="subtitle">
-                      <Car size={15} /> {vehicleTypesLabel}
+                      <IconBadge icon={<Car size={15} />} tone="orange" /> {vehicleTypesLabel}
                     </p>
                   </div>
                 </div>
-              </div>
+              </Card>
 
-              <div className="moniteur-profile-section moniteur-vehicle-card">
-                <h3 className="section-title">Véhicule utilisé</h3>
+              <Card className="moniteur-vehicle-card">
+                <SectionTitle>Véhicule utilisé</SectionTitle>
                 {moniteur.vehiclePhotoUrl ? (
                   <img
                     className="moniteur-vehicle-photo"
@@ -167,13 +186,13 @@ export function MoniteurProfilePage() {
                   </div>
                 )}
                 <p className="subtitle">{moniteur.vehicleBrand || 'Marque non renseignée'}</p>
-              </div>
+              </Card>
 
               {moniteur.bio ? (
-                <div className="moniteur-profile-bio">
-                  <h3 className="section-title">Présentation</h3>
+                <Card className="moniteur-profile-bio">
+                  <SectionTitle>Présentation</SectionTitle>
                   <p>{moniteur.bio}</p>
-                </div>
+                </Card>
               ) : (
                 <p className="moniteur-profile-empty">Présentation non renseignée pour le moment.</p>
               )}
@@ -181,26 +200,26 @@ export function MoniteurProfilePage() {
               {moniteur.specialties?.length ? (
                 <div className="moniteur-profile-specialties">
                   {moniteur.specialties.map((item) => (
-                    <span key={item} className="moniteur-specialty-chip">
-                      <CheckCircle2 size={13} /> {item}
-                    </span>
+                    <Badge key={item} tone="green" icon={<CheckCircle2 size={13} />}>{item}</Badge>
                   ))}
                 </div>
               ) : null}
 
-              <div className="moniteur-profile-section">
-                <h3 className="section-title">Prochaines disponibilités</h3>
+              <Card className="moniteur-profile-section">
+                <SectionTitle>Prochaines disponibilités</SectionTitle>
                 {availabilityDays.length ? (
                   <ul className="moniteur-availability-list">
                     {availabilityDays.map((day) => (
                       <li key={day.date}>
                         <strong>{formatDayLabel(day.date)}</strong>
                         <span>
-                          {day.windows
-                            .slice(0, 3)
-                            .map((w) => `${w.start}–${w.end}`)
-                            .join(' · ')}
-                          {day.windows.length > 3 ? '…' : ''}
+                          <Badge tone="orange">
+                            {day.windows
+                              .slice(0, 3)
+                              .map((w) => `${w.start}–${w.end}`)
+                              .join(' · ')}
+                            {day.windows.length > 3 ? '…' : ''}
+                          </Badge>
                         </span>
                       </li>
                     ))}
@@ -210,10 +229,10 @@ export function MoniteurProfilePage() {
                     Aucune plage libre sur les 14 prochains jours (ou calendrier non chargé).
                   </p>
                 )}
-              </div>
+              </Card>
 
-              <div className="moniteur-profile-section">
-                <h3 className="section-title">Photos</h3>
+              <Card className="moniteur-profile-section">
+                <SectionTitle>Photos</SectionTitle>
                 {photos.length ? (
                   <div className="moniteur-profile-gallery">
                     {photos.map((photo, index) => (
@@ -230,10 +249,10 @@ export function MoniteurProfilePage() {
                 ) : (
                   <p className="moniteur-profile-empty">Pas encore de galerie photo.</p>
                 )}
-              </div>
+              </Card>
 
-              <div className="moniteur-profile-section">
-                <h3 className="section-title">Vidéos de présentation</h3>
+              <Card className="moniteur-profile-section">
+                <SectionTitle>Vidéos de présentation</SectionTitle>
                 {safeVideos.length ? (
                   <div className="moniteur-profile-videos">
                     {safeVideos.map(({ video, embed }, index) => (
@@ -261,18 +280,20 @@ export function MoniteurProfilePage() {
                 ) : (
                   <p className="moniteur-profile-empty">Pas encore de vidéo de présentation.</p>
                 )}
-              </div>
+              </Card>
 
-              <button
-                type="button"
-                className="btn-primary reservation-calendar-btn"
+              <Button
+                variant="cta"
+                tone="orange"
+                icon={<Car size={16} />}
+                className="reservation-calendar-btn"
                 onClick={() => navigate(`/conduite/reservation?moniteurId=${moniteur.id}`)}
               >
                 Choisir ce moniteur
-              </button>
+              </Button>
             </div>
           ) : null}
-        </div>
+        </Card>
       </div>
 
       {lightboxPhoto ? (
@@ -302,5 +323,6 @@ export function MoniteurProfilePage() {
         </div>
       ) : null}
     </div>
+    </AppShell>
   )
 }

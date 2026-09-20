@@ -1,9 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  Bell, Flame, Play, Lock, ChevronRight,
+  Flame, Play, Lock, ChevronRight,
   CalendarClock, BookOpen, Car, Target, Calendar,
-  Home, BarChart3, User,
 } from 'lucide-react'
 import { supportWhatsAppUrl } from '../utils/support'
 import { clearSession } from '../api/auth'
@@ -15,6 +14,17 @@ import { PageSkeleton } from '../components/PageSkeleton'
 import { useAuth } from '../hooks/useAuth'
 import { ContentReveal } from '../components/ContentReveal'
 import { useFocusRefresh } from '../hooks/useFocusRefresh'
+import { AppShell, type AppTab } from '../components/layout/AppShell'
+import {
+  Badge,
+  Button,
+  Card,
+  IconBadge,
+  ProgressBar,
+  ProgressRing,
+  SectionTitle,
+  StatCard,
+} from '../components/ui'
 import '../styles/accueil.css'
 
 interface AccueilProps {
@@ -25,6 +35,14 @@ interface AccueilProps {
   codeStats?: { totalLessons: number; unlocked: boolean }
   conduiteStats?: { nextSession?: string; reservedCount: number }
   stats?: { lessonsDone: number; lessonsTotal: number; avgScore: number; examDate: string }
+}
+
+const TAB_ROUTES: Record<AppTab, string> = {
+  accueil: '/accueil',
+  code: '/code-de-la-route',
+  conduite: '/conduite',
+  progres: '/code-de-la-route/mes-notes',
+  profil: '/profil',
 }
 
 function greetingWord() {
@@ -79,8 +97,10 @@ export function HomePage({
 
   if (loading || !user) {
     return (
-      <div className="accueil">
-        <PageSkeleton variant="home" />
+      <div className="mp-shell">
+        <main className="mp-content">
+          <PageSkeleton variant="home" />
+        </main>
       </div>
     )
   }
@@ -99,43 +119,21 @@ export function HomePage({
   void codeLocked
   void conduiteLocked
 
-  const circumference = 2 * Math.PI * 22
-  const dashOffset = circumference - (progressPercent / 100) * circumference
   const lessonPct = Math.round((currentLesson.progress / currentLesson.total) * 100)
 
   return (
-    <div className="accueil">
+    <AppShell
+      activeTab="accueil"
+      userInitials={initials}
+      hasUnread={hasUnread}
+      onNavigate={(tab) => navigate(TAB_ROUTES[tab])}
+      onOpenNotifications={() => navigate('/notifications')}
+      onOpenProfile={() => setProfileOpen(true)}
+    >
       <ContentReveal
         loading={!accessReady}
         skeleton={<PageSkeleton variant="home" />}
       >
-      <header className="accueil-header">
-        <div className="accueil-logo">
-          <span className="accueil-logo-mark">M</span>
-          <span className="accueil-logo-word">Monpermis<span className="accueil-logo-accent">.bj</span></span>
-        </div>
-        <div className="accueil-header-actions">
-          <button
-            type="button"
-            className="accueil-icon-btn"
-            aria-label="Notifications"
-            onClick={() => navigate('/notifications')}
-          >
-            <Bell size={17} />
-            {hasUnread ? <span className="accueil-dot" /> : null}
-          </button>
-          <button
-            type="button"
-            className="accueil-avatar"
-            aria-label="Voir mon profil"
-            onClick={() => setProfileOpen(true)}
-            style={{ border: 'none', cursor: 'pointer' }}
-          >
-            {initials}
-          </button>
-        </div>
-      </header>
-
       <section className="accueil-greeting">
         <p className="accueil-greeting-label">{greeting},</p>
         <div className="accueil-greeting-row">
@@ -146,19 +144,7 @@ export function HomePage({
               <span>{streakDays} jours de suite</span>
             </div>
           </div>
-          <div className="accueil-progress-ring">
-            <svg width="54" height="54" viewBox="0 0 54 54">
-              <circle cx="27" cy="27" r="22" className="accueil-ring-track" />
-              <circle
-                cx="27" cy="27" r="22"
-                className="accueil-ring-value"
-                strokeDasharray={circumference}
-                strokeDashoffset={dashOffset}
-                transform="rotate(-90 27 27)"
-              />
-            </svg>
-            <span className="accueil-ring-label">{progressPercent}%</span>
-          </div>
+          <ProgressRing percent={progressPercent} />
         </div>
       </section>
 
@@ -168,54 +154,43 @@ export function HomePage({
         <p className="accueil-hero-title">{currentLesson.title}</p>
         <p className="accueil-hero-subtitle">{currentLesson.category}</p>
         <div className="accueil-hero-progress">
-          <div className="accueil-hero-bar">
-            <div className="accueil-hero-bar-fill" style={{ width: `${lessonPct}%` }} />
+          <div style={{ flex: 1 }}>
+            <ProgressBar percent={lessonPct} dark />
           </div>
           <span>{currentLesson.progress}/{currentLesson.total}</span>
         </div>
-        <button type="button" className="accueil-cta" onClick={() => navigate('/code-de-la-route')}>
-          <Play size={14} />
+        <Button variant="cta" tone="green" icon={<Play size={14} />} onClick={() => navigate('/code-de-la-route')} style={{ marginTop: 16 }}>
           Continuer
-        </button>
+        </Button>
       </section>
 
-      <p className="accueil-section-title">Choisis ton parcours</p>
+      <SectionTitle>Choisis ton parcours</SectionTitle>
 
-      <div className="accueil-card">
+      <Card>
         <div className="accueil-card-row">
-          <div className="accueil-card-icon accueil-card-icon--green">
-            <BookOpen size={20} />
-          </div>
+          <IconBadge icon={<BookOpen size={20} />} tone="green" />
           <div className="accueil-card-text">
             <p className="accueil-card-title">Code de la route</p>
             <p className="accueil-card-subtitle">{effectiveCodeStats.totalLessons} leçons · quiz inclus</p>
           </div>
         </div>
         {!effectiveCodeStats.unlocked && (
-          <button type="button" className="accueil-unlock-btn" onClick={() => navigate('/abonnement')}>
-            <Lock size={13} />
+          <Button variant="outline" icon={<Lock size={13} />} onClick={() => navigate('/abonnement')}>
             Débloquer l'accès
-          </button>
+          </Button>
         )}
-      </div>
+      </Card>
 
-      <div className="accueil-card">
+      <Card>
         <div className="accueil-card-row">
-          <div className="accueil-card-icon accueil-card-icon--orange">
-            <Car size={20} />
-          </div>
+          <IconBadge icon={<Car size={20} />} tone="orange" />
           <div className="accueil-card-text">
             <p className="accueil-card-title">Conduite</p>
             <p className="accueil-card-subtitle">Leçons vidéo et réservations</p>
           </div>
-          <button
-            type="button"
-            className="accueil-chevron-btn accueil-chevron-btn--orange"
-            aria-label="Voir Conduite"
-            onClick={() => navigate('/conduite')}
-          >
+          <Button variant="icon" tone="orange" aria-label="Voir Conduite" onClick={() => navigate('/conduite')}>
             <ChevronRight size={16} />
-          </button>
+          </Button>
         </div>
         {conduiteStats.nextSession && (
           <div className="accueil-card-footer">
@@ -223,51 +198,16 @@ export function HomePage({
               <CalendarClock size={13} />
               {conduiteStats.nextSession}
             </span>
-            <span className="accueil-badge">{conduiteStats.reservedCount} réservées</span>
+            <Badge tone="orange">{conduiteStats.reservedCount} réservées</Badge>
           </div>
         )}
-      </div>
+      </Card>
 
       <div className="accueil-stats">
-        <div className="accueil-stat">
-          <BookOpen size={14} />
-          <p className="accueil-stat-label">Leçons</p>
-          <p className="accueil-stat-value">{stats.lessonsDone}/{stats.lessonsTotal}</p>
-        </div>
-        <div className="accueil-stat">
-          <Target size={14} />
-          <p className="accueil-stat-label">Score moyen</p>
-          <p className="accueil-stat-value">{stats.avgScore}%</p>
-        </div>
-        <div className="accueil-stat">
-          <Calendar size={14} />
-          <p className="accueil-stat-label">Examen</p>
-          <p className="accueil-stat-value">{stats.examDate}</p>
-        </div>
+        <StatCard icon={<BookOpen size={14} />} label="Leçons" value={`${stats.lessonsDone}/${stats.lessonsTotal}`} />
+        <StatCard icon={<Target size={14} />} label="Score moyen" value={`${stats.avgScore}%`} />
+        <StatCard icon={<Calendar size={14} />} label="Examen" value={stats.examDate} />
       </div>
-
-      <nav className="accueil-nav">
-        <button type="button" className="accueil-nav-item accueil-nav-item--active" aria-current="page">
-          <Home size={18} />
-          <span>Accueil</span>
-        </button>
-        <button type="button" className="accueil-nav-item" onClick={() => navigate('/code-de-la-route')}>
-          <BookOpen size={18} />
-          <span>Code</span>
-        </button>
-        <button type="button" className="accueil-nav-item" onClick={() => navigate('/conduite')}>
-          <Car size={18} />
-          <span>Conduite</span>
-        </button>
-        <button type="button" className="accueil-nav-item" onClick={() => navigate('/code-de-la-route/mes-notes')}>
-          <BarChart3 size={18} />
-          <span>Progrès</span>
-        </button>
-        <button type="button" className="accueil-nav-item" onClick={() => navigate('/profil')}>
-          <User size={18} />
-          <span>Profil</span>
-        </button>
-      </nav>
 
       <AccountSheet
         visible={profileOpen}
@@ -297,7 +237,7 @@ export function HomePage({
         }}
       />
       </ContentReveal>
-    </div>
+    </AppShell>
   )
 }
 

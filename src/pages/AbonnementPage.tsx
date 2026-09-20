@@ -24,8 +24,18 @@ import {
   formatSubscriptionEndDate,
   getActiveSubscriptions,
 } from '../utils/subscriptionSummary'
+import { AppShell, userInitialsOf, type AppTab } from '../components/layout/AppShell'
+import { Badge, Button, Card, IconBadge, SectionTitle, StatCard } from '../components/ui'
 import '../styles/auth.css'
 import '../styles/learner.css'
+
+const TAB_ROUTES: Record<AppTab, string> = {
+  accueil: '/accueil',
+  code: '/code-de-la-route',
+  conduite: '/conduite',
+  progres: '/code-de-la-route/mes-notes',
+  profil: '/profil',
+}
 
 function formatPrice(price: number, currency = 'XOF') {
   return new Intl.NumberFormat('fr-FR', {
@@ -139,219 +149,234 @@ export function AbonnementPage() {
   })
 
   return (
-    <div className="auth-page">
-      <div className="auth-container learner-container">
-        <PageNavbar title="Mes accès" icon={<CreditCard size={25} />} onBack={() => navigate('/accueil')} />
+    <AppShell
+      activeTab="profil"
+      userInitials={userInitialsOf(user?.firstName, user?.lastName)}
+      onNavigate={(tab) => navigate(TAB_ROUTES[tab])}
+      onOpenNotifications={() => navigate('/notifications')}
+      onOpenProfile={() => navigate('/profil')}
+    >
+      <div className="auth-page">
+        <div className="auth-container learner-container">
+          <PageNavbar title="Mes accès" icon={<CreditCard size={25} />} onBack={() => navigate('/accueil')} />
 
-        <header className="auth-header learner-header">
-          <p>
-            Achète l’accès Code par Mobile Money (MTN, Moov, Celtiis). Les cours vidéo de
-            conduite sont gratuits dans l’espace Conduite ; les heures moniteur s’achètent
-            aussi là-bas.
-          </p>
-        </header>
+          <header className="auth-header learner-header">
+            <p>
+              Achète l’accès Code par Mobile Money (MTN, Moov, Celtiis). Les cours vidéo de
+              conduite sont gratuits dans l’espace Conduite ; les heures moniteur s’achètent
+              aussi là-bas.
+            </p>
+          </header>
 
-        <button
-          type="button"
-          className="btn-outline"
-          onClick={() => navigate('/abonnement/historique')}
-        >
-          <History size={16} style={{ verticalAlign: '-3px', marginRight: 6 }} />
-          Historique des paiements
-        </button>
+          <Button
+            variant="outline"
+            icon={<History size={16} />}
+            onClick={() => navigate('/abonnement/historique')}
+          >
+            Historique des paiements
+          </Button>
 
-        {loading ? (
-          <PageSkeleton variant="list" />
-        ) : (
-          <>
-            {error ? (
-              <EmptyState
-                tone="error"
-                icon={<LoaderCircle size={28} />}
-                title="Chargement impossible"
-                message={error}
-                action={
-                  <button type="button" className="btn-primary" onClick={() => void load()}>
-                    Réessayer
-                  </button>
-                }
-              />
-            ) : null}
+          {loading ? (
+            <PageSkeleton variant="list" />
+          ) : (
+            <>
+              {error ? (
+                <EmptyState
+                  tone="error"
+                  icon={<LoaderCircle size={28} />}
+                  title="Chargement impossible"
+                  message={error}
+                  action={
+                    <Button variant="cta" tone="green" onClick={() => void load()}>
+                      Réessayer
+                    </Button>
+                  }
+                />
+              ) : null}
 
-            {me ? (
-              <Reveal delay={60}>
-              <section className="auth-card learner-card subscription-status-card">
-                <p className="learner-kicker">
-                  <Clock size={14} style={{ verticalAlign: '-2px', marginRight: 4 }} />
-                  Solde heures moniteur (espace Conduite)
-                </p>
-                <h2>{me.user.soldeHeures} h</h2>
-                <p className="subscription-status-copy">
-                  Ce solde sert aux séances moniteur — pas à l’abonnement Code.{' '}
-                  <button type="button" className="btn-outline" style={{ display: 'inline', padding: '2px 8px', fontSize: 13 }} onClick={() => navigate('/conduite')}>
-                    Ouvrir Conduite
-                  </button>
-                </p>
-                {activeSubscriptions.length > 0 ? (
-                  <div className="subscription-active-list">
-                    {activeSubscriptions.map((sub) => (
-                      <p key={sub.module} className="subscription-status-copy">
-                        <strong>{sub.label}</strong> — expire le{' '}
-                        {formatSubscriptionEndDate(sub.endAt)} ({sub.remainingLabel} restant
-                        {sub.daysLeft > 1 ? 's' : ''})
-                        {sub.daysLeft <= 7 ? (
-                          <>
-                            {' '}
-                            ·{' '}
-                            <button
-                              type="button"
-                              className="btn-outline"
-                              style={{ display: 'inline', padding: '2px 8px', marginLeft: 4, fontSize: 13 }}
-                              onClick={() => {
-                                setSelected({ [sub.module]: true })
-                                window.scrollTo({ top: 0, behavior: 'smooth' })
-                              }}
-                            >
-                              Renouveler
-                            </button>
-                          </>
-                        ) : null}
+              {me ? (
+                <Reveal delay={60}>
+                <Card>
+                  <section className="subscription-status-card">
+                    <StatCard
+                      icon={<Clock size={14} />}
+                      label="Solde heures moniteur (espace Conduite)"
+                      value={`${me.user.soldeHeures} h`}
+                    />
+                    <p className="subscription-status-copy">
+                      Ce solde sert aux séances moniteur — pas à l’abonnement Code.{' '}
+                      <Button variant="outline" style={{ display: 'inline', padding: '2px 8px', fontSize: 13 }} onClick={() => navigate('/conduite')}>
+                        Ouvrir Conduite
+                      </Button>
+                    </p>
+                    {activeSubscriptions.length > 0 ? (
+                      <div className="subscription-active-list">
+                        {activeSubscriptions.map((sub) => (
+                          <p key={sub.module} className="subscription-status-copy">
+                            <strong>{sub.label}</strong> — expire le{' '}
+                            {formatSubscriptionEndDate(sub.endAt)} ({sub.remainingLabel} restant
+                            {sub.daysLeft > 1 ? 's' : ''}){' '}
+                            <Badge tone={sub.daysLeft <= 7 ? 'orange' : 'green'}>
+                              {sub.daysLeft <= 7 ? 'Expire bientôt' : 'Actif'}
+                            </Badge>
+                            {sub.daysLeft <= 7 ? (
+                              <>
+                                {' '}
+                                <Button
+                                  variant="outline"
+                                  style={{ display: 'inline', padding: '2px 8px', marginLeft: 4, fontSize: 13 }}
+                                  onClick={() => {
+                                    setSelected({ [sub.module]: true })
+                                    window.scrollTo({ top: 0, behavior: 'smooth' })
+                                  }}
+                                >
+                                  Renouveler
+                                </Button>
+                              </>
+                            ) : null}
+                          </p>
+                        ))}
+                      </div>
+                    ) : null}
+                    {me.pendingRequest ? (
+                      <p className="subscription-status-copy">
+                        <Badge tone="orange">Paiement en confirmation</Badge>{' '}
+                        Actualisez après validation sur votre téléphone.
                       </p>
-                    ))}
+                    ) : null}
+                  </section>
+                </Card>
+                </Reveal>
+              ) : null}
+
+              <Reveal delay={120}>
+              <section className="subscription-catalog">
+                <SectionTitle>Offres disponibles</SectionTitle>
+                {sortedModules.filter((module) => PRIMARY_KEYS.includes(module.key)).length === 0 ? (
+                  <p className="subtitle">Aucun accès n’est disponible pour le moment.</p>
+                ) : (
+                  <div className="offer-pick-list">
+                    {sortedModules
+                      .filter((module) => PRIMARY_KEYS.includes(module.key))
+                      .map((module) => {
+                      const isActive = Boolean(me?.access[module.key])
+                      const showsQuantity = module.unit === 'hour'
+                      const quantity = quantityByModule[module.key] ?? 1
+                      const amount = computeModuleAmount(module.key, module.price, showsQuantity ? quantity : 1)
+                      const checked = Boolean(selected[module.key])
+
+                      return (
+                        <Card key={module.key}>
+                          <button
+                            type="button"
+                            className={`offer-pick${checked ? ' is-selected' : ''}`}
+                            disabled={isActive}
+                            onClick={() => toggle(module.key)}
+                          >
+                            <h3>
+                              {module.label}
+                              {isActive ? ' · Actif' : ''}
+                            </h3>
+                            <p>
+                              {formatPrice(module.price)}
+                              {unitSuffix[module.unit]}
+                              {!isActive ? ` · total ${formatPrice(amount)}` : ''}
+                            </p>
+                            {showsQuantity && !isActive ? (
+                              <label
+                                className="access-quantity-field"
+                                onClick={(event) => event.stopPropagation()}
+                                onKeyDown={(event) => event.stopPropagation()}
+                              >
+                                Nombre d’heures
+                                <input
+                                  type="number"
+                                  min={1}
+                                  value={quantity}
+                                  onChange={(event) =>
+                                    setQuantityByModule((current) => ({
+                                      ...current,
+                                      [module.key]: Math.max(1, Number(event.target.value) || 1),
+                                    }))
+                                  }
+                                />
+                              </label>
+                            ) : null}
+                            {isActive ? (
+                              <Badge tone="green" icon={<Check size={15} />}>
+                                Accès actif
+                              </Badge>
+                            ) : null}
+                          </button>
+                        </Card>
+                      )
+                    })}
                   </div>
-                ) : null}
-                {me.pendingRequest ? (
-                  <p className="subscription-status-copy">
-                    Paiement en confirmation… Actualisez après validation sur votre téléphone.
-                  </p>
-                ) : null}
+                )}
+
+                <Button
+                  variant="cta"
+                  tone="green"
+                  disabled={cartItems.length === 0}
+                  onClick={() => setCheckoutOpen(true)}
+                  style={{ marginTop: 16 }}
+                >
+                  Payer {formatPrice(cartTotal)}
+                </Button>
               </section>
               </Reveal>
-            ) : null}
 
-            <Reveal delay={120}>
-            <section className="subscription-catalog">
-              <h2>Offres disponibles</h2>
-              {sortedModules.filter((module) => PRIMARY_KEYS.includes(module.key)).length === 0 ? (
-                <p className="subtitle">Aucun accès n’est disponible pour le moment.</p>
-              ) : (
-                <div className="offer-pick-list">
-                  {sortedModules
-                    .filter((module) => PRIMARY_KEYS.includes(module.key))
-                    .map((module) => {
-                    const isActive = Boolean(me?.access[module.key])
-                    const showsQuantity = module.unit === 'hour'
-                    const quantity = quantityByModule[module.key] ?? 1
-                    const amount = computeModuleAmount(module.key, module.price, showsQuantity ? quantity : 1)
-                    const checked = Boolean(selected[module.key])
+              <Card>
+                <section className="subscription-status-card">
+                  <SectionTitle>Vous avez un code promo ?</SectionTitle>
+                  <div className="promo-code-field">
+                    <input
+                      type="text"
+                      value={promoCode}
+                      onChange={(event) => setPromoCode(event.target.value.toUpperCase())}
+                      placeholder="CODE PROMO"
+                      disabled={promoBusy}
+                    />
+                    <Button
+                      variant="outline"
+                      disabled={promoBusy || !promoCode.trim()}
+                      onClick={() => void handleRedeemPromo()}
+                    >
+                      {promoBusy ? 'Vérification…' : 'Valider'}
+                    </Button>
+                  </div>
+                  {promoError ? <p className="form-error">{promoError}</p> : null}
+                  {promoSuccess ? <p className="form-success">{promoSuccess}</p> : null}
+                </section>
+              </Card>
 
-                    return (
-                      <button
-                        key={module.key}
-                        type="button"
-                        className={`offer-pick${checked ? ' is-selected' : ''}`}
-                        disabled={isActive}
-                        onClick={() => toggle(module.key)}
-                      >
-                        <h3>
-                          {module.label}
-                          {isActive ? ' · Actif' : ''}
-                        </h3>
-                        <p>
-                          {formatPrice(module.price)}
-                          {unitSuffix[module.unit]}
-                          {!isActive ? ` · total ${formatPrice(amount)}` : ''}
-                        </p>
-                        {showsQuantity && !isActive ? (
-                          <label
-                            className="access-quantity-field"
-                            onClick={(event) => event.stopPropagation()}
-                            onKeyDown={(event) => event.stopPropagation()}
-                          >
-                            Nombre d’heures
-                            <input
-                              type="number"
-                              min={1}
-                              value={quantity}
-                              onChange={(event) =>
-                                setQuantityByModule((current) => ({
-                                  ...current,
-                                  [module.key]: Math.max(1, Number(event.target.value) || 1),
-                                }))
-                              }
-                            />
-                          </label>
-                        ) : null}
-                        {isActive ? (
-                          <p className="subscription-free-used" style={{ color: 'var(--green, #00b050)' }}>
-                            <Check size={15} /> Accès actif
-                          </p>
-                        ) : null}
-                      </button>
-                    )
-                  })}
-                </div>
-              )}
+              {!modules.some((m) => me?.access[m.key]) && !(me && me.user.soldeHeures > 0) ? (
+                <Card>
+                  <section className="subscription-status-card">
+                    <IconBadge icon={<Lock size={28} aria-hidden="true" />} tone="orange" />
+                    <p className="subscription-status-copy">
+                      Sélectionnez au moins une offre ci-dessus pour débloquer vos parcours.
+                    </p>
+                  </section>
+                </Card>
+              ) : null}
 
-              <button
-                type="button"
-                className="btn-primary"
-                disabled={cartItems.length === 0}
-                onClick={() => setCheckoutOpen(true)}
-                style={{ marginTop: 16 }}
-              >
-                Payer {formatPrice(cartTotal)}
-              </button>
-            </section>
-            </Reveal>
-
-            <section className="auth-card learner-card subscription-status-card">
-              <p className="learner-kicker">Vous avez un code promo ?</p>
-              <div className="promo-code-field">
-                <input
-                  type="text"
-                  value={promoCode}
-                  onChange={(event) => setPromoCode(event.target.value.toUpperCase())}
-                  placeholder="CODE PROMO"
-                  disabled={promoBusy}
-                />
-                <button
-                  type="button"
-                  className="btn-outline"
-                  disabled={promoBusy || !promoCode.trim()}
-                  onClick={() => void handleRedeemPromo()}
-                >
-                  {promoBusy ? 'Vérification…' : 'Valider'}
-                </button>
-              </div>
-              {promoError ? <p className="form-error">{promoError}</p> : null}
-              {promoSuccess ? <p className="form-success">{promoSuccess}</p> : null}
-            </section>
-
-            {!modules.some((m) => me?.access[m.key]) && !(me && me.user.soldeHeures > 0) ? (
-              <section className="auth-card learner-card subscription-status-card">
-                <Lock size={28} className="subscription-lock-icon" aria-hidden="true" />
-                <p className="subscription-status-copy">
-                  Sélectionnez au moins une offre ci-dessus pour débloquer vos parcours.
-                </p>
-              </section>
-            ) : null}
-
-            <MobileMoneyCheckout
-              open={checkoutOpen}
-              items={cartItems}
-              modules={modules}
-              defaultPhone={user.phone}
-              onClose={() => setCheckoutOpen(false)}
-              onSuccess={(access) => {
-                setMe(access)
-                setSelected({})
-                setCheckoutOpen(false)
-              }}
-            />
-          </>
-        )}
+              <MobileMoneyCheckout
+                open={checkoutOpen}
+                items={cartItems}
+                modules={modules}
+                defaultPhone={user.phone}
+                onClose={() => setCheckoutOpen(false)}
+                onSuccess={(access) => {
+                  setMe(access)
+                  setSelected({})
+                  setCheckoutOpen(false)
+                }}
+              />
+            </>
+          )}
+        </div>
       </div>
-    </div>
+    </AppShell>
   )
 }

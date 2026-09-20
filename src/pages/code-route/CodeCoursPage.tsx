@@ -9,6 +9,8 @@ import {
 } from '../../api/content'
 import { useAuth } from '../../hooks/useAuth'
 import { PageNavbar } from '../../components/PageNavbar'
+import { AppShell, userInitialsOf } from '../../components/layout/AppShell'
+import { Badge, Button, Card, IconBadge } from '../../components/ui'
 import { formatCourseHeading } from '../../utils/chapterLabel'
 import '../../styles/auth.css'
 import '../../styles/learner.css'
@@ -63,6 +65,12 @@ export function CodeCoursPage() {
   if (!user) return null
 
   return (
+    <AppShell
+      activeTab="code"
+      userInitials={userInitialsOf(user?.firstName, user?.lastName)}
+      onOpenNotifications={() => navigate('/notifications')}
+      onOpenProfile={() => navigate('/profil')}
+    >
     <div className="auth-page">
       <div className="auth-container learner-container">
         <PageNavbar
@@ -88,10 +96,10 @@ export function CodeCoursPage() {
           {error ? <p className="form-error">{error}</p> : null}
           {lockHint ? <p className="form-error">{lockHint}</p> : null}
           {!loading && !error && courses.length === 0 ? (
-            <div className="learner-empty">
+            <Card className="learner-empty">
               <h2>Aucun cours</h2>
               <p className="subtitle">Aucun cours publié pour le moment.</p>
-            </div>
+            </Card>
           ) : null}
           <div className="learner-list">
             {courses.map((course: LearnerCourse, index) => {
@@ -99,57 +107,81 @@ export function CodeCoursPage() {
               const completed = completedIds.has(String(course.id))
               const content = (
                 <>
-                  <span className={`learner-item-icon${unlocked ? '' : ' is-locked'}`}>
-                    {!unlocked ? <Lock size={20} /> : completed ? <Check size={20} /> : index + 1}
-                  </span>
+                  <IconBadge
+                    icon={
+                      !unlocked ? (
+                        <Lock size={20} />
+                      ) : completed ? (
+                        <Check size={20} />
+                      ) : (
+                        <span>{index + 1}</span>
+                      )
+                    }
+                    tone={!unlocked ? 'orange' : 'green'}
+                  />
                   <span className="learner-item-body">
                     <strong>{formatCourseHeading(index, course.title)}</strong>
-                    <small>
+                    <Badge tone={completed ? 'green' : !unlocked ? 'orange' : 'green'}>
                       {completed
                         ? 'Terminé'
                         : !unlocked
                           ? 'Verrouillé — terminez le cours précédent'
                           : 'Appuyez pour ouvrir'}
-                    </small>
+                    </Badge>
                   </span>
-                  {unlocked ? <ChevronRight size={18} /> : <Lock size={16} />}
+                  {unlocked ? (
+                    <Button
+                      variant="icon"
+                      tone="green"
+                      aria-label={`Ouvrir ${course.title}`}
+                      tabIndex={-1}
+                      style={{ pointerEvents: 'none' }}
+                    >
+                      <ChevronRight size={18} />
+                    </Button>
+                  ) : (
+                    <Lock size={16} />
+                  )}
                 </>
               )
 
               if (!unlocked) {
                 return (
-                  <button
-                    key={course.id}
-                    type="button"
-                    className="learner-item is-disabled learner-anim-item"
-                    style={{ animationDelay: `${0.22 + index * 0.08}s` }}
-                    onClick={() =>
-                      setLockHint(
-                        'Ce cours est verrouillé. Validez le cours précédent (case « J’ai terminé ce cours ») pour le débloquer.',
-                      )
-                    }
-                  >
-                    {content}
-                  </button>
+                  <Card key={course.id} className="learner-anim-item">
+                    <button
+                      type="button"
+                      className="learner-item is-disabled learner-anim-item"
+                      style={{ animationDelay: `${0.22 + index * 0.08}s` }}
+                      onClick={() =>
+                        setLockHint(
+                          'Ce cours est verrouillé. Validez le cours précédent (case « J’ai terminé ce cours ») pour le débloquer.',
+                        )
+                      }
+                    >
+                      {content}
+                    </button>
+                  </Card>
                 )
               }
 
               return (
-                <Link
-                  key={course.id}
-                  to={`/code-de-la-route/cours/${course.id}`}
-                  state={{ course, courses }}
-                  className={`learner-item${completed ? ' is-done' : ''} learner-anim-item`}
-                  style={{ animationDelay: `${0.22 + index * 0.08}s` }}
-                  onClick={() => setLockHint(null)}
-                >
-                  {content}
-                </Link>
+                <Card key={course.id} className="learner-anim-item">
+                  <Link
+                    to={`/code-de-la-route/cours/${course.id}`}
+                    state={{ course, courses }}
+                    className={`learner-item${completed ? ' is-done' : ''} learner-anim-item`}
+                    style={{ animationDelay: `${0.22 + index * 0.08}s` }}
+                    onClick={() => setLockHint(null)}
+                  >
+                    {content}
+                  </Link>
+                </Card>
               )
             })}
           </div>
         </div>
       </div>
     </div>
+    </AppShell>
   )
 }

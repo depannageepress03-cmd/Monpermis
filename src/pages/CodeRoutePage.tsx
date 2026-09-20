@@ -30,8 +30,18 @@ import { PageLoader } from '../components/PageLoader'
 import { Reveal } from '../components/Reveal'
 import { AnimatedCounter } from '../components/AnimatedCounter'
 import { useAuth } from '../hooks/useAuth'
+import { AppShell, userInitialsOf, type AppTab } from '../components/layout/AppShell'
+import { Button, Card, IconBadge, ProgressBar, SectionTitle, StatCard } from '../components/ui'
 import '../styles/auth.css'
 import '../styles/learner.css'
+
+const TAB_ROUTES: Record<AppTab, string> = {
+  accueil: '/accueil',
+  code: '/code-de-la-route',
+  conduite: '/conduite',
+  progres: '/code-de-la-route/mes-notes',
+  profil: '/profil',
+}
 
 const categoriesBase = [
   {
@@ -143,6 +153,13 @@ export function CodeRoutePage() {
   const chapterName = journey?.code.currentStop?.chapterName || journey?.code.currentStop?.label
 
   return (
+    <AppShell
+      activeTab="code"
+      userInitials={userInitialsOf(user?.firstName, user?.lastName)}
+      onNavigate={(tab) => navigate(TAB_ROUTES[tab])}
+      onOpenNotifications={() => navigate('/notifications')}
+      onOpenProfile={() => navigate('/profil')}
+    >
     <div className="auth-page code-route-page-root">
       <div className="auth-container auth-container-wide code-route-page">
         <PageNavbar
@@ -152,13 +169,13 @@ export function CodeRoutePage() {
         />
 
         {accessLoading ? (
-          <div className="auth-card learner-card learner-empty">
+          <Card className="learner-empty">
             <p>Vérification de votre accès…</p>
-          </div>
+          </Card>
         ) : !accessMe?.access.code ? (
-          <div className="code-unlock">
+          <Card className="code-unlock">
             <div className="code-unlock-hero">
-              <h2>Débloque tout le contenu</h2>
+              <SectionTitle>Débloque tout le contenu</SectionTitle>
               <ul>
                 <li>
                   <Check size={16} /> Révision complète
@@ -172,9 +189,9 @@ export function CodeRoutePage() {
               </ul>
             </div>
             <div className="code-unlock-lock">
-              <Lock size={32} />
+              <IconBadge icon={<Lock size={32} />} tone="green" />
             </div>
-            <h3>Souscrire au Code</h3>
+            <SectionTitle>Souscrire au Code</SectionTitle>
             <div className="code-unlock-benefits">
               <p>
                 <BookOpen size={16} /> Tous les chapitres du Code de la route
@@ -187,17 +204,16 @@ export function CodeRoutePage() {
               </p>
             </div>
             <div className="code-unlock-price">
-              <strong>{formatPrice(codePrice)} / mois</strong>
+              <StatCard icon={<Trophy size={14} />} label="Abonnement Code" value={formatPrice(codePrice)} />
               <span>
                 <ShieldCheck size={14} /> Paiement sécurisé
               </span>
             </div>
             <p className="code-unlock-mm">Paiement 100% sécurisé via Mobile Money</p>
-            <button type="button" className="code-unlock-cta" onClick={() => setCheckoutOpen(true)}>
-              <Smartphone size={18} />
+            <Button variant="cta" tone="green" icon={<Smartphone size={18} />} onClick={() => setCheckoutOpen(true)}>
               Payer {formatPrice(codePrice)}
               <ChevronRight size={18} />
-            </button>
+            </Button>
             <MobileMoneyCheckout
               open={checkoutOpen}
               items={[{ module: 'code', quantity: 1 }]}
@@ -209,46 +225,48 @@ export function CodeRoutePage() {
                 setCheckoutOpen(false)
               }}
             />
-          </div>
+          </Card>
         ) : (
           <>
             <Reveal delay={60} eager>
-            <div className="code-route-progress" aria-hidden="true">
-              <span style={{ flex: Math.max(done, 0.15) }} />
-              <span />
-              <span />
-            </div>
-            <p className="code-route-progress-caption">
-              {total > 0 ? (
-                <>
-                  <AnimatedCounter value={done} />/{total} chapitres
-                  {chapterName ? ` · ${chapterName}` : ''}
-                </>
-              ) : (
-                'Ton parcours Code'
-              )}
-            </p>
+            <Card>
+              <StatCard
+                icon={<BookOpen size={14} />}
+                label={total > 0 ? 'Chapitres terminés' : 'Ton parcours Code'}
+                value={total > 0 ? `${done}/${total}` : '—'}
+              />
+              <ProgressBar percent={total > 0 ? Math.round((done / total) * 100) : 0} />
+              <p className="code-route-progress-caption">
+                {total > 0 ? (
+                  <>
+                    <AnimatedCounter value={done} />/{total} chapitres
+                    {chapterName ? ` · ${chapterName}` : ''}
+                  </>
+                ) : (
+                  'Ton parcours Code'
+                )}
+              </p>
+            </Card>
             </Reveal>
             <div className="code-route-banner-wrap">
               <CodeRouteBanner />
             </div>
+            <SectionTitle>Choisis une rubrique</SectionTitle>
             <div className="category-grid">
               {categories.map((category, index) => {
                 const Icon = category.Icon
                 return (
+                  <Card key={category.id} className={`${category.className} code-route-anim-card`}>
                   <button
-                    key={category.id}
                     type="button"
-                    className={`category-card category-card--photo ${category.className} code-route-anim-card`}
+                    className="category-card category-card--photo"
                     style={{ animationDelay: `${0.12 + index * 0.07}s` }}
                     onClick={() => navigate(`/code-de-la-route/${category.id}`)}
                   >
                     <img src={category.image} alt="" className="category-card-image" draggable={false} />
                     <span className="category-card-shade" aria-hidden="true" />
                     <span className="category-card-body">
-                      <span className="category-card-icon">
-                        <Icon size={16} />
-                      </span>
+                      <IconBadge icon={<Icon size={16} />} tone="green" />
                       <span className="category-label">{category.label}</span>
                       <span className="category-subtitle">{category.subtitle}</span>
                     </span>
@@ -256,6 +274,7 @@ export function CodeRoutePage() {
                       <ChevronRight size={16} />
                     </span>
                   </button>
+                  </Card>
                 )
               })}
             </div>
@@ -263,5 +282,6 @@ export function CodeRoutePage() {
         )}
       </div>
     </div>
+    </AppShell>
   )
 }

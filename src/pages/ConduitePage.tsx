@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { BookOpen, CalendarPlus } from 'lucide-react'
+import { BookOpen, CalendarPlus, ChevronRight } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import {
   cancelReservation,
@@ -17,9 +17,19 @@ import { PageNavbar } from '../components/PageNavbar'
 import { PageLoader } from '../components/PageLoader'
 import { Reveal } from '../components/Reveal'
 import { useAuth } from '../hooks/useAuth'
+import { AppShell, userInitialsOf, type AppTab } from '../components/layout/AppShell'
+import { Badge, Button, Card, IconBadge, ProgressBar, SectionTitle, StatCard } from '../components/ui'
 import '../styles/auth.css'
 import '../styles/learner.css'
 import '../styles/reservation.css'
+
+const TAB_ROUTES: Record<AppTab, string> = {
+  accueil: '/accueil',
+  code: '/code-de-la-route',
+  conduite: '/conduite',
+  progres: '/code-de-la-route/mes-notes',
+  profil: '/profil',
+}
 
 function statusLabel(item: ReservationItem) {
   if (item.paymentStatus === 'paid' || item.status === 'confirmed') return 'Confirmée'
@@ -145,6 +155,13 @@ export function ConduitePage() {
   if (loading || !user) return <PageLoader />
 
   return (
+    <AppShell
+      activeTab="conduite"
+      userInitials={userInitialsOf(user?.firstName, user?.lastName)}
+      onNavigate={(tab) => navigate(TAB_ROUTES[tab])}
+      onOpenNotifications={() => navigate('/notifications')}
+      onOpenProfile={() => navigate('/profil')}
+    >
     <div className="auth-page">
       <div className="auth-container learner-container">
         <PageNavbar
@@ -155,40 +172,37 @@ export function ConduitePage() {
         />
 
         {accessLoading ? (
-          <div className="auth-card learner-card learner-empty">
+          <Card className="learner-empty">
             <p>Vérification de votre accès…</p>
-          </div>
+          </Card>
         ) : !conduiteUnlocked ? (
-          <div className="auth-card learner-card learner-empty subscription-locked-state">
-            <BookOpen size={32} aria-hidden="true" />
-            <h2>Choisir tes accès conduite</h2>
+          <Card className="subscription-locked-state">
+            <IconBadge icon={<BookOpen size={32} />} tone="orange" />
+            <SectionTitle>Choisir tes accès conduite</SectionTitle>
             <p>
               Les cours vidéo sont gratuits. Les heures avec moniteur restent payantes.
             </p>
             {error ? <p className="form-error">{error}</p> : null}
             <div className="offer-pick-list">
               {!accessMe?.access?.conduite_videos ? (
-                <button
-                  type="button"
-                  className="offer-pick is-selected"
+                <Button
+                  variant="outline"
                   disabled={claimingFree}
                   onClick={() => void activateFreeVideos()}
                 >
-                  <h3>Cours vidéo de conduite</h3>
-                  {claimingFree ? <p>Activation…</p> : null}
-                </button>
+                  Cours vidéo de conduite
+                  {claimingFree ? ' · Activation…' : ''}
+                </Button>
               ) : null}
-              <button
-                type="button"
-                className={`offer-pick${pickHours ? ' is-selected' : ''}`}
+              <Button
+                variant="outline"
+                tone="orange"
+                className={pickHours ? ' is-selected' : ''}
                 onClick={() => setPickHours((v) => !v)}
               >
-                <h3>Heure avec moniteur</h3>
-                <p>
-                  {formatPrice(hoursModule?.price || 5000)} / heure
-                  {hoursQty >= 2 ? ` · total ${formatPrice(hoursPrice)} (−1 000)` : ''}
-                </p>
-              </button>
+                Heure avec moniteur · {formatPrice(hoursModule?.price || 5000)} / heure
+                {hoursQty >= 2 ? ` · total ${formatPrice(hoursPrice)} (−1 000)` : ''}
+              </Button>
             </div>
             {pickHours ? (
               <label className="access-quantity-field">
@@ -202,14 +216,15 @@ export function ConduitePage() {
               </label>
             ) : null}
             {pickHours ? (
-              <button
-                type="button"
-                className="btn-primary"
+              <Button
+                variant="cta"
+                tone="orange"
+                icon={<CalendarPlus size={18} />}
                 disabled={claimingFree}
                 onClick={() => setCheckoutOpen(true)}
               >
                 Payer {formatPrice(cartTotal)}
-              </button>
+              </Button>
             ) : null}
             <MobileMoneyCheckout
               open={checkoutOpen}
@@ -222,7 +237,7 @@ export function ConduitePage() {
                 setCheckoutOpen(false)
               }}
             />
-          </div>
+          </Card>
         ) : (
           <>
         <Reveal delay={80}>
@@ -237,47 +252,56 @@ export function ConduitePage() {
         </Reveal>
 
         <Reveal delay={140}>
-        <div className="auth-card learner-card conduite-card">
+        <Card className="conduite-card">
           {error ? <p className="form-error">{error}</p> : null}
 
           <div className="conduite-top-row learner-anim-item" style={{ animationDelay: '0.12s' }}>
             {progress ? (
-              <div className="progress-card">
-                <strong>
-                  Progression : {progress.heuresEffectuees} / {progress.heuresObjectif} h
-                </strong>
-                <div className="progress-track">
-                  <div className="progress-fill" style={{ width: `${progress.percent}%` }} />
-                </div>
-                <small>Solde heures moniteur : {progress.soldeHeures} h (≠ abonnement Code)</small>
-              </div>
+              <Card className="progress-card">
+                <SectionTitle>Progression conduite</SectionTitle>
+                <StatCard
+                  icon={<CalendarPlus size={14} />}
+                  label="Heures effectuées"
+                  value={`${progress.heuresEffectuees} / ${progress.heuresObjectif} h`}
+                />
+                <ProgressBar percent={progress.percent} />
+                <StatCard
+                  icon={<BookOpen size={14} />}
+                  label="Solde heures moniteur"
+                  value={`${progress.soldeHeures} h`}
+                />
+              </Card>
             ) : null}
 
             <div className="upcoming-block">
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', marginBottom: '0.35rem' }}>
-                <h3 className="section-title" style={{ margin: 0 }}>Mes réservations</h3>
-                <button type="button" className="btn-outline" style={{ padding: '0.35rem 0.7rem', fontSize: '0.85rem' }} onClick={() => navigate('/conduite/mes-reservations')}>
+                <SectionTitle>Mes réservations</SectionTitle>
+                <Button variant="outline" icon={<ChevronRight size={14} />} onClick={() => navigate('/conduite/mes-reservations')}>
                   Voir tout
-                </button>
+                </Button>
               </div>
               {upcoming.length === 0 ? (
                 <EmptyState
                   title="Aucune séance"
                   message="Aucune séance réservée pour le moment."
                   action={
-                    <button
-                      type="button"
-                      className="btn-primary"
+                    <Button
+                      variant="cta"
+                      tone="orange"
+                      icon={<CalendarPlus size={16} />}
                       onClick={() => navigate('/conduite/reservation')}
                     >
                       Réserver
-                    </button>
+                    </Button>
                   }
                 />
               ) : (
                 <ul className="upcoming-list">
-                  {upcoming.map((item) => (
+                  {upcoming.map((item) => {
+                    const confirmed = item.paymentStatus === 'paid' || item.status === 'confirmed'
+                    return (
                     <li key={String(item.id)}>
+                      <Card>
                       <div className="upcoming-item-main">
                         <strong>
                           {item.creneau
@@ -285,56 +309,61 @@ export function ConduitePage() {
                             : 'Séance'}
                         </strong>
                         <span>
-                          {item.moniteur?.fullName || 'Moniteur'} · {statusLabel(item)}
+                          {item.moniteur?.fullName || 'Moniteur'} ·{' '}
+                          <Badge tone={confirmed ? 'green' : 'orange'}>{statusLabel(item)}</Badge>
                         </span>
                       </div>
                       {item.canCancel ? (
-                        <button
-                          type="button"
-                          className="upcoming-cancel-btn"
+                        <Button
+                          variant="outline"
                           onClick={() => openCancel(item)}
                         >
                           Annuler
-                        </button>
+                        </Button>
                       ) : null}
+                      </Card>
                     </li>
-                  ))}
+                    )
+                  })}
                 </ul>
               )}
             </div>
           </div>
 
           <div className="conduite-actions-row learner-anim-item" style={{ animationDelay: '0.18s' }}>
-            <button
-              type="button"
-              className="conduite-action conduite-action-reserve"
-              onClick={() => navigate('/conduite/reservation')}
-            >
-              <span className="conduite-action-icon" aria-hidden="true">
-                <CalendarPlus size={22} />
-              </span>
+            <Card className="conduite-action-reserve">
+              <IconBadge icon={<CalendarPlus size={22} />} tone="orange" />
               <span className="conduite-action-copy">
                 <strong>Réserver</strong>
                 <small>Choisir un créneau avec un moniteur</small>
               </span>
-            </button>
-            <button
-              type="button"
-              className="conduite-action conduite-action-lessons"
-              onClick={() => navigate('/conduite/lecons')}
-            >
-              <span className="conduite-action-icon" aria-hidden="true">
-                <BookOpen size={22} />
-              </span>
+              <Button
+                variant="cta"
+                tone="orange"
+                icon={<CalendarPlus size={16} />}
+                onClick={() => navigate('/conduite/reservation')}
+              >
+                Réserver
+              </Button>
+            </Card>
+            <Card className="conduite-action-lessons">
+              <IconBadge icon={<BookOpen size={22} />} tone="green" />
               <span className="conduite-action-copy">
                 <strong>Leçons</strong>
                 <small>Manœuvres, circulation et examen</small>
               </span>
-            </button>
+              <Button
+                variant="outline"
+                icon={<BookOpen size={16} />}
+                onClick={() => navigate('/conduite/lecons')}
+              >
+                Voir les leçons
+              </Button>
+            </Card>
           </div>
 
           <div className="conduite-copy learner-anim-item" style={{ animationDelay: '0.22s' }}>
-            <h2>Votre parcours de conduite</h2>
+            <SectionTitle>Votre parcours de conduite</SectionTitle>
             <p>
               Bienvenue dans l’espace conduite de Monpermis. Ici, vous suivez vos heures
               pratiques, réservez vos séances avec un moniteur et consultez les leçons pour
@@ -345,7 +374,7 @@ export function ConduitePage() {
               justification. L’administration est informée du motif.
             </p>
           </div>
-        </div>
+        </Card>
         </Reveal>
           </>
         )}
@@ -362,5 +391,6 @@ export function ConduitePage() {
         />
       ) : null}
     </div>
+    </AppShell>
   )
 }

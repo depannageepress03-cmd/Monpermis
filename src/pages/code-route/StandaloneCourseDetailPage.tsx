@@ -13,6 +13,8 @@ import {
 } from '../../api/content'
 import { useAuth } from '../../hooks/useAuth'
 import { PageNavbar } from '../../components/PageNavbar'
+import { AppShell, userInitialsOf } from '../../components/layout/AppShell'
+import { Badge, Button, Card, SectionTitle } from '../../components/ui'
 import { formatCourseHeading } from '../../utils/chapterLabel'
 import { resolveVideoEmbed } from '../../utils/mediaEmbed'
 import { resolveMediaUrl } from '../../utils/mediaUrl'
@@ -143,6 +145,12 @@ export function StandaloneCourseDetailPage() {
 
   if (accessBlocked) {
     return (
+      <AppShell
+        activeTab="code"
+        userInitials={userInitialsOf(user?.firstName, user?.lastName)}
+        onOpenNotifications={() => navigate('/notifications')}
+        onOpenProfile={() => navigate('/profil')}
+      >
       <div className="auth-page">
         <div className="auth-container learner-container">
           <PageNavbar
@@ -151,17 +159,31 @@ export function StandaloneCourseDetailPage() {
             onBack={() => navigate('/code-de-la-route/cours')}
           />
           <div className="auth-card learner-card">
-            <div className="learner-empty">
+            <Card className="learner-empty">
               <h2>Cours verrouillé</h2>
               <p className="subtitle">Terminez le cours précédent pour accéder à celui-ci.</p>
-            </div>
+              <Button
+                variant="outline"
+                tone="orange"
+                onClick={() => navigate('/code-de-la-route/cours')}
+              >
+                Retour aux cours
+              </Button>
+            </Card>
           </div>
         </div>
       </div>
+      </AppShell>
     )
   }
 
   return (
+    <AppShell
+      activeTab="code"
+      userInitials={userInitialsOf(user?.firstName, user?.lastName)}
+      onOpenNotifications={() => navigate('/notifications')}
+      onOpenProfile={() => navigate('/profil')}
+    >
     <div className="auth-page">
       <div className="auth-container learner-container">
         <PageNavbar
@@ -187,8 +209,8 @@ export function StandaloneCourseDetailPage() {
               moduleTitle.toLowerCase() !== (course.title || '').trim().toLowerCase()
 
             return (
-              <article key={module.id} className="learner-module">
-                {showModuleTitle ? <h3>{moduleTitle}</h3> : null}
+              <Card key={module.id} className="learner-module">
+                {showModuleTitle ? <SectionTitle>{moduleTitle}</SectionTitle> : null}
                 {video ? (
                   <div className="learner-media">
                     {video.kind === 'iframe' ? (
@@ -223,7 +245,7 @@ export function StandaloneCourseDetailPage() {
                     dangerouslySetInnerHTML={{ __html: module.text }}
                   />
                 ) : null}
-              </article>
+              </Card>
             )
           })}
 
@@ -233,13 +255,13 @@ export function StandaloneCourseDetailPage() {
 
           {course ? (
             <form onSubmit={handleComplete} className="learner-actions">
-              <p className="subtitle">
+              <Badge tone={isCompleted ? 'green' : secondsRemaining > 0 ? 'orange' : 'green'}>
                 {isCompleted
                   ? 'Cours validé. Le cours suivant est débloqué.'
                   : secondsRemaining > 0
                     ? `Restez au moins 5 minutes sur ce cours. Encore ${formatSeconds(secondsRemaining)}.`
                     : 'Vous pouvez maintenant valider ce cours.'}
-              </p>
+              </Badge>
               <label
                 className={`learner-check${isCompleted ? ' is-done' : ''}${
                   !canValidate && !isCompleted ? ' is-locked' : ''
@@ -264,9 +286,10 @@ export function StandaloneCourseDetailPage() {
               </label>
 
               {isCompleted && nextCourse ? (
-                <button
-                  type="button"
-                  className="btn-primary"
+                <Button
+                  variant="cta"
+                  tone="green"
+                  icon={<ChevronRight size={18} />}
                   onClick={() =>
                     navigate(`/code-de-la-route/cours/${nextCourse.id}`, {
                       state: { course: nextCourse, courses },
@@ -275,23 +298,23 @@ export function StandaloneCourseDetailPage() {
                   }
                 >
                   Cours suivant
-                  <ChevronRight size={18} />
-                </button>
+                </Button>
               ) : null}
 
               {isCompleted && !nextCourse ? (
-                <button
-                  type="button"
-                  className="btn-outline"
+                <Button
+                  variant="outline"
+                  tone="green"
                   onClick={() => navigate('/code-de-la-route/cours')}
                 >
                   Retour aux cours
-                </button>
+                </Button>
               ) : null}
             </form>
           ) : null}
         </div>
       </div>
     </div>
+    </AppShell>
   )
 }

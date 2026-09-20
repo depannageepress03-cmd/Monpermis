@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useState } from 'react'
-import { FileText } from 'lucide-react'
+import { Award, CheckCircle2, ClipboardList, FileText } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { ContentError, fetchLearnerJourney, type LearnerJourney } from '../../api/content'
 import { useAuth } from '../../hooks/useAuth'
 import { useFocusRefresh } from '../../hooks/useFocusRefresh'
 import { PageNavbar } from '../../components/PageNavbar'
 import { Reveal } from '../../components/Reveal'
+import { AppShell, userInitialsOf } from '../../components/layout/AppShell'
+import { Badge, Card, IconBadge, ProgressBar, SectionTitle, StatCard } from '../../components/ui'
 import '../../styles/auth.css'
 import '../../styles/learner.css'
 
@@ -59,6 +61,12 @@ export function MesNotesPage() {
       : 0
 
   return (
+    <AppShell
+      activeTab="progres"
+      userInitials={userInitialsOf(user?.firstName, user?.lastName)}
+      onOpenNotifications={() => navigate('/notifications')}
+      onOpenProfile={() => navigate('/profil')}
+    >
     <div className="auth-page">
       <div className="auth-container learner-container">
         <PageNavbar
@@ -81,27 +89,16 @@ export function MesNotesPage() {
             <>
               <Reveal delay={60}>
               <div className="mesnotes-stats">
-                <div className="mesnotes-stat">
-                  <p className="mesnotes-stat-value">{averageLabel}</p>
-                  <p className="mesnotes-stat-label">Moyenne / 20</p>
-                </div>
-                <div className="mesnotes-stat">
-                  <p className="mesnotes-stat-value">{practice?.passedCount ?? 0}</p>
-                  <p className="mesnotes-stat-label">Réussis</p>
-                </div>
-                <div className="mesnotes-stat">
-                  <p className="mesnotes-stat-value">{practice?.completedCount ?? 0}</p>
-                  <p className="mesnotes-stat-label">Passés</p>
-                </div>
+                <StatCard icon={<Award size={14} />} label="Moyenne / 20" value={averageLabel} />
+                <StatCard icon={<CheckCircle2 size={14} />} label="Réussis" value={String(practice?.passedCount ?? 0)} />
+                <StatCard icon={<ClipboardList size={14} />} label="Passés" value={String(practice?.completedCount ?? 0)} />
               </div>
               </Reveal>
 
               <Reveal delay={120}>
-              <div className="mesnotes-track mesnotes-track--code">
+              <Card className="mesnotes-track mesnotes-track--code">
                 <div className="mesnotes-track-top">
-                  <span className="mesnotes-track-icon">
-                    <FileText size={18} aria-hidden />
-                  </span>
+                  <IconBadge icon={<FileText size={18} aria-hidden />} tone="green" />
                   <div>
                     <p className="mesnotes-track-title">Code de la route</p>
                     <p className="mesnotes-track-stop">
@@ -109,21 +106,17 @@ export function MesNotesPage() {
                     </p>
                   </div>
                 </div>
-                <div className="mesnotes-progress">
-                  <span style={{ width: `${Math.round(codeRatio * 100)}%` }} />
-                </div>
+                <ProgressBar percent={Math.round(codeRatio * 100)} />
                 <p className="mesnotes-progress-label">
                   {journey.code.chaptersDone}/{journey.code.chaptersTotal} chapitres validés
                 </p>
-              </div>
+              </Card>
               </Reveal>
 
               <Reveal delay={160}>
-              <div className="mesnotes-track mesnotes-track--drive">
+              <Card className="mesnotes-track mesnotes-track--drive">
                 <div className="mesnotes-track-top">
-                  <span className="mesnotes-track-icon">
-                    <FileText size={18} aria-hidden />
-                  </span>
+                  <IconBadge icon={<FileText size={18} aria-hidden />} tone="orange" />
                   <div>
                     <p className="mesnotes-track-title">Conduite / pratique</p>
                     <p className="mesnotes-track-stop">
@@ -131,18 +124,16 @@ export function MesNotesPage() {
                     </p>
                   </div>
                 </div>
-                <div className="mesnotes-progress">
-                  <span style={{ width: `${Math.round(conduiteRatio * 100)}%` }} />
-                </div>
+                <ProgressBar percent={Math.round(conduiteRatio * 100)} />
                 <p className="mesnotes-progress-label">
                   {journey.conduite.chaptersDone}/{journey.conduite.chaptersTotal} chapitres
                   terminés
                 </p>
-              </div>
+              </Card>
               </Reveal>
 
               <Reveal delay={200}>
-              <h2 className="mesnotes-section-title">Examens test · sur 20</h2>
+              <SectionTitle>Examens test · sur 20</SectionTitle>
               </Reveal>
               {practice ? (
                 <p className="subtitle" style={{ textAlign: 'center' }}>
@@ -151,58 +142,48 @@ export function MesNotesPage() {
                 </p>
               ) : null}
               {examScores.length === 0 ? (
-                <div className="mesnotes-empty">
+                <Card className="mesnotes-empty">
                   <strong>Aucune note pour le moment</strong>
                   <p>Passez un examen blanc pour voir votre note ici en direct.</p>
-                </div>
+                </Card>
               ) : (
                 examScores.map((score, scoreIndex) => (
                   <Reveal key={score.id} delay={220 + Math.min(scoreIndex, 6) * 50}>
-                  <div className="mesnotes-score">
-                    <span
-                      className={`mesnotes-badge${score.passed ? ' mesnotes-badge--pass' : ' mesnotes-badge--fail'}`}
-                    >
-                      {score.scoreLabel}
-                    </span>
+                  <Card className="mesnotes-score">
+                    <Badge tone={score.passed ? 'green' : 'orange'}>{score.scoreLabel}</Badge>
                     <span className="mesnotes-score-body">
                       <strong>Examen {score.examNumber}</strong>
                       <small>Seuil {score.passScore}/20</small>
                     </span>
-                    <span
-                      className={`mesnotes-pill${score.passed ? ' mesnotes-pill--pass' : ' mesnotes-pill--fail'}`}
-                    >
+                    <Badge tone={score.passed ? 'green' : 'orange'}>
                       {score.passed ? 'Réussi' : 'À revoir'}
-                    </span>
-                  </div>
+                    </Badge>
+                  </Card>
                   </Reveal>
                 ))
               )}
 
-              <h2 className="mesnotes-section-title">Sujets test · chapitres</h2>
+              <SectionTitle>Sujets test · chapitres</SectionTitle>
               {journey.testScores.length === 0 ? (
-                <div className="mesnotes-empty">
+                <Card className="mesnotes-empty">
                   <strong>Aucune note de sujet chapitre</strong>
                   <p>Validez un sujet test pour voir votre score ici.</p>
-                </div>
+                </Card>
               ) : (
                 journey.testScores.map((score, testIndex) => {
                   const ratio = score.total > 0 ? score.correct / score.total : 0
                   const good = ratio >= 0.5
                   return (
                     <Reveal key={score.chapterId} delay={220 + Math.min(testIndex, 6) * 50}>
-                    <div className="mesnotes-score">
-                      <span
-                        className={`mesnotes-badge${good ? ' mesnotes-badge--pass' : ' mesnotes-badge--fail'}`}
-                      >
-                        {score.scoreLabel}
-                      </span>
+                    <Card className="mesnotes-score">
+                      <Badge tone={good ? 'green' : 'orange'}>{score.scoreLabel}</Badge>
                       <span className="mesnotes-score-body">
                         <strong>{score.chapterName}</strong>
                         <small>
                           {score.correct}/{score.total} bonnes réponses
                         </small>
                       </span>
-                    </div>
+                    </Card>
                     </Reveal>
                   )
                 })
@@ -212,5 +193,6 @@ export function MesNotesPage() {
         </div>
       </div>
     </div>
+    </AppShell>
   )
 }

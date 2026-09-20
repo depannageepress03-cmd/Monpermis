@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { BookOpen, Check, ClipboardList, HelpCircle, Layers } from 'lucide-react'
+import { BookOpen, Check, ChevronRight, ClipboardList, HelpCircle, Layers } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   ContentError,
@@ -12,6 +12,8 @@ import {
 import { useAuth } from '../../hooks/useAuth'
 import { PageNavbar } from '../../components/PageNavbar'
 import { Reveal } from '../../components/Reveal'
+import { AppShell, userInitialsOf } from '../../components/layout/AppShell'
+import { Badge, Button, Card, IconBadge, SectionTitle } from '../../components/ui'
 import '../../styles/auth.css'
 import '../../styles/learner.css'
 
@@ -68,11 +70,20 @@ export function LearnerChapterListPage({
 
   if (authLoading || !user) return null
 
+  const shellTab = track === 'conduite' ? 'conduite' : 'code'
+  const shellTone = track === 'conduite' ? 'orange' : 'green'
+
   const showQuizActions = Boolean(questionsPath || testSubjectPath)
   const coursesOnly = Boolean(coursesPath) && !showQuizActions
   const revisionQuiz = track === 'revision' && showQuizActions
 
   return (
+    <AppShell
+      activeTab={shellTab}
+      userInitials={userInitialsOf(user?.firstName, user?.lastName)}
+      onOpenNotifications={() => navigate('/notifications')}
+      onOpenProfile={() => navigate('/profil')}
+    >
     <div className="auth-page">
       <div className="auth-container learner-container">
         <PageNavbar
@@ -86,7 +97,7 @@ export function LearnerChapterListPage({
         />
 
         <header className="auth-header learner-header">
-          <p className="learner-kicker">{kicker}</p>
+          <SectionTitle>{kicker}</SectionTitle>
           <p>
             {revisionQuiz
               ? 'Entraînez-vous aux questions, puis validez chaque chapitre avec un sujet test.'
@@ -103,14 +114,14 @@ export function LearnerChapterListPage({
           {error ? (
             <div className="learner-empty">
               <p className="form-error">{error}</p>
-              <button type="button" className="btn-primary" onClick={() => void load()}>
+              <Button variant="cta" tone={shellTone} onClick={() => void load()}>
                 Réessayer
-              </button>
+              </Button>
             </div>
           ) : null}
           {!loading && !error && chapters.length === 0 ? (
             <div className="learner-empty">
-              <h2>Aucun chapitre publié</h2>
+              <SectionTitle>Aucun chapitre publié</SectionTitle>
               <p className="subtitle">Les chapitres publiés par l’administration apparaîtront ici.</p>
             </div>
           ) : null}
@@ -125,28 +136,27 @@ export function LearnerChapterListPage({
                   const testTo = testSubjectPath?.(chapter.id)
                   return (
                     <Reveal key={chapter.id} delay={Math.min(index, 8) * 45}>
-                    <div className="learner-chapter-card learner-chapter-card--revision">
+                    <Card className="learner-chapter-card learner-chapter-card--revision">
                       {questionsTo ? (
                         <Link
                           to={questionsTo}
                           state={{ chapterName: numberedName }}
                           className="learner-chapter-card-top learner-chapter-card-top--link"
                         >
-                          <span className="learner-item-icon">{index + 1}</span>
+                          <IconBadge icon={<span>{index + 1}</span>} tone="green" />
                           <span className="learner-item-body">
                             <strong>{chapter.name}</strong>
                             {testDone ? (
-                              <small className="learner-status-pill">
-                                <Check size={12} aria-hidden />
+                              <Badge tone="green" icon={<Check size={12} aria-hidden />}>
                                 Test validé
-                              </small>
+                              </Badge>
                             ) : (
                               <small>Questions + sujet test</small>
                             )}
                           </span>
-                          <span className="learner-chapter-chevron" aria-hidden>
-                            ›
-                          </span>
+                          <Button variant="icon" tone="green" aria-label="Ouvrir le chapitre" tabIndex={-1}>
+                            <ChevronRight size={16} aria-hidden />
+                          </Button>
                         </Link>
                       ) : null}
                       <div className="learner-chapter-actions learner-chapter-actions--revision">
@@ -171,7 +181,7 @@ export function LearnerChapterListPage({
                           </Link>
                         ) : null}
                       </div>
-                    </div>
+                    </Card>
                     </Reveal>
                   )
                 }
@@ -179,14 +189,14 @@ export function LearnerChapterListPage({
                 if (showQuizActions) {
                   return (
                     <Reveal key={chapter.id} delay={Math.min(index, 8) * 45}>
-                    <div className="learner-chapter-card">
+                    <Card className="learner-chapter-card">
                       <div className="learner-chapter-card-top">
-                        <span className="learner-item-icon">{index + 1}</span>
+                        <IconBadge icon={<span>{index + 1}</span>} tone={shellTone} />
                         <span className="learner-item-body">
                           <strong>{numberedName}</strong>
-                          <small>
+                          <Badge tone={testDone ? 'green' : 'orange'}>
                             {testDone ? 'Chapitre validé' : 'Questions + sujet test'}
-                          </small>
+                          </Badge>
                         </span>
                       </div>
                       <div className="learner-chapter-actions">
@@ -196,9 +206,7 @@ export function LearnerChapterListPage({
                             state={{ chapter: { ...chapter, name: numberedName } }}
                             className="learner-chapter-action"
                           >
-                            <span className="learner-chapter-action-icon is-courses">
-                              <BookOpen size={15} />
-                            </span>
+                            <IconBadge icon={<BookOpen size={15} />} tone={shellTone} />
                             <span>Cours</span>
                           </Link>
                         ) : null}
@@ -208,9 +216,7 @@ export function LearnerChapterListPage({
                             state={{ chapterName: numberedName }}
                             className="learner-chapter-action"
                           >
-                            <span className="learner-chapter-action-icon is-questions">
-                              <HelpCircle size={15} />
-                            </span>
+                            <IconBadge icon={<HelpCircle size={15} />} tone={shellTone} />
                             <span>Questions</span>
                           </Link>
                         ) : null}
@@ -220,14 +226,12 @@ export function LearnerChapterListPage({
                             state={{ chapterName: numberedName }}
                             className="learner-chapter-action"
                           >
-                            <span className="learner-chapter-action-icon is-test">
-                              <ClipboardList size={15} />
-                            </span>
+                            <IconBadge icon={<ClipboardList size={15} />} tone={shellTone} />
                             <span>Sujet test</span>
                           </Link>
                         ) : null}
                       </div>
-                    </div>
+                    </Card>
                     </Reveal>
                   )
                 }
@@ -236,17 +240,22 @@ export function LearnerChapterListPage({
 
                 return (
                   <Reveal key={chapter.id} delay={Math.min(index, 8) * 45}>
+                  <Card className="learner-item-card">
                   <Link
                     to={coursesPath(chapter.id)}
                     state={{ chapter: { ...chapter, name: numberedName } }}
                     className="learner-item"
                   >
-                    <span className="learner-item-icon">{index + 1}</span>
+                    <IconBadge icon={<span>{index + 1}</span>} tone={shellTone} />
                     <span className="learner-item-body">
                       <strong>{numberedName}</strong>
-                      <small>{chapter.courses.length} cours</small>
+                      <Badge tone={shellTone}>{chapter.courses.length} cours</Badge>
                     </span>
+                    <Button variant="icon" tone={shellTone} aria-label="Ouvrir le chapitre" tabIndex={-1}>
+                      <ChevronRight size={16} aria-hidden />
+                    </Button>
                   </Link>
+                  </Card>
                   </Reveal>
                 )
               })}
@@ -255,5 +264,6 @@ export function LearnerChapterListPage({
         </div>
       </div>
     </div>
+    </AppShell>
   )
 }
