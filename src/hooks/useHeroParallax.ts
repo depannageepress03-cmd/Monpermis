@@ -3,10 +3,12 @@ import { useEffect, type RefObject } from 'react'
 /**
  * Léger parallaxe pointeur sur un média hero (desktop).
  * Désactivé si prefers-reduced-motion ou pointeur grossier.
+ * Le média doit avoir une hauteur définie (min-height/height) pour un effet visible.
  */
 export function useHeroParallax(
   mediaRef: RefObject<HTMLElement | null>,
   enabled = true,
+  strength = 1,
 ) {
   useEffect(() => {
     if (!enabled) return
@@ -27,8 +29,8 @@ export function useHeroParallax(
     let currentY = 0
 
     const tick = () => {
-      currentX += (targetX - currentX) * 0.08
-      currentY += (targetY - currentY) * 0.08
+      currentX += (targetX - currentX) * 0.08 * strength
+      currentY += (targetY - currentY) * 0.08 * strength
       media.style.setProperty('--parallax-x', `${currentX.toFixed(2)}px`)
       media.style.setProperty('--parallax-y', `${currentY.toFixed(2)}px`)
       raf = requestAnimationFrame(tick)
@@ -38,8 +40,8 @@ export function useHeroParallax(
       const rect = parent.getBoundingClientRect()
       const nx = (e.clientX - rect.left) / rect.width - 0.5
       const ny = (e.clientY - rect.top) / rect.height - 0.5
-      targetX = nx * -18
-      targetY = ny * -12
+      targetX = nx * -12 * strength
+      targetY = ny * -8 * strength
     }
 
     const onLeave = () => {
@@ -58,5 +60,5 @@ export function useHeroParallax(
       media.style.removeProperty('--parallax-x')
       media.style.removeProperty('--parallax-y')
     }
-  }, [mediaRef, enabled])
+  }, [mediaRef, enabled, strength])
 }

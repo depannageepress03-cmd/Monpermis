@@ -114,16 +114,16 @@ export const brand = {
  * Conservée sous le nom `dark` pour compatibilité avec les imports existants.
  */
 export const dark = {
-  bg: '#FFFFFF',
-  surface: '#F8FAFC',
-  surfaceRaised: '#EEF1F5',
-  border: 'rgba(0,16,48,0.10)',
+  bg: '#F6F8FC',
+  surface: 'rgba(255,255,255,0.92)',
+  surfaceRaised: '#EEF2F7',
+  border: 'rgba(0,16,48,0.08)',
   textPrimary: '#001030',
   textMuted: '#3d5a73',
   green: '#00B050',
-  greenSoft: 'rgba(0,176,80,0.12)',
+  greenSoft: 'rgba(0,176,80,0.10)',
   coral: '#E85D3B',
-  coralSoft: 'rgba(232,93,59,0.12)',
+  coralSoft: 'rgba(232,93,59,0.10)',
 }
 
 export const radii = {
@@ -140,29 +140,36 @@ export const shadows = {
     shadowColor: '#001030',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
-    shadowRadius: 8,
+    shadowRadius: 10,
     elevation: 2,
   },
   md: {
     shadowColor: '#001030',
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.08,
-    shadowRadius: 16,
+    shadowRadius: 18,
     elevation: 4,
   },
   lg: {
     shadowColor: '#001030',
-    shadowOffset: { width: 0, height: 8 },
+    shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.10,
-    shadowRadius: 24,
+    shadowRadius: 28,
     elevation: 6,
   },
   card: {
     shadowColor: '#001030',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.10,
-    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.09,
+    shadowRadius: 22,
     elevation: 5,
+  },
+  premium: {
+    shadowColor: '#001030',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.10,
+    shadowRadius: 24,
+    elevation: 6,
   },
 }
 
