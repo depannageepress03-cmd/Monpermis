@@ -1,0 +1,19 @@
+name: Rappels réservations WhatsApp
+
+# Déclenche les rappels 2 h avant chaque séance (cron + manuel).
+# Secrets requis : CRON_API_KEY (même valeur que sur le service monpermis-api).
+on:
+  schedule:
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+
+jobs:
+  reminders:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Déclencher les rappels
+        run: |
+          test -n "${{ secrets.CRON_API_KEY }}" || { echo "Secret CRON_API_KEY manquant (repo → Settings → Secrets → Actions)"; exit 1; }
+          code=$(curl -s -m 120 -o /tmp/reminders.json -w '%{http_code}' -X POST https://monpermis-api.onrender.com/api/reservations/reminders/run -H "x-api-key: ${{ secrets.CRON_API_KEY }}")
+          cat /tmp/reminders.json; echo
+          test "$code" = "200" || { echo "HTTP $code — échec des rappels"; exit 1; }

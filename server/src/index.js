@@ -98,6 +98,7 @@ function parseAllowedOrigins() {
     'https://monpermis-admin.onrender.com',
     'https://monpermis-moniteur.onrender.com',
     'https://monpermis-web.onrender.com',
+    'https://monpermis-learner.onrender.com',
     'https://monpermis-api.onrender.com',
     'http://localhost:5175',
   ]

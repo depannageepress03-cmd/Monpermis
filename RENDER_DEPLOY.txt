@@ -6,6 +6,7 @@
 #   API     → server/  + SPA moniteur dans web-dist  → https://monpermis-api.onrender.com
 #   Admin   → administration/                        → https://monpermis-admin.onrender.com
 #   Web     → moniteur/ (miroir optionnel)           → https://monpermis-web.onrender.com
+#   Learner → site apprenant refondu (src/)          → https://monpermis-learner.onrender.com
 #
 # Le local est déjà poussé sur origin/main. Un déploiement Render = rebuild
 # depuis ce commit, pas un upload de fichiers depuis le PC.
@@ -15,16 +16,19 @@
 1. Ouvrir https://dashboard.render.com
 2. New → Blueprint
 3. Connecter le repo `depannageepress03-cmd/Monpermis` (branche `main`)
-4. Render lit `render.yaml` et propose 3 services :
+4. Render lit `render.yaml` et propose 4 services :
    - monpermis-api (Node, plan free)
    - monpermis-admin (static)
    - monpermis-web (static)
+   - monpermis-learner (static)
 5. Remplir UNIQUEMENT les secrets `sync: false` (voir section C).
    Ne pas toucher aux URLs déjà écrites dans le YAML.
 6. Apply. Attendre le build API (souvent 5–10 min, cold start free ensuite ~50 s).
 
-Si API et Admin existent déjà : Apply met à jour la config.
-Si `monpermis-web` est en 404 : le Blueprint le crée.
+Si les services existent déjà : Apply met à jour la config (ajoute
+monpermis-learner + les nouvelles vars). Vérifier ensuite que JWT_SECRET
+fait 32+ caractères (gate de démarrage, server/src/index.js) — si le
+service refuse de démarrer, régénérer un secret long.
 
 ## B. Redéployer le code actuel (déjà sur GitHub)
 
@@ -32,21 +36,28 @@ Dashboard → service → Manual Deploy → Deploy latest commit.
 
 Ou pousser un commit sur `main` (autoDeployTrigger: commit).
 
-Ne PAS builder l’ancien site apprenant (`src/` / `npm run build:learner-web`).
+Le site apprenant se build via `npm run build:learner-web` (service
+monpermis-learner) — ne plus utiliser l'ancienne consigne locale uniquement.
 
 ## C. Secrets API (copier depuis server/.env local, jamais dans Git)
 
 Obligatoires :
   MONGODB_URI
-  JWT_SECRET          (laisser Generate si déjà présent — ne pas régénérer en prod)
+  JWT_SECRET          (laisser Generate si déjà présent — 32+ caractères requis ;
+                       ne régénérer que si trop court, sinon toutes les sessions tombent)
   GOOGLE_CLIENT_ID
   SMTP_HOST SMTP_USER SMTP_PASS SMTP_FROM
   FEDAPAY_PUBLIC_KEY FEDAPAY_SECRET_KEY FEDAPAY_WEBHOOK_SECRET
   CLOUDINARY_CLOUD_NAME CLOUDINARY_API_KEY CLOUDINARY_API_SECRET
+  SUPERADMIN_PHONE    (téléphone du compte superadmin, voir D)
+  CRON_API_KEY        (clé du cron rappels WhatsApp, voir E)
 
 Recommandés :
   GOOGLE_ANDROID_CLIENT_ID
   CLOUDINARY_URL / CLOUDINARY_FOLDER
+  MOBILE_LATEST_VERSION MOBILE_MIN_VERSION MOBILE_APK_URL MOBILE_RELEASE_NOTES
+    (signalement de mise à jour forcée via /api/app/version ; MOBILE_APK_URL =
+     URL de l'APK dans la GitHub Release, ex. https://github.com/.../monpermis-v1.0.70-preview.apk)
 
 Déjà figés par render.yaml :
   NODE_ENV=production
@@ -54,20 +65,20 @@ Déjà figés par render.yaml :
   CLIENT_URL=https://monpermis-api.onrender.com
   ADMIN_CLIENT_URL=https://monpermis-admin.onrender.com
   MONITEUR_CLIENT_URL=https://monpermis-api.onrender.com
-  ALLOWED_ORIGINS=…api…, …admin…, …web…
+  ALLOWED_ORIGINS=…api…, …admin…, …web…, …learner…
   API_PUBLIC_URL=https://monpermis-api.onrender.com
   FEDAPAY_CALLBACK_URL=https://monpermis-api.onrender.com/abonnement
   FEDAPAY_ENVIRONMENT=live
   ALLOW_ADMIN_REGISTRATION=false
   MOBILE_SCHEME=monpermis
 
-Admin + Web static — déjà figé :
+Admin + Web + Learner static — déjà figé :
   VITE_API_URL=https://monpermis-api.onrender.com
 
 ## D. Vérifications
 
   curl -sS https://monpermis-api.onrender.com/api/health
-    → success, db: connected, fedapay: configured
+    → {"success":true,"db":"connected"} (format liveness, sans détails config)
 
   https://monpermis-api.onrender.com
     → titre « Monpermis.bj — Portail moniteur »
@@ -78,21 +89,38 @@ Admin + Web static — déjà figé :
   https://monpermis-web.onrender.com
     → même portail moniteur (si le static site a été créé)
 
+  https://monpermis-learner.onrender.com/accueil
+    → accueil redesignée (header Monpermis.bj + onglets)
+
+  Superadmin : `npm run seed:admin --prefix server` en local contre la prod
+  (MONGODB_URI prod en env) OU créer via SUPERADMIN_PHONE au boot, puis
+  vérifier qu'un compte role=superadmin actif existe — sinon le mode
+  dégradé laisse tout admin accéder aux finances (warn log serveur).
+
 Webhook FedaPay :
   https://monpermis-api.onrender.com/api/webhooks/fedapay
 
 Google OAuth (client Web) — origines JS autorisées :
   https://monpermis-api.onrender.com
   https://monpermis-web.onrender.com
+  https://monpermis-learner.onrender.com
   http://localhost:5175
 
-## E. Ce qui n’est PAS Render
+## E. Cron rappels WhatsApp (2 h avant chaque séance)
 
-- App apprenants = APK (`gh workflow run build-apk.yml -f version=v1.0.67`)
+Workflow `.github/workflows/reservation-reminders.yml` (toutes les 30 min).
+Pré-requis : secret repo `CRON_API_KEY` (Settings → Secrets → Actions),
+même valeur que la var d'env du service API. Déclenchement manuel possible
+via l'onglet Actions → Run workflow.
+
+## F. Ce qui n’est PAS Render
+
+- App apprenants = APK (`gh workflow run build-apk.yml -f version=v1.0.70-preview`)
+  + secrets ANDROID_KEYSTORE_BASE64 / ANDROID_KEYSTORE_PASSWORD (+ ALIAS si définis)
 - MongoDB Atlas, Cloudinary, FedaPay restent des services externes
 
 ## Scripts locaux
 
-- npm run dev:server / dev:moniteur / dev:admin
+- npm run dev:server / dev:moniteur / dev:admin / dev:learner-web
 - npm run build:web / build:moniteur → portail (prod web)
-- npm run build:learner-web → ancien site apprenant (local uniquement)
+- npm run build:learner-web → site apprenant (service monpermis-learner)

@@ -38,7 +38,7 @@ services:
       - key: MONITEUR_CLIENT_URL
         value: https://monpermis-api.onrender.com
       - key: ALLOWED_ORIGINS
-        value: https://monpermis-api.onrender.com,https://monpermis-admin.onrender.com,https://monpermis-web.onrender.com
+        value: https://monpermis-api.onrender.com,https://monpermis-admin.onrender.com,https://monpermis-web.onrender.com,https://monpermis-learner.onrender.com
       - key: API_PUBLIC_URL
         value: https://monpermis-api.onrender.com
       - key: GOOGLE_CLIENT_ID
@@ -73,6 +73,18 @@ services:
         value: https://monpermis-api.onrender.com/abonnement
       - key: ALLOW_ADMIN_REGISTRATION
         value: "false"
+      - key: SUPERADMIN_PHONE
+        sync: false
+      - key: CRON_API_KEY
+        sync: false
+      - key: MOBILE_LATEST_VERSION
+        sync: false
+      - key: MOBILE_MIN_VERSION
+        sync: false
+      - key: MOBILE_APK_URL
+        sync: false
+      - key: MOBILE_RELEASE_NOTES
+        sync: false
       - key: MOBILE_SCHEME
         value: monpermis
       - key: ANTHROPIC_API_KEY
@@ -128,6 +140,34 @@ services:
     buildFilter:
       paths:
         - moniteur/**
+        - render.yaml
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: VITE_API_URL
+        value: https://monpermis-api.onrender.com
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+
+  # Site apprenant (refonte accueil + kit mp) — SPA servie aux apprenants web.
+  - type: web
+    name: monpermis-learner
+    runtime: static
+    rootDir: .
+    branch: main
+    autoDeployTrigger: commit
+    buildCommand: npm install --include=dev && npm run build:learner-web
+    staticPublishPath: dist
+    buildFilter:
+      paths:
+        - src/**
+        - public/**
+        - index.html
+        - vite.config.ts
+        - package.json
+        - package-lock.json
         - render.yaml
     envVars:
       - key: NODE_VERSION
