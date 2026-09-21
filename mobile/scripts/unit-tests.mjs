@@ -80,6 +80,39 @@ ok('sanitizeCmsHtml strips onclick', () => {
   const out = sanitizeCmsHtml('<p onclick="x()">Hi</p>')
   assert.equal(out.includes('onclick'), false)
 })
+ok('sanitizeCmsHtml strips svg onload', () => {
+  const out = sanitizeCmsHtml('<p>Hi</p><svg onload="alert(1)"><circle r="5"/></svg>')
+  assert.equal(out.includes('onload'), false)
+  assert.equal(out.includes('<svg'), false)
+  assert.equal(out.includes('<p>Hi</p>'), true)
+})
+ok('sanitizeCmsHtml strips encoded javascript href', () => {
+  const out = sanitizeCmsHtml('<a href="&#106;avascript:alert(1)">x</a>')
+  assert.equal(out.toLowerCase().includes('javascript'), false)
+})
+ok('sanitizeCmsHtml strips data: href', () => {
+  const out = sanitizeCmsHtml('<a href="data:text/html,<script>alert(1)</script>">x</a>')
+  assert.equal(out.includes('data:text/html'), false)
+})
+ok('sanitizeCmsHtml strips protocol-relative href', () => {
+  const out = sanitizeCmsHtml('<a href="//evil.com/phish">x</a>')
+  assert.equal(out.includes('//evil.com'), false)
+})
+ok('sanitizeCmsHtml strips style attribute', () => {
+  const out = sanitizeCmsHtml('<p style="background:url(javascript:alert(1))">Hi</p>')
+  assert.equal(out.includes('style='), false)
+  assert.equal(out.includes('Hi'), true)
+})
+ok('sanitizeCmsHtml strips form/formaction', () => {
+  const out = sanitizeCmsHtml('<form action="/x"><button formaction="javascript:alert(1)">go</button></form>')
+  assert.equal(out.includes('<form'), false)
+  assert.equal(out.includes('formaction'), false)
+})
+ok('sanitizeCmsHtml keeps legit formatting and https links', () => {
+  const out = sanitizeCmsHtml('<p><strong>Hi</strong> <a href="https://example.com/a">voir</a></p>')
+  assert.equal(out.includes('<strong>Hi</strong>'), true)
+  assert.equal(out.includes('https://example.com/a'), true)
+})
 
 console.log(`\n${passed} tests passed`)
 if (process.exitCode) process.exit(1)

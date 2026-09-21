@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { LearnerTrackEvent, LEARNER_TRACK_EVENTS } from '../models/LearnerTrackEvent.js'
 import { requireUserAuth } from '../middleware/userAuth.js'
+import { trackingLimiter } from '../middleware/rateLimiters.js'
 import { logger } from '../utils/logger.js'
 
 const router = Router()
@@ -10,7 +11,7 @@ const router = Router()
  * POST /api/tracking/events
  * Body : { events: [{ event, sessionId?, context?, payload?, clientTs?, appVersion?, platform? }] }
  */
-router.post('/events', requireUserAuth, async (req, res) => {
+router.post('/events', requireUserAuth, trackingLimiter, async (req, res) => {
   const raw = req.body?.events
   const events = Array.isArray(raw) ? raw.slice(0, 100) : []
   if (events.length === 0) {

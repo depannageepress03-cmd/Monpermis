@@ -102,7 +102,10 @@ async function writeFile(file) {
 
   const kind = resolveKind(file)
   const dest = resolveDir(kind)
-  const ext = path.extname(file.originalname).toLowerCase() || '.jpg'
+  // Extension allowlistée : le magic-bytes a déjà validé le contenu image,
+  // mais l'extension pilote le Content-Type servi — jamais de .html/.svg.
+  const rawExt = path.extname(file.originalname).toLowerCase()
+  const ext = ['.jpg', '.jpeg', '.png', '.webp', '.gif'].includes(rawExt) ? rawExt : '.jpg'
   const safeName = `${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`
   const fullPath = path.join(dest, safeName)
   fs.writeFileSync(fullPath, file.buffer)
@@ -156,6 +159,9 @@ async function sendMediaAsset(req, res, next) {
       body = Buffer.from(raw.buffer, raw.byteOffset || 0, raw.byteLength)
     } else body = Buffer.from(raw)
     res.setHeader('Content-Type', mimeType)
+    // Anti-sniffing : le navigateur ne doit jamais réinterpréter le fichier
+    // (ex. un contenu uploadé servi comme HTML = XSS sur l'origine API).
+    res.setHeader('X-Content-Type-Options', 'nosniff')
     res.setHeader('Cache-Control', 'public, max-age=31536000, immutable')
     res.setHeader('Content-Length', String(body.length))
     return res.end(body)

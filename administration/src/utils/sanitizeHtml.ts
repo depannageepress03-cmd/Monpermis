@@ -7,7 +7,6 @@ const ALLOWED_TAGS = [
 ]
 const ALLOWED_ATTR = ['href', 'title', 'target', 'rel']
 
-/** Liens internes sûrs uniquement (prolonge la garde anti open-redirect). */
 DOMPurify.addHook('afterSanitizeAttributes', (node) => {
   if (node.tagName === 'A') {
     node.setAttribute('target', '_blank')
@@ -16,10 +15,8 @@ DOMPurify.addHook('afterSanitizeAttributes', (node) => {
 })
 
 /**
- * Assainit le HTML CMS avant dangerouslySetInnerHTML.
- * Allowlist stricte : tags/attributs limités, schémas d'URL http(s)/mailto/tel
- * + chemins relatifs uniquement (javascript:, data:, vbscript: rejetés,
- * y compris encodés en entités — DOMPurify parse avant de filtrer).
+ * Assainit le HTML éditorial avant dangerouslySetInnerHTML (prévisualisations admin).
+ * Même allowlist stricte que le Learner Web.
  */
 export function sanitizeCmsHtml(html: string): string {
   if (!html) return ''
@@ -27,7 +24,6 @@ export function sanitizeCmsHtml(html: string): string {
     ALLOWED_TAGS,
     ALLOWED_ATTR,
     ALLOW_DATA_ATTR: false,
-    // Refuse tout schéma exotique ; accepte http(s)/mailto/tel + relatif.
     ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto|tel):|[^a-z]|[a-z+.-]+(?:[^a-z+.\-:]|$))/i,
   })
 }

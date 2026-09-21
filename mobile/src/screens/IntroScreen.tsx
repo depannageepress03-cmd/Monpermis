@@ -99,6 +99,8 @@ export function IntroScreen() {
           showsHorizontalScrollIndicator={false}
           javaScriptEnabled
           domStorageEnabled={false}
+          allowFileAccess={false}
+          allowUniversalAccessFromFileURLs={false}
           setSupportMultipleWindows={false}
           mediaPlaybackRequiresUserAction
           onMessage={onWebMessage}

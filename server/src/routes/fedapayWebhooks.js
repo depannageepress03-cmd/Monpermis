@@ -9,6 +9,7 @@ import {
   applyApprovedReservationPayment,
   applyFailedReservationPayment,
 } from '../utils/reservationPayments.js'
+import { sha256Hex } from '../utils/security.js'
 import { logger } from '../utils/logger.js'
 
 const router = Router()
@@ -40,7 +41,11 @@ router.post('/', async (req, res) => {
   }
 
   const eventName = event?.name || event?.type || ''
-  const eventId = String(event?.id || `${eventName}:${event?.entity?.id || event?.object?.id || ''}`)
+  // Clé d'idempotence : id FedaPay si présent, sinon hash du payload brut
+  // (le repli nom:id seul collisionne entre événements sans id).
+  const eventId = String(
+    event?.id || `fallback:${eventName}:${sha256Hex(req.body)}`,
+  )
   const object = event?.entity || event?.object || event?.data?.object || {}
 
   try {

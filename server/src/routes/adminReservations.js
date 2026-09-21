@@ -17,6 +17,7 @@ import {
 } from '../utils/localDate.js'
 import { creditHeuresEffectueesForCompletion } from '../utils/reservationLifecycle.js'
 import { filterAllowedMoniteurVideos } from '../utils/moniteurVideos.js'
+import { sanitizeStoredUrl } from '../utils/security.js'
 
 function asObjectId(value) {
   if (!value) return null
@@ -54,7 +55,7 @@ function parseUrlList(raw, max = 50) {
 }
 
 function parsePhotosList(raw) {
-  return parseUrlList(raw, MONITEUR_PHOTOS_MAX)
+  return parseUrlList(raw, MONITEUR_PHOTOS_MAX).map(sanitizeStoredUrl).filter(Boolean)
 }
 
 function parseVideosList(raw) {
@@ -147,8 +148,8 @@ router.post('/moniteurs', audit('create', 'moniteur'), async (req, res) => {
       active: req.body.active !== false,
       defaultPriceFcfa: Number(req.body.defaultPriceFcfa) || 5000,
       vehicleBrand: String(req.body.vehicleBrand || '').trim(),
-      vehiclePhotoUrl: String(req.body.vehiclePhotoUrl || '').trim(),
-      photoUrl: String(req.body.photoUrl || '').trim(),
+      vehiclePhotoUrl: sanitizeStoredUrl(req.body.vehiclePhotoUrl),
+      photoUrl: sanitizeStoredUrl(req.body.photoUrl),
       city: String(req.body.city || '').trim(),
       bio: clampBio(req.body.bio),
       photos: parsePhotosList(req.body.photos),
@@ -232,10 +233,10 @@ router.patch('/moniteurs/:id', audit('update', 'moniteur'), async (req, res) => 
       moniteur.vehicleBrand = String(req.body.vehicleBrand).trim()
     }
     if (req.body.vehiclePhotoUrl !== undefined) {
-      moniteur.vehiclePhotoUrl = String(req.body.vehiclePhotoUrl).trim()
+      moniteur.vehiclePhotoUrl = sanitizeStoredUrl(req.body.vehiclePhotoUrl)
     }
     if (req.body.photoUrl !== undefined) {
-      moniteur.photoUrl = String(req.body.photoUrl).trim()
+      moniteur.photoUrl = sanitizeStoredUrl(req.body.photoUrl)
     }
     if (req.body.city !== undefined) {
       moniteur.city = String(req.body.city).trim()

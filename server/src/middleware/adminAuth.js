@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken'
 import { Admin } from '../models/Admin.js'
+import { logger } from '../utils/logger.js'
 
 let superAdminExistsCache = { value: null, checkedAt: 0 }
 const SUPERADMIN_CACHE_MS = 60_000
@@ -59,6 +60,13 @@ export async function requireSuperAdmin(req, res, next) {
       return res.status(401).json({ success: false, error: 'Authentification requise' })
     }
     const gated = await hasActiveSuperAdmin()
+    if (!gated) {
+      // Mode dégradé assumé (migration/bootstrap) : tout admin authentifié
+      // accède aux zones superadmin — loggé pour détecter un bootstrap oublié.
+      logger.warn('requireSuperAdmin en mode dégradé : aucun superadmin actif', {
+        adminId: String(req.admin._id || req.admin.id || ''),
+      })
+    }
     if (gated && req.admin.role !== 'superadmin') {
       return res.status(403).json({
         success: false,

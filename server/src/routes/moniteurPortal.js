@@ -22,6 +22,7 @@ import {
 import { computeCreneauHeures } from '../utils/creneauDuration.js'
 import { normalizeVehicleType } from '../utils/localDate.js'
 import { filterAllowedMoniteurVideos } from '../utils/moniteurVideos.js'
+import { sanitizeStoredUrl } from '../utils/security.js'
 import {
   computeMoniteurEarnings,
   normalizeWeeklyAvailability,
@@ -637,12 +638,14 @@ router.patch('/profile', async (req, res) => {
     if (req.body.bio !== undefined) {
       m.bio = String(req.body.bio || '').trim().slice(0, MONITEUR_BIO_MAX)
     }
-    if (req.body.photoUrl !== undefined) m.photoUrl = String(req.body.photoUrl || '').trim()
+    // URLs assainies (anti XSS stocké via href/src) : https, localhost dev
+    // ou chemins relatifs uniquement — javascript:/data:// rejetés.
+    if (req.body.photoUrl !== undefined) m.photoUrl = sanitizeStoredUrl(req.body.photoUrl)
     if (req.body.vehicleBrand !== undefined) {
       m.vehicleBrand = String(req.body.vehicleBrand || '').trim()
     }
     if (req.body.vehiclePhotoUrl !== undefined) {
-      m.vehiclePhotoUrl = String(req.body.vehiclePhotoUrl || '').trim()
+      m.vehiclePhotoUrl = sanitizeStoredUrl(req.body.vehiclePhotoUrl)
     }
     if (req.body.vehicleTypes !== undefined) {
       m.vehicleTypes = parseVehicleTypes(req.body.vehicleTypes)
@@ -654,6 +657,8 @@ router.patch('/profile', async (req, res) => {
     }
     if (req.body.photos !== undefined) {
       m.photos = parseUrlList(req.body.photos, MONITEUR_PHOTOS_MAX)
+        .map(sanitizeStoredUrl)
+        .filter(Boolean)
     }
     if (req.body.videos !== undefined) {
       m.videos = filterAllowedMoniteurVideos(req.body.videos, MONITEUR_VIDEOS_MAX)

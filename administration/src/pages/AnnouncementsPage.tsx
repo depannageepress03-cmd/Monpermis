@@ -28,6 +28,7 @@ import { RichTextEditor } from '../components/RichTextEditor'
 import { getAdminToken, isAuthError } from '../context/AdminAuthContext'
 import { Button, Drawer, EmptyState, SkeletonBlock } from '../ui'
 import { resolveMediaUrl } from '../utils/mediaUrl'
+import { sanitizeCmsHtml } from '../utils/sanitizeHtml'
 import { stripHtml } from '../utils/richText'
 
 const KIND_LABELS: Record<AnnouncementKind, string> = {
@@ -802,7 +803,7 @@ export function AnnouncementsPage() {
                   {form.body ? (
                     <div
                       className="ann-preview-body"
-                      dangerouslySetInnerHTML={{ __html: form.body }}
+                      dangerouslySetInnerHTML={{ __html: sanitizeCmsHtml(form.body) }}
                     />
                   ) : null}
                   {form.ctaUrl ? <span className="ann-preview-cta">Voir plus</span> : null}

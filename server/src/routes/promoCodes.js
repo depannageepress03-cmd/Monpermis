@@ -5,12 +5,13 @@ import { PromoCodeRedemption } from '../models/PromoCodeRedemption.js'
 import { AccessRequest } from '../models/AccessRequest.js'
 import { User } from '../models/User.js'
 import { transitionAccessRequest, getUserModuleAccess } from '../utils/accessRequests.js'
+import { paymentLimiter } from '../middleware/rateLimiters.js'
 import { logger } from '../utils/logger.js'
 
 const router = Router()
 router.use(requireUserAuth)
 
-router.post('/redeem', async (req, res) => {
+router.post('/redeem', paymentLimiter, async (req, res) => {
   try {
     const code = String(req.body.code || '').trim().toUpperCase()
     if (!code) {

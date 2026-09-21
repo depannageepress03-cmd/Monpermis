@@ -12,6 +12,7 @@ import { PageLoader } from '../components/PageLoader'
 import { PageSkeleton } from '../components/PageSkeleton'
 import { useAuth } from '../hooks/useAuth'
 import { resolveMediaUrl } from '../utils/mediaUrl'
+import { sanitizeCmsHtml } from '../utils/sanitizeHtml'
 import { AppShell, userInitialsOf, type AppTab } from '../components/layout/AppShell'
 import { Badge, Card, IconBadge } from '../components/ui'
 import '../styles/auth.css'
@@ -23,6 +24,17 @@ const TAB_ROUTES: Record<AppTab, string> = {
   conduite: '/conduite',
   progres: '/code-de-la-route/mes-notes',
   profil: '/profil',
+}
+
+/**
+ * CTA fourni par le CMS : chemin interne simple (/...) ou URL https externe.
+ * Bloque javascript:, data:, //hôte-externe et backslashes (bypass open-redirect).
+ */
+function isSafeCtaUrl(url: string): boolean {
+  const value = url.trim()
+  if (!value || value.includes('\\') || /[\s<>"]/.test(value)) return false
+  if (value.startsWith('/')) return !value.startsWith('//')
+  return /^https:\/\/[^/]+\.[^/]+/i.test(value)
 }
 
 export function ActualiteDetailPage() {
@@ -94,13 +106,13 @@ export function ActualiteDetailPage() {
                   isHtml ? (
                     <div
                       className="home-news-rich"
-                      dangerouslySetInnerHTML={{ __html: item.body }}
+                      dangerouslySetInnerHTML={{ __html: sanitizeCmsHtml(item.body) }}
                     />
                   ) : (
                     <p className="home-news-detail-body">{item.body}</p>
                   )
                 ) : null}
-                {item.ctaUrl ? (
+                {item.ctaUrl && isSafeCtaUrl(item.ctaUrl) ? (
                   <a
                     className="btn-primary home-news-cta-btn"
                     href={item.ctaUrl}

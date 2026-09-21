@@ -5,6 +5,7 @@ import {
   type Announcement,
 } from '../api/announcements'
 import { resolveMediaUrl } from '../utils/mediaUrl'
+import { sanitizeCmsHtml } from '../utils/sanitizeHtml'
 
 const KIND_LABELS: Record<Announcement['kind'], string> = {
   info: 'Info',
@@ -40,7 +41,7 @@ export function AnnouncementCard({
         ) : isHtml ? (
           <div
             className="home-news-rich"
-            dangerouslySetInnerHTML={{ __html: item.body }}
+            dangerouslySetInnerHTML={{ __html: sanitizeCmsHtml(item.body) }}
           />
         ) : (
           <p>{item.body}</p>

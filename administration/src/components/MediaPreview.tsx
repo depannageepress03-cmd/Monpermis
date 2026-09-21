@@ -1,6 +1,7 @@
 import { resolveVideoEmbed } from '../utils/mediaEmbed'
 import { resolveMediaUrl } from '../utils/mediaUrl'
 import { hasRichText } from '../utils/richText'
+import { sanitizeCmsHtml } from '../utils/sanitizeHtml'
 
 interface MediaPreviewProps {
   title?: string
@@ -76,7 +77,7 @@ export function MediaPreview({
       {hasText ? (
         <div
           className="parcours-media-text rich-content"
-          dangerouslySetInnerHTML={{ __html: text ?? '' }}
+          dangerouslySetInnerHTML={{ __html: sanitizeCmsHtml(text ?? '') }}
         />
       ) : null}
     </div>

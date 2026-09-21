@@ -6,6 +6,7 @@ import path from 'path'
 import helmet from 'helmet'
 import { fileURLToPath } from 'url'
 import rateLimit from 'express-rate-limit'
+import { webhookLimiter } from './middleware/rateLimiters.js'
 import { logger } from './utils/logger.js'
 import authRoutes from './routes/auth.js'
 import adminAuthRoutes from './routes/adminAuth.js'
@@ -39,7 +40,7 @@ import trackingRoutes from './routes/tracking.js'
 import adminTrackingRoutes from './routes/adminTracking.js'
 import moniteurAuthRoutes from './routes/moniteurAuth.js'
 import moniteurPortalRoutes from './routes/moniteurPortal.js'
-import { fedapayKeyFingerprint, isFedaPayConfigured } from './services/fedapay.js'
+import { isFedaPayConfigured } from './services/fedapay.js'
 import { sendMediaAsset } from './middleware/upload.js'
 import { ensureReservationIndexes } from './models/Reservation.js'
 import { ensureUserIndexes } from './models/User.js'
@@ -56,9 +57,15 @@ const app = express()
 const PORT = process.env.PORT || 5001
 
 // Fail-fast : sans JWT_SECRET, sign/verify lèveraient à chaque requête.
+// Un secret HS256 court se brute-force hors-ligne à partir d'un token :
+// on exige 32 caractères minimum (générez avec `openssl rand -hex 32`).
 // Sans MONGODB_URI, le retry existant s'applique (log d'alerte ici).
 if (!String(process.env.JWT_SECRET || '').trim()) {
   logger.error('JWT_SECRET manquant — démarrage refusé (auth inutilisable)')
+  process.exit(1)
+}
+if (String(process.env.JWT_SECRET || '').length < 32) {
+  logger.error('JWT_SECRET trop court (< 32 caractères) — démarrage refusé (brute-force HS256). Générez-en un avec `openssl rand -hex 32`.')
   process.exit(1)
 }
 if (!String(process.env.MONGODB_URI || '').trim()) {
@@ -130,7 +137,8 @@ app.use((req, res, next) => {
   }
   return next()
 })
-// Security headers (CSP off : SPA Vite + PWA sur le même host que l’API)
+// Security headers (CSP off globalement : la SPA web-dist servie par ce même
+// process en prod contient du JS inline — une CSP globale la casserait).
 // COOP : allow-popups pour compatibilité navigateurs / popups tiers
 app.use(
   helmet({
@@ -140,6 +148,16 @@ app.use(
     contentSecurityPolicy: false,
   }),
 )
+// CSP restrictive limitée à l'API et aux médias (JSON + fichiers même-origine,
+// pas de HTML actif) : barrière en profondeur contre tout contenu stocké,
+// sans impacter la SPA. frame-ancestors 'none' : anti-clickjacking.
+app.use(['/api', '/uploads', '/content'], (_req, res, next) => {
+  res.setHeader(
+    'Content-Security-Policy',
+    "default-src 'none'; img-src 'self' data:; media-src 'self'; base-uri 'none'; frame-ancestors 'none'",
+  )
+  next()
+})
 // Rate limiting — login ciblé (voir middleware/rateLimiters.js), pas sur tout /auth
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -152,6 +170,7 @@ const apiLimiter = rateLimit({
 // Toujours raw sur ce path (ne dépend pas du Content-Type exact de FedaPay).
 app.use(
   '/api/webhooks/fedapay',
+  webhookLimiter,
   express.raw({ type: () => true, limit: '1mb' }),
   fedapayWebhooksRoutes,
 )
@@ -199,19 +218,13 @@ app.use(
 
 app.get('/api/health', (_req, res) => {
   const dbReady = mongoose.connection.readyState === 1
-  const fingerprint = fedapayKeyFingerprint()
-  const webhookSecretSet = Boolean(String(process.env.FEDAPAY_WEBHOOK_SECRET || '').trim())
+  // Liveness minimaliste : aucun détail de config (FedaPay, clés) n'est exposé.
   res.status(dbReady ? 200 : 503).json({
     success: dbReady,
     message: dbReady
       ? 'API Monpermis.bj op\u00e9rationnelle'
       : 'Service temporairement indisponible',
     db: dbReady ? 'connected' : 'disconnected',
-    fedapay: isFedaPayConfigured() ? 'configured' : 'missing',
-    fedapayEnvironment: process.env.FEDAPAY_ENVIRONMENT === 'sandbox' ? 'sandbox' : 'live',
-    fedapayKeyHint: fingerprint.secretSuffix ? `…${fingerprint.secretSuffix}` : null,
-    fedapayWebhookSecret: webhookSecretSet ? 'configured' : 'missing',
-    mobileMoneyModes: { mtn: 'mtn_open', moov: 'moov', celtiis: 'sbin' },
   })
 })
 

@@ -15,6 +15,7 @@ import {
   syncAccessPaymentFromProvider,
 } from '../utils/accessRequests.js'
 import { configureFedaPay, FEDAPAY_MOBILE_OPERATORS } from '../services/fedapay.js'
+import { paymentLimiter, trackingLimiter } from '../middleware/rateLimiters.js'
 import { logger } from '../utils/logger.js'
 
 const router = Router()
@@ -93,7 +94,7 @@ router.get('/me', async (req, res) => {
  * Tunnel Mobile Money in-app : réseau → pays → téléphone → sendNow.
  * Body: { items: [{ module, quantity }], operator, country?, phone? }
  */
-router.post('/checkout', async (req, res) => {
+router.post('/checkout', paymentLimiter, async (req, res) => {
   try {
     const { items, operator, country = 'BJ', phone, replace = true } = req.body ?? {}
     configureFedaPay()
@@ -135,7 +136,7 @@ router.post('/checkout', async (req, res) => {
 })
 
 /** Active les modules à 0 FCFA (ex. vidéos de conduite) sans paiement. */
-router.post('/claim-free', async (req, res) => {
+router.post('/claim-free', paymentLimiter, async (req, res) => {
   try {
     const modules = Array.isArray(req.body?.modules) ? req.body.modules : ['conduite_videos']
     const activated = await activateFreeAccessModules({ user: req.user, modules })
@@ -161,7 +162,7 @@ router.post('/claim-free', async (req, res) => {
 })
 
 /** Paiement en ligne (legacy single-module, redirection FedaPay). */
-router.post('/', async (req, res) => {
+router.post('/', paymentLimiter, async (req, res) => {
   try {
     const { module, quantity = 1, replace = false } = req.body ?? {}
     if (!ACCESS_MODULES.includes(module)) {
@@ -228,7 +229,7 @@ router.post('/:id/cancel', async (req, res) => {
   }
 })
 
-router.post('/:id/sync', async (req, res) => {
+router.post('/:id/sync', trackingLimiter, async (req, res) => {
   try {
     configureFedaPay()
     const request = await AccessRequest.findOne({ _id: req.params.id, userId: req.user._id })

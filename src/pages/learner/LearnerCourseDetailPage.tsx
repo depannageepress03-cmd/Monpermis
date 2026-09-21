@@ -16,6 +16,7 @@ import {
   type LearnerModule,
 } from '../../api/content'
 import { useAuth } from '../../hooks/useAuth'
+import { sanitizeCmsHtml } from '../../utils/sanitizeHtml'
 import { PageNavbar } from '../../components/PageNavbar'
 import { AppShell, userInitialsOf } from '../../components/layout/AppShell'
 import { Badge, Button, Card, SectionTitle } from '../../components/ui'
@@ -281,7 +282,7 @@ export function LearnerCourseDetailPage({
               {module.text ? (
                 <div
                   className="learner-richtext"
-                  dangerouslySetInnerHTML={{ __html: module.text }}
+                    dangerouslySetInnerHTML={{ __html: sanitizeCmsHtml(module.text) }}
                 />
               ) : null}
             </Card>

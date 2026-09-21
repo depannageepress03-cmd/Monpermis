@@ -50,6 +50,8 @@ import {
   syncReservationPaymentFromProvider,
 } from '../utils/reservationPayments.js'
 import { recordPaymentCreated } from '../utils/paymentLedger.js'
+import { isCronApiKeyValid } from '../utils/security.js'
+import { paymentLimiter, trackingLimiter } from '../middleware/rateLimiters.js'
 import { logger } from '../utils/logger.js'
 
 const router = Router()
@@ -818,7 +820,7 @@ router.post('/quote', ...withConduiteAccess, async (req, res) => {
   }
 })
 
-router.post('/reservations', ...withConduiteAccess, async (req, res) => {
+router.post('/reservations', ...withConduiteAccess, paymentLimiter, async (req, res) => {
   try {
     const creneauIds = Array.isArray(req.body.creneauIds)
       ? req.body.creneauIds.map(asId).filter(Boolean)
@@ -1125,7 +1127,7 @@ router.post('/reservations', ...withConduiteAccess, async (req, res) => {
 })
 
 /** Réconciliation manuelle du paiement Mobile Money d'un groupe de réservations (utilisée par le poll client). */
-router.get('/checkout/:groupId/sync', ...withConduiteAccess, async (req, res) => {
+router.get('/checkout/:groupId/sync', ...withConduiteAccess, trackingLimiter, async (req, res) => {
   try {
     configureFedaPay()
     const groupId = asObjectId(req.params.groupId)
@@ -1316,8 +1318,7 @@ router.post('/reservations/:id/cancel', ...withConduiteAccess, async (req, res) 
 /** Job manuel / cron : rappels WhatsApp 2 h avant. Header `x-api-key: $CRON_API_KEY`. */
 router.post('/reminders/run', async (req, res) => {
   try {
-    const apiKey = req.headers['x-api-key']
-    if (!process.env.CRON_API_KEY || apiKey !== process.env.CRON_API_KEY) {
+    if (!isCronApiKeyValid(req.headers['x-api-key'])) {
       return res.status(401).json({ success: false, error: 'Non autoris\u00e9' })
     }
     const data = await runReservationReminders()

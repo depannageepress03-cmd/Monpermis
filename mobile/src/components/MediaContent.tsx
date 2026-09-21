@@ -116,7 +116,9 @@ function VideoPlayer({
           'http://10.0.2.2*',
           'about:blank',
         ]}
-        mixedContentMode="compatibility"
+        mixedContentMode="never"
+        allowFileAccess={false}
+        allowUniversalAccessFromFileURLs={false}
         onLoadStart={() => setLoading(true)}
         onLoadEnd={() => setLoading(false)}
         onError={() => {

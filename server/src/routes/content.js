@@ -492,15 +492,26 @@ router.post('/progress/test', ...withCodeAccess, async (req, res) => {
       return res.status(404).json({ success: false, error: 'Chapitre introuvable' })
     }
 
-    await req.user.markTestCompleted(chapterId, correct, total)
+    // Score auto-déclaré (non recalculé serveur) : on verrouille au moins
+    // la forme — entiers positifs, correct <= total — contre les valeurs absurdes.
+    const totalNum = Number(total)
+    const correctNum = Number(correct)
+    if (
+      !Number.isInteger(totalNum) || !Number.isInteger(correctNum) ||
+      totalNum <= 0 || totalNum > 1000 || correctNum < 0 || correctNum > totalNum
+    ) {
+      return res.status(400).json({ success: false, error: 'Score invalide' })
+    }
+
+    await req.user.markTestCompleted(chapterId, correctNum, totalNum)
 
     res.json({
       success: true,
       data: {
         completed: true,
         chapterId: String(chapterId),
-        correct: Number(correct) || 0,
-        total: Number(total) || 0,
+        correct: correctNum,
+        total: totalNum,
       },
     })
   } catch (error) {

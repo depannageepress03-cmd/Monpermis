@@ -348,7 +348,7 @@ router.post('/forgot-password', passwordResetLimiter, async (req, res) => {
       return res.status(400).json({ success: false, error: 'Email requis' })
     }
 
-    const user = await User.findOne({ email: email.toLowerCase() })
+    const user = await User.findOne({ email: email.trim().toLowerCase() })
     if (!user) {
       return res.json({ success: true, data: { message: 'Si cet email existe, un lien de réinitialisation a été envoyé.' } })
     }

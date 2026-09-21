@@ -8,6 +8,7 @@ import {
   uploadVideoBuffer,
 } from '../services/cloudinary.js'
 import { logger } from '../utils/logger.js'
+import { sanitizeStoredUrl } from '../utils/security.js'
 import { STANDARD_REVISION_CHAPTER_COUNT } from '../data/standardRevisionChapters.js'
 
 function nextOrder(items) {
@@ -37,8 +38,8 @@ function normalizeMediaFields(body) {
   let mediaType = body.mediaType !== undefined ? String(body.mediaType).trim() : undefined
   if (mediaType && mediaType !== 'video' && mediaType !== 'image') mediaType = ''
 
-  let videoUrl = body.videoUrl !== undefined ? String(body.videoUrl).trim() : undefined
-  let imageUrl = body.imageUrl !== undefined ? String(body.imageUrl).trim() : undefined
+  let videoUrl = body.videoUrl !== undefined ? sanitizeStoredUrl(body.videoUrl) : undefined
+  let imageUrl = body.imageUrl !== undefined ? sanitizeStoredUrl(body.imageUrl) : undefined
   let mediaBytes = body.mediaBytes !== undefined ? Number(body.mediaBytes) || 0 : undefined
 
   if (mediaType === 'video') {
