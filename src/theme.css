@@ -1,0 +1,423 @@
+/* ===== POLICES GOOGLE FONTS ===== */
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+/* ===== DESIGN TOKENS ===== */
+:root {
+  /* ===== COULEURS ===== */
+  --navy: #0A1B3D;
+  --navy-light: #1A3A7A;
+  --navy-deep: #06122A;
+  --navy-tint: #E8EDF6;
+  --navy-ink: #0A1B3D;
+
+  --green: #0BAA4F;
+  --green-dark: #067A37;
+  --green-ink: #065C2A;
+  --green-tint: #EAF7EF;
+  --green-tint-2: #DDF3E6;
+  --green-glow: #3BE08A;
+
+  --yellow: #FFB400;
+  --yellow-tint: #FFF4D6;
+  --yellow-ink: #7A5200;
+
+  --bg: #F5F7FB;
+  --surface: #FFFFFF;
+  --border: #E1E6EF;
+
+  --field-prefix: #F1F4F9;
+  --track: #E6ECF5;
+  --track-2: #DDE3EE;
+  --muted: #5B6680;
+  --subtle: #8A93A8;
+  --ink-2: #3C4760;
+
+  --disabled-bg: #EEF1F6;
+  --disabled-border: #CBD3E1;
+
+  --wrong-bg: #FFF1E6;
+  --wrong: #C2410C;
+  --wrong-ink: #9A3412;
+
+  --focus-ring: 0 0 0 4px rgba(11, 170, 79, 0.12);
+
+  /* ===== DÉGRADÉS ===== */
+  --gradient-hero: radial-gradient(110% 80% at 100% 0%, rgba(11, 170, 79, 0.42) 0%, rgba(11, 170, 79, 0) 55%),
+    linear-gradient(160deg, #1A3A7A 0%, #0A1B3D 58%, #06122A 100%);
+  --gradient-hero-conduite: radial-gradient(110% 80% at 100% 0%, rgba(255, 180, 0, 0.28) 0%, rgba(255, 180, 0, 0) 55%),
+    linear-gradient(160deg, #1A3A7A 0%, #0A1B3D 58%, #06122A 100%);
+  --gradient-hero-admin: radial-gradient(100% 90% at 100% 0%, rgba(11, 170, 79, 0.42) 0%, rgba(11, 170, 79, 0) 60%),
+    linear-gradient(160deg, #1A3A7A 0%, #0A1B3D 60%, #06122A 100%);
+  --gradient-progress: linear-gradient(90deg, #0BAA4F, #FFB400);
+  --gradient-sidebar: radial-gradient(120% 50% at 0% 100%, rgba(11, 170, 79, 0.28) 0%, rgba(11, 170, 79, 0) 60%),
+    linear-gradient(180deg, #0F2554 0%, #0A1B3D 50%, #06122A 100%);
+  --gradient-welcome: radial-gradient(120% 90% at 100% 0%, rgba(11, 170, 79, 0.38) 0%, rgba(11, 170, 79, 0) 55%),
+    linear-gradient(165deg, #16306A 0%, #0A1B3D 55%, #06122A 100%);
+  --gradient-offers: radial-gradient(120% 90% at 100% 0%, rgba(11, 170, 79, 0.40) 0%, rgba(11, 170, 79, 0) 60%),
+    linear-gradient(160deg, #1A3A7A 0%, #0A1B3D 60%, #06122A 100%);
+
+  /* ===== EFFET VERRE ===== */
+  --glass-bg: rgba(255, 255, 255, 0.08);
+  --glass-border: rgba(255, 255, 255, 0.20);
+  --glass-blur: blur(12px);
+  --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  --glass-highlight-strong: inset 0 1px 0 rgba(255, 255, 255, 0.18);
+
+  /* ===== OMBRES ===== */
+  --shadow-card: 0 10px 30px -18px rgba(10, 27, 61, 0.30);
+  --shadow-hero: 0 26px 44px -22px rgba(10, 27, 61, 0.75);
+  --shadow-button: 0 6px 18px -8px rgba(10, 27, 61, 0.25);
+  --shadow-cta-yellow: 0 16px 30px -12px rgba(255, 180, 0, 0.60);
+  --shadow-cta-navy: 0 18px 32px -14px rgba(10, 27, 61, 0.65);
+  --shadow-tabbar: 0 20px 40px -14px rgba(10, 27, 61, 0.60);
+  --shadow-tabbar-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.14);
+  --shadow-admin-card: 0 12px 30px -22px rgba(10, 27, 61, 0.35);
+  --shadow-admin-hero: 0 24px 40px -24px rgba(10, 27, 61, 0.80);
+  --shadow-login: 0 28px 64px -28px rgba(0, 16, 48, 0.28);
+
+  /* ===== TYPOGRAPHIE ===== */
+  --font-display: 'Sora', 'Plus Jakarta Sans', system-ui, sans-serif;
+  --font-body: 'Plus Jakarta Sans', system-ui, sans-serif;
+
+  --fs-hero-number: clamp(54px, 8vw, 58px);
+  --lh-hero-number: 0.95;
+  --ls-hero-number: -0.04em;
+
+  --fs-h1-screen: 26px;
+  --fs-h1-welcome: 30px;
+  --fs-h1-login: 30px;
+  --fs-section: 18px;
+  --fs-card-title: 16px;
+  --fs-card-title-sm: 15px;
+  --fs-body: 14.5px;
+  --fs-body-sm: 13.5px;
+  --fs-meta: 12.5px;
+  --fs-meta-sm: 12px;
+  --fs-tab-label: 10.5px;
+  --fs-chip: 12px;
+  --fs-chip-sm: 11.5px;
+  --fs-input: 15px;
+
+  --fw-medium: 500;
+  --fw-semibold: 600;
+  --fw-bold: 700;
+  --fw-extrabold: 800;
+
+  --ls-title: -0.02em;
+  --ls-hero-number: -0.04em;
+  --ls-kicker: 0.06em;
+
+  /* ===== RAYONS ===== */
+  --radius-hero: 32px;
+  --radius-hero-code-conduite: 28px;
+  --radius-card: 24px;
+  --radius-card-lg: 26px;
+  --radius-tile: 22px;
+  --radius-field: 18px;
+  --radius-pill: 9999px;
+  --radius-logo-tile-sm: 15px;
+  --radius-logo-tile-lg: 48px;
+  --radius-tabbar: 36px;
+  --radius-tab-pill: 28px;
+  --radius-notched-tab: 20px 20px 0 0;
+  --radius-notched-body: 0 24px 24px 24px;
+  --radius-progress-ring: 105px;
+  --radius-score-bar: 10px;
+  --radius-option-btn: 22px;
+  --radius-option-letter: 20px;
+  --radius-day-pill: 22px;
+  --radius-slot-btn: 24px;
+  --radius-monitor-chip: 26px;
+  --radius-monitor-avatar: 20px;
+  --radius-search: 26px;
+  --radius-plan-card: 24px;
+  --radius-radio: 12px;
+  --radius-radio-dot: 5px;
+  --radius-segmented-track: 21px;
+  --radius-segmented-btn: 21px;
+  --radius-icon-btn: 23px;
+  --radius-bell-badge: 5px;
+  --radius-badge: 15px;
+  --radius-badge-sm: 14px;
+  --radius-badge-xs: 11px;
+  --radius-kpi: 26px;
+  --radius-chart-bar: 8px 8px 3px 3px;
+  --radius-chart-bar-bottom: 3px 3px 8px 8px;
+  --radius-donut: 46px;
+  --radius-table-header: 14px;
+  --radius-table-row: 13px;
+  --radius-payment-icon: 13px;
+  --radius-login-shell: 32px;
+  --radius-login-aside: 0;
+  --radius-login-input: 14px;
+  --radius-login-btn: 14px;
+
+  /* ===== ESPACEMENTS ===== */
+  --space-screen-top: 56px;
+  --space-screen-horizontal: 20px;
+  --space-block-gap: 14px;
+  --space-block-gap-lg: 20px;
+  --space-grid-gap: 10px;
+  --space-grid-gap-sm: 8px;
+  --space-grid-gap-lg: 12px;
+  --space-section-gap: 18px;
+  --space-tabbar-bottom: 22px;
+  --space-tabbar-horizontal: 16px;
+  --space-content-bottom-padding: 120px;
+  --space-card-padding: 18px;
+  --space-card-padding-lg: 20px;
+  --space-card-padding-xl: 22px;
+  --space-hero-padding: 22px 20px 20px;
+  --space-hero-padding-admin: 20px;
+  --space-glass-action: 10px;
+  --space-notched-tab: 40px;
+  --space-progress-ring: 270px;
+  --space-mini-card-padding: 10px 12px;
+  --space-chip-padding: 0 12px;
+  --space-chip-height: 30px;
+  --space-chip-height-sm: 28px;
+  --space-option-btn-height: 58px;
+  --space-option-letter: 40px;
+  --space-day-pill: 72px;
+  --space-slot-btn: 48px;
+  --space-monitor-chip: 52px;
+  --space-monitor-avatar: 40px;
+  --space-plan-card: 76px;
+  --space-search-height: 52px;
+  --space-textfield-height: 56px;
+  --space-segmented-height: 52px;
+  --space-segmented-padding: 5px;
+  --space-button-height: 58px;
+  --space-button-height-sm: 56px;
+  --space-button-height-lg: 60px;
+  --space-icon-btn: 46px;
+  --space-logo-tile: 46px;
+  --space-logo-tile-lg: 196px;
+  --space-tabbar-height: 72px;
+  --space-tab-pill: 56px;
+  --space-tab-pill-width: 64px;
+
+  /* ===== HALOS / DÉCOR ===== */
+  --halo-size-sm: 240px;
+  --halo-size-md: 260px;
+  --halo-size-lg: 280px;
+  --halo-size-xl: 300px;
+  --halo-blur-sm: blur(50px);
+  --halo-blur-md: blur(55px);
+  --halo-blur-lg: blur(60px);
+  --halo-green-opacity: 0.10;
+  --halo-green-opacity-md: 0.12;
+  --halo-green-opacity-lg: 0.14;
+  --halo-yellow-opacity: 0.16;
+
+  /* ===== MOTIF ROUTE (SVG inline) ===== */
+  --route-pattern: url("data:image/svg+xml,%3Csvg width='170' height='200' viewBox='0 0 170 200' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M20 200 L150 0H174L70 200Z' fill='white'/%3E%3Cpath d='M130 46L121 60M110 78L101 92M90 110L81 124M70 142L61 156' stroke='%23FFB400' stroke-width='5' stroke-linecap='round'/%3E%3C/svg%3E");
+
+  /* ===== TRANSITIONS ===== */
+  --transition-fast: 150ms ease;
+  --transition-normal: 200ms ease;
+  --transition-slow: 300ms ease;
+
+  /* ===== Z-INDEX ===== */
+  --z-tabbar: 100;
+  --z-modal: 200;
+  --z-toast: 300;
+  --z-tooltip: 400;
+}
+
+/* ===== RESET DE BASE ===== */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  min-height: 100dvh;
+}
+
+body {
+  font-family: var(--font-body);
+  background: var(--bg);
+  color: var(--navy);
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  text-rendering: optimizeLegibility;
+  line-height: 1.5;
+}
+
+#root {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ===== UTILITAIRES COMMUNS ===== */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.container {
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 0 var(--space-screen-horizontal);
+  box-sizing: border-box;
+}
+
+.screen {
+  min-height: 100dvh;
+  padding-top: var(--space-screen-top);
+  padding-bottom: var(--space-content-bottom-padding);
+  padding-left: var(--space-screen-horizontal);
+  padding-right: var(--space-screen-horizontal);
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-block-gap);
+}
+
+.screen-admin {
+  min-height: 100vh;
+  padding: 28px 34px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+/* ===== MOT-SYMBOLE ===== */
+.brand-name {
+  display: inline-flex;
+  align-items: baseline;
+  font-family: var(--font-display);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+}
+
+.brand-name-main {
+  color: var(--navy);
+}
+
+.brand-name-tld {
+  color: var(--green);
+}
+
+.brand-name--on-dark .brand-name-main {
+  color: #FFFFFF;
+}
+
+.brand-name--on-dark .brand-name-tld {
+  color: var(--green-glow);
+}
+
+/* ===== HALOS DÉCORATIFS ===== */
+.halo-green {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(11, 170, 79, var(--halo-green-opacity));
+  filter: var(--halo-blur-lg);
+  pointer-events: none;
+}
+
+.halo-green-md {
+  background: rgba(11, 170, 79, var(--halo-green-opacity-md));
+  filter: var(--halo-blur-md);
+}
+
+.halo-green-lg {
+  background: rgba(11, 170, 79, var(--halo-green-opacity-lg));
+  filter: var(--halo-blur-lg);
+}
+
+.halo-yellow {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(255, 180, 0, var(--halo-yellow-opacity));
+  filter: var(--halo-blur-lg);
+  pointer-events: none;
+}
+
+/* ===== MOTIF ROUTE ===== */
+.route-pattern {
+  position: absolute;
+  right: -30px;
+  top: -18px;
+  width: 170px;
+  height: 200px;
+  opacity: 0.16;
+  pointer-events: none;
+  background-image: var(--route-pattern);
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+}
+
+.route-pattern-admin {
+  position: absolute;
+  right: -40px;
+  top: -20px;
+  width: 220px;
+  height: 220px;
+  opacity: 0.18;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg width='220' height='220' viewBox='0 0 220 220' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M60 220 L190 20H220L110 220Z' fill='white'/%3E%3Cpath d='M150 60L140 76M128 96L118 112M106 132L96 148M84 168L74 184' stroke='%23FFB400' stroke-width='6' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+}
+
+.route-pattern-login {
+  position: absolute;
+  right: -40px;
+  top: -20px;
+  width: 220px;
+  height: 220px;
+  opacity: 0.18;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg width='220' height='220' viewBox='0 0 220 220' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M60 220 L190 20H220L110 220Z' fill='white'/%3E%3Cpath d='M150 60L140 76M128 96L118 112M106 132L96 148M84 168L74 184' stroke='%23FFB400' stroke-width='6' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+}

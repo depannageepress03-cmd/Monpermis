@@ -23,7 +23,11 @@ import {
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import Svg, { Circle, Ellipse, Path, Rect } from 'react-native-svg'
-import { fetchCourseChapters, fetchCourseProgress, type CourseChapter } from '../../api/revision'
+import {
+  ContentError,
+  fetchCourseProgress,
+  fetchRevisionCourses,
+} from '../../api/revision'
 import { Bouncy } from '../../components/Bouncy'
 import { FadeUp } from '../../components/FadeUp'
 import { LegalFooter } from '../../components/LegalFooter'
@@ -66,27 +70,32 @@ function CoursesHeroArt() {
   )
 }
 
-/** Liste cours code — même UX que LeconsCoursesScreen (conduite). */
+/** Liste cours code — liste à plat comme le web (CodeCoursPage) + détail direct. */
 export function CodeCoursesScreen() {
   const navigation = useNavigation<Nav>()
   const { user, loading } = useRequireAuth(navigation)
   const unreadCount = useUnreadNotifications(Boolean(user))
-  const [chapters, setChapters] = useState<CourseChapter[]>([])
+  const [courses, setCourses] = useState<Awaited<
+    ReturnType<typeof fetchRevisionCourses>
+  > | null>(null)
   const [completedIds, setCompletedIds] = useState<Set<string>>(new Set())
   const [progressLoading, setProgressLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setProgressLoading(true)
+    setError(null)
     try {
       const [list, entries] = await Promise.all([
-        fetchCourseChapters(),
+        fetchRevisionCourses(),
         fetchCourseProgress(STANDALONE_CHAPTER),
       ])
-      setChapters(list)
+      setCourses(list)
       setCompletedIds(new Set(entries.map((entry) => entry.courseId)))
-    } catch {
-      setChapters([])
+    } catch (err) {
+      setCourses([])
       setCompletedIds(new Set())
+      setError(err instanceof ContentError ? err.message : 'Chargement impossible')
     } finally {
       setProgressLoading(false)
     }
@@ -100,16 +109,30 @@ export function CodeCoursesScreen() {
     }, [user, load]),
   )
 
-  const allCourses = useMemo(
-    () => chapters.flatMap((chapter) => chapter.courses),
-    [chapters],
-  )
+  const allCourses = useMemo(() => courses ?? [], [courses])
   const completedCount = useMemo(
     () => allCourses.filter((course) => completedIds.has(course.id)).length,
     [allCourses, completedIds],
   )
   const progressRatio =
     allCourses.length > 0 ? Math.max(0, Math.min(1, completedCount / allCourses.length)) : 0
+
+  const openCourse = (courseId: string) => {
+    const course = allCourses.find((item) => item.id === courseId)
+    navigation.navigate('CourseDetail', {
+      chapterId: STANDALONE_CHAPTER,
+      chapterName: 'Cours',
+      courseId,
+      course: course
+        ? { id: course.id, title: course.title, modules: course.modules }
+        : undefined,
+      courses: allCourses.map((item) => ({
+        id: item.id,
+        title: item.title,
+        modules: item.modules,
+      })),
+    })
+  }
 
   if (loading || !user) return <ScreenLoader />
 
@@ -184,72 +207,73 @@ export function CodeCoursesScreen() {
             </FadeUp>
           ) : null}
 
-          {chapters.length === 0 && !progressLoading ? (
+          {error ? (
+            <View style={styles.centerBox}>
+              <Text style={styles.emptyTitle}>Chargement impossible</Text>
+              <Text style={styles.emptyText}>{error}</Text>
+              <Pressable
+                style={styles.retryBtn}
+                onPress={() => void load()}
+                accessibilityRole="button"
+                accessibilityLabel="Réessayer"
+              >
+                <Text style={styles.retryBtnText}>Réessayer</Text>
+              </Pressable>
+            </View>
+          ) : null}
+
+          {!error && courses !== null && courses.length === 0 && !progressLoading ? (
             <View style={styles.centerBox}>
               <Text style={styles.emptyTitle}>Aucun cours</Text>
               <Text style={styles.emptyText}>Aucune notion publiée pour le moment.</Text>
             </View>
-          ) : (
-            chapters.map((chapter, index) => {
-              const total = chapter.courses.length
-              const done = chapter.courses.filter((course) => completedIds.has(course.id)).length
-              const chapterDone = total > 0 && done === total
+          ) : null}
+          {!error ? (
+            allCourses.map((course, index) => {
+              const completed = completedIds.has(course.id)
 
               return (
-                <FadeUp key={chapter.id} delay={100 + index * 50}>
-                  <Bouncy
-                    scaleTo={0.98}
-                    onPress={() =>
-                      navigation.navigate('ChapterCourses', {
-                        // La progression des notions reste indexée sur « standalone ».
-                        chapterId: STANDALONE_CHAPTER,
-                        chapterName: chapter.name,
-                        courses: chapter.courses.map((course) => ({
-                          id: course.id,
-                          title: course.title,
-                          modules: course.modules,
-                        })),
-                      })
-                    }
-                  >
+                <FadeUp key={course.id} delay={100 + index * 50}>
+                  <Bouncy scaleTo={0.98} onPress={() => openCourse(course.id)}>
                     <View
-                      style={[styles.card, chapterDone && styles.cardDone]}
+                      style={[styles.card, completed && styles.cardDone]}
                       accessibilityRole="button"
                     >
                       <View style={styles.cardAccent} />
-                      <View style={[styles.iconWrap, chapterDone && styles.iconWrapDone]}>
-                        {chapterDone ? (
+                      <View style={[styles.iconWrap, completed && styles.iconWrapDone]}>
+                        {completed ? (
                           <Check size={22} color={dark.green} strokeWidth={3} />
                         ) : (
                           <BookOpen size={22} color={ORANGE} />
                         )}
                       </View>
                       <View style={styles.cardContent}>
-                        <Text style={styles.cardTitle}>{chapter.name}</Text>
+                        <Text style={styles.cardTitle}>{course.title}</Text>
                         <View style={styles.badgeRow}>
-                          {chapterDone ? (
+                          {completed ? (
                             <View style={[styles.badge, styles.badgeDone]}>
-                              <Check size={11} color={dark.green} strokeWidth={3} />
+                              <Check size={12} color={dark.green} strokeWidth={3} />
                               <Text style={[styles.badgeText, styles.badgeTextDone]}>Terminé</Text>
                             </View>
                           ) : (
                             <View style={styles.badge}>
                               <Text style={styles.badgeText}>
-                                {done}/{total} NOTION{total > 1 ? 'S' : ''}
+                                {course.modules.length} MODULE
+                                {course.modules.length > 1 ? 'S' : ''} · APPUYEZ POUR OUVRIR
                               </Text>
                             </View>
                           )}
                         </View>
                       </View>
-                      <View style={[styles.arrowBtn, chapterDone && styles.arrowBtnDone]}>
-                        <ChevronRight size={18} color={chapterDone ? dark.green : ORANGE} />
+                      <View style={[styles.arrowBtn, completed && styles.arrowBtnDone]}>
+                        <ChevronRight size={18} color={completed ? dark.green : ORANGE} />
                       </View>
                     </View>
                   </Bouncy>
                 </FadeUp>
               )
             })
-          )}
+          ) : null}
 
           <FadeUp delay={200}>
             <View style={styles.whyCard}>
@@ -622,6 +646,18 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     color: dark.textMuted,
     textAlign: 'center',
+  },
+  retryBtn: {
+    marginTop: 14,
+    borderRadius: 12,
+    backgroundColor: dark.green,
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+  },
+  retryBtnText: {
+    color: '#FFFFFF',
+    fontFamily: fonts.bodyBold,
+    fontSize: 14,
   },
   pressed: {
     opacity: 0.9,

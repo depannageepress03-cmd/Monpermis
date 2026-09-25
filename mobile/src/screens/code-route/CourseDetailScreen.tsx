@@ -23,8 +23,12 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 import {
   fetchCourseProgress,
+  fetchRevisionCourse,
+  fetchRevisionCourses,
+  fetchRevisionChapters,
   markCourseCompleted,
   startCourseSession,
+  ContentError,
 } from '../../api/revision'
 import { Bouncy } from '../../components/Bouncy'
 import { EmptyState } from '../../components/EmptyState'
@@ -64,11 +68,17 @@ export function CourseDetailScreen() {
   const { user, loading } = useRequireAuth(navigation)
   const { isOffline, enqueue } = useOffline()
   const unreadCount = useUnreadNotifications(Boolean(user))
-  const { chapterId = '', chapterName = '', course: courseParam, courses: coursesParam } =
+  const { chapterId = '', chapterName = '', courseId: courseIdParam, course: courseParam, courses: coursesParam } =
     route.params ?? {}
+  // Deep-link / liste à plat : le param peut être absent → refetch (cf. web StandaloneCourseDetailPage).
+  const courseId = courseParam?.id ?? courseIdParam ?? ''
+  const [courseState, setCourseState] = useState(courseParam ?? null)
+  const [coursesState, setCoursesState] = useState(coursesParam ?? [])
+  const [courseLoading, setCourseLoading] = useState(!courseParam)
+  const [courseError, setCourseError] = useState<string | null>(null)
   const course =
-    courseParam ?? ({ id: '', title: '', modules: [] } as typeof courseParam)
-  const courses = coursesParam?.length ? coursesParam : courseParam ? [courseParam] : []
+    courseState ?? ({ id: '', title: '', modules: [] } as NonNullable<typeof courseParam>)
+  const courses = coursesState.length > 0 ? coursesState : courseState ? [courseState] : []
   const isStandalone = chapterId === STANDALONE_CHAPTER
 
   const [completedIds, setCompletedIds] = useState<Set<string>>(new Set())
@@ -107,7 +117,57 @@ export function CourseDetailScreen() {
     return title
   }, [course.modules, course.title])
 
+  const loadCourse = useCallback(async () => {
+    if (courseParam || !courseId) {
+      setCourseLoading(false)
+      return
+    }
+    setCourseLoading(true)
+    setCourseError(null)
+    try {
+      if (chapterId === STANDALONE_CHAPTER) {
+        const list = await fetchRevisionCourses()
+        const found =
+          list.find((item) => String(item.id) === String(courseId)) ??
+          (await fetchRevisionCourse(courseId).catch(() => null))
+        if (!found) {
+          setCourseError('Cours introuvable ou non publié')
+          setCourseState(null)
+          setCoursesState([])
+          return
+        }
+        setCoursesState(list)
+        setCourseState({ id: found.id, title: found.title, modules: found.modules })
+      } else {
+        const chapters = await fetchRevisionChapters()
+        const chapter = chapters.find((item) => String(item.id) === String(chapterId))
+        const found = chapter?.courses.find((item) => String(item.id) === String(courseId))
+        if (!found) {
+          setCourseError('Cours introuvable ou non publié')
+          setCourseState(null)
+          setCoursesState([])
+          return
+        }
+        setCoursesState(chapter?.courses ?? [found])
+        setCourseState({ id: found.id, title: found.title, modules: found.modules })
+      }
+    } catch (err) {
+      setCourseError(err instanceof ContentError ? err.message : 'Chargement impossible')
+      setCourseState(null)
+    } finally {
+      setCourseLoading(false)
+    }
+  }, [chapterId, courseId, courseParam])
+
+  useEffect(() => {
+    if (user) void loadCourse()
+  }, [user, loadCourse])
+
   const loadProgress = useCallback(async () => {
+    if (!course.id) {
+      setProgressLoading(false)
+      return
+    }
     setProgressLoading(true)
     setError(null)
     try {
@@ -182,14 +242,28 @@ export function CourseDetailScreen() {
 
   if (loading || !user) return <ScreenLoader />
 
-  if (!courseParam) {
+  if (courseLoading) return <ScreenLoader />
+
+  if (!courseState) {
     return (
       <View style={styles.root}>
         <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
           <EmptyState
             icon={<BookOpen size={30} color={dark.textMuted} />}
             title="Cours introuvable"
-            message="Ouvrez ce cours depuis la liste du chapitre."
+            message={courseError ?? 'Ouvrez ce cours depuis la liste du chapitre.'}
+            action={
+              <Pressable
+                style={styles.retryBtn}
+                onPress={() => {
+                  void loadCourse()
+                }}
+                accessibilityRole="button"
+                accessibilityLabel="Réessayer"
+              >
+                <Text style={styles.retryBtnText}>Réessayer</Text>
+              </Pressable>
+            }
           />
         </SafeAreaView>
       </View>
@@ -202,7 +276,9 @@ export function CourseDetailScreen() {
     <View style={styles.topBar}>
       <Pressable
         style={({ pressed }) => [styles.roundBtn, pressed && styles.pressed]}
-        onPress={() => navigation.goBack()}
+        onPress={() =>
+          isStandalone ? navigation.navigate('CodeCours') : navigation.goBack()
+        }
         accessibilityLabel="Retour"
         hitSlop={8}
       >
@@ -816,6 +892,18 @@ const styles = StyleSheet.create({
     color: dark.coral,
     fontFamily: fonts.body,
   },
+  retryBtn: {
+    marginTop: 8,
+    borderRadius: 12,
+    backgroundColor: dark.green,
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+  },
+  retryBtnText: {
+    color: '#FFFFFF',
+    fontFamily: fonts.bodyBold,
+    fontSize: 14,
+  },
   actions: {
     gap: 10,
   },
@@ -849,7 +937,8 @@ const styles = StyleSheet.create({
     minHeight: 52,
   },
   btnDisabled: {
-    opacity: 0.6,
+    backgroundColor: '#EEF2F7',
+    borderColor: 'rgba(0,16,48,0.12)',
   },
   secondaryBtnText: {
     color: dark.textPrimary,
@@ -857,7 +946,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   secondaryBtnTextDisabled: {
-    color: dark.textMuted,
+    color: '#475569',
   },
   stickyBar: {
     position: 'absolute',

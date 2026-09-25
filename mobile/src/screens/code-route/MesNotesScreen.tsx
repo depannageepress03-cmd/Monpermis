@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigation } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
-import { BookOpen, Car, FileText } from 'lucide-react-native'
+import { BookOpen, Car, ChevronRight, FileText } from 'lucide-react-native'
 import {
   ActivityIndicator,
   Animated,
+  Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -213,10 +214,26 @@ export function MesNotesScreen() {
                 <Text style={styles.emptyText}>
                   Passez un examen blanc pour voir votre note ici en direct.
                 </Text>
+                <Pressable
+                  style={styles.ctaBtn}
+                  onPress={() => navigation.navigate('ExamensTest')}
+                  accessibilityRole="button"
+                  accessibilityLabel="Voir les examens"
+                >
+                  <Text style={styles.ctaBtnText}>Voir les examens</Text>
+                </Pressable>
               </View>
             ) : (
               examScores.map((score) => (
-                <View key={score.id} style={styles.scoreRow}>
+                <Pressable
+                  key={score.id}
+                  style={({ pressed }) => [styles.scoreRow, pressed && styles.pressed]}
+                  onPress={() =>
+                    navigation.navigate('ExamensTestTake', { examNumber: score.examNumber })
+                  }
+                  accessibilityRole="button"
+                  accessibilityLabel={`Repasser l'examen ${score.examNumber} — ${score.scoreLabel}`}
+                >
                   <View
                     style={[
                       styles.badge,
@@ -234,7 +251,9 @@ export function MesNotesScreen() {
                   </View>
                   <View style={styles.scoreBody}>
                     <Text style={styles.scoreTitle}>Examen {score.examNumber}</Text>
-                    <Text style={styles.scoreMeta}>Seuil {score.passScore}/20</Text>
+                    <Text style={styles.scoreMeta}>
+                      Seuil {score.passScore}/20 · toucher pour repasser
+                    </Text>
                   </View>
                   <View
                     style={[styles.pill, score.passed ? styles.pillPass : styles.pillFail]}
@@ -248,9 +267,20 @@ export function MesNotesScreen() {
                       {score.passed ? 'Réussi' : 'À revoir'}
                     </Text>
                   </View>
-                </View>
+                  <ChevronRight size={18} color={dark.textMuted} />
+                </Pressable>
               ))
             )}
+            {examScores.length > 0 ? (
+              <Pressable
+                style={styles.ctaBtn}
+                onPress={() => navigation.navigate('ExamensTest')}
+                accessibilityRole="button"
+                accessibilityLabel="Tous les examens"
+              >
+                <Text style={styles.ctaBtnText}>Tous les examens</Text>
+              </Pressable>
+            ) : null}
 
             <FadeUp delay={250}>
             <Text style={styles.sectionTitle}>Sujets test · chapitres</Text>
@@ -261,13 +291,32 @@ export function MesNotesScreen() {
                 <Text style={styles.emptyText}>
                   Validez un sujet test pour voir votre score ici.
                 </Text>
+                <Pressable
+                  style={styles.ctaBtn}
+                  onPress={() => navigation.navigate('RevisionChapitres')}
+                  accessibilityRole="button"
+                  accessibilityLabel="Voir les chapitres"
+                >
+                  <Text style={styles.ctaBtnText}>Voir les chapitres</Text>
+                </Pressable>
               </View>
             ) : (
               journey.testScores.map((score) => {
                 const ratio = score.total > 0 ? score.correct / score.total : 0
                 const good = ratio >= 0.5
                 return (
-                  <View key={score.chapterId} style={styles.scoreRow}>
+                  <Pressable
+                    key={score.chapterId}
+                    style={({ pressed }) => [styles.scoreRow, pressed && styles.pressed]}
+                    onPress={() =>
+                      navigation.navigate('ChapterTestSubject', {
+                        chapterId: score.chapterId,
+                        chapterName: score.chapterName,
+                      })
+                    }
+                    accessibilityRole="button"
+                    accessibilityLabel={`Revoir le sujet test — ${score.chapterName}`}
+                  >
                     <View style={[styles.badge, good ? styles.badgePass : styles.badgeFail]}>
                       <Text
                         style={[
@@ -281,13 +330,24 @@ export function MesNotesScreen() {
                     <View style={styles.scoreBody}>
                       <Text style={styles.scoreTitle}>{score.chapterName}</Text>
                       <Text style={styles.scoreMeta}>
-                        {score.correct}/{score.total} bonnes réponses
+                        {score.correct}/{score.total} bonnes réponses · toucher pour revoir
                       </Text>
                     </View>
-                  </View>
+                    <ChevronRight size={18} color={dark.textMuted} />
+                  </Pressable>
                 )
               })
             )}
+            {journey.testScores.length > 0 ? (
+              <Pressable
+                style={styles.ctaBtn}
+                onPress={() => navigation.navigate('RevisionChapitres')}
+                accessibilityRole="button"
+                accessibilityLabel="Voir les chapitres"
+              >
+                <Text style={styles.ctaBtnText}>Voir les chapitres</Text>
+              </Pressable>
+            ) : null}
           </>
         ) : null}
         <LegalFooter />
@@ -479,5 +539,23 @@ const styles = StyleSheet.create({
   pillText: { fontFamily: fonts.bodyBold, fontSize: 11 },
   pillTextPass: { color: '#007A3A' },
   pillTextFail: { color: '#C2410C' },
+  ctaBtn: {
+    alignSelf: 'center',
+    marginTop: 4,
+    marginBottom: 10,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: 'rgba(0,16,48,0.15)',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    ...shadows.sm,
+  },
+  ctaBtnText: {
+    fontFamily: fonts.bodyBold,
+    fontSize: 13,
+    color: dark.textPrimary,
+  },
+  pressed: { opacity: 0.88 },
   error: { color: dark.coral, marginBottom: 12, fontFamily: fonts.body },
 })

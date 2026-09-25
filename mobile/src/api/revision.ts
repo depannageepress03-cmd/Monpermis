@@ -153,6 +153,15 @@ export async function fetchRevisionCourses(): Promise<
   return data.courses
 }
 
+/** Détail d’une notion autonome (deep-link / param absent) — cf. web fetchRevisionCourse. */
+export async function fetchRevisionCourse(courseId: string): Promise<RevisionCourse> {
+  const data = await request<{ course: RevisionCourse }>(
+    `/content/revision/courses/${encodeURIComponent(courseId)}`,
+    { auth: true },
+  )
+  return data.course
+}
+
 /** Variante SWR : pousse le cache immédiatement via onData, puis le réseau. */
 export async function fetchRevisionChaptersSWR(
   onData: (chapters: RevisionChapter[], meta: { fromCache: boolean }) => void,

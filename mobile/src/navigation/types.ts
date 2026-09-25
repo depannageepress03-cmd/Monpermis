@@ -54,7 +54,9 @@ export type RootStackParamList = {
   CourseDetail: {
     chapterId: string
     chapterName: string
-    course: {
+    /** Deep-link / liste à plat : refetch du cours quand `course` est absent. */
+    courseId?: string
+    course?: {
       id: string
       title: string
       modules: {
@@ -69,7 +71,7 @@ export type RootStackParamList = {
         order: number
       }[]
     }
-    courses: {
+    courses?: {
       id: string
       title: string
       modules: {

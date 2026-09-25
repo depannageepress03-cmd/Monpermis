@@ -5,6 +5,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { ClipboardCheck } from 'lucide-react-native'
 import {
   ActivityIndicator,
+  Image,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -38,6 +39,7 @@ import { useRequireAuth } from '../../hooks/useRequireAuth'
 import type { RootStackParamList } from '../../navigation/types'
 import { dark, fonts } from '../../theme'
 import { stopAllQuizAudio } from '../../utils/quizSounds'
+import { resolveQuestionImageUri } from '../../utils/questionImages'
 import { tracker } from '../../tracking/tracker'
 
 type ListNav = NativeStackNavigationProp<RootStackParamList, 'ExamensTest'>
@@ -242,6 +244,8 @@ export function ExamensTestTakeScreen() {
     passScore: number
   } | null>(null)
   const [sequenceLive, setSequenceLive] = useState(true)
+  const [leaveConfirmed, setLeaveConfirmed] = useState(false)
+  const [resolvedImages, setResolvedImages] = useState<{ key: string; uri: string }[]>([])
 
   const selectedIdsRef = useRef(selectedIds)
   selectedIdsRef.current = selectedIds
@@ -337,6 +341,28 @@ export function ExamensTestTakeScreen() {
   const questions = attempt?.questions || []
   questionsRef.current = questions
   const question = questions[index]
+  const questionImageUrls = question?.prompt?.imageUrls
+  const questionId = question?.id
+
+  useEffect(() => {
+    let cancelled = false
+    const urls = questionImageUrls || []
+    if (!questionId || urls.length === 0) {
+      setResolvedImages([])
+      return
+    }
+    ;(async () => {
+      const next: { key: string; uri: string }[] = []
+      for (const url of urls) {
+        const uri = await resolveQuestionImageUri(questionId, url)
+        if (uri) next.push({ key: url, uri })
+      }
+      if (!cancelled) setResolvedImages(next)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [questionId, questionImageUrls])
   const displayAnswers = useMemo(() => {
     if (!question) return []
     const transcript = resolveQuestionTranscript({
@@ -507,23 +533,36 @@ export function ExamensTestTakeScreen() {
     answeredCount > 0
       ? `Quitter ? Vos ${answeredCount} réponses sont enregistrées — reprenez via Continuer sur la même épreuve.`
       : 'Quitter ? Votre progression en cours sera conservée si vous reprenez le même examen.'
-  useLeaveGuard(Boolean(attempt) && !finished && !loading, leaveMessage, () => {
-    const currentAttempt = attemptRef.current
-    tracker.track(
-      'exam_quit',
-      {
-        attemptId: currentAttempt?.id || '',
-        examNumber,
-        examType: 'practice',
-      },
-      {
-        answeredCount,
-        index: indexRef.current,
-        elapsedMs: tracker.consumeElapsedMs(),
-      },
-    )
-    tracker.setActiveSession(null)
-  })
+  const { confirmLeave } = useLeaveGuard(
+    Boolean(attempt) && !finished && !loading && !leaveConfirmed,
+    leaveMessage,
+    () => {
+      const currentAttempt = attemptRef.current
+      tracker.track(
+        'exam_quit',
+        {
+          attemptId: currentAttempt?.id || '',
+          examNumber,
+          examType: 'practice',
+        },
+        {
+          answeredCount,
+          index: indexRef.current,
+          elapsedMs: tracker.consumeElapsedMs(),
+        },
+      )
+      tracker.setActiveSession(null)
+    },
+  )
+
+  const handleBack = () => {
+    void confirmLeave().then((ok) => {
+      if (!ok) return
+      // Désactive le guard avant de naviguer (évite un double prompt via beforeRemove).
+      setLeaveConfirmed(true)
+      setTimeout(() => navigation.navigate('ExamensTest'), 0)
+    })
+  }
 
   if (authLoading || !user) return <ScreenLoader />
 
@@ -533,7 +572,7 @@ export function ExamensTestTakeScreen() {
         <PageNavbar
           title={`Examen ${examNumber}`}
           icon={ClipboardCheck}
-          onBack={() => navigation.navigate('ExamensTest')}
+          onBack={handleBack}
         />
 
         <ScrollView contentContainerStyle={styles.scroll}>
@@ -559,9 +598,17 @@ export function ExamensTestTakeScreen() {
                 {finalScore.passed ? 'Examen réussi' : 'Examen non réussi'}
               </Text>
               <Text style={styles.resultScore}>{finalScore.scoreLabel}</Text>
-              <Pressable style={styles.startBtn} onPress={() => navigation.navigate('MesNotes')}>
-                <Text style={styles.startBtnText}>Voir mes notes</Text>
-              </Pressable>
+              <View style={styles.resultActions}>
+                <Pressable style={styles.startBtn} onPress={() => navigation.navigate('MesNotes')}>
+                  <Text style={styles.startBtnText}>Voir mes notes</Text>
+                </Pressable>
+                <Pressable
+                  style={styles.backBtn}
+                  onPress={() => navigation.navigate('ExamensTest')}
+                >
+                  <Text style={styles.backBtnText}>Retour examens</Text>
+                </Pressable>
+              </View>
             </View>
           ) : null}
 
@@ -575,6 +622,18 @@ export function ExamensTestTakeScreen() {
               ) : null}
               {question.prompt?.text ? (
                 <QuestionPromptHtml text={question.prompt.text} style={styles.prompt} />
+              ) : null}
+              {resolvedImages.length > 0 ? (
+                <View style={styles.images}>
+                  {resolvedImages.map((img) => (
+                    <Image
+                      key={img.key}
+                      source={{ uri: img.uri }}
+                      style={styles.promptImage}
+                      resizeMode="cover"
+                    />
+                  ))}
+                </View>
               ) : null}
               {sequenceLive && !submitted ? (
                 <QuestionAudioSequence
@@ -814,6 +873,16 @@ const styles = StyleSheet.create({
     color: dark.textPrimary,
     marginBottom: 8,
   },
+  images: {
+    gap: 8,
+    marginBottom: 10,
+  },
+  promptImage: {
+    width: '100%',
+    aspectRatio: 2 / 1,
+    borderRadius: 12,
+    backgroundColor: dark.surfaceRaised,
+  },
   answer: {
     borderWidth: 1,
     borderColor: dark.border,
@@ -853,6 +922,24 @@ const styles = StyleSheet.create({
     fontFamily: fonts.displayExtraBold,
     fontSize: 28,
     color: dark.green,
+  },
+  resultActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  backBtn: {
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: dark.border,
+    backgroundColor: dark.surface,
+  },
+  backBtnText: {
+    color: dark.textPrimary,
+    fontFamily: fonts.displayBold,
+    fontSize: 13,
   },
   awaitingText: {
     fontFamily: fonts.bodyMedium,

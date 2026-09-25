@@ -165,8 +165,13 @@ export function RevisionPanneauxCategoryScreen() {
             <Pressable style={styles.backBtn} onPress={() => navigation.goBack()}>
               <ChevronLeft size={22} color={dark.textPrimary} />
             </Pressable>
-            <Text style={styles.topBarTitle}>Introuvable</Text>
+            <Text style={styles.topBarTitle}>Révision panneaux</Text>
             <View style={styles.backBtnPlaceholder} />
+          </View>
+          <View style={styles.unknownBox}>
+            <TriangleAlert size={30} color={dark.textMuted} />
+            <Text style={styles.unknownTitle}>Catégorie introuvable</Text>
+            <Text style={styles.unknownText}>Cette famille de panneaux n’existe pas.</Text>
           </View>
         </SafeAreaView>
       </View>
@@ -436,5 +441,24 @@ const styles = StyleSheet.create({
     fontSize: 13.5,
     lineHeight: 19,
     color: dark.textPrimary,
+  },
+  unknownBox: {
+    alignItems: 'center',
+    paddingVertical: 36,
+    paddingHorizontal: 24,
+    gap: 8,
+  },
+  unknownTitle: {
+    fontFamily: fonts.displayBold,
+    fontSize: 18,
+    color: dark.textPrimary,
+    textAlign: 'center',
+  },
+  unknownText: {
+    fontFamily: fonts.body,
+    fontSize: 14,
+    lineHeight: 20,
+    color: dark.textMuted,
+    textAlign: 'center',
   },
 })

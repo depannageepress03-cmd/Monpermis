@@ -269,6 +269,16 @@ export function RevisionChapitresScreen() {
               icon={<Layers size={30} color={dark.textMuted} />}
               title="Chargement impossible"
               message={error}
+              action={
+                <Pressable
+                  style={styles.retryBtn}
+                  onPress={() => void loadChapters()}
+                  accessibilityRole="button"
+                  accessibilityLabel="Réessayer"
+                >
+                  <Text style={styles.retryBtnText}>Réessayer</Text>
+                </Pressable>
+              }
             />
           ) : null}
 
@@ -639,6 +649,18 @@ const styles = StyleSheet.create({
   },
   footer: {
     marginTop: 4,
+  },
+  retryBtn: {
+    marginTop: 8,
+    borderRadius: 12,
+    backgroundColor: dark.green,
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+  },
+  retryBtnText: {
+    color: '#FFFFFF',
+    fontFamily: fonts.bodyBold,
+    fontSize: 14,
   },
   pressed: {
     opacity: 0.9,

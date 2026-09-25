@@ -16,7 +16,12 @@ import {
   Text,
   View,
 } from 'react-native'
-import { fetchCourseProgress } from '../../api/revision'
+import {
+  fetchCourseProgress,
+  fetchRevisionChapters,
+  ContentError,
+  type RevisionChapter,
+} from '../../api/revision'
 import { DarkScreen } from '../../components/DarkScreen'
 import { PageNavbar } from '../../components/PageNavbar'
 import { ScreenLoader } from '../../components/ScreenLoader'
@@ -34,10 +39,37 @@ export function ChapterCoursesScreen() {
   const route = useRoute<Route>()
   const { user, loading } = useRequireAuth(navigation)
   const { chapterId = '', chapterName = '', courses: coursesParam } = route.params ?? {}
-  const courses = coursesParam ?? []
 
+  const [chapter, setChapter] = useState<RevisionChapter | null>(null)
+  const [chapterLoading, setChapterLoading] = useState(true)
+  const [chapterError, setChapterError] = useState<string | null>(null)
   const [completedIds, setCompletedIds] = useState<Set<string>>(new Set())
   const [progressLoading, setProgressLoading] = useState(true)
+
+  // Refetch par chapterId — même endpoint que le web (LearnerCourseListPage).
+  const loadChapter = useCallback(async () => {
+    setChapterLoading(true)
+    setChapterError(null)
+    try {
+      const chapters = await fetchRevisionChapters()
+      const found = chapters.find((item) => String(item.id) === String(chapterId)) ?? null
+      if (!found) {
+        setChapter(null)
+        setChapterError('Chapitre introuvable ou non publié')
+        return
+      }
+      setChapter(found)
+    } catch (err) {
+      setChapter(null)
+      setChapterError(err instanceof ContentError ? err.message : 'Chargement impossible')
+    } finally {
+      setChapterLoading(false)
+    }
+  }, [chapterId])
+
+  // Param de navigation en repli immédiat (deep-link sans cache), remplacé par le refetch.
+  const courses = chapter?.courses ?? coursesParam ?? []
+  const displayName = chapter?.name ?? chapterName
 
   const loadProgress = useCallback(async () => {
     setProgressLoading(true)
@@ -53,9 +85,14 @@ export function ChapterCoursesScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      if (user) void loadProgress()
-    }, [user, loadProgress]),
+      if (user) {
+        void loadChapter()
+        void loadProgress()
+      }
+    }, [user, loadChapter, loadProgress]),
   )
+
+  const doneCount = courses.filter((course) => completedIds.has(course.id)).length
 
   const isCourseUnlocked = (_index: number) => true
 
@@ -64,9 +101,9 @@ export function ChapterCoursesScreen() {
   return (
     <DarkScreen>
       <PageNavbar
-        title={formatChapterHeading(chapterName)}
+        title={formatChapterHeading(displayName)}
         icon={Layers}
-        onBack={() => navigation.goBack()}
+        onBack={() => navigation.navigate('RevisionChapitres')}
         numberOfLines={2}
       />
 
@@ -76,21 +113,48 @@ export function ChapterCoursesScreen() {
             <Text style={styles.subtitle}>
               Accède aux notions librement, à ton rythme.
             </Text>
+            {!chapterLoading && !chapterError && courses.length > 0 ? (
+              <Text style={styles.doneCount}>
+                {doneCount}/{courses.length} cours terminés
+              </Text>
+            ) : null}
           </FadeUp>
 
-          {progressLoading ? (
+          {chapterLoading ? (
+            <ActivityIndicator color={dark.green} style={{ marginBottom: 16 }} />
+          ) : null}
+          {chapterError ? (
+            <View style={styles.centerBox}>
+              <Text style={styles.emptyTitle}>Chargement impossible</Text>
+              <Text style={styles.emptyText}>{chapterError}</Text>
+              <Pressable
+                style={styles.retryBtn}
+                onPress={() => {
+                  void loadChapter()
+                  void loadProgress()
+                }}
+                accessibilityRole="button"
+                accessibilityLabel="Réessayer"
+              >
+                <Text style={styles.retryBtnText}>Réessayer</Text>
+              </Pressable>
+            </View>
+          ) : null}
+
+          {progressLoading && !chapterLoading ? (
             <ActivityIndicator color={dark.green} style={{ marginBottom: 16 }} />
           ) : null}
 
-          {courses.length === 0 ? (
+          {!chapterLoading && !chapterError && courses.length === 0 ? (
             <View style={styles.centerBox}>
               <Text style={styles.emptyTitle}>Aucune notion</Text>
               <Text style={styles.emptyText}>
                 Ce chapitre ne contient pas encore de notion publiée.
               </Text>
             </View>
-          ) : (
-            courses.map((course, index) => {
+          ) : null}
+          {!chapterError && courses.length > 0
+            ? courses.map((course, index) => {
               const unlocked = isCourseUnlocked(index)
               const completed = completedIds.has(course.id)
 
@@ -107,7 +171,7 @@ export function ChapterCoursesScreen() {
                     onPress={() =>
                       navigation.navigate('CourseDetail', {
                         chapterId,
-                        chapterName,
+                        chapterName: displayName,
                         course,
                         courses,
                       })
@@ -147,8 +211,7 @@ export function ChapterCoursesScreen() {
                   </Pressable>
                 </FadeUp>
               )
-            })
-          )}
+            }) : null}
       </ScrollView>
     </DarkScreen>
   )
@@ -177,6 +240,24 @@ const styles = StyleSheet.create({
     color: dark.textMuted,
     maxWidth: 340,
   },
+  doneCount: {
+    marginTop: 8,
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 13,
+    color: dark.green,
+  },
+  retryBtn: {
+    marginTop: 14,
+    borderRadius: 12,
+    backgroundColor: dark.green,
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+  },
+  retryBtnText: {
+    color: '#FFFFFF',
+    fontFamily: fonts.bodyBold,
+    fontSize: 14,
+  },
   card: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -190,7 +271,7 @@ const styles = StyleSheet.create({
   },
   cardLocked: {
     borderColor: dark.border,
-    opacity: 0.6,
+    backgroundColor: '#EEF2F7',
   },
   cardDone: {
     borderColor: 'rgba(34,214,115,0.32)',
@@ -211,7 +292,7 @@ const styles = StyleSheet.create({
   },
   cardIndex: {
     fontFamily: fonts.bodySemiBold,
-    fontSize: 11.5,
+    fontSize: 12,
     color: dark.textMuted,
     marginBottom: 2,
   },
@@ -225,11 +306,11 @@ const styles = StyleSheet.create({
     fontFamily: fonts.body,
     fontSize: 12.5,
     lineHeight: 17,
-    color: dark.textMuted,
+    color: '#64748b',
     marginTop: 4,
   },
   textMuted: {
-    color: dark.textMuted,
+    color: '#475569',
   },
   centerBox: {
     alignItems: 'center',
