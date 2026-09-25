@@ -2,24 +2,21 @@ import { useCallback, useState } from 'react'
 import { useFocusEffect, useNavigation } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { setStatusBarStyle } from 'expo-status-bar'
-import { LinearGradient } from 'expo-linear-gradient'
 import {
-  BookOpen,
   Check,
-  ChevronLeft,
   ChevronRight,
   CircleAlert,
   Clock,
-  CreditCard,
   History,
   Lock,
+  ShieldCheck,
   Ticket,
   TriangleAlert,
-  Wallet,
 } from 'lucide-react-native'
 import {
   ActivityIndicator,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -38,8 +35,6 @@ import {
   type AccessModuleKey,
   type CheckoutCartItem,
 } from '../api/accessRequests'
-import { Bouncy } from '../components/Bouncy'
-import { FadeUp } from '../components/FadeUp'
 import { LegalFooter } from '../components/LegalFooter'
 import { MobileMoneyCheckout } from '../components/MobileMoneyCheckout'
 import { ScreenLoader } from '../components/ScreenLoader'
@@ -50,13 +45,12 @@ import {
   formatSubscriptionEndDate,
   getActiveSubscriptions,
 } from '../utils/subscriptionSummary'
-import { brand, colors, dark, fonts, shadows } from '../theme'
-import {
-  clearPendingCheckoutCart,
-  loadPendingCheckoutCart,
-  type PendingCheckoutCart,
-} from '../utils/checkoutCart'
+import { clearPendingCheckoutCart, loadPendingCheckoutCart, type PendingCheckoutCart } from '../utils/checkoutCart'
 import { formatPrice } from '../utils/money'
+import { colors } from '../theme/tokens'
+import { LogoTile } from '../components/ui-kit-core'
+import { NotchedCard, PlanCard } from '../components/ui-kit-cards'
+import { MainTabBar } from '../components/ui-kit-nav'
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'Abonnement'>
 
@@ -81,6 +75,7 @@ export function AbonnementScreen() {
   const [modules, setModules] = useState<AccessModule[]>([])
   const [me, setMe] = useState<AccessMe | null>(null)
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [selected, setSelected] = useState<Partial<Record<AccessModuleKey, boolean>>>({})
   const [quantityByModule, setQuantityByModule] = useState<Record<string, string>>({})
@@ -91,8 +86,9 @@ export function AbonnementScreen() {
   const [promoSuccess, setPromoSuccess] = useState<string | null>(null)
   const [pendingCart, setPendingCart] = useState<PendingCheckoutCart | null>(null)
 
-  const load = useCallback(async () => {
-    setLoading(true)
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true)
+    else setRefreshing(true)
     setError(null)
     try {
       const [moduleCatalog, meResult, savedCart] = await Promise.all([
@@ -107,6 +103,7 @@ export function AbonnementScreen() {
       setError(err instanceof AccessRequestError ? err.message : 'Chargement impossible')
     } finally {
       setLoading(false)
+      setRefreshing(false)
     }
   }, [])
 
@@ -168,123 +165,89 @@ export function AbonnementScreen() {
   const activeSubscriptions = getActiveSubscriptions(me)
   const primaryOffers = sortedModules.filter((module) => PRIMARY_KEYS.includes(module.key))
   const canPay = cartItems.length > 0
+  const hasAnyAccess = modules.some((m) => me?.access[m.key]) || (me ? me.user.soldeHeures > 0 : false)
 
   return (
     <View style={styles.root}>
-      <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-        <View style={styles.topBar}>
-          <Pressable
-            style={({ pressed }) => [styles.roundBtn, pressed && styles.pressed]}
-            onPress={() => navigation.navigate('Home')}
-            accessibilityLabel="Retour"
-            hitSlop={8}
-          >
-            <ChevronLeft size={22} color={dark.textPrimary} />
-          </Pressable>
-          <View style={styles.topBarCenter}>
-            <View style={styles.topBarIcon}>
-              <CreditCard size={15} color={dark.green} />
-            </View>
-            <Text style={styles.topBarTitle}>Mes accès</Text>
-          </View>
-          <Pressable
-            style={({ pressed }) => [styles.roundBtn, pressed && styles.pressed]}
-            onPress={() => navigation.navigate('HistoriquePaiements')}
-            accessibilityLabel="Historique"
-            hitSlop={8}
-          >
-            <History size={19} color={dark.textMuted} />
-          </Pressable>
-        </View>
-
+      <View style={styles.halo} pointerEvents="none" />
+      <SafeAreaView style={styles.safe} edges={['top']}>
         <ScrollView
-          contentContainerStyle={[styles.scroll, !loading && styles.scrollWithSticky]}
+          contentContainerStyle={styles.scroll}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={() => void load(true)} tintColor={colors.green} />
+          }
         >
-          <FadeUp delay={40}>
-            <LinearGradient
-              colors={['#E8F8EF', '#F0FDF4', '#FFFFFF']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.hero}
-            >
-              <View style={styles.heroCopy}>
-                <Text style={styles.heroTitle}>Débloquez toute l’expérience Monpermis.bj</Text>
-                <Text style={styles.heroText}>{INTRO_COPY}</Text>
+          <View style={styles.headBlock}>
+            <View style={styles.headRow}>
+              <View style={styles.headActions}>
+                <Pressable
+                  style={({ pressed }) => [styles.roundBtn, pressed && styles.pressed]}
+                  onPress={() => navigation.navigate('HistoriquePaiements')}
+                  accessibilityLabel="Historique des paiements"
+                  hitSlop={8}
+                >
+                  <History size={19} color={colors.muted} />
+                </Pressable>
+                <LogoTile size="sm" />
               </View>
-              <View style={styles.heroArt} accessibilityElementsHidden>
-                <View style={styles.heroArtCircle}>
-                  <Wallet size={32} color={dark.green} />
-                </View>
-                <View style={styles.heroArtBadge}>
-                  <CreditCard size={14} color={colors.white} />
-                </View>
-              </View>
-            </LinearGradient>
-          </FadeUp>
+            </View>
+            <Text style={styles.h1}>Choisis ta formule</Text>
+            <Text style={styles.sub}>Activation immédiate après paiement</Text>
+          </View>
 
           {loading ? (
             <View style={styles.loadingBox}>
               <SkeletonList count={3} />
-              <ActivityIndicator color={dark.green} style={{ marginTop: 8 }} />
+              <ActivityIndicator color={colors.green} style={{ marginTop: 8 }} />
             </View>
           ) : (
             <>
               {error ? (
-                <FadeUp delay={60}>
-                  <View style={styles.errorCard}>
-                    <CircleAlert size={18} color={dark.coral} />
-                    <Text style={styles.errorText}>{error}</Text>
-                  </View>
-                </FadeUp>
+                <View style={styles.errorCard}>
+                  <CircleAlert size={18} color="#C2410C" />
+                  <Text style={styles.errorText}>{error}</Text>
+                </View>
               ) : null}
 
               {pendingCart ? (
-                <FadeUp delay={70}>
-                  <View style={styles.resumeCard}>
-                    <Text style={styles.kicker}>Paiement interrompu</Text>
-                    <Text style={styles.statusCopy}>
-                      Tu as un panier en cours. Reprends là où tu t’étais arrêté.
-                    </Text>
-                    <View style={styles.resumeActions}>
-                      <Bouncy
-                        scaleTo={0.98}
-                        onPress={() => {
-                          const next: Partial<Record<AccessModuleKey, boolean>> = {}
-                          for (const item of pendingCart.items) next[item.module] = true
-                          setSelected(next)
-                          setQuantityByModule(
-                            Object.fromEntries(
-                              pendingCart.items.map((item) => [item.module, String(item.quantity)]),
-                            ),
-                          )
-                          setCheckoutOpen(true)
-                        }}
-                      >
-                        <View style={styles.resumePayBtn}>
-                          <Text style={styles.resumePayText}>Reprendre le paiement</Text>
-                        </View>
-                      </Bouncy>
-                      <Pressable
-                        onPress={() => {
-                          void clearPendingCheckoutCart()
-                          setPendingCart(null)
-                        }}
-                        hitSlop={8}
-                      >
-                        <Text style={styles.selectHint}>Ignorer</Text>
-                      </Pressable>
-                    </View>
+                <NotchedCard tabLabel="Paiement interrompu" tabColor={colors.navy}>
+                  <Text style={styles.cardText}>
+                    Tu as un panier en cours. Reprends là où tu t’étais arrêté.
+                  </Text>
+                  <View style={styles.resumeActions}>
+                    <Pressable
+                      style={({ pressed }) => [styles.resumePayBtn, pressed && styles.pressed]}
+                      onPress={() => {
+                        const next: Partial<Record<AccessModuleKey, boolean>> = {}
+                        for (const item of pendingCart.items) next[item.module] = true
+                        setSelected(next)
+                        setQuantityByModule(
+                          Object.fromEntries(
+                            pendingCart.items.map((item) => [item.module, String(item.quantity)]),
+                          ),
+                        )
+                        setCheckoutOpen(true)
+                      }}
+                    >
+                      <Text style={styles.resumePayText}>Reprendre le paiement</Text>
+                    </Pressable>
+                    <Pressable
+                      onPress={() => {
+                        void clearPendingCheckoutCart()
+                        setPendingCart(null)
+                      }}
+                      hitSlop={8}
+                    >
+                      <Text style={styles.linkText}>Ignorer</Text>
+                    </Pressable>
                   </View>
-                </FadeUp>
+                </NotchedCard>
               ) : null}
 
-              {activeSubscriptions.map((sub, index) => (
-                <FadeUp key={sub.module} delay={80 + index * 30}>
-                  <View style={styles.accessCard}>
-                    <View style={styles.accessIcon}>
-                      <BookOpen size={20} color={dark.green} />
-                    </View>
+              {activeSubscriptions.map((sub) => (
+                <View key={sub.module} style={styles.whiteCard}>
+                  <View style={styles.accessTop}>
                     <View style={styles.accessCopy}>
                       <Text style={styles.accessLabel}>Mon accès</Text>
                       <Text style={styles.accessName}>{sub.label}</Text>
@@ -292,75 +255,67 @@ export function AbonnementScreen() {
                         Expire le {formatSubscriptionEndDate(sub.endAt)} · {sub.remainingLabel}
                       </Text>
                     </View>
-                    <View style={styles.statusBadge}>
-                      <Text style={styles.statusBadgeText}>Actif</Text>
+                    <View style={styles.activeBadge}>
+                      <Check size={12} color={colors.greenDark} strokeWidth={3} />
+                      <Text style={styles.activeBadgeText}>Actif</Text>
                     </View>
-                    {sub.daysLeft <= 7 ? (
-                      <Pressable
-                        style={styles.renewBtn}
-                        onPress={() => setSelected({ [sub.module]: true })}
-                      >
-                        <Text style={styles.renewBtnText}>Renouveler</Text>
-                      </Pressable>
-                    ) : null}
                   </View>
-                </FadeUp>
+                  {sub.daysLeft <= 7 ? (
+                    <Pressable
+                      style={({ pressed }) => [styles.renewBtn, pressed && styles.pressed]}
+                      onPress={() => setSelected({ [sub.module]: true })}
+                    >
+                      <Text style={styles.renewBtnText}>Renouveler</Text>
+                    </Pressable>
+                  ) : null}
+                </View>
               ))}
 
               {me ? (
-                <FadeUp delay={100}>
-                  <View style={styles.soldeCard}>
+                <View style={styles.whiteCard}>
+                  <View style={styles.soldeRow}>
                     <View style={styles.soldeIcon}>
-                      <Clock size={20} color={dark.green} />
+                      <Clock size={20} color={colors.greenDark} />
                     </View>
-                    <View style={styles.soldeCopy}>
-                      <Text style={styles.soldeLabel}>Solde heures de conduite</Text>
+                    <View style={styles.accessCopy}>
+                      <Text style={styles.accessLabel}>Solde heures de conduite</Text>
                       <Text style={styles.soldeValue}>{me.user.soldeHeures} h</Text>
                     </View>
                     <Pressable
-                      style={({ pressed }) => [styles.soldeHistoryBtn, pressed && styles.pressed]}
+                      style={({ pressed }) => [styles.historyBtn, pressed && styles.pressed]}
                       onPress={() => navigation.navigate('HistoriquePaiements')}
                     >
-                      <Clock size={14} color={dark.green} />
-                      <Text style={styles.soldeHistoryText}>Historique</Text>
+                      <Clock size={14} color={colors.greenDark} />
+                      <Text style={styles.historyBtnText}>Historique</Text>
                     </Pressable>
                   </View>
-                </FadeUp>
+                </View>
               ) : null}
 
               {me?.pendingRequest ? (
-                <FadeUp delay={110}>
-                  <View style={styles.infoCard}>
-                    <TriangleAlert size={18} color={dark.green} />
-                    <Text style={styles.infoCardText}>
-                      Paiement en confirmation… Valide la demande sur ton téléphone puis reviens
-                      ici.
-                    </Text>
-                  </View>
-                </FadeUp>
-              ) : null}
-
-              <FadeUp delay={120}>
-                <View style={styles.catalogHead}>
-                  <Text style={styles.catalogTitle}>Offres disponibles</Text>
-                  <Text style={styles.catalogSub}>
-                    Choisissez la formule adaptée à vos besoins.
+                <View style={styles.infoCard}>
+                  <TriangleAlert size={18} color={colors.greenDark} />
+                  <Text style={styles.infoCardText}>
+                    Paiement en confirmation… Valide la demande sur ton téléphone puis reviens ici.
                   </Text>
                 </View>
-              </FadeUp>
+              ) : null}
+
+              <View style={styles.catalogHead}>
+                <Text style={styles.catalogTitle}>Offres disponibles</Text>
+                <Text style={styles.catalogSub}>{INTRO_COPY}</Text>
+              </View>
 
               {primaryOffers.length === 0 ? (
-                <FadeUp delay={130}>
-                  <View style={styles.emptyOffers}>
-                    <Lock size={26} color={dark.textMuted} />
-                    <Text style={styles.emptyOffersTitle}>Aucune offre disponible</Text>
-                    <Text style={styles.statusCopy}>
-                      Reviens plus tard ou contacte le support si le problème persiste.
-                    </Text>
-                  </View>
-                </FadeUp>
+                <View style={styles.emptyOffers}>
+                  <Lock size={26} color={colors.subtle} />
+                  <Text style={styles.emptyOffersTitle}>Aucune offre disponible</Text>
+                  <Text style={styles.cardText}>
+                    Reviens plus tard ou contacte le support si le problème persiste.
+                  </Text>
+                </View>
               ) : (
-                primaryOffers.map((module, index) => {
+                primaryOffers.map((module) => {
                   const isActive =
                     Boolean(me?.access[module.key]) && module.key !== 'conduite_heures'
                   const showsQuantity = module.unit === 'hour'
@@ -373,191 +328,147 @@ export function AbonnementScreen() {
                   const checked = Boolean(selected[module.key])
 
                   return (
-                    <FadeUp key={module.key} delay={130 + index * 40}>
-                      <Pressable
-                        disabled={isActive}
-                        onPress={() =>
-                          setSelected((current) => ({
-                            ...current,
-                            [module.key]: !current[module.key],
-                          }))
+                    <View key={module.key} style={styles.planWrap}>
+                      <PlanCard
+                        name={module.label}
+                        description={
+                          isActive
+                            ? 'Accès actif'
+                            : `${formatPrice(module.price)}${unitSuffix[module.unit]}`
                         }
-                        style={[
-                          styles.plan,
-                          checked && styles.planSelected,
-                          isActive && styles.planActive,
-                        ]}
-                      >
-                        <View style={styles.planTop}>
-                          <View style={[styles.planIcon, isActive && styles.planIconActive]}>
-                            {module.key === 'code' ? (
-                              <TriangleAlert size={20} color={dark.green} />
-                            ) : (
-                              <BookOpen size={20} color={dark.green} />
-                            )}
-                          </View>
-                          <View style={styles.planCopy}>
-                            <Text style={styles.planName}>{module.label}</Text>
-                            <Text style={styles.duration}>
-                              {formatPrice(module.price)}
-                              {unitSuffix[module.unit]}
-                            </Text>
-                          </View>
-                          <View style={styles.priceCol}>
-                            {isActive ? (
-                              <View style={styles.activeBadge}>
-                                <Check size={12} color={dark.green} strokeWidth={3} />
-                                <Text style={styles.activeBadgeText}>Active</Text>
-                              </View>
-                            ) : (
-                              <Text style={styles.price}>{formatPrice(amount)}</Text>
-                            )}
-                            <ChevronRight
-                              size={18}
-                              color={checked || isActive ? dark.green : dark.textMuted}
-                            />
-                          </View>
-                        </View>
-
-                        {module.key === 'conduite_heures' && quantity >= 2 ? (
-                          <Text style={styles.discount}>Remise −1 000 FCFA appliquée</Text>
-                        ) : null}
-
-                        {showsQuantity && !isActive ? (
-                          <View style={styles.quantityField}>
-                            <Text style={styles.fieldLabel}>Nombre d’heures</Text>
-                            <TextInput
-                              style={styles.input}
-                              keyboardType="number-pad"
-                              value={quantityByModule[module.key] ?? '1'}
-                              onChangeText={(text) =>
-                                setQuantityByModule((current) => ({
+                        price={isActive ? 'Actif' : formatPrice(amount)}
+                        selected={checked || isActive}
+                        onPress={
+                          isActive
+                            ? undefined
+                            : () =>
+                                setSelected((current) => ({
                                   ...current,
-                                  [module.key]: text,
+                                  [module.key]: !current[module.key],
                                 }))
-                              }
-                            />
-                          </View>
-                        ) : null}
-
-                        {isActive ? (
-                          <View style={styles.activeRow}>
-                            <Check size={16} color={dark.green} />
-                            <Text style={styles.activeText}>Accès actif</Text>
-                          </View>
-                        ) : (
-                          <View style={styles.selectRow}>
-                            <View style={[styles.checkbox, checked && styles.checkboxChecked]}>
-                              {checked ? (
-                                <Check size={12} color={colors.white} strokeWidth={3} />
-                              ) : null}
-                            </View>
-                            <Text style={styles.selectHint}>
-                              {checked ? 'Sélectionné' : 'Sélectionner cette offre'}
-                            </Text>
-                          </View>
-                        )}
-                      </Pressable>
-                    </FadeUp>
+                        }
+                      />
+                      {module.key === 'conduite_heures' && quantity >= 2 ? (
+                        <Text style={styles.discount}>Remise −1 000 FCFA appliquée</Text>
+                      ) : null}
+                      {showsQuantity && !isActive ? (
+                        <View style={styles.quantityField}>
+                          <Text style={styles.fieldLabel}>Nombre d’heures</Text>
+                          <TextInput
+                            style={styles.input}
+                            keyboardType="number-pad"
+                            value={quantityByModule[module.key] ?? '1'}
+                            onChangeText={(text) =>
+                              setQuantityByModule((current) => ({
+                                ...current,
+                                [module.key]: text,
+                              }))
+                            }
+                          />
+                        </View>
+                      ) : null}
+                    </View>
                   )
                 })
               )}
 
-              <FadeUp delay={180}>
-                <Pressable
-                  style={({ pressed }) => [styles.conduiteLink, pressed && styles.pressed]}
-                  onPress={() => navigation.navigate('Conduite')}
-                >
-                  <View style={styles.conduiteIcon}>
-                    <BookOpen size={18} color="#2E93E6" />
-                  </View>
-                  <View style={styles.conduiteCopy}>
-                    <Text style={styles.conduiteLinkTitle}>Espace conduite</Text>
-                    <Text style={styles.conduiteLinkCopy}>
-                      Cours vidéo gratuits · réserver / acheter des heures avec moniteur
-                    </Text>
-                  </View>
-                  <View style={styles.gratuitBadge}>
-                    <Text style={styles.gratuitBadgeText}>Gratuit</Text>
-                  </View>
-                  <ChevronRight size={18} color={dark.textMuted} />
-                </Pressable>
-              </FadeUp>
-
-              <FadeUp delay={200}>
-                <View style={styles.promoCard}>
-                  <Text style={styles.kicker}>Vous avez un code promo ?</Text>
-                  <View style={styles.promoRow}>
-                    <View style={styles.promoInputWrap}>
-                      <Ticket size={16} color={dark.green} />
-                      <TextInput
-                        style={styles.promoInput}
-                        autoCapitalize="characters"
-                        placeholder="CODE PROMO"
-                        placeholderTextColor={dark.textMuted}
-                        value={promoCode}
-                        editable={!promoBusy}
-                        onChangeText={(text) => setPromoCode(text.toUpperCase())}
-                      />
-                    </View>
-                    <Pressable
-                      style={({ pressed }) => [
-                        styles.promoBtn,
-                        (promoBusy || !promoCode.trim()) && styles.disabled,
-                        pressed && styles.pressed,
-                      ]}
-                      disabled={promoBusy || !promoCode.trim()}
-                      onPress={() => void handleRedeemPromo()}
-                    >
-                      <Text style={styles.promoBtnText}>
-                        {promoBusy ? 'Vérification…' : 'Valider'}
-                      </Text>
-                    </Pressable>
-                  </View>
-                  {promoError ? <Text style={styles.errorInline}>{promoError}</Text> : null}
-                  {promoSuccess ? <Text style={styles.discount}>{promoSuccess}</Text> : null}
+              <Pressable
+                style={({ pressed }) => [styles.whiteCard, styles.conduiteLink, pressed && styles.pressed]}
+                onPress={() => navigation.navigate('Conduite')}
+              >
+                <View style={styles.accessCopy}>
+                  <Text style={styles.accessName}>Espace conduite</Text>
+                  <Text style={styles.catalogSub}>
+                    Cours vidéo gratuits · réserver / acheter des heures avec moniteur
+                  </Text>
                 </View>
-              </FadeUp>
+                <View style={styles.gratuitBadge}>
+                  <Text style={styles.gratuitBadgeText}>Gratuit</Text>
+                </View>
+                <ChevronRight size={18} color={colors.subtle} />
+              </Pressable>
 
-              {!modules.some((m) => me?.access[m.key]) && !(me && me.user.soldeHeures > 0) ? (
-                <FadeUp delay={220}>
-                  <View style={styles.lockCard}>
-                    <Lock size={20} color={dark.textMuted} />
-                    <View style={styles.lockCopy}>
-                      <Text style={styles.lockTitle}>Aucune offre sélectionnée</Text>
-                      <Text style={styles.statusCopy}>
+              <Text style={styles.payTitle}>Payer avec Mobile Money</Text>
+              <View style={styles.operatorRow}>
+                <View style={styles.operatorPill}>
+                  <View style={[styles.operatorDot, { backgroundColor: colors.yellow }]} />
+                  <Text style={styles.operatorText}>MTN MoMo</Text>
+                </View>
+                <View style={[styles.operatorPill, styles.operatorPillOff]}>
+                  <View style={[styles.operatorDot, { backgroundColor: colors.green }]} />
+                  <Text style={styles.operatorText}>Moov Money</Text>
+                </View>
+              </View>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.payBtn,
+                  !canPay && styles.disabled,
+                  pressed && canPay && styles.pressed,
+                ]}
+                disabled={!canPay}
+                onPress={() => setCheckoutOpen(true)}
+              >
+                <ShieldCheck size={18} color={colors.yellow} strokeWidth={2.2} />
+                <Text style={styles.payText}>
+                  {canPay ? `Payer ${formatPrice(cartTotal)}` : 'Sélectionne une offre'}
+                </Text>
+              </Pressable>
+              <Text style={styles.secureCaption}>Paiement sécurisé par FedaPay · XOF</Text>
+
+              <View style={styles.whiteCard}>
+                <Text style={styles.promoTitle}>Vous avez un code promo ?</Text>
+                <View style={styles.promoRow}>
+                  <View style={styles.promoInputWrap}>
+                    <Ticket size={16} color={colors.greenDark} />
+                    <TextInput
+                      style={styles.promoInput}
+                      autoCapitalize="characters"
+                      placeholder="CODE PROMO"
+                      placeholderTextColor={colors.subtle}
+                      value={promoCode}
+                      editable={!promoBusy}
+                      onChangeText={(text) => setPromoCode(text.toUpperCase())}
+                    />
+                  </View>
+                  <Pressable
+                    style={({ pressed }) => [
+                      styles.promoBtn,
+                      (promoBusy || !promoCode.trim()) && styles.disabled,
+                      pressed && styles.pressed,
+                    ]}
+                    disabled={promoBusy || !promoCode.trim()}
+                    onPress={() => void handleRedeemPromo()}
+                  >
+                    <Text style={styles.promoBtnText}>
+                      {promoBusy ? 'Vérification…' : 'Valider'}
+                    </Text>
+                  </Pressable>
+                </View>
+                {promoError ? <Text style={styles.errorInline}>{promoError}</Text> : null}
+                {promoSuccess ? <Text style={styles.discount}>{promoSuccess}</Text> : null}
+              </View>
+
+              {!hasAnyAccess ? (
+                <View style={styles.whiteCard}>
+                  <View style={styles.lockRow}>
+                    <Lock size={20} color={colors.subtle} />
+                    <View style={styles.accessCopy}>
+                      <Text style={styles.accessName}>Aucune offre sélectionnée</Text>
+                      <Text style={styles.cardText}>
                         Sélectionne au moins une offre ci-dessus pour débloquer tes parcours.
                       </Text>
                     </View>
                   </View>
-                </FadeUp>
+                </View>
               ) : null}
 
               <LegalFooter />
+              <View style={{ height: 120 }} />
             </>
           )}
         </ScrollView>
-
-        {!loading ? (
-          <View style={styles.stickyBar}>
-            <View style={styles.stickyCopy}>
-              <CreditCard size={18} color={dark.green} />
-              <View style={styles.stickyTextCol}>
-                <Text style={styles.stickyTitle} numberOfLines={2}>
-                  {canPay
-                    ? `${cartItems.length} offre${cartItems.length > 1 ? 's' : ''} · ${formatPrice(cartTotal)}`
-                    : 'Sélectionne au moins une offre pour débloquer le paiement.'}
-                </Text>
-              </View>
-            </View>
-            <Bouncy scaleTo={0.98} disabled={!canPay} onPress={() => setCheckoutOpen(true)}>
-              <View style={[styles.payBtn, !canPay && styles.disabled]}>
-                <Text style={styles.payText}>Payer {formatPrice(cartTotal)}</Text>
-              </View>
-            </Bouncy>
-          </View>
-        ) : null}
       </SafeAreaView>
+      <MainTabBar activeId="offres" />
 
       <MobileMoneyCheckout
         visible={checkoutOpen}
@@ -580,627 +491,400 @@ export function AbonnementScreen() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#FFFFFF',
+  },
+  halo: {
+    position: 'absolute',
+    top: -80,
+    right: -80,
+    width: 260,
+    height: 260,
+    borderRadius: 130,
+    backgroundColor: colors.yellow,
+    opacity: 0.16,
   },
   safe: {
     flex: 1,
   },
-  topBar: {
+  scroll: {
+    paddingHorizontal: 20,
+    paddingTop: 56,
+    gap: 12,
+  },
+  headBlock: {
+    gap: 3,
+  },
+  headRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginBottom: 8,
+  },
+  h1: {
+    fontFamily: 'Sora_700Bold',
+    fontSize: 26,
+    letterSpacing: -0.52,
+    color: colors.navy,
+  },
+  sub: {
+    fontFamily: 'PlusJakartaSans_600SemiBold',
+    fontSize: 13,
+    color: colors.muted,
+  },
+  headActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 24,
-    paddingTop: 10,
-    paddingBottom: 14,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0,16,48,0.05)',
-    ...shadows.sm,
+    gap: 8,
   },
   roundBtn: {
     width: 44,
     height: 44,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#F1F5F9',
-  },
-  topBarCenter: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  topBarIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: 9,
-    backgroundColor: brand.greenPale,
+    borderRadius: 22,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  topBarTitle: {
-    fontFamily: fonts.bodySemiBold,
-    fontSize: 18,
-    color: dark.textPrimary,
-  },
-  scroll: {
-    paddingHorizontal: 24,
-    paddingTop: 16,
-    paddingBottom: 28,
-    gap: 14,
-  },
-  scrollWithSticky: {
-    paddingBottom: 120,
-  },
-  hero: {
-    borderRadius: 28,
-    padding: 24,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    overflow: 'hidden',
-    ...shadows.sm,
-  },
-  heroCopy: {
-    flex: 1,
-    minWidth: 0,
-    gap: 8,
-  },
-  heroTitle: {
-    fontFamily: fonts.displayBold,
-    fontSize: 20,
-    lineHeight: 26,
-    letterSpacing: -0.3,
-    color: dark.textPrimary,
-  },
-  heroText: {
-    fontFamily: fonts.body,
-    fontSize: 13,
-    lineHeight: 20,
-    color: dark.textMuted,
-  },
-  heroArt: {
-    width: 72,
-    height: 72,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  heroArtCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: 999,
-    backgroundColor: 'rgba(0,176,80,0.12)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  heroArtBadge: {
-    position: 'absolute',
-    right: 0,
-    bottom: 2,
-    width: 26,
-    height: 26,
-    borderRadius: 999,
-    backgroundColor: dark.green,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...shadows.sm,
+  pressed: {
+    opacity: 0.7,
   },
   loadingBox: {
-    gap: 8,
     paddingVertical: 12,
   },
   errorCard: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 10,
     borderRadius: 20,
-    backgroundColor: dark.coralSoft,
-    padding: 16,
+    backgroundColor: '#FEF3EF',
+    borderWidth: 1.5,
+    borderColor: '#F5C9B8',
+    padding: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
   },
   errorText: {
     flex: 1,
-    fontFamily: fonts.body,
-    fontSize: 14,
-    lineHeight: 20,
-    color: dark.coral,
-  },
-  errorInline: {
-    color: dark.coral,
-    fontFamily: fonts.body,
+    fontFamily: 'PlusJakartaSans_600SemiBold',
     fontSize: 13,
-    marginTop: 8,
+    color: '#9A3412',
   },
-  resumeCard: {
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(240,180,41,0.45)',
-    backgroundColor: 'rgba(240,180,41,0.10)',
-    padding: 18,
-    gap: 8,
-  },
-  resumeActions: { gap: 10, marginTop: 4 },
-  resumePayBtn: {
-    borderRadius: 16,
-    backgroundColor: dark.green,
-    paddingVertical: 14,
-    alignItems: 'center',
-  },
-  resumePayText: {
-    color: colors.white,
-    fontFamily: fonts.bodyBold,
-    fontSize: 15,
-  },
-  accessCard: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    gap: 12,
-    backgroundColor: brand.greenPale,
-    borderRadius: 24,
-    borderWidth: 1.5,
-    borderColor: 'rgba(0,176,80,0.28)',
-    padding: 20,
-    ...shadows.sm,
-  },
-  accessIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 16,
+  whiteCard: {
+    borderRadius: 26,
     backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    padding: 16,
+    gap: 10,
+  },
+  cardText: {
+    fontFamily: 'PlusJakartaSans_600SemiBold',
+    fontSize: 13.5,
+    color: colors.muted,
+    lineHeight: 19,
+  },
+  resumeActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+  },
+  resumePayBtn: {
+    height: 48,
+    paddingHorizontal: 18,
+    borderRadius: 24,
+    backgroundColor: colors.navy,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  resumePayText: {
+    fontFamily: 'PlusJakartaSans_700Bold',
+    fontSize: 14,
+    color: '#FFFFFF',
+  },
+  linkText: {
+    fontFamily: 'PlusJakartaSans_700Bold',
+    fontSize: 13.5,
+    color: colors.muted,
+  },
+  accessTop: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
   },
   accessCopy: {
     flex: 1,
-    minWidth: 120,
     gap: 2,
   },
   accessLabel: {
-    fontFamily: fonts.bodyMedium,
-    fontSize: 11,
-    color: dark.textMuted,
+    fontFamily: 'PlusJakartaSans_700Bold',
+    fontSize: 11.5,
+    color: colors.subtle,
     textTransform: 'uppercase',
-    letterSpacing: 0.4,
+    letterSpacing: 0.6,
   },
   accessName: {
-    fontFamily: fonts.displayBold,
-    fontSize: 17,
-    color: dark.textPrimary,
+    fontFamily: 'Sora_700Bold',
+    fontSize: 16,
+    color: colors.navy,
   },
   accessMeta: {
-    fontFamily: fonts.body,
-    fontSize: 13,
-    color: dark.textMuted,
-    marginTop: 2,
-  },
-  statusBadge: {
-    borderRadius: 999,
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderWidth: 1,
-    borderColor: 'rgba(0,176,80,0.3)',
-  },
-  statusBadgeText: {
-    fontFamily: fonts.bodyBold,
-    fontSize: 12,
-    color: dark.green,
-  },
-  renewBtn: {
-    width: '100%',
-    backgroundColor: dark.green,
-    borderRadius: 14,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    alignItems: 'center',
-  },
-  renewBtnText: {
-    fontFamily: fonts.bodyBold,
-    fontSize: 13,
-    color: colors.white,
-  },
-  soldeCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: 'rgba(0,16,48,0.08)',
-    padding: 20,
-    ...shadows.sm,
-  },
-  soldeIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 999,
-    backgroundColor: brand.greenPale,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  soldeCopy: {
-    flex: 1,
-    minWidth: 0,
-    gap: 2,
-  },
-  soldeLabel: {
-    fontFamily: fonts.bodyMedium,
-    fontSize: 11,
-    color: dark.textMuted,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  soldeValue: {
-    fontFamily: fonts.displayExtraBold,
-    fontSize: 26,
-    color: dark.textPrimary,
-  },
-  soldeHistoryBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    borderRadius: 999,
-    borderWidth: 1.5,
-    borderColor: 'rgba(0,176,80,0.35)',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    backgroundColor: brand.greenPale,
-  },
-  soldeHistoryText: {
-    fontFamily: fonts.bodyBold,
-    fontSize: 12,
-    color: dark.green,
-  },
-  infoCard: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 12,
-    borderRadius: 20,
-    backgroundColor: brand.greenPale,
-    padding: 16,
-  },
-  infoCardText: {
-    flex: 1,
-    fontFamily: fonts.body,
-    fontSize: 14,
-    lineHeight: 20,
-    color: dark.textMuted,
-  },
-  catalogHead: {
-    gap: 4,
-    marginTop: 4,
-  },
-  catalogTitle: {
-    fontFamily: fonts.displayExtraBold,
-    fontSize: 22,
-    color: dark.textPrimary,
-  },
-  catalogSub: {
-    fontFamily: fonts.body,
-    fontSize: 14,
-    color: dark.textMuted,
-  },
-  emptyOffers: {
-    alignItems: 'center',
-    gap: 8,
-    borderRadius: 24,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: 'rgba(0,16,48,0.08)',
-    padding: 24,
-  },
-  emptyOffersTitle: {
-    fontFamily: fonts.displayBold,
-    fontSize: 16,
-    color: dark.textPrimary,
-  },
-  plan: {
-    borderRadius: 24,
-    borderWidth: 1.5,
-    borderColor: 'rgba(0,16,48,0.08)',
-    padding: 20,
-    backgroundColor: '#FFFFFF',
-    gap: 12,
-    ...shadows.sm,
-  },
-  planSelected: {
-    borderColor: dark.green,
-    backgroundColor: brand.greenPale,
-  },
-  planActive: {
-    borderColor: 'rgba(0,176,80,0.35)',
-    backgroundColor: brand.greenPale,
-  },
-  planTop: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 12,
-  },
-  planIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 16,
-    backgroundColor: brand.greenPale,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  planIconActive: {
-    backgroundColor: '#FFFFFF',
-  },
-  planCopy: {
-    flex: 1,
-    minWidth: 0,
-    gap: 6,
-  },
-  planName: {
-    color: dark.textPrimary,
-    fontFamily: fonts.displayBold,
-    fontSize: 17,
-  },
-  duration: {
-    alignSelf: 'flex-start',
-    color: dark.textMuted,
-    fontFamily: fonts.bodyBold,
-    fontSize: 12,
-    backgroundColor: '#F1F5F9',
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    overflow: 'hidden',
-  },
-  priceCol: {
-    alignItems: 'flex-end',
-    gap: 6,
-  },
-  price: {
-    color: dark.green,
-    fontFamily: fonts.displayExtraBold,
-    fontSize: 16,
+    fontFamily: 'PlusJakartaSans_600SemiBold',
+    fontSize: 12.5,
+    color: colors.muted,
   },
   activeBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    borderRadius: 999,
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    gap: 5,
+    height: 30,
+    paddingHorizontal: 12,
+    borderRadius: 15,
+    backgroundColor: colors.greenTint,
   },
   activeBadgeText: {
-    fontFamily: fonts.bodyBold,
+    fontFamily: 'PlusJakartaSans_700Bold',
     fontSize: 12,
-    color: dark.green,
+    color: colors.greenDark,
   },
-  discount: {
-    color: dark.green,
-    fontFamily: fonts.body,
-    fontSize: 13,
-  },
-  activeRow: {
-    flexDirection: 'row',
+  renewBtn: {
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: colors.green,
     alignItems: 'center',
-    gap: 8,
+    justifyContent: 'center',
   },
-  activeText: {
-    color: dark.green,
-    fontFamily: fonts.bodyBold,
+  renewBtnText: {
+    fontFamily: 'PlusJakartaSans_700Bold',
     fontSize: 14,
+    color: '#FFFFFF',
   },
-  selectRow: {
+  soldeRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
   },
-  checkbox: {
-    width: 22,
-    height: 22,
-    borderRadius: 7,
-    borderWidth: 2,
-    borderColor: 'rgba(0,16,48,0.22)',
+  soldeIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: colors.greenTint,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  soldeValue: {
+    fontFamily: 'Sora_700Bold',
+    fontSize: 20,
+    color: colors.navy,
+  },
+  historyBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    height: 40,
+    paddingHorizontal: 14,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+  },
+  historyBtnText: {
+    fontFamily: 'PlusJakartaSans_700Bold',
+    fontSize: 12.5,
+    color: colors.greenDark,
+  },
+  infoCard: {
+    borderRadius: 20,
+    backgroundColor: colors.greenTint,
+    padding: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  infoCardText: {
+    flex: 1,
+    fontFamily: 'PlusJakartaSans_600SemiBold',
+    fontSize: 13,
+    color: colors.greenInk,
+  },
+  catalogHead: {
+    marginTop: 4,
+    gap: 4,
+  },
+  catalogTitle: {
+    fontFamily: 'Sora_700Bold',
+    fontSize: 18,
+    color: colors.navy,
+  },
+  catalogSub: {
+    fontFamily: 'PlusJakartaSans_600SemiBold',
+    fontSize: 12.5,
+    color: colors.muted,
+    lineHeight: 18,
+  },
+  emptyOffers: {
+    borderRadius: 26,
     backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    borderColor: colors.border,
+    padding: 20,
+    alignItems: 'center',
+    gap: 8,
   },
-  checkboxChecked: {
-    borderColor: dark.green,
-    backgroundColor: dark.green,
+  emptyOffersTitle: {
+    fontFamily: 'Sora_700Bold',
+    fontSize: 16,
+    color: colors.navy,
   },
-  selectHint: {
-    color: dark.textMuted,
-    fontFamily: fonts.body,
-    fontSize: 13,
+  planWrap: {
+    gap: 8,
   },
-  quantityField: { gap: 6 },
+  discount: {
+    fontFamily: 'PlusJakartaSans_700Bold',
+    fontSize: 12.5,
+    color: colors.greenDark,
+  },
+  quantityField: {
+    gap: 6,
+  },
   fieldLabel: {
-    color: dark.textMuted,
-    fontFamily: fonts.bodyBold,
-    fontSize: 13,
+    fontFamily: 'PlusJakartaSans_700Bold',
+    fontSize: 12.5,
+    color: colors.muted,
   },
   input: {
-    borderWidth: 1,
-    borderColor: 'rgba(0,16,48,0.1)',
-    borderRadius: 14,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    color: dark.textPrimary,
-    fontFamily: fonts.body,
-    backgroundColor: '#F8FAFC',
+    height: 52,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 16,
+    fontFamily: 'PlusJakartaSans_700Bold',
+    fontSize: 15,
+    color: colors.navy,
   },
   conduiteLink: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: 'rgba(0,16,48,0.08)',
-    backgroundColor: '#FFFFFF',
-    padding: 16,
-    ...shadows.sm,
   },
-  conduiteIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    backgroundColor: 'rgba(46,147,230,0.12)',
+  gratuitBadge: {
+    height: 30,
+    paddingHorizontal: 12,
+    borderRadius: 15,
+    backgroundColor: colors.yellowTint,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  conduiteCopy: {
-    flex: 1,
-    minWidth: 0,
-    gap: 2,
-  },
-  conduiteLinkTitle: {
-    fontFamily: fonts.displayBold,
-    fontSize: 16,
-    color: dark.textPrimary,
-  },
-  conduiteLinkCopy: {
-    fontFamily: fonts.body,
-    fontSize: 12,
-    lineHeight: 18,
-    color: dark.textMuted,
-  },
-  gratuitBadge: {
-    borderRadius: 999,
-    backgroundColor: brand.greenPale,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-  },
   gratuitBadgeText: {
-    fontFamily: fonts.bodyBold,
-    fontSize: 11,
-    color: dark.green,
-  },
-  promoCard: {
-    borderRadius: 24,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: 'rgba(0,16,48,0.08)',
-    padding: 20,
-    ...shadows.sm,
-  },
-  kicker: {
-    fontFamily: fonts.displayBold,
+    fontFamily: 'PlusJakartaSans_800ExtraBold',
     fontSize: 12,
-    color: dark.green,
-    textTransform: 'uppercase',
-    letterSpacing: 0.6,
-    marginBottom: 12,
+    color: colors.navy,
   },
-  statusCopy: {
-    fontFamily: fonts.body,
+  payTitle: {
+    marginTop: 6,
+    fontFamily: 'Sora_700Bold',
+    fontSize: 17,
+    color: colors.navy,
+  },
+  operatorRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  operatorPill: {
+    flex: 1,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  operatorPillOff: {
+    backgroundColor: colors.bg,
+  },
+  operatorDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+  },
+  operatorText: {
+    fontFamily: 'PlusJakartaSans_700Bold',
     fontSize: 14,
-    lineHeight: 21,
-    color: dark.textMuted,
+    color: colors.navy,
+  },
+  payBtn: {
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: colors.green,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  payText: {
+    fontFamily: 'PlusJakartaSans_800ExtraBold',
+    fontSize: 16,
+    color: '#FFFFFF',
+  },
+  disabled: {
+    opacity: 0.45,
+  },
+  secureCaption: {
+    textAlign: 'center',
+    fontFamily: 'PlusJakartaSans_600SemiBold',
+    fontSize: 12,
+    color: colors.subtle,
+  },
+  promoTitle: {
+    fontFamily: 'Sora_700Bold',
+    fontSize: 15,
+    color: colors.navy,
   },
   promoRow: {
     flexDirection: 'row',
-    gap: 10,
-    alignItems: 'center',
+    gap: 8,
   },
   promoInputWrap: {
     flex: 1,
-    minWidth: 0,
+    height: 52,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 14,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(0,16,48,0.1)',
-    borderRadius: 14,
-    paddingHorizontal: 12,
-    backgroundColor: '#F8FAFC',
   },
   promoInput: {
     flex: 1,
-    paddingVertical: 12,
-    color: dark.textPrimary,
-    fontFamily: fonts.bodyBold,
+    fontFamily: 'PlusJakartaSans_700Bold',
     fontSize: 14,
-    letterSpacing: 0.5,
+    color: colors.navy,
+    letterSpacing: 1,
   },
   promoBtn: {
-    borderRadius: 14,
-    backgroundColor: brand.greenPale,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(0,176,80,0.25)',
-  },
-  promoBtnText: {
-    color: dark.green,
-    fontFamily: fonts.bodyBold,
-    fontSize: 14,
-  },
-  lockCard: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 12,
-    borderRadius: 20,
-    backgroundColor: 'rgba(0,16,48,0.04)',
-    padding: 18,
-  },
-  lockCopy: {
-    flex: 1,
-    minWidth: 0,
-    gap: 4,
-  },
-  lockTitle: {
-    fontFamily: fonts.bodyBold,
-    fontSize: 15,
-    color: dark.textPrimary,
-  },
-  stickyBar: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingHorizontal: 20,
-    paddingTop: 14,
-    paddingBottom: 16,
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(0,16,48,0.06)',
-    ...shadows.md,
-  },
-  stickyCopy: {
-    flex: 1,
-    minWidth: 0,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  stickyTextCol: {
-    flex: 1,
-    minWidth: 0,
-  },
-  stickyTitle: {
-    fontFamily: fonts.bodySemiBold,
-    fontSize: 13,
-    lineHeight: 18,
-    color: dark.textMuted,
-  },
-  payBtn: {
-    minHeight: 56,
-    minWidth: 120,
-    borderRadius: 20,
-    backgroundColor: dark.green,
+    height: 52,
     paddingHorizontal: 18,
+    borderRadius: 16,
+    backgroundColor: colors.navy,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  payText: {
-    color: colors.white,
-    fontFamily: fonts.bodyBold,
-    fontSize: 15,
+  promoBtnText: {
+    fontFamily: 'PlusJakartaSans_700Bold',
+    fontSize: 14,
+    color: '#FFFFFF',
   },
-  disabled: { opacity: 0.5 },
-  pressed: { opacity: 0.85 },
+  errorInline: {
+    fontFamily: 'PlusJakartaSans_600SemiBold',
+    fontSize: 12.5,
+    color: '#C2410C',
+  },
+  lockRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+  },
 })
