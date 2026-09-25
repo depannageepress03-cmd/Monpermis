@@ -421,3 +421,8 @@ a {
   background-position: center;
   background-size: contain;
 }
+
+/* TabBar.html : le contenu défile sous la barre flottante (marge basse ~120 px). */
+.mp-page-stage {
+  padding-bottom: 120px;
+}
