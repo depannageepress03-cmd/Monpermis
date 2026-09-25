@@ -68,7 +68,8 @@ import { useHoldTimer } from '../../hooks/useHoldTimer'
 import { useRequireAuth } from '../../hooks/useRequireAuth'
 import { useUnreadNotifications } from '../../hooks/useUnreadNotifications'
 import type { RootStackParamList } from '../../navigation/types'
-import { brand, dark, fonts, shadows } from '../../theme'
+import { colors } from '../../theme/tokens'
+import { DayPill } from '../../components/ui-kit-nav'
 import { resolveMediaUrl } from '../../utils/mediaUrl'
 import { resolveMoniteurVideoEmbed } from '../../utils/mediaEmbed'
 import { safeOpenUrl } from '../../utils/safeOpenUrl'
@@ -140,8 +141,18 @@ function formatDayChip(date: string) {
   }
 }
 
-const ORANGE = '#F97316'
-const ORANGE_SOFT = '#FFF7ED'
+function monthLabelFor(dates: string[]) {
+  try {
+    const labels = dates.map((date) => {
+      const label = new Date(`${date}T12:00:00`).toLocaleDateString('fr-FR', { month: 'long' })
+      return label.charAt(0).toUpperCase() + label.slice(1)
+    })
+    const unique = [...new Set(labels)]
+    return unique.join(' – ')
+  } catch {
+    return ''
+  }
+}
 
 const STEP_META = [
   { id: 'moniteur', label: 'Moniteur', Icon: User },
@@ -156,7 +167,7 @@ export function ReservationFlowScreen() {
   const { user, loading } = useRequireAuth(navigation)
   const unreadCount = useUnreadNotifications(Boolean(user))
   const [step, setStep] = useState<Step>('moniteur')
-  const vehicleSlideWidth = Math.max(windowWidth - 48 - 40, 260)
+  const vehicleSlideWidth = Math.max(windowWidth - 40 - 32, 260)
   const [moniteurId, setMoniteurId] = useState<string | undefined>(undefined)
   const [moniteurs, setMoniteurs] = useState<MoniteurPublic[]>([])
   const [profile, setProfile] = useState<MoniteurProfile | null>(null)
@@ -210,6 +221,11 @@ export function ReservationFlowScreen() {
   const selectedDaySlots = useMemo(
     () => daysWithSlots.find((day) => day.date === selectedDate)?.slots ?? [],
     [daysWithSlots, selectedDate],
+  )
+
+  const daysMonthLabel = useMemo(
+    () => monthLabelFor(daysWithSlots.map((day) => day.date)),
+    [daysWithSlots],
   )
 
   const priceFcfa = computeDrivingAmount(
@@ -442,6 +458,7 @@ export function ReservationFlowScreen() {
 
   return (
     <View style={styles.root}>
+      <View style={styles.halo} pointerEvents="none" />
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
         <View style={styles.topBar}>
           <Pressable
@@ -450,11 +467,11 @@ export function ReservationFlowScreen() {
             accessibilityLabel="Retour"
             hitSlop={8}
           >
-            <ChevronLeft size={22} color={dark.textPrimary} />
+            <ChevronLeft size={22} color={colors.navy} />
           </Pressable>
           <View style={styles.topBarCenter}>
             <View style={styles.topBarIcon}>
-              <CalendarPlus size={15} color={ORANGE} />
+              <CalendarPlus size={15} color={colors.greenDark} />
             </View>
             <Text style={styles.topBarTitle}>Nouvelle séance</Text>
           </View>
@@ -464,7 +481,7 @@ export function ReservationFlowScreen() {
             accessibilityLabel="Notifications"
             hitSlop={8}
           >
-            <Bell size={19} color={dark.textMuted} />
+            <Bell size={19} color={colors.muted} />
             {unreadCount > 0 ? <View style={styles.notifDot} /> : null}
           </Pressable>
         </View>
@@ -534,7 +551,7 @@ export function ReservationFlowScreen() {
                       </View>
                       <Icon
                         size={16}
-                        color={current || done ? dark.green : dark.textMuted}
+                        color={current || done ? colors.greenDark : colors.subtle}
                       />
                       <Text
                         style={[
@@ -571,7 +588,7 @@ export function ReservationFlowScreen() {
                 </Text>
                 <View style={styles.sectionRow}>
                   <View style={styles.sectionIcon}>
-                    <User size={16} color={dark.green} />
+                    <User size={16} color={colors.greenDark} />
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.section}>Choisissez un moniteur</Text>
@@ -582,7 +599,7 @@ export function ReservationFlowScreen() {
                 </View>
               </FadeUp>
 
-              {busy ? <ActivityIndicator color={dark.green} style={{ marginVertical: 12 }} /> : null}
+              {busy ? <ActivityIndicator color={colors.green} style={{ marginVertical: 12 }} /> : null}
               {!busy && moniteurs.length === 0 ? (
                 <Text style={styles.empty}>Aucun moniteur disponible pour le moment.</Text>
               ) : null}
@@ -628,7 +645,7 @@ export function ReservationFlowScreen() {
                               {moniteur.vehicleBrand || 'Marque non renseignée'}
                             </Text>
                             <View style={styles.typePill}>
-                              <Car size={12} color={dark.green} />
+                              <Car size={12} color={colors.greenDark} />
                               <Text style={styles.typePillText}>{typeLabel}</Text>
                             </View>
                           </View>
@@ -661,7 +678,7 @@ export function ReservationFlowScreen() {
 
                         <View style={styles.seeProfileBtn}>
                           <Text style={styles.seeProfile}>Voir le profil du moniteur</Text>
-                          <ChevronRight size={16} color={ORANGE} />
+                          <ChevronRight size={16} color={colors.greenDark} />
                         </View>
                       </View>
                     </Bouncy>
@@ -671,7 +688,7 @@ export function ReservationFlowScreen() {
 
               <FadeUp delay={180}>
                 <View style={styles.trustCard}>
-                  <ShieldCheck size={22} color={dark.green} />
+                  <ShieldCheck size={22} color={colors.greenDark} />
                   <View style={styles.trustCopy}>
                     <Text style={styles.trustTitle}>Votre sécurité, notre priorité</Text>
                     <Text style={styles.trustText}>
@@ -679,433 +696,281 @@ export function ReservationFlowScreen() {
                     </Text>
                   </View>
                   <View style={styles.trustCheck}>
-                    <Check size={14} color={dark.green} strokeWidth={3} />
+                    <Check size={14} color={colors.greenDark} strokeWidth={3} />
                   </View>
                 </View>
               </FadeUp>
             </View>
           ) : null}
 
-        {step === 'profile' && profile ? (
-          <View style={styles.profileWrap}>
-            <FadeUp delay={60}>
-              <Text style={styles.introTitle}>Profil du moniteur</Text>
-              <View style={styles.titleAccent} />
-            </FadeUp>
+          {step === 'profile' && profile ? (
+            <View style={styles.profileWrap}>
+              <FadeUp delay={60}>
+                <Text style={styles.introTitle}>Profil du moniteur</Text>
+                <View style={styles.titleAccent} />
+              </FadeUp>
 
-            {busy ? <ActivityIndicator color={dark.green} style={{ marginVertical: 12 }} /> : null}
+              {busy ? <ActivityIndicator color={colors.green} style={{ marginVertical: 12 }} /> : null}
 
-            <FadeUp delay={100}>
-              <View style={styles.profileHero}>
-                <View style={styles.avatarWrap}>
-                  {profilePhotoUri ? (
-                    <Image
-                      source={{ uri: profilePhotoUri }}
-                      style={styles.profileAvatar}
-                    />
-                  ) : (
-                    <View style={[styles.profileAvatar, styles.coverPlaceholder]}>
-                      <Text style={styles.avatarInitial}>
-                        {(profile.fullName || '?').slice(0, 1).toUpperCase()}
-                      </Text>
-                    </View>
-                  )}
-                  <View style={styles.avatarBadge}>
-                    <Check size={12} color="#FFFFFF" strokeWidth={3} />
-                  </View>
-                </View>
-                <View style={styles.profileHeroCopy}>
-                  <Text style={styles.profileName}>{profile.fullName}</Text>
-                  {profile.city ? (
-                    <View style={styles.metaRow}>
-                      <MapPin size={14} color={dark.textMuted} />
-                      <Text style={styles.brandText}>{profile.city}</Text>
-                    </View>
-                  ) : null}
-                  <View style={styles.priceTypePill}>
-                    <Car size={13} color="#FFFFFF" />
-                    <Text style={styles.priceTypePillText}>
-                      {(profile.vehicleTypes?.[0] || 'Véhicule').replace(/^./, (c) =>
-                        c.toUpperCase(),
-                      )}
-                      {profile.defaultPriceFcfa
-                        ? ` · ${profile.defaultPriceFcfa.toLocaleString('fr-FR')} FCFA/h`
-                        : ''}
-                    </Text>
-                  </View>
-                </View>
-              </View>
-            </FadeUp>
-
-            {(() => {
-              const vehicleImages = [
-                profile.vehiclePhotoUrl,
-                ...(profile.photos || []),
-              ]
-                .map((raw) => resolveMediaUrl(raw))
-                .filter((uri): uri is string => Boolean(uri))
-              const safeIndex = Math.min(vehicleImageIndex, Math.max(0, vehicleImages.length - 1))
-              const currentVehicleUri = vehicleImages[safeIndex]
-
-              return (
-                <FadeUp delay={140}>
-                  <View style={styles.vehicleCard}>
-                    <View style={styles.vehicleCardHead}>
-                      <Car size={18} color={dark.green} />
-                      <Text style={styles.vehicleCardTitle}>Véhicule utilisé</Text>
-                    </View>
-
-                    {currentVehicleUri ? (
-                      <ScrollView
-                        horizontal
-                        pagingEnabled
-                        showsHorizontalScrollIndicator={false}
-                        onMomentumScrollEnd={(e) => {
-                          const next = Math.round(
-                            e.nativeEvent.contentOffset.x / Math.max(vehicleSlideWidth, 1),
-                          )
-                          setVehicleImageIndex(next)
-                        }}
-                        style={styles.vehicleCarousel}
-                        decelerationRate="fast"
-                        snapToInterval={vehicleSlideWidth}
-                        snapToAlignment="start"
-                      >
-                        {vehicleImages.map((uri) => (
-                          <Image
-                            key={uri}
-                            source={{ uri }}
-                            style={[styles.vehiclePhoto, { width: vehicleSlideWidth }]}
-                          />
-                        ))}
-                      </ScrollView>
-                    ) : (
-                      <View style={[styles.vehiclePhoto, styles.coverPlaceholder]}>
-                        <Text style={styles.carPlaceholderText}>Photo véhicule non disponible</Text>
-                      </View>
-                    )}
-
-                    {vehicleImages.length > 1 ? (
-                      <View style={styles.dotsRow}>
-                        {vehicleImages.map((uri, i) => (
-                          <View
-                            key={`dot-${uri}`}
-                            style={[styles.dot, i === safeIndex && styles.dotActive]}
-                          />
-                        ))}
-                      </View>
-                    ) : null}
-
-                    <Text style={styles.vehicleBrand}>
-                      {profile.vehicleBrand || 'Marque non renseignée'}
-                    </Text>
-
-                    {profile.specialties?.length ? (
-                      <View style={styles.featureRow}>
-                        {profile.specialties.map((item) => (
-                          <View key={item} style={styles.featureChip}>
-                            <ShieldCheck size={14} color={dark.green} />
-                            <Text style={styles.featureChipText}>{item}</Text>
-                          </View>
-                        ))}
-                      </View>
-                    ) : null}
-                  </View>
-                </FadeUp>
-              )
-            })()}
-
-            <FadeUp delay={180}>
-              <Pressable
-                style={styles.infoRowCard}
-                onPress={() => {
-                  if (profile.bio?.trim()) setBioExpanded((v) => !v)
-                }}
-                disabled={!profile.bio?.trim()}
-              >
-                <View style={styles.infoRowIcon}>
-                  <FileText size={18} color={dark.green} />
-                </View>
-                <View style={styles.infoRowCopy}>
-                  <Text style={styles.infoRowTitle}>Présentation</Text>
-                  {profile.bio?.trim() ? (
-                    <>
-                      <Text style={styles.infoRowSubtitle} numberOfLines={bioExpanded ? undefined : 2}>
-                        {profile.bio.trim()}
-                      </Text>
-                      {profile.bio.trim().length > 80 ? (
-                        <Text style={styles.seeMore}>
-                          {bioExpanded ? 'Voir moins' : 'Voir plus'}
-                        </Text>
-                      ) : null}
-                    </>
-                  ) : (
-                    <Text style={styles.infoRowSubtitle}>Aucune présentation disponible.</Text>
-                  )}
-                </View>
-                <ChevronRight size={18} color={dark.textMuted} />
-              </Pressable>
-
-              <View style={styles.infoRowCard}>
-                <View style={styles.infoRowIcon}>
-                  <Images size={18} color={dark.green} />
-                </View>
-                <View style={styles.infoRowCopy}>
-                  <Text style={styles.infoRowTitle}>Galerie photo</Text>
-                  {profile.photos?.length ? (
-                    <ScrollView
-                      horizontal
-                      showsHorizontalScrollIndicator={false}
-                      contentContainerStyle={styles.galleryRow}
-                    >
-                      {(profile.photos || []).map((photo) => {
-                        const galleryUri = resolveMediaUrl(photo)
-                        return galleryUri ? (
-                          <Image
-                            key={photo}
-                            source={{ uri: galleryUri }}
-                            style={styles.galleryPhoto}
-                          />
-                        ) : null
-                      })}
-                    </ScrollView>
-                  ) : (
-                    <Text style={styles.infoRowSubtitle}>Pas encore de galerie photo.</Text>
-                  )}
-                </View>
-                <ChevronRight size={18} color={dark.textMuted} />
-              </View>
-
-              {profile.videos?.length ? (
-                profile.videos.map((video) => {
-                  const embed = resolveMoniteurVideoEmbed(video)
-                  if (!embed) return null
-                  return (
-                    <Pressable
-                      key={video}
-                      style={styles.infoRowCard}
-                      onPress={() => void safeOpenUrl(embed.watchUrl)}
-                    >
-                      <View style={[styles.infoRowIcon, styles.videoPlayIcon]}>
-                        <Play size={16} color="#FFFFFF" fill="#FFFFFF" />
-                      </View>
-                      <View style={styles.infoRowCopy}>
-                        <Text style={styles.infoRowTitle}>Vidéo de présentation</Text>
-                        <Text style={styles.infoRowSubtitle}>Touchez pour ouvrir la vidéo</Text>
-                      </View>
-                      <ChevronRight size={18} color={dark.textMuted} />
-                    </Pressable>
-                  )
-                })
-              ) : (
-                <View style={styles.infoRowCard}>
-                  <View style={styles.infoRowIcon}>
-                    <Play size={18} color={dark.green} />
-                  </View>
-                  <View style={styles.infoRowCopy}>
-                    <Text style={styles.infoRowTitle}>Vidéo de présentation</Text>
-                    <Text style={styles.infoRowSubtitle}>
-                      Pas encore de vidéo de présentation.
-                    </Text>
-                  </View>
-                  <ChevronRight size={18} color={dark.textMuted} />
-                </View>
-              )}
-            </FadeUp>
-
-            <Pressable style={styles.secondaryBtn} onPress={() => setStep('moniteur')}>
-              <Text style={styles.secondaryBtnText}>Retour à la liste</Text>
-            </Pressable>
-          </View>
-        ) : null}
-
-        {step === 'duration' ? (
-          <View>
-            <FadeUp delay={60}>
-              <Text style={styles.introTitle}>Durée de la séance</Text>
-              <View style={styles.titleAccent} />
-              <Text style={styles.introText}>
-                Choisissez combien d’heures vous souhaitez. Nous afficherons ensuite uniquement les
-                créneaux encore libres pour cette durée.
-              </Text>
-            </FadeUp>
-
-            {selectedMoniteur ? (
               <FadeUp delay={100}>
-                <View style={styles.durationMoniteurCard}>
+                <View style={styles.profileHero}>
                   <View style={styles.avatarWrap}>
-                    {selectedPhotoUri ? (
+                    {profilePhotoUri ? (
                       <Image
-                        source={{ uri: selectedPhotoUri }}
-                        style={styles.durationMoniteurAvatar}
+                        source={{ uri: profilePhotoUri }}
+                        style={styles.profileAvatar}
                       />
                     ) : (
-                      <View style={[styles.durationMoniteurAvatar, styles.coverPlaceholder]}>
+                      <View style={[styles.profileAvatar, styles.coverPlaceholder]}>
                         <Text style={styles.avatarInitial}>
-                          {(selectedMoniteur.fullName || '?').slice(0, 1).toUpperCase()}
+                          {(profile.fullName || '?').slice(0, 1).toUpperCase()}
                         </Text>
                       </View>
                     )}
                     <View style={styles.avatarBadge}>
-                      <Check size={10} color="#FFFFFF" strokeWidth={3} />
+                      <Check size={12} color="#FFFFFF" strokeWidth={3} />
                     </View>
                   </View>
-                  <View style={styles.durationMoniteurCopy}>
-                    <Text style={styles.choiceText}>{selectedMoniteur.fullName}</Text>
-                    <Text style={styles.brandText}>
-                      {selectedMoniteur.vehicleBrand || 'Véhicule'}
-                      {vehicleType ? (
-                        <>
-                          {' · '}
-                          <Text style={styles.vehicleTypeAccent}>
-                            {vehicleType.replace(/^./, (c) => c.toUpperCase())}
-                          </Text>
-                        </>
-                      ) : null}
-                    </Text>
+                  <View style={styles.profileHeroCopy}>
+                    <Text style={styles.profileName}>{profile.fullName}</Text>
+                    {profile.city ? (
+                      <View style={styles.metaRow}>
+                        <MapPin size={14} color={colors.subtle} />
+                        <Text style={styles.brandText}>{profile.city}</Text>
+                      </View>
+                    ) : null}
+                    <View style={styles.priceTypePill}>
+                      <Car size={13} color="#FFFFFF" />
+                      <Text style={styles.priceTypePillText}>
+                        {(profile.vehicleTypes?.[0] || 'Véhicule').replace(/^./, (c) =>
+                          c.toUpperCase(),
+                        )}
+                        {profile.defaultPriceFcfa
+                          ? ` · ${profile.defaultPriceFcfa.toLocaleString('fr-FR')} FCFA/h`
+                          : ''}
+                      </Text>
+                    </View>
                   </View>
                 </View>
               </FadeUp>
-            ) : null}
 
-            <FadeUp delay={140}>
-              <View style={styles.sectionRow}>
-                <View style={styles.sectionIcon}>
-                  <Clock size={16} color={dark.green} />
-                </View>
-                <Text style={[styles.section, { marginBottom: 0, marginTop: 4 }]}>
-                  Combien d’heures ?
-                </Text>
-              </View>
+              {(() => {
+                const vehicleImages = [
+                  profile.vehiclePhotoUrl,
+                  ...(profile.photos || []),
+                ]
+                  .map((raw) => resolveMediaUrl(raw))
+                  .filter((uri): uri is string => Boolean(uri))
+                const safeIndex = Math.min(vehicleImageIndex, Math.max(0, vehicleImages.length - 1))
+                const currentVehicleUri = vehicleImages[safeIndex]
 
-              <View style={styles.durationGrid}>
-                {DURATION_OPTIONS.map((hours) => {
-                  const active = durationHours === hours
-                  const amount = computeDrivingAmount(
-                    hourlyPriceFcfa,
-                    hours,
-                    hoursDiscount,
-                    hoursDiscountMin,
-                  )
-                  return (
-                    <Bouncy
-                      key={hours}
-                      scaleTo={0.97}
-                      style={styles.durationCardWrap}
-                      onPress={() => setDurationHours(hours)}
-                    >
-                      <View
-                        style={[styles.durationCard, active && styles.durationCardActive]}
-                        accessibilityRole="button"
-                        accessibilityState={{ selected: active }}
-                        accessibilityLabel={`${hours} heures, ${amount.toLocaleString('fr-FR')} FCFA`}
-                      >
-                        <Text
-                          style={[styles.durationCardHours, active && styles.durationCardHoursActive]}
-                        >
-                          {hours} h
-                        </Text>
-                        <Text
-                          style={[styles.durationCardPrice, active && styles.durationCardPriceActive]}
-                        >
-                          {amount.toLocaleString('fr-FR')} FCFA
-                        </Text>
-                        {active ? (
-                          <View style={styles.durationCheck}>
-                            <Check size={14} color="#FFFFFF" strokeWidth={3} />
-                          </View>
-                        ) : null}
+                return (
+                  <FadeUp delay={140}>
+                    <View style={styles.vehicleCard}>
+                      <View style={styles.vehicleCardHead}>
+                        <Car size={18} color={colors.greenDark} />
+                        <Text style={styles.vehicleCardTitle}>Véhicule utilisé</Text>
                       </View>
-                    </Bouncy>
-                  )
-                })}
-              </View>
-            </FadeUp>
 
-            <FadeUp delay={180}>
-              <Bouncy scaleTo={0.98} disabled={busy} onPress={() => setStep('slots')}>
-                <View style={[styles.primaryBtn, styles.durationPrimaryBtn, busy && styles.disabled]}>
-                  <Calendar size={18} color="#FFFFFF" />
-                  <Text style={styles.primaryBtnText}>Voir les créneaux disponibles</Text>
-                  <View style={styles.primaryBtnArrow}>
-                    <ChevronRight size={16} color={dark.green} />
-                  </View>
-                </View>
-              </Bouncy>
+                      {currentVehicleUri ? (
+                        <ScrollView
+                          horizontal
+                          pagingEnabled
+                          showsHorizontalScrollIndicator={false}
+                          onMomentumScrollEnd={(e) => {
+                            const next = Math.round(
+                              e.nativeEvent.contentOffset.x / Math.max(vehicleSlideWidth, 1),
+                            )
+                            setVehicleImageIndex(next)
+                          }}
+                          style={styles.vehicleCarousel}
+                          decelerationRate="fast"
+                          snapToInterval={vehicleSlideWidth}
+                          snapToAlignment="start"
+                        >
+                          {vehicleImages.map((uri) => (
+                            <Image
+                              key={uri}
+                              source={{ uri }}
+                              style={[styles.vehiclePhoto, { width: vehicleSlideWidth }]}
+                            />
+                          ))}
+                        </ScrollView>
+                      ) : (
+                        <View style={[styles.vehiclePhoto, styles.coverPlaceholder]}>
+                          <Text style={styles.carPlaceholderText}>Photo véhicule non disponible</Text>
+                        </View>
+                      )}
 
-              <Bouncy scaleTo={0.98} onPress={() => setStep('moniteur')}>
-                <View style={styles.changeMoniteurCard}>
-                  <View style={styles.changeMoniteurIcon}>
-                    <RefreshCw size={18} color={dark.green} />
-                  </View>
-                  <Text style={styles.changeMoniteurText}>Changer de moniteur</Text>
-                  <ChevronRight size={18} color={dark.textMuted} />
-                </View>
-              </Bouncy>
+                      {vehicleImages.length > 1 ? (
+                        <View style={styles.dotsRow}>
+                          {vehicleImages.map((uri, i) => (
+                            <View
+                              key={`dot-${uri}`}
+                              style={[styles.dot, i === safeIndex && styles.dotActive]}
+                            />
+                          ))}
+                        </View>
+                      ) : null}
 
-              {durationHelpVisible ? (
-                <View style={styles.helpCard}>
-                  <View style={styles.helpIcon}>
-                    <Check size={14} color="#FFFFFF" strokeWidth={3} />
-                  </View>
-                  <View style={styles.helpCopy}>
-                    <Text style={styles.helpTitle}>Besoin d’aide ?</Text>
-                    <Text style={styles.helpText}>
-                      Vous pourrez modifier ces informations à tout moment avant la confirmation.
-                    </Text>
-                  </View>
-                  <Pressable
-                    onPress={() => setDurationHelpVisible(false)}
-                    hitSlop={10}
-                    accessibilityLabel="Fermer"
-                  >
-                    <X size={16} color={dark.textMuted} />
-                  </Pressable>
-                </View>
-              ) : null}
-            </FadeUp>
-          </View>
-        ) : null}
+                      <Text style={styles.vehicleBrand}>
+                        {profile.vehicleBrand || 'Marque non renseignée'}
+                      </Text>
 
-        {step === 'slots' ? (
-          <View>
-            <FadeUp delay={60}>
-              <Text style={styles.introTitle}>Choix du créneau</Text>
-              <View style={styles.titleAccent} />
-              <Text style={styles.introText}>
-                Durée choisie : {durationHours} h. Seuls les horaires où le moniteur est réellement
-                libre s’affichent.
-              </Text>
-            </FadeUp>
-
-            <FadeUp delay={100}>
-              <View style={styles.slotsRecapCard}>
-                <View style={styles.slotsRecapMain}>
-                  <View style={styles.avatarWrap}>
-                    {selectedPhotoUri ? (
-                      <Image
-                        source={{ uri: selectedPhotoUri }}
-                        style={styles.slotsRecapAvatar}
-                      />
-                    ) : (
-                      <View style={[styles.slotsRecapAvatar, styles.coverPlaceholder]}>
-                        <Text style={styles.avatarInitial}>
-                          {(selectedMoniteur?.fullName || 'M').slice(0, 1).toUpperCase()}
-                        </Text>
-                      </View>
-                    )}
-                    <View style={styles.avatarBadge}>
-                      <Check size={10} color="#FFFFFF" strokeWidth={3} />
+                      {profile.specialties?.length ? (
+                        <View style={styles.featureRow}>
+                          {profile.specialties.map((item) => (
+                            <View key={item} style={styles.featureChip}>
+                              <ShieldCheck size={14} color={colors.greenDark} />
+                              <Text style={styles.featureChipText}>{item}</Text>
+                            </View>
+                          ))}
+                        </View>
+                      ) : null}
                     </View>
+                  </FadeUp>
+                )
+              })()}
+
+              <FadeUp delay={180}>
+                <Pressable
+                  style={styles.infoRowCard}
+                  onPress={() => {
+                    if (profile.bio?.trim()) setBioExpanded((v) => !v)
+                  }}
+                  disabled={!profile.bio?.trim()}
+                >
+                  <View style={styles.infoRowIcon}>
+                    <FileText size={18} color={colors.greenDark} />
                   </View>
-                  <View style={styles.slotsRecapCopy}>
-                    <Text style={styles.choiceText}>
-                      {selectedMoniteur?.fullName || 'Moniteur'}
-                    </Text>
-                    <View style={styles.slotsRecapVehicleRow}>
-                      <Car size={14} color={dark.green} />
+                  <View style={styles.infoRowCopy}>
+                    <Text style={styles.infoRowTitle}>Présentation</Text>
+                    {profile.bio?.trim() ? (
+                      <>
+                        <Text style={styles.infoRowSubtitle} numberOfLines={bioExpanded ? undefined : 2}>
+                          {profile.bio.trim()}
+                        </Text>
+                        {profile.bio.trim().length > 80 ? (
+                          <Text style={styles.seeMore}>
+                            {bioExpanded ? 'Voir moins' : 'Voir plus'}
+                          </Text>
+                        ) : null}
+                      </>
+                    ) : (
+                      <Text style={styles.infoRowSubtitle}>Aucune présentation disponible.</Text>
+                    )}
+                  </View>
+                  <ChevronRight size={18} color={colors.subtle} />
+                </Pressable>
+
+                <View style={styles.infoRowCard}>
+                  <View style={styles.infoRowIcon}>
+                    <Images size={18} color={colors.greenDark} />
+                  </View>
+                  <View style={styles.infoRowCopy}>
+                    <Text style={styles.infoRowTitle}>Galerie photo</Text>
+                    {profile.photos?.length ? (
+                      <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        contentContainerStyle={styles.galleryRow}
+                      >
+                        {(profile.photos || []).map((photo) => {
+                          const galleryUri = resolveMediaUrl(photo)
+                          return galleryUri ? (
+                            <Image
+                              key={photo}
+                              source={{ uri: galleryUri }}
+                              style={styles.galleryPhoto}
+                            />
+                          ) : null
+                        })}
+                      </ScrollView>
+                    ) : (
+                      <Text style={styles.infoRowSubtitle}>Pas encore de galerie photo.</Text>
+                    )}
+                  </View>
+                  <ChevronRight size={18} color={colors.subtle} />
+                </View>
+
+                {profile.videos?.length ? (
+                  profile.videos.map((video) => {
+                    const embed = resolveMoniteurVideoEmbed(video)
+                    if (!embed) return null
+                    return (
+                      <Pressable
+                        key={video}
+                        style={styles.infoRowCard}
+                        onPress={() => void safeOpenUrl(embed.watchUrl)}
+                      >
+                        <View style={[styles.infoRowIcon, styles.videoPlayIcon]}>
+                          <Play size={16} color="#FFFFFF" fill="#FFFFFF" />
+                        </View>
+                        <View style={styles.infoRowCopy}>
+                          <Text style={styles.infoRowTitle}>Vidéo de présentation</Text>
+                          <Text style={styles.infoRowSubtitle}>Touchez pour ouvrir la vidéo</Text>
+                        </View>
+                        <ChevronRight size={18} color={colors.subtle} />
+                      </Pressable>
+                    )
+                  })
+                ) : (
+                  <View style={styles.infoRowCard}>
+                    <View style={styles.infoRowIcon}>
+                      <Play size={18} color={colors.greenDark} />
+                    </View>
+                    <View style={styles.infoRowCopy}>
+                      <Text style={styles.infoRowTitle}>Vidéo de présentation</Text>
+                      <Text style={styles.infoRowSubtitle}>
+                        Pas encore de vidéo de présentation.
+                      </Text>
+                    </View>
+                    <ChevronRight size={18} color={colors.subtle} />
+                  </View>
+                )}
+              </FadeUp>
+
+              <Pressable style={styles.secondaryBtn} onPress={() => setStep('moniteur')}>
+                <Text style={styles.secondaryBtnText}>Retour à la liste</Text>
+              </Pressable>
+            </View>
+          ) : null}
+
+          {step === 'duration' ? (
+            <View>
+              <FadeUp delay={60}>
+                <Text style={styles.introTitle}>Durée de la séance</Text>
+                <View style={styles.titleAccent} />
+                <Text style={styles.introText}>
+                  Choisissez combien d’heures vous souhaitez. Nous afficherons ensuite uniquement les
+                  créneaux encore libres pour cette durée.
+                </Text>
+              </FadeUp>
+
+              {selectedMoniteur ? (
+                <FadeUp delay={100}>
+                  <View style={styles.durationMoniteurCard}>
+                    <View style={styles.avatarWrap}>
+                      {selectedPhotoUri ? (
+                        <Image
+                          source={{ uri: selectedPhotoUri }}
+                          style={styles.durationMoniteurAvatar}
+                        />
+                      ) : (
+                        <View style={[styles.durationMoniteurAvatar, styles.coverPlaceholder]}>
+                          <Text style={styles.avatarInitial}>
+                            {(selectedMoniteur.fullName || '?').slice(0, 1).toUpperCase()}
+                          </Text>
+                        </View>
+                      )}
+                      <View style={styles.avatarBadge}>
+                        <Check size={10} color="#FFFFFF" strokeWidth={3} />
+                      </View>
+                    </View>
+                    <View style={styles.durationMoniteurCopy}>
+                      <Text style={styles.choiceText}>{selectedMoniteur.fullName}</Text>
                       <Text style={styles.brandText}>
-                        {selectedMoniteur?.vehicleBrand || 'Véhicule'}
+                        {selectedMoniteur.vehicleBrand || 'Véhicule'}
                         {vehicleType ? (
                           <>
                             {' · '}
@@ -1116,181 +981,316 @@ export function ReservationFlowScreen() {
                         ) : null}
                       </Text>
                     </View>
-                    <View style={styles.slotsRecapTags}>
-                      <View style={styles.slotsRecapTag}>
-                        <Wallet size={12} color={dark.green} />
-                        <Text style={styles.slotsRecapTagText}>
-                          {hourlyPriceFcfa.toLocaleString('fr-FR')} FCFA / h
-                        </Text>
-                      </View>
-                      <View style={styles.slotsRecapTag}>
-                        <Clock size={12} color={dark.green} />
-                        <Text style={styles.slotsRecapTagText}>{durationHours} h</Text>
-                      </View>
-                      {soldeHeures !== null ? (
-                        <View style={styles.slotsRecapTag}>
-                          <ShieldCheck size={12} color={dark.green} />
-                          <Text style={styles.slotsRecapTagText}>Solde : {soldeHeures} h</Text>
-                        </View>
-                      ) : null}
-                    </View>
                   </View>
-                </View>
-                <Pressable
-                  style={styles.slotsEditBtn}
-                  onPress={() => setStep('duration')}
-                  accessibilityLabel="Modifier"
-                >
-                  <Pencil size={14} color={dark.green} />
-                  <Text style={styles.slotsEditText}>Modifier</Text>
-                </Pressable>
-              </View>
-            </FadeUp>
+                </FadeUp>
+              ) : null}
 
-            {busy ? <ActivityIndicator color={dark.green} style={{ marginVertical: 12 }} /> : null}
-
-            {daysWithSlots.length === 0 && !busy ? (
-              <EmptyState
-                icon={<CalendarOff size={30} color={dark.textMuted} />}
-                title="Aucun créneau disponible"
-                message={`Pas de plage de ${durationHours} h libre sur les 14 prochains jours.`}
-                action={
-                  <View style={{ width: '100%', gap: 8 }}>
-                    <Pressable style={styles.primaryBtn} onPress={() => setStep('duration')}>
-                      <Text style={styles.primaryBtnText}>Réduire la durée</Text>
-                    </Pressable>
-                    <Pressable style={styles.secondaryBtn} onPress={() => setStep('moniteur')}>
-                      <Text style={styles.secondaryBtnText}>Voir un autre moniteur</Text>
-                    </Pressable>
-                  </View>
-                }
-              />
-            ) : null}
-
-            {daysWithSlots.length > 0 ? (
               <FadeUp delay={140}>
                 <View style={styles.sectionRow}>
                   <View style={styles.sectionIcon}>
-                    <Calendar size={16} color={dark.green} />
+                    <Clock size={16} color={colors.greenDark} />
                   </View>
-                  <Text style={[styles.section, { marginBottom: 0, marginTop: 4 }]}>Jour</Text>
+                  <Text style={[styles.section, { marginBottom: 0, marginTop: 4 }]}>
+                    Combien d’heures ?
+                  </Text>
                 </View>
 
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={styles.dayChipsRow}
-                >
-                  {daysWithSlots.map((day) => {
-                    const active = selectedDate === day.date
-                    const chip = formatDayChip(day.date)
+                <View style={styles.durationGrid}>
+                  {DURATION_OPTIONS.map((hours) => {
+                    const active = durationHours === hours
+                    const amount = computeDrivingAmount(
+                      hourlyPriceFcfa,
+                      hours,
+                      hoursDiscount,
+                      hoursDiscountMin,
+                    )
                     return (
                       <Bouncy
-                        key={day.date}
+                        key={hours}
                         scaleTo={0.97}
-                        onPress={() => {
-                          setSelectedDate(day.date)
-                          setSelectedStart(day.slots[0]?.start || '')
-                          setSelectedEnd(day.slots[0]?.end || '')
-                        }}
+                        style={styles.durationCardWrap}
+                        onPress={() => setDurationHours(hours)}
                       >
                         <View
-                          style={[styles.dayChip, active && styles.dayChipActive]}
+                          style={[styles.durationCard, active && styles.durationCardActive]}
                           accessibilityRole="button"
                           accessibilityState={{ selected: active }}
+                          accessibilityLabel={`${hours} heures, ${amount.toLocaleString('fr-FR')} FCFA`}
                         >
-                          <Text style={[styles.dayChipWeekday, active && styles.dayChipTextActive]}>
-                            {chip.weekday}
+                          <Text
+                            style={[styles.durationCardHours, active && styles.durationCardHoursActive]}
+                          >
+                            {hours} h
                           </Text>
-                          <Text style={[styles.dayChipDay, active && styles.dayChipTextActive]}>
-                            {chip.day}
-                          </Text>
-                          <Text style={[styles.dayChipMonth, active && styles.dayChipTextActive]}>
-                            {chip.month}
+                          <Text
+                            style={[styles.durationCardPrice, active && styles.durationCardPriceActive]}
+                          >
+                            {amount.toLocaleString('fr-FR')} FCFA
                           </Text>
                           {active ? (
-                            <View style={styles.dayChipCheck}>
-                              <Check size={12} color="#FFFFFF" strokeWidth={3} />
+                            <View style={styles.durationCheck}>
+                              <Check size={14} color="#FFFFFF" strokeWidth={3} />
                             </View>
                           ) : null}
                         </View>
                       </Bouncy>
                     )
                   })}
-                </ScrollView>
-              </FadeUp>
-            ) : null}
-
-            {selectedDate ? (
-              <FadeUp delay={180}>
-                <View style={styles.slotsHoursCard}>
-                  <View style={styles.slotsHoursHead}>
-                    <View style={{ flex: 1, minWidth: 0 }}>
-                      <View style={styles.slotsHoursTitleRow}>
-                        <Clock size={16} color={dark.green} />
-                        <Text style={styles.dayTitle}>{formatDateLabel(selectedDate)}</Text>
-                      </View>
-                      <Text style={styles.fieldLabel}>
-                        Horaires libres ({durationHours} h)
-                      </Text>
-                    </View>
-                  </View>
-
-                  {earliestBookableTime(selectedDate) ? (
-                    <Text style={styles.brandText}>
-                      Réservation possible à partir de {earliestBookableTime(selectedDate)}{' '}
-                      aujourd’hui.
-                    </Text>
-                  ) : null}
-
-                  {selectedDaySlots.length === 0 ? (
-                    <Text style={styles.empty}>
-                      Plus de créneau disponible aujourd’hui. Choisissez un autre jour.
-                    </Text>
-                  ) : null}
-
-                  <View style={styles.slotsGrid}>
-                    {selectedDaySlots.map((slot) => {
-                      const active = selectedStart === slot.start && selectedEnd === slot.end
-                      return (
-                        <Bouncy
-                          key={`${slot.start}-${slot.end}`}
-                          scaleTo={0.97}
-                          style={styles.slotCardWrap}
-                          onPress={() => {
-                            setSelectedStart(slot.start)
-                            setSelectedEnd(slot.end)
-                            void import('../../utils/haptics').then((m) => m.hapticSelect())
-                          }}
-                        >
-                          <View
-                            style={[styles.slotCard, active && styles.slotCardActive]}
-                            accessibilityRole="button"
-                            accessibilityState={{ selected: active }}
-                          >
-                            <Text style={[styles.slotCardText, active && styles.slotCardTextActive]}>
-                              {slot.start} – {slot.end}
-                            </Text>
-                            {active ? (
-                              <Check size={14} color="#FFFFFF" strokeWidth={3} />
-                            ) : null}
-                          </View>
-                        </Bouncy>
-                      )
-                    })}
-                  </View>
                 </View>
               </FadeUp>
-            ) : null}
 
-            <Pressable style={styles.secondaryBtn} onPress={() => setStep('duration')}>
-              <Text style={styles.secondaryBtnText}>Changer la durée</Text>
-            </Pressable>
-            <Pressable style={styles.secondaryBtn} onPress={() => setStep('moniteur')}>
-              <Text style={styles.secondaryBtnText}>Changer de moniteur</Text>
-            </Pressable>
-          </View>
-        ) : null}
+              <FadeUp delay={180}>
+                <Bouncy scaleTo={0.98} disabled={busy} onPress={() => setStep('slots')}>
+                  <View style={[styles.primaryBtn, styles.durationPrimaryBtn, busy && styles.disabled]}>
+                    <Calendar size={18} color="#FFFFFF" />
+                    <Text style={styles.primaryBtnText}>Voir les créneaux disponibles</Text>
+                    <View style={styles.primaryBtnArrow}>
+                      <ChevronRight size={16} color={colors.greenDark} />
+                    </View>
+                  </View>
+                </Bouncy>
+
+                <Bouncy scaleTo={0.98} onPress={() => setStep('moniteur')}>
+                  <View style={styles.changeMoniteurCard}>
+                    <View style={styles.changeMoniteurIcon}>
+                      <RefreshCw size={18} color={colors.greenDark} />
+                    </View>
+                    <Text style={styles.changeMoniteurText}>Changer de moniteur</Text>
+                    <ChevronRight size={18} color={colors.subtle} />
+                  </View>
+                </Bouncy>
+
+                {durationHelpVisible ? (
+                  <View style={styles.helpCard}>
+                    <View style={styles.helpIcon}>
+                      <Check size={14} color={colors.navy} strokeWidth={3} />
+                    </View>
+                    <View style={styles.helpCopy}>
+                      <Text style={styles.helpTitle}>Besoin d’aide ?</Text>
+                      <Text style={styles.helpText}>
+                        Vous pourrez modifier ces informations à tout moment avant la confirmation.
+                      </Text>
+                    </View>
+                    <Pressable
+                      onPress={() => setDurationHelpVisible(false)}
+                      hitSlop={10}
+                      accessibilityLabel="Fermer"
+                    >
+                      <X size={16} color={colors.subtle} />
+                    </Pressable>
+                  </View>
+                ) : null}
+              </FadeUp>
+            </View>
+          ) : null}
+
+          {step === 'slots' ? (
+            <View>
+              <FadeUp delay={60}>
+                <Text style={styles.introTitle}>Choix du créneau</Text>
+                <View style={styles.titleAccent} />
+                <Text style={styles.introText}>
+                  Durée choisie : {durationHours} h. Seuls les horaires où le moniteur est réellement
+                  libre s’affichent.
+                </Text>
+              </FadeUp>
+
+              <FadeUp delay={100}>
+                <View style={styles.slotsRecapCard}>
+                  <View style={styles.slotsRecapMain}>
+                    <View style={styles.avatarWrap}>
+                      {selectedPhotoUri ? (
+                        <Image
+                          source={{ uri: selectedPhotoUri }}
+                          style={styles.slotsRecapAvatar}
+                        />
+                      ) : (
+                        <View style={[styles.slotsRecapAvatar, styles.coverPlaceholder]}>
+                          <Text style={styles.avatarInitial}>
+                            {(selectedMoniteur?.fullName || 'M').slice(0, 1).toUpperCase()}
+                          </Text>
+                        </View>
+                      )}
+                      <View style={styles.avatarBadge}>
+                        <Check size={10} color="#FFFFFF" strokeWidth={3} />
+                      </View>
+                    </View>
+                    <View style={styles.slotsRecapCopy}>
+                      <Text style={styles.choiceText}>
+                        {selectedMoniteur?.fullName || 'Moniteur'}
+                      </Text>
+                      <View style={styles.slotsRecapVehicleRow}>
+                        <Car size={14} color={colors.greenDark} />
+                        <Text style={styles.brandText}>
+                          {selectedMoniteur?.vehicleBrand || 'Véhicule'}
+                          {vehicleType ? (
+                            <>
+                              {' · '}
+                              <Text style={styles.vehicleTypeAccent}>
+                                {vehicleType.replace(/^./, (c) => c.toUpperCase())}
+                              </Text>
+                            </>
+                          ) : null}
+                        </Text>
+                      </View>
+                      <View style={styles.slotsRecapTags}>
+                        <View style={styles.slotsRecapTag}>
+                          <Wallet size={12} color={colors.greenDark} />
+                          <Text style={styles.slotsRecapTagText}>
+                            {hourlyPriceFcfa.toLocaleString('fr-FR')} FCFA / h
+                          </Text>
+                        </View>
+                        <View style={styles.slotsRecapTag}>
+                          <Clock size={12} color={colors.greenDark} />
+                          <Text style={styles.slotsRecapTagText}>{durationHours} h</Text>
+                        </View>
+                        {soldeHeures !== null ? (
+                          <View style={styles.slotsRecapTag}>
+                            <ShieldCheck size={12} color={colors.greenDark} />
+                            <Text style={styles.slotsRecapTagText}>Solde : {soldeHeures} h</Text>
+                          </View>
+                        ) : null}
+                      </View>
+                    </View>
+                  </View>
+                  <Pressable
+                    style={styles.slotsEditBtn}
+                    onPress={() => setStep('duration')}
+                    accessibilityLabel="Modifier"
+                  >
+                    <Pencil size={14} color={colors.greenDark} />
+                    <Text style={styles.slotsEditText}>Modifier</Text>
+                  </Pressable>
+                </View>
+              </FadeUp>
+
+              {busy ? <ActivityIndicator color={colors.green} style={{ marginVertical: 12 }} /> : null}
+
+              {daysWithSlots.length === 0 && !busy ? (
+                <EmptyState
+                  icon={<CalendarOff size={30} color={colors.subtle} />}
+                  title="Aucun créneau disponible"
+                  message={`Pas de plage de ${durationHours} h libre sur les 14 prochains jours.`}
+                  action={
+                    <View style={{ width: '100%', gap: 8 }}>
+                      <Pressable style={styles.primaryBtn} onPress={() => setStep('duration')}>
+                        <Text style={styles.primaryBtnText}>Réduire la durée</Text>
+                      </Pressable>
+                      <Pressable style={styles.secondaryBtn} onPress={() => setStep('moniteur')}>
+                        <Text style={styles.secondaryBtnText}>Voir un autre moniteur</Text>
+                      </Pressable>
+                    </View>
+                  }
+                />
+              ) : null}
+
+              {daysWithSlots.length > 0 ? (
+                <FadeUp delay={140}>
+                  <View style={styles.sectionRow}>
+                    <View style={styles.sectionIcon}>
+                      <Calendar size={16} color={colors.greenDark} />
+                    </View>
+                    <Text style={[styles.section, { marginBottom: 0, marginTop: 4 }]}>Jour</Text>
+                    {daysMonthLabel ? (
+                      <Text style={styles.sectionMonth}>{daysMonthLabel}</Text>
+                    ) : null}
+                  </View>
+
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.dayChipsRow}
+                  >
+                    {daysWithSlots.map((day) => {
+                      const chip = formatDayChip(day.date)
+                      return (
+                        <DayPill
+                          key={day.date}
+                          day={chip.weekday}
+                          date={Number(chip.day) || 0}
+                          selected={selectedDate === day.date}
+                          onPress={() => {
+                            setSelectedDate(day.date)
+                            setSelectedStart(day.slots[0]?.start || '')
+                            setSelectedEnd(day.slots[0]?.end || '')
+                          }}
+                        />
+                      )
+                    })}
+                  </ScrollView>
+                </FadeUp>
+              ) : null}
+
+              {selectedDate ? (
+                <FadeUp delay={180}>
+                  <View style={styles.slotsHoursCard}>
+                    <View style={styles.slotsHoursHead}>
+                      <View style={{ flex: 1, minWidth: 0 }}>
+                        <View style={styles.slotsHoursTitleRow}>
+                          <Clock size={16} color={colors.greenDark} />
+                          <Text style={styles.dayTitle}>{formatDateLabel(selectedDate)}</Text>
+                        </View>
+                        <Text style={styles.fieldLabel}>
+                          Horaires libres ({durationHours} h)
+                        </Text>
+                      </View>
+                    </View>
+
+                    {earliestBookableTime(selectedDate) ? (
+                      <Text style={styles.brandText}>
+                        Réservation possible à partir de {earliestBookableTime(selectedDate)}{' '}
+                        aujourd’hui.
+                      </Text>
+                    ) : null}
+
+                    {selectedDaySlots.length === 0 ? (
+                      <Text style={styles.empty}>
+                        Plus de créneau disponible aujourd’hui. Choisissez un autre jour.
+                      </Text>
+                    ) : null}
+
+                    <View style={styles.slotsGrid}>
+                      {selectedDaySlots.map((slot) => {
+                        const active = selectedStart === slot.start && selectedEnd === slot.end
+                        return (
+                          <Bouncy
+                            key={`${slot.start}-${slot.end}`}
+                            scaleTo={0.97}
+                            style={styles.slotCardWrap}
+                            onPress={() => {
+                              setSelectedStart(slot.start)
+                              setSelectedEnd(slot.end)
+                              void import('../../utils/haptics').then((m) => m.hapticSelect())
+                            }}
+                          >
+                            <View
+                              style={[styles.slotCard, active && styles.slotCardActive]}
+                              accessibilityRole="button"
+                              accessibilityState={{ selected: active }}
+                            >
+                              <Text style={[styles.slotCardText, active && styles.slotCardTextActive]}>
+                                {slot.start} – {slot.end}
+                              </Text>
+                              {active ? (
+                                <Check size={14} color="#FFFFFF" strokeWidth={3} />
+                              ) : null}
+                            </View>
+                          </Bouncy>
+                        )
+                      })}
+                    </View>
+                  </View>
+                </FadeUp>
+              ) : null}
+
+              <Pressable style={styles.secondaryBtn} onPress={() => setStep('duration')}>
+                <Text style={styles.secondaryBtnText}>Changer la durée</Text>
+              </Pressable>
+              <Pressable style={styles.secondaryBtn} onPress={() => setStep('moniteur')}>
+                <Text style={styles.secondaryBtnText}>Changer de moniteur</Text>
+              </Pressable>
+            </View>
+          ) : null}
 
           <LegalFooter />
         </ScrollView>
@@ -1312,7 +1312,7 @@ export function ReservationFlowScreen() {
               <View style={styles.primaryBtn}>
                 <Text style={styles.primaryBtnText}>Continuer</Text>
                 <View style={styles.primaryBtnArrow}>
-                  <ChevronRight size={16} color={dark.green} />
+                  <ChevronRight size={16} color={colors.greenDark} />
                 </View>
               </View>
             </Bouncy>
@@ -1323,7 +1323,7 @@ export function ReservationFlowScreen() {
           <View style={styles.stickyBar}>
             <View style={styles.stickyLeft}>
               <View style={styles.stickyCalIcon}>
-                <Calendar size={16} color={dark.green} />
+                <Calendar size={16} color={colors.greenDark} />
               </View>
               <View style={{ flex: 1, minWidth: 0 }}>
                 <Text style={styles.stickyTitle} numberOfLines={1}>
@@ -1339,7 +1339,7 @@ export function ReservationFlowScreen() {
               <View style={[styles.stickyBtn, busy && styles.disabled]}>
                 <Text style={styles.stickyBtnText}>{busy ? '…' : 'Confirmer'}</Text>
                 <View style={styles.stickyBtnArrow}>
-                  <ChevronRight size={16} color={dark.green} />
+                  <ChevronRight size={16} color="#FFFFFF" />
                 </View>
               </View>
             </Bouncy>
@@ -1401,7 +1401,17 @@ export function ReservationFlowScreen() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#FFFFFF',
+  },
+  halo: {
+    position: 'absolute',
+    top: -80,
+    right: -80,
+    width: 260,
+    height: 260,
+    borderRadius: 130,
+    backgroundColor: colors.yellow,
+    opacity: 0.16,
   },
   safe: {
     flex: 1,
@@ -1410,21 +1420,25 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingTop: 4,
+    paddingHorizontal: 20,
+    paddingTop: 8,
     paddingBottom: 8,
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0,16,48,0.05)',
+    borderBottomColor: colors.border,
   },
   roundBtn: {
     width: 44,
     height: 44,
-    borderRadius: 999,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#FFFFFF',
-    ...shadows.sm,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+  },
+  pressed: {
+    opacity: 0.7,
   },
   topBarCenter: {
     flex: 1,
@@ -1435,17 +1449,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
   },
   topBarIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: 9,
-    backgroundColor: ORANGE_SOFT,
+    width: 30,
+    height: 30,
+    borderRadius: 10,
+    backgroundColor: colors.greenTint,
     alignItems: 'center',
     justifyContent: 'center',
   },
   topBarTitle: {
-    fontFamily: fonts.bodySemiBold,
-    fontSize: 18,
-    color: dark.textPrimary,
+    fontFamily: 'Sora_700Bold',
+    fontSize: 17,
+    color: colors.navy,
   },
   notifDot: {
     position: 'absolute',
@@ -1454,98 +1468,35 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: ORANGE,
+    backgroundColor: colors.yellow,
+    borderWidth: 1.5,
+    borderColor: '#FFFFFF',
   },
   scroll: {
-    paddingHorizontal: 24,
+    paddingHorizontal: 20,
     paddingTop: 16,
-    paddingBottom: 120,
-  },
-  stickyBar: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    flexDirection: 'row',
-    alignItems: 'center',
+    paddingBottom: 24,
     gap: 12,
-    paddingHorizontal: 16,
-    paddingTop: 14,
-    paddingBottom: 18,
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(0,16,48,0.06)',
-    backgroundColor: '#FFFFFF',
-    ...shadows.lg,
   },
-  stickyLeft: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    minWidth: 0,
+  scrollWithProfileSticky: {
+    paddingBottom: 180,
   },
-  stickyCalIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 12,
-    backgroundColor: brand.greenPale,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  stickyTitle: {
-    fontFamily: fonts.bodySemiBold,
+  error: {
+    fontFamily: 'PlusJakartaSans_600SemiBold',
     fontSize: 13,
-    color: dark.textPrimary,
-    textTransform: 'capitalize',
-  },
-  stickyPrice: {
-    fontFamily: fonts.displayBold,
-    fontSize: 17,
-    color: dark.green,
-    marginTop: 2,
-  },
-  stickyBtn: {
-    minHeight: 56,
-    borderRadius: 18,
-    backgroundColor: dark.green,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    minWidth: 128,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  stickyBtnText: {
-    color: '#FFFFFF',
-    fontFamily: fonts.displayBold,
-    fontSize: 15,
-  },
-  stickyBtnArrow: {
-    width: 26,
-    height: 26,
-    borderRadius: 999,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
+    color: colors.wrong,
   },
   stepperCard: {
+    borderRadius: 22,
     backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    paddingVertical: 18,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    paddingVertical: 14,
     paddingHorizontal: 12,
-    marginBottom: 20,
-    ...shadows.card,
+    overflow: 'hidden',
   },
   stepsRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  stepperFillHidden: {
-    height: 0,
-    opacity: 0,
   },
   stepItem: {
     flex: 1,
@@ -1556,339 +1507,307 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     width: '100%',
-    marginBottom: 2,
   },
   stepConnector: {
     flex: 1,
     height: 2,
-    backgroundColor: 'rgba(0,16,48,0.1)',
+    borderRadius: 1,
+    backgroundColor: colors.track,
   },
   stepConnectorLeft: {
-    marginRight: 4,
+    marginRight: 6,
   },
   stepConnectorRight: {
-    marginLeft: 4,
-  },
-  stepConnectorActive: {
-    backgroundColor: dark.green,
+    marginLeft: 6,
   },
   stepConnectorSpacer: {
     flex: 1,
   },
+  stepConnectorActive: {
+    backgroundColor: colors.green,
+  },
   stepDot: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    borderWidth: 1.5,
-    borderColor: 'rgba(0,16,48,0.12)',
-    backgroundColor: '#F1F5F9',
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: colors.track,
     alignItems: 'center',
     justifyContent: 'center',
   },
   stepDotDone: {
-    borderColor: dark.green,
-    backgroundColor: dark.green,
+    backgroundColor: colors.green,
   },
   stepDotCurrent: {
-    backgroundColor: '#FFFFFF',
-    borderColor: dark.green,
-    borderWidth: 2,
+    backgroundColor: colors.navy,
   },
   stepDotText: {
-    fontFamily: fonts.bodyBold,
-    fontSize: 14,
-    color: dark.textMuted,
+    fontFamily: 'PlusJakartaSans_800ExtraBold',
+    fontSize: 13,
+    color: colors.subtle,
   },
   stepDotTextCurrent: {
-    color: dark.green,
-  },
-  stepDotTextActive: {
     color: '#FFFFFF',
   },
   stepPillText: {
-    fontFamily: fonts.bodySemiBold,
-    fontSize: 12,
-    color: dark.textMuted,
+    fontFamily: 'PlusJakartaSans_700Bold',
+    fontSize: 11.5,
+    color: colors.subtle,
   },
   stepPillTextActive: {
-    color: dark.green,
+    color: colors.navy,
+  },
+  stepperFillHidden: {
+    height: 0,
   },
   introTitle: {
-    fontFamily: fonts.displayExtraBold,
-    fontSize: 28,
-    lineHeight: 34,
-    color: dark.textPrimary,
-    letterSpacing: -0.5,
-    marginBottom: 8,
+    fontFamily: 'Sora_700Bold',
+    fontSize: 22,
+    letterSpacing: -0.44,
+    color: colors.navy,
+  },
+  titleAccent: {
+    width: 44,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: colors.green,
+    marginTop: 8,
   },
   introText: {
-    fontFamily: fonts.body,
-    fontSize: 15,
-    lineHeight: 22,
-    color: dark.textMuted,
-    marginBottom: 20,
+    fontFamily: 'PlusJakartaSans_600SemiBold',
+    fontSize: 13.5,
+    color: colors.muted,
+    lineHeight: 19,
+    marginTop: 8,
   },
   sectionRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     gap: 10,
-    marginBottom: 14,
+    marginTop: 14,
   },
   sectionIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
-    backgroundColor: brand.greenPale,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.greenTint,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 2,
   },
   section: {
-    fontFamily: fonts.displayBold,
+    fontFamily: 'Sora_700Bold',
     fontSize: 16,
-    color: dark.textPrimary,
-    marginTop: 0,
-    marginBottom: 2,
+    color: colors.navy,
   },
   sectionHint: {
-    fontFamily: fonts.body,
-    fontSize: 13,
-    lineHeight: 18,
-    color: dark.textMuted,
+    fontFamily: 'PlusJakartaSans_600SemiBold',
+    fontSize: 12.5,
+    color: colors.muted,
+    marginTop: 2,
+  },
+  sectionMonth: {
+    marginLeft: 'auto',
+    fontFamily: 'PlusJakartaSans_700Bold',
+    fontSize: 12.5,
+    color: colors.muted,
+  },
+  empty: {
+    fontFamily: 'PlusJakartaSans_600SemiBold',
+    fontSize: 13.5,
+    color: colors.muted,
   },
   choice: {
-    borderRadius: 20,
-    padding: 16,
-    marginBottom: 14,
+    borderRadius: 26,
     backgroundColor: '#FFFFFF',
-    ...shadows.card,
-  },
-  choiceText: {
-    color: dark.textPrimary,
-    fontFamily: fonts.displayBold,
-    fontSize: 17,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    padding: 16,
+    gap: 12,
   },
   moniteurRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
+    gap: 12,
   },
   avatarWrap: {
     position: 'relative',
   },
   listAvatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: dark.surfaceRaised,
-    borderWidth: 3,
-    borderColor: dark.green,
-  },
-  avatarBadge: {
-    position: 'absolute',
-    right: 0,
-    bottom: 0,
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: dark.green,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: '#FFFFFF',
-  },
-  avatarInitial: {
-    fontFamily: fonts.displayExtraBold,
-    fontSize: 28,
-    color: dark.textPrimary,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: colors.greenTint,
   },
   carPlaceholder: {
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: brand.greenPale,
   },
-  carPlaceholderText: {
-    fontSize: 10,
-    color: dark.textMuted,
-    fontFamily: fonts.bodySemiBold,
+  avatarInitial: {
+    fontFamily: 'Sora_700Bold',
+    fontSize: 20,
+    color: colors.greenDark,
+  },
+  avatarBadge: {
+    position: 'absolute',
+    right: -2,
+    bottom: -2,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: colors.green,
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  choiceText: {
+    fontFamily: 'Sora_700Bold',
+    fontSize: 16,
+    color: colors.navy,
   },
   brandText: {
-    marginTop: 4,
-    fontSize: 14,
-    color: dark.textMuted,
-    fontFamily: fonts.body,
-  },
-  typeText: {
+    fontFamily: 'PlusJakartaSans_600SemiBold',
+    fontSize: 12.5,
+    color: colors.muted,
     marginTop: 2,
-    fontSize: 12,
-    color: dark.green,
-    fontFamily: fonts.displayBold,
   },
   typePill: {
     alignSelf: 'flex-start',
-    marginTop: 8,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
+    height: 28,
     paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 999,
-    backgroundColor: brand.greenPale,
+    borderRadius: 14,
+    backgroundColor: colors.greenTint,
+    marginTop: 6,
   },
   typePillText: {
-    fontFamily: fonts.bodySemiBold,
+    fontFamily: 'PlusJakartaSans_700Bold',
     fontSize: 12,
-    color: dark.green,
-    textTransform: 'capitalize',
+    color: colors.greenDark,
   },
   statsRow: {
     flexDirection: 'row',
-    marginTop: 14,
-    paddingTop: 12,
+    gap: 8,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(0,16,48,0.06)',
+    borderTopColor: colors.border,
+    paddingTop: 12,
   },
   statItem: {
     flex: 1,
-    alignItems: 'center',
     gap: 2,
-    paddingHorizontal: 4,
   },
   statValue: {
-    fontFamily: fonts.bodyBold,
-    fontSize: 13,
-    color: dark.textPrimary,
+    fontFamily: 'PlusJakartaSans_800ExtraBold',
+    fontSize: 13.5,
+    color: colors.navy,
   },
   statLabel: {
-    fontFamily: fonts.body,
-    fontSize: 11,
-    color: dark.textMuted,
+    fontFamily: 'PlusJakartaSans_600SemiBold',
+    fontSize: 11.5,
+    color: colors.subtle,
   },
   seeProfileBtn: {
-    marginTop: 14,
-    minHeight: 44,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(249,115,22,0.25)',
-    backgroundColor: ORANGE_SOFT,
-    paddingHorizontal: 14,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
   seeProfile: {
-    fontSize: 14,
-    color: ORANGE,
-    fontFamily: fonts.bodyBold,
+    fontFamily: 'PlusJakartaSans_700Bold',
+    fontSize: 13.5,
+    color: colors.greenDark,
   },
   trustCard: {
+    borderRadius: 22,
+    backgroundColor: colors.greenTint,
+    padding: 16,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    marginTop: 4,
-    marginBottom: 8,
-    padding: 16,
-    borderRadius: 18,
-    backgroundColor: brand.greenPale,
   },
   trustCopy: {
     flex: 1,
-    minWidth: 0,
     gap: 2,
   },
   trustTitle: {
-    fontFamily: fonts.bodyBold,
-    fontSize: 14,
-    color: dark.textPrimary,
+    fontFamily: 'Sora_700Bold',
+    fontSize: 15,
+    color: colors.greenInk,
   },
   trustText: {
-    fontFamily: fonts.body,
-    fontSize: 13,
-    lineHeight: 18,
-    color: dark.textMuted,
+    fontFamily: 'PlusJakartaSans_600SemiBold',
+    fontSize: 12.5,
+    color: colors.ink2,
+    lineHeight: 17,
   },
   trustCheck: {
-    width: 28,
-    height: 28,
-    borderRadius: 999,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  pressed: {
-    opacity: 0.9,
+  profileWrap: {
+    gap: 12,
+  },
+  profileHero: {
+    borderRadius: 26,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+  },
+  profileAvatar: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: colors.greenTint,
   },
   coverPlaceholder: {
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: dark.border,
-  },
-  profileWrap: {
-    paddingBottom: 8,
-  },
-  scrollWithProfileSticky: {
-    paddingBottom: 120,
-  },
-  titleAccent: {
-    width: 48,
-    height: 5,
-    borderRadius: 999,
-    backgroundColor: dark.green,
-    marginTop: -8,
-    marginBottom: 20,
-  },
-  profileHero: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-    marginBottom: 16,
-    padding: 20,
-    borderRadius: 24,
-    backgroundColor: '#FFFFFF',
-    ...shadows.card,
-  },
-  profileAvatar: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: dark.surfaceRaised,
-    borderWidth: 3,
-    borderColor: dark.green,
   },
   profileHeroCopy: {
     flex: 1,
-    minWidth: 0,
     gap: 6,
   },
   profileName: {
-    fontFamily: fonts.displayExtraBold,
-    fontSize: 22,
-    color: dark.textPrimary,
+    fontFamily: 'Sora_700Bold',
+    fontSize: 20,
+    color: colors.navy,
+  },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
   },
   priceTypePill: {
     alignSelf: 'flex-start',
-    marginTop: 4,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: dark.green,
-    borderRadius: 999,
+    height: 32,
     paddingHorizontal: 12,
-    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: colors.navy,
   },
   priceTypePillText: {
-    fontFamily: fonts.bodySemiBold,
+    fontFamily: 'PlusJakartaSans_700Bold',
     fontSize: 12,
     color: '#FFFFFF',
   },
   vehicleCard: {
-    marginBottom: 14,
-    padding: 16,
-    borderRadius: 22,
+    borderRadius: 26,
     backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    padding: 16,
     gap: 10,
-    ...shadows.card,
+    overflow: 'hidden',
   },
   vehicleCardHead: {
     flexDirection: 'row',
@@ -1896,382 +1815,316 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   vehicleCardTitle: {
-    fontFamily: fonts.displayBold,
+    fontFamily: 'Sora_700Bold',
     fontSize: 16,
-    color: dark.textPrimary,
+    color: colors.navy,
   },
   vehicleCarousel: {
-    borderRadius: 18,
-    overflow: 'hidden',
+    marginHorizontal: -16,
   },
   vehiclePhoto: {
     height: 190,
+    marginHorizontal: 16,
     borderRadius: 18,
-    backgroundColor: dark.surfaceRaised,
+    backgroundColor: colors.bg,
+  },
+  carPlaceholderText: {
+    fontFamily: 'PlusJakartaSans_600SemiBold',
+    fontSize: 13,
+    color: colors.subtle,
   },
   dotsRow: {
     flexDirection: 'row',
     justifyContent: 'center',
     gap: 6,
-    marginTop: 4,
   },
   dot: {
     width: 7,
     height: 7,
-    borderRadius: 999,
-    backgroundColor: 'rgba(0,16,48,0.15)',
+    borderRadius: 4,
+    backgroundColor: colors.track,
   },
   dotActive: {
-    backgroundColor: dark.green,
-    width: 16,
+    width: 22,
+    backgroundColor: colors.green,
   },
   vehicleBrand: {
-    fontFamily: fonts.displayBold,
+    fontFamily: 'Sora_700Bold',
     fontSize: 16,
-    color: dark.textPrimary,
+    color: colors.navy,
   },
   featureRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
-    marginTop: 4,
   },
   featureChip: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
+    height: 34,
     paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 14,
-    backgroundColor: brand.greenPale,
-    minWidth: '30%',
-    flexGrow: 1,
+    borderRadius: 17,
+    backgroundColor: colors.greenTint,
   },
   featureChipText: {
-    fontFamily: fonts.bodySemiBold,
-    fontSize: 12,
-    color: dark.textPrimary,
-    flexShrink: 1,
+    fontFamily: 'PlusJakartaSans_700Bold',
+    fontSize: 12.5,
+    color: colors.greenInk,
   },
   infoRowCard: {
+    borderRadius: 22,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    padding: 14,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 18,
-    padding: 16,
     marginBottom: 10,
-    ...shadows.sm,
   },
   infoRowIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: brand.greenPale,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: colors.greenTint,
     alignItems: 'center',
     justifyContent: 'center',
   },
   videoPlayIcon: {
-    backgroundColor: dark.green,
+    backgroundColor: colors.green,
   },
   infoRowCopy: {
     flex: 1,
-    minWidth: 0,
-    gap: 4,
+    gap: 3,
   },
   infoRowTitle: {
-    fontFamily: fonts.bodyBold,
+    fontFamily: 'Sora_700Bold',
     fontSize: 15,
-    color: dark.textPrimary,
+    color: colors.navy,
   },
   infoRowSubtitle: {
-    fontFamily: fonts.body,
-    fontSize: 13,
-    lineHeight: 18,
-    color: dark.textMuted,
+    fontFamily: 'PlusJakartaSans_600SemiBold',
+    fontSize: 12.5,
+    color: colors.muted,
+    lineHeight: 17,
   },
   seeMore: {
+    fontFamily: 'PlusJakartaSans_700Bold',
+    fontSize: 12.5,
+    color: colors.greenDark,
     marginTop: 2,
-    fontFamily: fonts.bodyBold,
-    fontSize: 13,
-    color: dark.green,
   },
   galleryRow: {
     gap: 8,
-    paddingTop: 4,
-  },
-  profileSticky: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    paddingHorizontal: 24,
-    paddingTop: 12,
-    paddingBottom: 16,
-    backgroundColor: '#FFFFFF',
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(0,16,48,0.06)',
-    ...shadows.md,
-  },
-  recapAvatar: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: dark.surfaceRaised,
-    borderWidth: 2,
-    borderColor: dark.green,
-  },
-  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 },
-  bioBox: { marginTop: 4 },
-  bioText: {
-    fontFamily: fonts.body,
-    fontSize: 14,
-    lineHeight: 21,
-    color: dark.textMuted,
-  },
-  specialtyChip: {
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: dark.green,
-    backgroundColor: dark.greenSoft,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-  },
-  specialtyText: {
-    fontFamily: fonts.bodySemiBold,
-    fontSize: 12,
-    color: dark.textPrimary,
+    paddingTop: 6,
   },
   galleryPhoto: {
     width: 96,
     height: 72,
     borderRadius: 12,
-    backgroundColor: dark.surfaceRaised,
+    backgroundColor: colors.bg,
   },
-  recapStrip: {
+  secondaryBtn: {
+    height: 52,
+    borderRadius: 26,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 4,
+  },
+  secondaryBtnText: {
+    fontFamily: 'PlusJakartaSans_700Bold',
+    fontSize: 14,
+    color: colors.navy,
+  },
+  durationMoniteurCard: {
+    borderRadius: 22,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    padding: 14,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    marginBottom: 14,
-    padding: 12,
-    borderRadius: 14,
-    backgroundColor: dark.greenSoft,
-    borderWidth: 1,
-    borderColor: dark.border,
-  },
-  durationMoniteurCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    marginBottom: 22,
-    padding: 18,
-    borderRadius: 24,
-    backgroundColor: brand.greenPale,
-    ...shadows.sm,
   },
   durationMoniteurAvatar: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 3,
-    borderColor: dark.green,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: colors.greenTint,
   },
   durationMoniteurCopy: {
     flex: 1,
-    minWidth: 0,
-    gap: 4,
+    gap: 2,
   },
   vehicleTypeAccent: {
-    color: dark.green,
-    fontFamily: fonts.bodyBold,
+    color: colors.greenDark,
+    fontFamily: 'PlusJakartaSans_700Bold',
   },
   durationGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
-    marginBottom: 8,
-    marginTop: 4,
+    gap: 10,
+    marginTop: 10,
   },
   durationCardWrap: {
-    width: '47%',
+    width: '48%',
     flexGrow: 1,
-    minWidth: 140,
   },
   durationCard: {
-    minHeight: 96,
-    borderRadius: 18,
-    borderWidth: 1.5,
-    borderColor: 'rgba(0,16,48,0.1)',
+    borderRadius: 22,
     backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: colors.border,
     paddingVertical: 16,
     paddingHorizontal: 14,
     alignItems: 'center',
-    justifyContent: 'center',
     gap: 4,
-    ...shadows.sm,
+    position: 'relative',
   },
   durationCardActive: {
-    borderColor: dark.green,
-    backgroundColor: brand.greenPale,
+    backgroundColor: colors.green,
+    borderColor: colors.green,
   },
   durationCardHours: {
-    fontFamily: fonts.displayExtraBold,
-    fontSize: 24,
-    color: dark.textPrimary,
+    fontFamily: 'Sora_700Bold',
+    fontSize: 22,
+    color: colors.navy,
   },
   durationCardHoursActive: {
-    color: dark.textPrimary,
+    color: '#FFFFFF',
   },
   durationCardPrice: {
-    fontFamily: fonts.bodySemiBold,
-    fontSize: 13,
-    color: dark.textMuted,
+    fontFamily: 'PlusJakartaSans_700Bold',
+    fontSize: 12.5,
+    color: colors.muted,
   },
   durationCardPriceActive: {
-    color: dark.textPrimary,
+    color: 'rgba(255,255,255,0.85)',
   },
   durationCheck: {
-    marginTop: 6,
+    position: 'absolute',
+    top: 10,
+    right: 10,
     width: 24,
     height: 24,
-    borderRadius: 999,
-    backgroundColor: dark.green,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.25)',
     alignItems: 'center',
     justifyContent: 'center',
   },
+  primaryBtn: {
+    minHeight: 56,
+    borderRadius: 28,
+    backgroundColor: colors.green,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+  },
   durationPrimaryBtn: {
-    minHeight: 58,
-    borderRadius: 20,
+    marginTop: 12,
+  },
+  primaryBtnText: {
+    flex: 1,
+    textAlign: 'center',
+    fontFamily: 'PlusJakartaSans_800ExtraBold',
+    fontSize: 15,
+    color: '#FFFFFF',
+  },
+  primaryBtnArrow: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   changeMoniteurCard: {
-    marginTop: 12,
-    minHeight: 56,
-    borderRadius: 20,
+    borderRadius: 22,
     backgroundColor: '#FFFFFF',
-    paddingHorizontal: 16,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    padding: 14,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    ...shadows.sm,
+    marginTop: 10,
   },
   changeMoniteurIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 12,
-    backgroundColor: brand.greenPale,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: colors.greenTint,
     alignItems: 'center',
     justifyContent: 'center',
   },
   changeMoniteurText: {
     flex: 1,
-    fontFamily: fonts.bodyBold,
-    fontSize: 15,
-    color: dark.textPrimary,
+    fontFamily: 'PlusJakartaSans_700Bold',
+    fontSize: 14,
+    color: colors.navy,
   },
   helpCard: {
-    marginTop: 16,
-    marginBottom: 4,
+    borderRadius: 22,
+    backgroundColor: colors.yellowTint,
+    padding: 14,
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 12,
-    padding: 16,
-    borderRadius: 18,
-    backgroundColor: brand.greenPale,
+    gap: 10,
+    marginTop: 10,
   },
   helpIcon: {
     width: 28,
     height: 28,
-    borderRadius: 999,
-    backgroundColor: dark.green,
+    borderRadius: 14,
+    backgroundColor: colors.yellow,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 2,
   },
   helpCopy: {
     flex: 1,
-    minWidth: 0,
     gap: 2,
   },
   helpTitle: {
-    fontFamily: fonts.bodyBold,
+    fontFamily: 'Sora_700Bold',
     fontSize: 14,
-    color: dark.textPrimary,
+    color: colors.navy,
   },
   helpText: {
-    fontFamily: fonts.body,
-    fontSize: 13,
-    lineHeight: 18,
-    color: dark.textMuted,
-  },
-  primaryBtn: {
-    marginTop: 12,
-    minHeight: 56,
-    backgroundColor: dark.green,
-    borderRadius: 16,
-    paddingVertical: 14,
-    paddingHorizontal: 18,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-    ...shadows.sm,
-  },
-  primaryBtnText: {
-    color: '#FFFFFF',
-    fontFamily: fonts.displayBold,
-    fontSize: 16,
-  },
-  primaryBtnArrow: {
-    width: 28,
-    height: 28,
-    borderRadius: 999,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  secondaryBtn: {
-    marginTop: 10,
-    borderWidth: 1,
-    borderColor: dark.border,
-    borderRadius: 14,
-    paddingVertical: 14,
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-  },
-  secondaryBtnText: {
-    color: dark.textPrimary,
-    fontFamily: fonts.bodyBold,
+    fontFamily: 'PlusJakartaSans_600SemiBold',
+    fontSize: 12.5,
+    color: colors.ink2,
+    lineHeight: 17,
   },
   slotsRecapCard: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
+    borderRadius: 26,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    padding: 16,
     gap: 12,
-    marginBottom: 20,
-    padding: 18,
-    borderRadius: 24,
-    backgroundColor: brand.greenPale,
-    ...shadows.sm,
   },
   slotsRecapMain: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    minWidth: 0,
   },
   slotsRecapAvatar: {
-    width: 84,
-    height: 84,
-    borderRadius: 42,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 3,
-    borderColor: dark.green,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: colors.greenTint,
   },
   slotsRecapCopy: {
     flex: 1,
-    minWidth: 0,
     gap: 4,
+    minWidth: 0,
   },
   slotsRecapVehicleRow: {
     flexDirection: 'row',
@@ -2282,124 +2135,66 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 6,
-    marginTop: 6,
   },
   slotsRecapTag: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 5,
+    height: 28,
     paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 999,
-    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    backgroundColor: colors.greenTint,
   },
   slotsRecapTagText: {
-    fontFamily: fonts.bodySemiBold,
-    fontSize: 11,
-    color: dark.textPrimary,
+    fontFamily: 'PlusJakartaSans_700Bold',
+    fontSize: 11.5,
+    color: colors.greenDark,
   },
   slotsEditBtn: {
+    alignSelf: 'flex-start',
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(0,176,80,0.35)',
-    backgroundColor: '#FFFFFF',
+    gap: 6,
+    paddingVertical: 6,
   },
   slotsEditText: {
-    fontFamily: fonts.bodyBold,
-    fontSize: 12,
-    color: dark.green,
+    fontFamily: 'PlusJakartaSans_700Bold',
+    fontSize: 13,
+    color: colors.greenDark,
   },
   dayChipsRow: {
-    gap: 10,
-    paddingBottom: 4,
-    paddingRight: 8,
-    marginBottom: 16,
-  },
-  dayChip: {
-    width: 76,
-    minHeight: 96,
-    borderRadius: 20,
-    borderWidth: 1.5,
-    borderColor: 'rgba(0,16,48,0.1)',
-    backgroundColor: '#FFFFFF',
-    paddingVertical: 12,
-    alignItems: 'center',
-    gap: 2,
-    ...shadows.sm,
-  },
-  dayChipActive: {
-    borderColor: dark.green,
-    backgroundColor: brand.greenPale,
-  },
-  dayChipWeekday: {
-    fontFamily: fonts.bodySemiBold,
-    fontSize: 11,
-    color: dark.textMuted,
-    textTransform: 'capitalize',
-  },
-  dayChipDay: {
-    fontFamily: fonts.displayExtraBold,
-    fontSize: 22,
-    color: dark.textPrimary,
-    lineHeight: 26,
-  },
-  dayChipMonth: {
-    fontFamily: fonts.bodySemiBold,
-    fontSize: 11,
-    color: dark.textMuted,
-    textTransform: 'capitalize',
-  },
-  dayChipTextActive: {
-    color: dark.textPrimary,
-  },
-  dayChipCheck: {
-    marginTop: 6,
-    width: 20,
-    height: 20,
-    borderRadius: 999,
-    backgroundColor: dark.green,
-    alignItems: 'center',
-    justifyContent: 'center',
+    gap: 8,
+    paddingRight: 4,
+    marginTop: 10,
   },
   slotsHoursCard: {
-    borderRadius: 24,
-    padding: 20,
-    marginBottom: 12,
+    borderRadius: 26,
     backgroundColor: '#FFFFFF',
-    gap: 12,
-    ...shadows.card,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    padding: 16,
+    gap: 10,
+    marginTop: 12,
   },
   slotsHoursHead: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 10,
+    alignItems: 'center',
   },
   slotsHoursTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginBottom: 4,
   },
   dayTitle: {
-    fontFamily: fonts.displayBold,
-    fontSize: 17,
-    color: dark.textPrimary,
-    textTransform: 'capitalize',
+    fontFamily: 'Sora_700Bold',
+    fontSize: 16,
+    color: colors.navy,
   },
   fieldLabel: {
-    fontFamily: fonts.body,
-    fontSize: 13,
-    color: dark.textMuted,
-  },
-  slotsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
+    fontFamily: 'PlusJakartaSans_600SemiBold',
+    fontSize: 12.5,
+    color: colors.muted,
+    marginTop: 3,
   },
   slotsGrid: {
     flexDirection: 'row',
@@ -2407,81 +2202,111 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   slotCardWrap: {
-    width: '47%',
+    width: '48%',
     flexGrow: 1,
-    minWidth: 140,
   },
   slotCard: {
     minHeight: 52,
     borderRadius: 18,
-    borderWidth: 1.5,
-    borderColor: dark.green,
     backgroundColor: '#FFFFFF',
-    paddingVertical: 12,
-    paddingHorizontal: 12,
+    borderWidth: 1.5,
+    borderColor: colors.border,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 12,
   },
   slotCardActive: {
-    backgroundColor: dark.green,
-    borderColor: dark.green,
+    backgroundColor: colors.green,
+    borderColor: colors.green,
   },
   slotCardText: {
-    fontFamily: fonts.bodyBold,
-    color: dark.green,
-    fontSize: 14,
+    fontFamily: 'PlusJakartaSans_800ExtraBold',
+    fontSize: 13.5,
+    color: colors.navy,
   },
   slotCardTextActive: {
     color: '#FFFFFF',
   },
-  windowChip: {
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: dark.green,
-    backgroundColor: dark.surfaceRaised,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
+  profileSticky: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: '#FFFFFF',
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 28,
+    gap: 8,
   },
-  windowChipActive: {
-    backgroundColor: dark.green,
-    borderColor: dark.green,
+  stickyBar: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: '#FFFFFF',
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 28,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
   },
-  windowChipText: {
-    fontFamily: fonts.bodyBold,
-    color: dark.green,
-    fontSize: 13,
+  stickyLeft: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    minWidth: 0,
   },
-  windowChipTextActive: {
+  stickyCalIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: colors.greenTint,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stickyTitle: {
+    fontFamily: 'Sora_700Bold',
+    fontSize: 13.5,
+    color: colors.navy,
+  },
+  stickyPrice: {
+    fontFamily: 'PlusJakartaSans_800ExtraBold',
+    fontSize: 14,
+    color: colors.greenDark,
+    marginTop: 2,
+  },
+  stickyBtn: {
+    height: 52,
+    paddingHorizontal: 18,
+    borderRadius: 26,
+    backgroundColor: colors.green,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  stickyBtnText: {
+    fontFamily: 'PlusJakartaSans_800ExtraBold',
+    fontSize: 15,
     color: '#FFFFFF',
   },
-  durationBadge: {
-    alignSelf: 'flex-start',
-    marginTop: 4,
-    marginBottom: 2,
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    backgroundColor: dark.greenSoft,
-    borderWidth: 1,
-    borderColor: dark.border,
+  stickyBtnArrow: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.25)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  durationBadgeText: {
-    fontFamily: fonts.bodyBold,
-    fontSize: 13,
-    color: dark.textPrimary,
+  disabled: {
+    opacity: 0.5,
   },
-  empty: {
-    color: dark.textMuted,
-    marginBottom: 12,
-    fontFamily: fonts.body,
-    lineHeight: 20,
-  },
-  error: {
-    color: dark.coral,
-    marginBottom: 10,
-    fontFamily: fonts.bodySemiBold,
-  },
-  disabled: { opacity: 0.55 },
 })
