@@ -1,137 +1,89 @@
 import { useNavigation } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
+import { ArrowRight, BookOpen, Car, Smartphone } from 'lucide-react-native'
 import { LinearGradient } from 'expo-linear-gradient'
-import { useRef, useState } from 'react'
-import {
-  Dimensions,
-  FlatList,
-  ImageBackground,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-  type NativeScrollEvent,
-  type NativeSyntheticEvent,
-  type ViewToken,
-} from 'react-native'
+import { ScrollView, StyleSheet, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { BrandName } from '../components/BrandName'
 import type { RootStackParamList } from '../navigation/types'
-import { dark, fonts } from '../theme'
-import { hapticSelect } from '../utils/haptics'
+import { colors } from '../theme/tokens'
 import { markOnboardingDone } from '../utils/onboarding'
+import { AppButton, Chip, LogoTile } from '../components/ui-kit-core'
+import { RouteMotif } from '../components/ui-kit-cards'
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'Onboarding'>
 
-const { width, height } = Dimensions.get('window')
-
-const SLIDES = [
-  {
-    key: 'code',
-    title: 'Code de la route',
-    body: 'Révise les chapitres, entraîne-toi aux QCM, puis passe des sujets test et examens blancs.',
-    image: require('../../assets/onboarding/slide-code.jpg'),
-  },
-  {
-    key: 'conduite',
-    title: 'Conduite',
-    body: 'Cours vidéo gratuits, puis réserve tes heures avec un moniteur près de chez toi.',
-    image: require('../../assets/onboarding/slide-conduite.jpg'),
-  },
-  {
-    key: 'abo',
-    title: 'Accès & paiement',
-    body: 'Active ton accès en quelques secondes. Progresse à ton rythme, puis réserve ta conduite depuis l’app.',
-    image: require('../../assets/onboarding/slide-abo.jpg'),
-  },
-] as const
-
 export function OnboardingScreen() {
   const navigation = useNavigation<Nav>()
-  const listRef = useRef<FlatList<(typeof SLIDES)[number]>>(null)
-  const [index, setIndex] = useState(0)
 
   const finish = async () => {
     await markOnboardingDone()
     navigation.replace('Login')
   }
 
-  const next = () => {
-    void hapticSelect()
-    if (index >= SLIDES.length - 1) {
-      void finish()
-      return
-    }
-    listRef.current?.scrollToIndex({ index: index + 1, animated: true })
-    setIndex((value) => value + 1)
-  }
-
-  const onViewableItemsChanged = useRef(({ viewableItems }: { viewableItems: ViewToken[] }) => {
-    const first = viewableItems[0]
-    if (first?.index != null) setIndex(first.index)
-  }).current
-
   return (
     <View style={styles.root}>
-      <FlatList
-        ref={listRef}
-        style={styles.list}
-        data={[...SLIDES]}
-        keyExtractor={(item) => item.key}
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        onViewableItemsChanged={onViewableItemsChanged}
-        viewabilityConfig={{ viewAreaCoveragePercentThreshold: 60 }}
-        onMomentumScrollEnd={(event: NativeSyntheticEvent<NativeScrollEvent>) => {
-          const nextIndex = Math.round(event.nativeEvent.contentOffset.x / width)
-          setIndex(nextIndex)
-        }}
-        renderItem={({ item }) => (
-          <ImageBackground
-            source={item.image}
-            style={[styles.slide, { width, height }]}
-            imageStyle={styles.slideImage}
-          >
-            <LinearGradient
-              colors={['rgba(0,16,48,0.35)', 'rgba(0,16,48,0.55)', 'rgba(0,16,48,0.92)']}
-              locations={[0, 0.45, 1]}
-              style={StyleSheet.absoluteFill}
-            />
-            <SafeAreaView style={styles.slideSafe} edges={['top', 'bottom']}>
-              <View style={styles.slideTop}>
-                <BrandName size={18} mainColor="#ffffff" />
-                <Pressable onPress={() => void finish()} hitSlop={12}>
-                  <Text style={styles.skip}>Passer</Text>
-                </Pressable>
-              </View>
-              <View style={styles.slideCopy}>
-                <Text style={styles.kicker}>Monpermis.bj</Text>
-                <Text style={styles.title}>{item.title}</Text>
-                <Text style={styles.body}>{item.body}</Text>
-              </View>
-            </SafeAreaView>
-          </ImageBackground>
-        )}
-      />
-
-      <SafeAreaView style={styles.footerSafe} edges={['bottom']} pointerEvents="box-none">
-        <View style={styles.footer}>
-          <View style={styles.dots}>
-            {SLIDES.map((slide, slideIndex) => (
-              <View
-                key={slide.key}
-                style={[styles.dot, slideIndex === index && styles.dotActive]}
-              />
-            ))}
-          </View>
-          <Pressable style={styles.cta} onPress={next}>
-            <Text style={styles.ctaText}>
-              {index >= SLIDES.length - 1 ? 'Commencer' : 'Continuer'}
+      <View style={styles.haloGreen} pointerEvents="none" />
+      <View style={styles.haloYellow} pointerEvents="none" />
+      <SafeAreaView edges={['top']} style={styles.safe}>
+        <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false} bounces={false}>
+          <View style={styles.center}>
+            <LogoTile size="lg" />
+            <Text style={styles.brand}>
+              Monpermis<Text style={styles.brandTld}>.bj</Text>
             </Text>
-          </Pressable>
-        </View>
+            <Text style={styles.tagline}>Le code et la conduite, au même endroit.</Text>
+            <View style={styles.chips}>
+              <Chip variant="green" small>
+                <View style={styles.chipInner}>
+                  <BookOpen size={15} color={colors.greenDark} strokeWidth={2.2} />
+                  <Text style={styles.chipGreen}>QCM & examens blancs</Text>
+                </View>
+              </Chip>
+              <Chip variant="yellow" small>
+                <View style={styles.chipInner}>
+                  <Car size={15} color={colors.yellowInk} strokeWidth={2.2} />
+                  <Text style={styles.chipYellow}>Leçons de conduite</Text>
+                </View>
+              </Chip>
+              <Chip variant="navy" small>
+                <View style={styles.chipInner}>
+                  <Smartphone size={15} color={colors.navy} strokeWidth={2.2} />
+                  <Text style={styles.chipNavy}>Mobile Money</Text>
+                </View>
+              </Chip>
+            </View>
+          </View>
+        </ScrollView>
       </SafeAreaView>
+
+      <LinearGradient colors={['#16306A', '#0A1B3D', '#06122A']} start={{ x: 0.2, y: 0 }} end={{ x: 0.8, y: 1 }} style={styles.sheet}>
+        <RouteMotif />
+        <View style={styles.dots} accessibilityRole="tablist" accessibilityLabel="Progression de l'introduction">
+          <View style={[styles.dot, styles.dotActive]} />
+          <View style={styles.dot} />
+          <View style={styles.dot} />
+        </View>
+        <Text style={styles.sheetTitle}>Ton permis,{'\n'}étape par étape.</Text>
+        <Text style={styles.sheetText}>
+          Révise le code, passe des examens blancs et réserve tes heures de conduite avec ton moniteur.
+        </Text>
+        <AppButton
+          variant="slider"
+          title="Commencer"
+          onPress={() => void finish()}
+          right={
+            <View style={styles.knob}>
+              <ArrowRight size={20} color={colors.yellow} strokeWidth={2.2} />
+            </View>
+          }
+        />
+        <Text style={styles.signin}>
+          Déjà inscrit ?{' '}
+          <Text style={styles.signinLink} onPress={() => void finish()}>
+            Se connecter
+          </Text>
+        </Text>
+      </LinearGradient>
     </View>
   )
 }
@@ -139,94 +91,137 @@ export function OnboardingScreen() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: '#001030',
+    backgroundColor: '#FFFFFF',
   },
-  list: {
-    ...StyleSheet.absoluteFillObject,
+  haloGreen: {
+    position: 'absolute',
+    top: -90,
+    left: -80,
+    width: 260,
+    height: 260,
+    borderRadius: 130,
+    backgroundColor: colors.green,
+    opacity: 0.14,
   },
-  slide: {
+  haloYellow: {
+    position: 'absolute',
+    top: 40,
+    right: -90,
+    width: 240,
+    height: 240,
+    borderRadius: 120,
+    backgroundColor: colors.yellow,
+    opacity: 0.16,
+  },
+  safe: {
     flex: 1,
   },
-  slideImage: {
-    resizeMode: 'cover',
+  scroll: {
+    flexGrow: 1,
+    paddingTop: 72,
+    paddingHorizontal: 20,
+    alignItems: 'center',
   },
-  slideSafe: {
-    flex: 1,
-    justifyContent: 'space-between',
+  center: {
+    alignItems: 'center',
+    gap: 6,
+  },
+  brand: {
+    marginTop: 22,
+    fontFamily: 'Sora_800ExtraBold',
+    fontSize: 32,
+    letterSpacing: -0.96,
+    color: colors.navy,
+  },
+  brandTld: {
+    color: colors.green,
+  },
+  tagline: {
+    fontFamily: 'PlusJakartaSans_500Medium',
+    fontSize: 15,
+    color: colors.muted,
+  },
+  chips: {
+    marginTop: 18,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 8,
     paddingHorizontal: 24,
   },
-  slideTop: {
-    paddingTop: 8,
+  chipInner: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    gap: 6,
   },
-  skip: {
-    fontFamily: fonts.bodySemiBold,
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.85)',
+  chipGreen: {
+    fontFamily: 'PlusJakartaSans_700Bold',
+    fontSize: 12.5,
+    color: colors.greenDark,
   },
-  slideCopy: {
-    paddingBottom: 140,
+  chipYellow: {
+    fontFamily: 'PlusJakartaSans_700Bold',
+    fontSize: 12.5,
+    color: colors.yellowInk,
   },
-  kicker: {
-    fontFamily: fonts.displayBold,
-    fontSize: 12,
-    letterSpacing: 1.1,
-    textTransform: 'uppercase',
-    color: dark.green,
-    marginBottom: 10,
+  chipNavy: {
+    fontFamily: 'PlusJakartaSans_700Bold',
+    fontSize: 12.5,
+    color: colors.navy,
   },
-  title: {
-    fontFamily: fonts.displayExtraBold,
-    fontSize: 32,
-    lineHeight: 38,
-    color: '#ffffff',
-    marginBottom: 12,
-    letterSpacing: -0.4,
-  },
-  body: {
-    fontFamily: fonts.body,
-    fontSize: 15.5,
-    lineHeight: 24,
-    color: 'rgba(255,255,255,0.88)',
-    maxWidth: 360,
-  },
-  footerSafe: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-  },
-  footer: {
-    paddingHorizontal: 22,
-    paddingBottom: 10,
+  sheet: {
+    height: 336,
+    borderTopLeftRadius: 40,
+    borderTopRightRadius: 40,
+    paddingHorizontal: 24,
+    paddingTop: 34,
+    paddingBottom: 34,
     gap: 14,
+    overflow: 'hidden',
   },
   dots: {
     flexDirection: 'row',
-    gap: 8,
-    justifyContent: 'center',
+    gap: 6,
   },
   dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 999,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
     backgroundColor: 'rgba(255,255,255,0.35)',
   },
   dotActive: {
     width: 22,
-    backgroundColor: dark.green,
+    backgroundColor: colors.yellow,
   },
-  cta: {
-    borderRadius: 999,
-    backgroundColor: dark.green,
-    paddingVertical: 16,
+  sheetTitle: {
+    fontFamily: 'Sora_700Bold',
+    fontSize: 30,
+    lineHeight: 34,
+    letterSpacing: -0.6,
+    color: '#FFFFFF',
+  },
+  sheetText: {
+    fontFamily: 'PlusJakartaSans_500Medium',
+    fontSize: 14.5,
+    lineHeight: 22,
+    color: 'rgba(255,255,255,0.78)',
+  },
+  knob: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: colors.navy,
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  ctaText: {
-    fontFamily: fonts.displayBold,
-    fontSize: 16,
-    color: '#0B0F1A',
+  signin: {
+    textAlign: 'center',
+    fontFamily: 'PlusJakartaSans_500Medium',
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.75)',
   },
-})
+  signinLink: {
+    fontFamily: 'PlusJakartaSans_800ExtraBold',
+    color: '#FFFFFF',
+  },
+});
