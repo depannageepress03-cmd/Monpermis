@@ -1,11 +1,5 @@
 export {
-  colors,
-  gradients,
   glass,
-  shadows,
-  typography,
-  radii,
-  spacing,
   halos,
   transitions,
   zIndex,
@@ -32,17 +26,22 @@ export {
   type ComponentStyles,
 } from './tokens';
 
-// Backward compatibility exports for existing imports
-export const fonts = {
-  heading: 'PlayfairDisplay',
-  headingBold: 'PlayfairDisplay_700Bold',
-  body: 'Inter_400Regular',
-  bodyMedium: 'Inter_500Medium',
-  bodySemiBold: 'Inter_600SemiBold',
-  bodyBold: 'Inter_700Bold',
-  display: 'Poppins_600SemiBold',
-  displayBold: 'Poppins_700Bold',
-  displayExtraBold: 'Poppins_800ExtraBold',
-} as const;
-
-export { colors as oldColors, brand, dark, radii as oldRadii, shadows as oldShadows, spacing as oldSpacing, gradients as oldGradients, play } from './tokens';
+// Anciens noms utilisés par les écrans existants (imports depuis '../theme').
+// Le nouveau kit importe les tokens ci-dessus directement depuis './tokens'.
+export {
+  legacyColors as oldColors,
+  brand,
+  dark,
+  legacyRadii as oldRadii,
+  legacyShadows as oldShadows,
+  legacySpacing as oldSpacing,
+  legacyGradients as oldGradients,
+  play,
+  legacyColors as colors,
+  legacyGradients as gradients,
+  legacyRadii as radii,
+  legacyShadows as shadows,
+  legacySpacing as spacing,
+  legacyFonts as fonts,
+  legacyTypography as typography,
+} from './tokens';
