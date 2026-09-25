@@ -1,275 +1,196 @@
-import { type FormEvent, useEffect, useState } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
-import { Trash2, User } from 'lucide-react'
-import {
-  changePassword,
-  deleteAccount,
-  updateProfile,
-} from '../api/auth-password'
-import { clearSession, type AuthUser } from '../api/auth'
-import { tracker } from '../utils/tracker'
-import { PageNavbar } from '../components/PageNavbar'
-import { PageLoader } from '../components/PageLoader'
-import { useAuth } from '../hooks/useAuth'
-import { normalizePhone, PHONE_PLACEHOLDER, validateName, validatePhone } from '../utils/validation'
-import { AppShell, userInitialsOf, type AppTab } from '../components/layout/AppShell'
-import { Button, Card, SectionTitle } from '../components/ui'
-import '../styles/auth.css'
-import '../styles/learner.css'
-import '../styles/login.css'
+import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { TrendingUp, ChevronDown } from 'lucide-react';
+import { useAuth } from '../hooks/useAuth';
+import { fetchLearnerJourney, fetchPracticeExamScores, type LearnerJourney, type PracticeExamScore } from '../api/content';
+import { fetchDrivingDashboard } from '../api/reservations';
+import { Button, Chip, ProgressRing, ProgressRingCenter, NotchedCard } from '../components/ui';
+import { MainTabBar } from '../components/MainTabBar';
+;
 
-const TAB_ROUTES: Record<AppTab, string> = {
-  accueil: '/accueil',
-  code: '/code-de-la-route',
-  conduite: '/conduite',
-  progres: '/code-de-la-route/mes-notes',
-  profil: '/profil',
+function formatDateLabel(value?: string | null) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return `${String(date.getDate()).padStart(2, '0')}-${String(date.getMonth() + 1).padStart(2, '0')}-${date.getFullYear()}`;
+}
+
+function formatTimeLabel(value?: string | null) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
 }
 
 export function ProfilePage() {
-  const navigate = useNavigate()
-  const location = useLocation()
-  const { user, loading, updateUser } = useAuth()
+  const navigate = useNavigate();
+  const { user, loading } = useAuth();
 
-  const [firstName, setFirstName] = useState(user?.firstName ?? '')
-  const [lastName, setLastName] = useState(user?.lastName ?? '')
-  const [phone, setPhone] = useState(user?.phone ?? '')
-  const [profileMsg, setProfileMsg] = useState('')
-  const [profileError, setProfileError] = useState('')
-  const [phoneHint, setPhoneHint] = useState('')
-  const [savingProfile, setSavingProfile] = useState(false)
-
-  const [currentPassword, setCurrentPassword] = useState('')
-  const [newPassword, setNewPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
-  const [pwMsg, setPwMsg] = useState('')
-  const [pwError, setPwError] = useState('')
-  const [savingPw, setSavingPw] = useState(false)
-
-  const [deletePassword, setDeletePassword] = useState('')
-  const [deleteError, setDeleteError] = useState('')
-  const [deleting, setDeleting] = useState(false)
-  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [journey, setJourney] = useState<LearnerJourney | null>(null);
+  const [examScores, setExamScores] = useState<PracticeExamScore[]>([]);
+  const [drivingDone, setDrivingDone] = useState(0);
+  const [drivingTotal, setDrivingTotal] = useState(20);
+  const [periodFilter] = useState('30 jours');
 
   useEffect(() => {
-    if (!user) return
-    setFirstName(user.firstName ?? '')
-    setLastName(user.lastName ?? '')
-    setPhone(user.phone ?? '')
-  }, [user])
-
-  useEffect(() => {
-    const required = (location.state as { phoneRequired?: string } | null)?.phoneRequired
-    if (required) {
-      setPhoneHint(required)
-      navigate(location.pathname, { replace: true, state: null })
-    } else if (user && !String(user.phone || '').trim()) {
-      setPhoneHint(
-        'Ajoute ton numéro de téléphone pour payer en Mobile Money et recevoir les rappels.',
-      )
-    }
-  }, [location.pathname, location.state, navigate, user])
-
-  if (loading || !user) return <PageLoader />
-
-  const phoneMissing = !String(phone || '').trim()
-
-  const handleSaveProfile = async (e: FormEvent) => {
-    e.preventDefault()
-    setProfileError('')
-    setProfileMsg('')
-    const nameErr =
-      validateName(firstName, 'Le prénom') || validateName(lastName, 'Le nom') || validatePhone(phone)
-    if (nameErr) {
-      setProfileError(nameErr)
-      return
-    }
-    setSavingProfile(true)
-    try {
-      const updated = await updateProfile({
-        firstName: firstName.trim(),
-        lastName: lastName.trim(),
-        phone: normalizePhone(phone),
+    if (!user) return;
+    void fetchLearnerJourney().then(setJourney).catch(() => setJourney(null));
+    void fetchPracticeExamScores()
+      .then((data) => setExamScores(data.scores ?? []))
+      .catch(() => setExamScores([]));
+    void fetchDrivingDashboard()
+      .then((data) => {
+        setDrivingDone(data.progress.heuresEffectuees ?? 0);
+        setDrivingTotal(data.progress.heuresObjectif ?? 20);
       })
-      updateUser({ ...user, ...updated } as AuthUser)
-      setProfileMsg('Profil mis à jour')
-      if (String(updated.phone || '').trim()) setPhoneHint('')
-    } catch (err) {
-      setProfileError(err instanceof Error ? err.message : 'Mise à jour impossible')
-    } finally {
-      setSavingProfile(false)
-    }
-  }
+      .catch(() => {});
+  }, [user]);
 
-  const handleChangePassword = async (e: FormEvent) => {
-    e.preventDefault()
-    setPwError('')
-    setPwMsg('')
-    if (newPassword.length < 8) {
-      setPwError('Minimum 8 caractères')
-      return
-    }
-    if (!/[A-Z]/.test(newPassword) || !/[a-z]/.test(newPassword) || !/\d/.test(newPassword)) {
-      setPwError('Majuscule, minuscule et chiffre requis')
-      return
-    }
-    if (newPassword !== confirmPassword) {
-      setPwError('Les mots de passe ne correspondent pas')
-      return
-    }
-    setSavingPw(true)
-    try {
-      await changePassword(currentPassword, newPassword)
-      setPwMsg('Mot de passe modifié')
-      setCurrentPassword('')
-      setNewPassword('')
-      setConfirmPassword('')
-    } catch (err) {
-      setPwError(err instanceof Error ? err.message : 'Modification impossible')
-    } finally {
-      setSavingPw(false)
-    }
-  }
+  const { courseRatio, examRatio, driveRatio, percent, delta } = useMemo(() => {
+    const code = journey?.code;
+    const codeTotal = code?.chaptersTotal ?? 0;
+    const coursePct = codeTotal > 0 ? (code.chaptersDone ?? 0) / codeTotal : 0;
 
-  const handleDelete = async () => {
-    setDeleteError('')
-    if (!confirmDelete) {
-      setConfirmDelete(true)
-      return
-    }
-    setDeleting(true)
-    try {
-      await deleteAccount({
-        confirm: true,
-        password: deletePassword,
-      })
-      clearSession()
-      tracker.reset()
-      navigate('/', { replace: true })
-    } catch (err) {
-      setDeleteError(err instanceof Error ? err.message : 'Suppression impossible')
-    } finally {
-      setDeleting(false)
-    }
-  }
+    const exams = journey?.practiceExams;
+    const examPct = exams && exams.examTotal > 0 ? Math.min(1, (exams.passedCount ?? 0) / exams.examTotal) : 0;
+
+    const drivePct = drivingTotal > 0 ? Math.min(1, drivingDone / drivingTotal) : 0;
+
+    const last = examScores[examScores.length - 1];
+    const prev = examScores[examScores.length - 2];
+    const examDelta = last && prev ? last.correct - prev.correct : null;
+
+    return {
+      courseRatio: coursePct,
+      examRatio: examPct,
+      driveRatio: drivePct,
+      percent: Math.round(coursePct * 100),
+      delta: examDelta,
+    };
+  }, [journey, examScores, drivingDone, drivingTotal]);
+
+  if (loading || !user) return null;
+
+  const lastExam = examScores[examScores.length - 1];
+  const lastExamErrors = lastExam ? Math.max(0, lastExam.total - lastExam.correct) : 0;
+
+  const codeDone = journey?.code?.chaptersDone ?? 0;
+  const codeTotal = journey?.code?.chaptersTotal ?? 60;
+  const examsPassed = journey?.practiceExams?.passedCount ?? 0;
+  const examsTotal = journey?.practiceExams?.examTotal ?? 40;
 
   return (
-    <AppShell
-      activeTab="profil"
-      userInitials={userInitialsOf(user?.firstName, user?.lastName)}
-      onNavigate={(tab) => navigate(TAB_ROUTES[tab])}
-      onOpenNotifications={() => navigate('/notifications')}
-      onOpenProfile={() => navigate('/profil')}
-    >
-      <div className="auth-page">
-        <div className="auth-container learner-container">
-          <PageNavbar title="Mon profil" icon={<User size={20} />} onBack={() => navigate('/accueil')} />
+    <div style={{ minHeight: '100dvh', background: 'linear-gradient(180deg, #FFFFFF 0%, #F5F7FB 46%)', position: 'relative', overflow: 'hidden' }}>
+      <div style={{ position: 'absolute', top: 120, left: 50, width: 290, height: 290, borderRadius: '50%', background: 'rgba(11,170,79,0.10)', filter: 'blur(60px)', pointerEvents: 'none' }} />
+      <div style={{ position: 'relative', boxSizing: 'border-box', padding: '56px 20px 0', display: 'flex', flexDirection: 'column', gap: 14, maxWidth: 390, margin: '0 auto' }}>
 
-          <Card>
-            <form onSubmit={handleSaveProfile}>
-              <SectionTitle>Mes informations</SectionTitle>
-              {phoneHint || phoneMissing ? (
-                <p className="signin-banner signin-banner--err" style={{ marginBottom: 12 }}>
-                  {phoneHint ||
-                    'Ajoute ton numéro de téléphone pour payer en Mobile Money et recevoir les rappels.'}
-                </p>
-              ) : null}
-              {profileError ? <p className="signin-form-error">{profileError}</p> : null}
-              {profileMsg ? <p style={{ color: '#16a34a', fontWeight: 600 }}>{profileMsg}</p> : null}
-              <div className="signin-fields">
-                <input
-                  className="auth-input"
-                  value={firstName}
-                  onChange={(e) => setFirstName(e.target.value)}
-                  placeholder="Prénom"
-                />
-                <input
-                  className="auth-input"
-                  value={lastName}
-                  onChange={(e) => setLastName(e.target.value)}
-                  placeholder="Nom"
-                />
-                <input
-                  className="auth-input"
-                  value={phone}
-                  onChange={(e) => setPhone(normalizePhone(e.target.value))}
-                  placeholder={PHONE_PLACEHOLDER}
-                  aria-invalid={phoneMissing}
-                />
-              </div>
-              <Button variant="cta" tone="green" type="submit" disabled={savingProfile} style={{ marginTop: 14 }}>
-                {savingProfile ? 'Enregistrement…' : 'Enregistrer'}
-              </Button>
-            </form>
-          </Card>
-
-          <Card>
-            <form onSubmit={handleChangePassword}>
-              <SectionTitle>Changer de mot de passe</SectionTitle>
-              {pwError ? <p className="signin-form-error">{pwError}</p> : null}
-              {pwMsg ? <p style={{ color: '#16a34a', fontWeight: 600 }}>{pwMsg}</p> : null}
-              <div className="signin-fields">
-                <input
-                  type="password"
-                  className="auth-input"
-                  value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
-                  placeholder="Mot de passe actuel"
-                />
-                <input
-                  type="password"
-                  className="auth-input"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="Nouveau mot de passe"
-                />
-                <input
-                  type="password"
-                  className="auth-input"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Confirmer le mot de passe"
-                />
-              </div>
-              <Button variant="cta" tone="green" type="submit" disabled={savingPw} style={{ marginTop: 14 }}>
-                {savingPw ? 'Modification…' : 'Modifier le mot de passe'}
-              </Button>
-            </form>
-          </Card>
-
-          <Card>
-            <SectionTitle>Zone sensible</SectionTitle>
-            <p style={{ color: '#6b7280', fontSize: 14 }}>
-              La suppression du compte est définitive (profil, abonnements liés, notifications).
-            </p>
-            {deleteError ? <p className="signin-form-error">{deleteError}</p> : null}
-            {confirmDelete ? (
-              <input
-                type="password"
-                className="auth-input"
-                value={deletePassword}
-                onChange={(e) => setDeletePassword(e.target.value)}
-                placeholder="Mot de passe pour confirmer"
-                style={{ marginBottom: 12 }}
-              />
-            ) : null}
-            <Button
-              variant="outline"
-              type="button"
-              style={{ color: '#b91c1c', borderColor: '#fecaca' }}
-              disabled={deleting}
-              onClick={() => void handleDelete()}
-              icon={<Trash2 size={16} />}
-            >
-              {deleting
-                ? 'Suppression…'
-                : confirmDelete
-                  ? 'Confirmer la suppression'
-                  : 'Supprimer mon compte'}
-            </Button>
-          </Card>
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>
+            <h1 style={{ margin: 0, fontFamily: 'Sora, sans-serif', fontSize: 26, fontWeight: 700, letterSpacing: '-0.02em' }}>Ma progression</h1>
+            <div style={{ fontSize: 13, color: '#5B6680', fontWeight: 600, marginTop: 3 }}>Code, examens et conduite</div>
+          </div>
+          <Button variant="outline" size="sm" leftIcon={ChevronDown} onClick={() => {}} style={{ height: 40, borderRadius: 20, border: '1.5px solid #E1E6EF', background: '#FFFFFF' }}>
+            {periodFilter}
+          </Button>
         </div>
+
+        {/* ProgressRing */}
+        <div style={{ position: 'relative', height: 270, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <ProgressRing
+            segments={[
+              { color: '#0BAA4F', value: courseRatio, max: 1 },
+              { color: '#0A1B3D', value: examRatio, max: 1 },
+              { color: '#FFB400', value: driveRatio, max: 1 },
+            ]}
+          >
+            <ProgressRingCenter
+              percentage={percent}
+              label="prête pour l'examen"
+              trend={delta != null && delta !== 0 ? { value: `${delta > 0 ? '+' : ''}${delta} pts`, icon: <TrendingUp size={13} strokeWidth={2.6} /> } : undefined}
+            />
+          </ProgressRing>
+        </div>
+
+        {/* Mini cards */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 8 }}>
+          <div style={{ borderRadius: 18, background: '#FFFFFF', padding: '10px 12px', boxShadow: '0 8px 22px -18px rgba(10,27,61,0.4)', display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11.5, fontWeight: 700, color: '#5B6680' }}>
+              <span style={{ width: 10, height: 10, borderRadius: 5, background: '#0BAA4F' }} />
+              Cours
+            </span>
+            <span style={{ fontFamily: 'Sora, sans-serif', fontSize: 16, fontWeight: 700 }}>
+              {codeDone}<span style={{ color: '#8A93A8', fontSize: 13 }}>/{codeTotal}</span>
+            </span>
+          </div>
+          <div style={{ borderRadius: 18, background: '#FFFFFF', padding: '10px 12px', boxShadow: '0 8px 22px -18px rgba(10,27,61,0.4)', display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11.5, fontWeight: 700, color: '#5B6680' }}>
+              <span style={{ width: 10, height: 10, borderRadius: 5, background: '#0A1B3D' }} />
+              Examens
+            </span>
+            <span style={{ fontFamily: 'Sora, sans-serif', fontSize: 16, fontWeight: 700 }}>
+              {examsPassed}<span style={{ color: '#8A93A8', fontSize: 13 }}>/{examsTotal} moy.</span>
+            </span>
+          </div>
+          <div style={{ borderRadius: 18, background: '#FFFFFF', padding: '10px 12px', boxShadow: '0 8px 22px -18px rgba(10,27,61,0.4)', display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11.5, fontWeight: 700, color: '#5B6680' }}>
+              <span style={{ width: 10, height: 10, borderRadius: 5, background: '#FFB400' }} />
+              Conduite
+            </span>
+            <span style={{ fontFamily: 'Sora, sans-serif', fontSize: 16, fontWeight: 700 }}>
+              {drivingDone}<span style={{ color: '#8A93A8', fontSize: 13 }}>/{drivingTotal} h</span>
+            </span>
+          </div>
+        </div>
+
+        {/* Activité récente */}
+        <h2 style={{ margin: '6px 0 0', fontFamily: 'Sora, sans-serif', fontSize: 18, fontWeight: 700 }}>Activité récente</h2>
+
+        {lastExam ? (
+          <NotchedCard
+            tabLabel="Examen blanc"
+            tabColor="#0A1B3D"
+            time={formatTimeLabel(lastExam.completedAt)}
+            date={formatDateLabel(lastExam.completedAt)}
+          >
+            <div style={{ fontFamily: 'Sora, sans-serif', fontSize: 17, fontWeight: 700 }}>Examen blanc n°{lastExam.examNumber}</div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <Chip variant="yellow" size="sm">{lastExam.correct}/{lastExam.total}</Chip>
+              <Chip variant={lastExam.passed ? 'green' : 'glass'} size="sm">{lastExam.passed ? 'Réussi' : 'À revoir'}</Chip>
+            </div>
+            <div style={{ height: 1, background: 'rgba(255,255,255,0.14)' }} />
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5, fontWeight: 600, color: 'rgba(255,255,255,0.8)' }}>
+              <span>{lastExamErrors} erreur{lastExamErrors > 1 ? 's' : ''} à revoir</span>
+            </div>
+          </NotchedCard>
+        ) : (
+          <div style={{ borderRadius: 26, background: '#FFFFFF', padding: 18, boxShadow: '0 10px 30px -18px rgba(10,27,61,0.3)' }}>
+            <p style={{ color: '#5B6680', fontSize: 13.5 }}>Passe ton premier examen blanc pour voir tes résultats ici.</p>
+            <Button variant="outline" onClick={() => navigate('/code-de-la-route/examens-test')}>Voir les examens</Button>
+          </div>
+        )}
+
+        {journey?.code?.currentStop?.type === 'done' ? (
+          <NotchedCard
+            tabLabel="Cours terminé"
+            tabColor="#DDF3E6"
+            tone="light"
+            tabIcon={<span style={{ width: 8, height: 8, borderRadius: 4, background: '#0BAA4F' }} />}
+            date={formatDateLabel(new Date().toISOString())}
+          >
+            <div style={{ fontFamily: 'Sora, sans-serif', fontSize: 17, fontWeight: 700 }}>{journey.code.currentStop.label}</div>
+            <div style={{ fontSize: 12.5, fontWeight: 600, color: '#3C4760' }}>
+              {journey.code.chaptersDone}/{journey.code.chaptersTotal} chapitres validés
+            </div>
+          </NotchedCard>
+        ) : null}
+
       </div>
-    </AppShell>
-  )
+
+      {/* TabBar flottante (TabBar.html) */}
+      <MainTabBar activeId="progres" />
+    </div>
+  );
 }
+
+export default ProfilePage;
