@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigation, useRoute } from '@react-navigation/native'
 import type { RouteProp } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
-import { ClipboardCheck } from 'lucide-react-native'
+import { ClipboardCheck, X } from 'lucide-react-native'
+import { LinearGradient } from 'expo-linear-gradient'
 import {
   ActivityIndicator,
   Image,
@@ -13,15 +14,20 @@ import {
   Text,
   View,
 } from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
 import {
   checkPracticeExamAnswer,
   completePracticeExam,
   ContentError,
   fetchPracticeExams,
+  fetchRevisionChapters,
   startPracticeExam,
   type PracticeExamAttempt,
   type PracticeExamsOverview,
 } from '../../api/revision'
+import { AppButton, IconButton } from '../../components/ui-kit-core'
+import { OptionButton, SegmentedProgress } from '../../components/ui-kit-cards'
+import { colors } from '../../theme/tokens'
 import { DarkScreen } from '../../components/DarkScreen'
 import { AnimatedCheckmark } from '../../components/AnimatedCheckmark'
 import { ConfettiBurst } from '../../components/ConfettiBurst'
@@ -246,6 +252,9 @@ export function ExamensTestTakeScreen() {
   const [sequenceLive, setSequenceLive] = useState(true)
   const [leaveConfirmed, setLeaveConfirmed] = useState(false)
   const [resolvedImages, setResolvedImages] = useState<{ key: string; uri: string }[]>([])
+  const [correctAnswerIds, setCorrectAnswerIds] = useState<string[]>([])
+  const [lastCorrect, setLastCorrect] = useState<boolean | null>(null)
+  const [chapterNames, setChapterNames] = useState<Record<string, string>>({})
 
   const selectedIdsRef = useRef(selectedIds)
   selectedIdsRef.current = selectedIds
@@ -322,9 +331,22 @@ export function ExamensTestTakeScreen() {
     setSequenceLive(true)
     setSelectedIds([])
     setSubmitted(false)
+    setCorrectAnswerIds([])
+    setLastCorrect(null)
     // Pas de stopAllQuizAudio ici : coupe la nouvelle séquence au montage.
     tracker.markQuestionStart()
   }, [index])
+
+  useEffect(() => {
+    if (!user) return
+    void fetchRevisionChapters()
+      .then((list) => {
+        const map: Record<string, string> = {}
+        for (const chapter of list) map[String(chapter.id)] = chapter.name
+        setChapterNames(map)
+      })
+      .catch(() => {})
+  }, [user])
 
   useEffect(() => {
     return () => {
@@ -454,14 +476,15 @@ export function ExamensTestTakeScreen() {
         { index: indexRef.current, elapsedMs: tracker.consumeElapsedMs() },
       )
       setAnsweredCount(data.answeredCount)
-      await finishOrAdvance()
+      setCorrectAnswerIds(data.correctAnswerIds ?? [])
+      setLastCorrect(false)
     } catch (err) {
       setSubmitted(false)
       setError(err instanceof ContentError ? err.message : 'Vérification impossible')
     } finally {
       setChecking(false)
     }
-  }, [examNumber, finishOrAdvance])
+  }, [examNumber])
 
   const resolveSelection = useCallback(
     async (ids: string[]) => {
@@ -499,7 +522,8 @@ export function ExamensTestTakeScreen() {
           },
         )
         setAnsweredCount(data.answeredCount)
-        await finishOrAdvance()
+        setCorrectAnswerIds(data.correctAnswerIds ?? [])
+        setLastCorrect(data.isCorrect)
       } catch (err) {
         setSubmitted(false)
         setError(err instanceof ContentError ? err.message : 'Vérification impossible')
@@ -508,7 +532,7 @@ export function ExamensTestTakeScreen() {
         setChecking(false)
       }
     },
-    [examNumber, finishOrAdvance],
+    [examNumber],
   )
 
   const handleSequenceComplete = useCallback(() => {
@@ -567,20 +591,24 @@ export function ExamensTestTakeScreen() {
   if (authLoading || !user) return <ScreenLoader />
 
   return (
-    <DarkScreen>
-        <ConfettiBurst active={Boolean(finished && finalScore?.passed)} />
-        <PageNavbar
-          title={`Examen ${examNumber}`}
-          icon={ClipboardCheck}
-          onBack={handleBack}
-        />
+    <View style={takeStyles.root}>
+      <View style={takeStyles.halo} pointerEvents="none" />
+      <SafeAreaView style={takeStyles.safe} edges={['top']}>
+        <ScrollView contentContainerStyle={takeStyles.scroll} showsVerticalScrollIndicator={false}>
+          <View style={takeStyles.headRow}>
+            <IconButton accessibilityLabel="Quitter l'examen" onPress={handleBack}>
+              <X size={18} color={colors.navy} strokeWidth={2.4} />
+            </IconButton>
+            <View style={takeStyles.headCopy}>
+              <Text style={takeStyles.kicker}>Examen blanc n°{examNumber}</Text>
+              <Text style={takeStyles.title}>
+                {progressLabel.split('/')[0]}
+                <Text style={takeStyles.total}>/ {questions.length}</Text>
+              </Text>
+            </View>
+          </View>
 
-        <ScrollView contentContainerStyle={styles.scroll}>
-          <Text style={styles.kicker}>Examen blanc</Text>
-          <Text style={styles.title}>Examen {examNumber}</Text>
-          <Text style={styles.subtitle}>
-            Seuil de réussite : {attempt?.passScore ?? 14}/20 · Résultats à la fin
-          </Text>
+          <SegmentedProgress total={questions.length} done={submitted ? index + 1 : index} current={submitted ? undefined : index} kind="qcm" />
 
           {loading ? <ActivityIndicator color={dark.green} /> : null}
           {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -620,20 +648,28 @@ export function ExamensTestTakeScreen() {
                   {question.correctCount} bonnes réponses à cocher
                 </Text>
               ) : null}
-              {question.prompt?.text ? (
-                <QuestionPromptHtml text={question.prompt.text} style={styles.prompt} />
-              ) : null}
-              {resolvedImages.length > 0 ? (
-                <View style={styles.images}>
-                  {resolvedImages.map((img) => (
-                    <Image
-                      key={img.key}
-                      source={{ uri: img.uri }}
-                      style={styles.promptImage}
-                      resizeMode="cover"
-                    />
-                  ))}
+              <View style={takeStyles.illustration}>
+                {resolvedImages.length > 0 ? (
+                  <Image
+                    source={{ uri: resolvedImages[0].uri }}
+                    style={takeStyles.illustrationImage}
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <LinearGradient
+                    colors={['#DDE8F8', '#F4F8FE', '#E3EBDD', '#D5E4CC']}
+                    locations={[0, 0.45, 0.58, 1]}
+                    style={takeStyles.illustrationImage}
+                  />
+                )}
+                <View style={takeStyles.themeBadge}>
+                  <Text style={takeStyles.themeBadgeText}>
+                    {chapterNames[String(question.chapterId ?? '')] ?? 'Examen blanc'}
+                  </Text>
                 </View>
+              </View>
+              {question.prompt?.text ? (
+                <QuestionPromptHtml text={question.prompt.text} style={takeStyles.prompt} />
               ) : null}
               {sequenceLive && !submitted ? (
                 <QuestionAudioSequence
@@ -643,45 +679,190 @@ export function ExamensTestTakeScreen() {
                   onSequenceComplete={handleSequenceComplete}
                 />
               ) : null}
-              {displayAnswers.map((answer) => {
-                const selected = selectedIds.includes(answer.id)
-                return (
-                  <Pressable
-                    key={answer.id}
-                    style={[styles.answer, selected && styles.answerSelected]}
-                    onPress={() => toggleAnswer(answer.id)}
-                    disabled={submitted || checking}
-                  >
-                    <Text style={styles.answerLabel}>{(answer.label ?? '').toUpperCase()}</Text>
-                    {answer.text ? <Text style={styles.answerMeta}>{answer.text}</Text> : null}
-                  </Pressable>
-                )
-              })}
-
-              {!submitted && selectedIds.length > 0 ? (
-                <Pressable
-                  style={[styles.primaryBtn, checking && styles.primaryBtnDisabled]}
-                  disabled={checking}
-                  onPress={handleContinue}
+              {displayAnswers.map((answer) => (
+                <OptionButton
+                  key={answer.id}
+                  letter={(answer.label ?? '').toUpperCase()}
+                  state={
+                    submitted
+                      ? correctAnswerIds.includes(answer.id)
+                        ? 'correct'
+                        : selectedIds.includes(answer.id)
+                          ? 'incorrect'
+                          : 'default'
+                      : selectedIds.includes(answer.id)
+                        ? 'selected'
+                        : 'default'
+                  }
+                  onPress={() => toggleAnswer(answer.id)}
+                  disabled={submitted || checking}
                 >
-                  {checking ? (
-                    <ActivityIndicator color={'#0B0F1A'} />
-                  ) : (
-                    <Text style={styles.primaryBtnText}>Continuer</Text>
-                  )}
-                </Pressable>
+                  {answer.text ?? ''}
+                </OptionButton>
+              ))}
+
+              {submitted && lastCorrect !== null ? (
+                <View
+                  accessibilityRole="alert"
+                  style={lastCorrect ? takeStyles.verdictOk : takeStyles.verdictKo}
+                >
+                  <Text style={lastCorrect ? takeStyles.verdictOkText : takeStyles.verdictKoText}>
+                    {lastCorrect ? 'Bonne réponse !' : 'Pas tout à fait.'}
+                  </Text>
+                </View>
               ) : null}
-              {!submitted && selectedIds.length === 0 ? (
-                <Text style={styles.awaitingText}>
-                  L’audio lit la question 2 fois. Vous pouvez cocher pendant la lecture ; Continuer valide sans attendre.
-                </Text>
-              ) : null}
+
+              <View style={takeStyles.actions}>
+                {!submitted && selectedIds.length > 0 ? (
+                  <AppButton
+                    variant="accent"
+                    title={checking ? 'Vérification…' : 'Valider ma réponse'}
+                    onPress={handleContinue}
+                    disabled={checking}
+                  />
+                ) : null}
+                {submitted ? (
+                  <AppButton
+                    variant="primary"
+                    title="Question suivante"
+                    onPress={() => void finishOrAdvance()}
+                  />
+                ) : null}
+                {!submitted && selectedIds.length === 0 ? (
+                  <Text style={takeStyles.awaitingText}>
+                    L’audio lit la question 2 fois. Vous pouvez cocher pendant la lecture ; Valider
+                    ma réponse valide sans attendre. Sans choix à la fin : question ratée.
+                  </Text>
+                ) : null}
+              </View>
             </View>
           ) : null}
         </ScrollView>
-      </DarkScreen>
+      </SafeAreaView>
+    </View>
   )
 }
+
+const takeStyles = StyleSheet.create({
+  root: {
+    flex: 1,
+    backgroundColor: colors.bg,
+  },
+  halo: {
+    position: 'absolute',
+    top: -100,
+    right: -100,
+    width: 280,
+    height: 280,
+    borderRadius: 140,
+    backgroundColor: colors.green,
+    opacity: 0.12,
+  },
+  safe: {
+    flex: 1,
+  },
+  scroll: {
+    flexGrow: 1,
+    paddingHorizontal: 20,
+    paddingTop: 56,
+    paddingBottom: 28,
+    gap: 16,
+  },
+  headRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  headCopy: {
+    flex: 1,
+    gap: 2,
+  },
+  kicker: {
+    fontFamily: 'PlusJakartaSans_700Bold',
+    fontSize: 12,
+    color: colors.muted,
+  },
+  title: {
+    fontFamily: 'Sora_700Bold',
+    fontSize: 17,
+  },
+  total: {
+    color: colors.subtle,
+  },
+  illustration: {
+    position: 'relative',
+    height: 216,
+    borderRadius: 28,
+    overflow: 'hidden',
+  },
+  illustrationImage: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    width: 350,
+    height: 216,
+  },
+  themeBadge: {
+    position: 'absolute',
+    left: 14,
+    top: 14,
+    height: 30,
+    paddingHorizontal: 12,
+    borderRadius: 15,
+    backgroundColor: 'rgba(255,255,255,0.75)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  themeBadgeText: {
+    fontFamily: 'PlusJakartaSans_800ExtraBold',
+    fontSize: 12,
+    color: colors.navy,
+  },
+  prompt: {
+    fontFamily: 'Sora_700Bold',
+    fontSize: 19,
+    lineHeight: 25,
+    color: colors.navy,
+  },
+  options: {
+    gap: 10,
+  },
+  verdictOk: {
+    borderRadius: 22,
+    paddingHorizontal: 18,
+    paddingVertical: 16,
+    backgroundColor: colors.greenTint,
+    borderWidth: 2,
+    borderColor: colors.green,
+  },
+  verdictKo: {
+    borderRadius: 22,
+    paddingHorizontal: 18,
+    paddingVertical: 16,
+    backgroundColor: colors.wrongBg,
+    borderWidth: 2,
+    borderColor: colors.wrong,
+  },
+  verdictOkText: {
+    fontFamily: 'Sora_700Bold',
+    fontSize: 16,
+    color: colors.greenInk,
+  },
+  verdictKoText: {
+    fontFamily: 'Sora_700Bold',
+    fontSize: 16,
+    color: colors.wrongInk,
+  },
+  actions: {
+    marginTop: 'auto',
+  },
+  awaitingText: {
+    fontFamily: 'PlusJakartaSans_500Medium',
+    fontSize: 13,
+    lineHeight: 19,
+    color: colors.muted,
+  },
+})
 
 const styles = StyleSheet.create({
   scroll: { paddingHorizontal: 22, paddingBottom: 28 },
