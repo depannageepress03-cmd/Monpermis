@@ -108,6 +108,7 @@ export type RootStackParamList = {
   ExamensTest: undefined
   ExamensTestTake: { examNumber: number }
   MesNotes: undefined
+  Progres: undefined
   Conduite: undefined
   ReservationFlow: { moniteurId?: string } | undefined
   MoniteurProfile: { id: string; name?: string }

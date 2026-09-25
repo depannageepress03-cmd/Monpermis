@@ -13,7 +13,7 @@ const ROUTES: Record<MainTabId, keyof RootStackParamList> = {
   accueil: 'Home',
   code: 'CodeRoute',
   conduite: 'Conduite',
-  progres: 'Profile',
+  progres: 'Progres',
   offres: 'Abonnement',
 };
 

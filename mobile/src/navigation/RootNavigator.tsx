@@ -58,6 +58,7 @@ import { ChapterQuestionsListScreen, ChapterTestSubjectScreen } from '../screens
 import { ChapterQuestionsScreen } from '../screens/code-route/ChapterQuestionsScreen'
 import { ExamensTestScreen, ExamensTestTakeScreen } from '../screens/code-route/ExamensTestScreen'
 import { MesNotesScreen } from '../screens/code-route/MesNotesScreen'
+import { ProgresScreen } from '../screens/ProgresScreen'
 import { ConduiteScreen } from '../screens/ConduiteScreen'
 import { ReservationFlowScreen } from '../screens/conduite/ReservationFlowScreen'
 import { MesReservationsScreen } from '../screens/conduite/MesReservationsScreen'
@@ -105,6 +106,7 @@ const linking: LinkingOptions<RootStackParamList> = {
       ExamensTest: 'code-de-la-route/examens-test',
       ExamensTestTake: 'code-de-la-route/examens-test/passer',
       MesNotes: 'code-de-la-route/mes-notes',
+      Progres: 'progres',
       Conduite: 'conduite',
       ReservationFlow: 'conduite/reservation',
       MesReservations: 'conduite/reservations',
@@ -250,6 +252,10 @@ function AppNavigator() {
       <Stack.Screen
         name="MesNotes"
         component={MesNotesScreen}
+      />
+      <Stack.Screen
+        name="Progres"
+        component={withRequireAuth(ProgresScreen)}
       />
       <Stack.Screen
         name="Conduite"
