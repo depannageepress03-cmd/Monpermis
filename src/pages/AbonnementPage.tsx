@@ -1,48 +1,19 @@
-import { Check, Clock, CreditCard, History, LoaderCircle, Lock } from 'lucide-react'
-import { useCallback, useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import {
-  computeModuleAmount,
-  fetchAccessMe,
-  fetchAccessModules,
-  redeemPromoCode,
-  AccessRequestError,
-  type AccessMe,
-  type AccessModule,
-  type AccessModuleKey,
-  type CheckoutCartItem,
-} from '../api/accessRequests'
-import { MobileMoneyCheckout } from '../components/MobileMoneyCheckout'
-import { EmptyState } from '../components/EmptyState'
-import { PageLoader } from '../components/PageLoader'
-import { PageNavbar } from '../components/PageNavbar'
-import { PageSkeleton } from '../components/PageSkeleton'
-import { Reveal } from '../components/Reveal'
-import { useAuth } from '../hooks/useAuth'
-import { useFocusRefresh } from '../hooks/useFocusRefresh'
-import {
-  formatSubscriptionEndDate,
-  getActiveSubscriptions,
-} from '../utils/subscriptionSummary'
-import { AppShell, userInitialsOf, type AppTab } from '../components/layout/AppShell'
-import { Badge, Button, Card, IconBadge, SectionTitle, StatCard } from '../components/ui'
-import '../styles/auth.css'
-import '../styles/learner.css'
-
-const TAB_ROUTES: Record<AppTab, string> = {
-  accueil: '/accueil',
-  code: '/code-de-la-route',
-  conduite: '/conduite',
-  progres: '/code-de-la-route/mes-notes',
-  profil: '/profil',
-}
+import { ShieldCheck } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
+import { computeModuleAmount, fetchAccessMe, fetchAccessModules, redeemPromoCode, AccessRequestError, type AccessMe, type AccessModule, type AccessModuleKey, type CheckoutCartItem } from '../api/accessRequests';
+import { MobileMoneyCheckout } from '../components/MobileMoneyCheckout';
+;
+import { PageLoader } from '../components/PageLoader';
+;
+;
+import { useAuth } from '../hooks/useAuth';
+import { useFocusRefresh } from '../hooks/useFocusRefresh';
+import { Button, LogoTile, PlanCard, TextField } from '../components/ui';
+import { MainTabBar } from '../components/MainTabBar';
+;
 
 function formatPrice(price: number, currency = 'XOF') {
-  return new Intl.NumberFormat('fr-FR', {
-    style: 'currency',
-    currency,
-    maximumFractionDigits: 0,
-  }).format(price)
+  return new Intl.NumberFormat('fr-FR', { style: 'currency', currency, maximumFractionDigits: 0 }).format(price);
 }
 
 const unitSuffix: Record<AccessModule['unit'], string> = {
@@ -51,332 +22,226 @@ const unitSuffix: Record<AccessModule['unit'], string> = {
   month: ' / mois',
   hour: ' / heure',
   week: ' / semaine',
-}
+};
 
-/** Offres self-service sur cette page (heures conduite = espace Conduite). */
-const PRIMARY_KEYS: AccessModuleKey[] = ['code']
+// Three formules réellement vendues côté API (code, heures de conduite, vidéos conduite).
+// Le « pack » des maquettes n'existe pas côté serveur : on ne l'invente pas.
+const PRIMARY_KEYS: AccessModuleKey[] = ['code', 'conduite_heures', 'conduite_videos'];
 
 export function AbonnementPage() {
-  const navigate = useNavigate()
-  const { user, loading: authLoading } = useAuth()
+  const { user, loading: authLoading } = useAuth();
 
-  const [modules, setModules] = useState<AccessModule[]>([])
-  const [me, setMe] = useState<AccessMe | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [selected, setSelected] = useState<Partial<Record<AccessModuleKey, boolean>>>({})
-  const [quantityByModule, setQuantityByModule] = useState<Record<string, number>>({})
-  const [checkoutOpen, setCheckoutOpen] = useState(false)
-  const [promoCode, setPromoCode] = useState('')
-  const [promoBusy, setPromoBusy] = useState(false)
-  const [promoError, setPromoError] = useState<string | null>(null)
-  const [promoSuccess, setPromoSuccess] = useState<string | null>(null)
+  const [modules, setModules] = useState<AccessModule[]>([]);
+  const [me, setMe] = useState<AccessMe | null>(null);
+  const [, setLoading] = useState(true);
+  const [, setError] = useState<string | null>(null);
+  const [selected, setSelected] = useState<Partial<Record<AccessModuleKey, boolean>>>({});
+  const [quantityByModule] = useState<Record<string, number>>({});
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [promoCode, setPromoCode] = useState('');
+  const [promoBusy, setPromoBusy] = useState(false);
+  const [promoError, setPromoError] = useState<string | null>(null);
+  const [promoSuccess, setPromoSuccess] = useState<string | null>(null);
+  const [operator, setOperator] = useState<'mtn' | 'moov'>('mtn');
+  const [payPhone, setPayPhone] = useState('');
 
   const load = useCallback(async () => {
-    setLoading(true)
-    setError(null)
+    setLoading(true);
+    setError(null);
     try {
-      const [moduleCatalog, meResult] = await Promise.all([fetchAccessModules(), fetchAccessMe()])
-      setModules(moduleCatalog.filter((m) => m.key !== 'aiChat'))
-      setMe(meResult)
+      const [moduleCatalog, meResult] = await Promise.all([fetchAccessModules(), fetchAccessMe()]);
+      setModules(moduleCatalog.filter((m) => m.key !== 'aiChat'));
+      setMe(meResult);
     } catch (err) {
-      setError(err instanceof AccessRequestError ? err.message : 'Chargement impossible')
+      setError(err instanceof AccessRequestError ? err.message : 'Chargement impossible');
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }, [])
+  }, []);
 
   useEffect(() => {
-    if (!user) return
-    void load()
-  }, [user, load])
+    if (!user) return;
+    void load();
+  }, [user, load]);
 
   useFocusRefresh(Boolean(user), () => {
-    void load()
-  })
+    void load();
+  });
 
-  if (authLoading || !user) return <PageLoader />
+  if (authLoading || !user) return <PageLoader />;
 
-  const activeSubscriptions = getActiveSubscriptions(me)
 
   const cartItems: CheckoutCartItem[] = modules
     .filter((module) => {
-      if (!PRIMARY_KEYS.includes(module.key)) return false
-      if (!selected[module.key]) return false
-      if (me?.access[module.key]) return false
-      return true
+      if (!PRIMARY_KEYS.includes(module.key)) return false;
+      if (!selected[module.key]) return false;
+      if (me?.access[module.key]) return false;
+      return true;
     })
     .map((module) => ({
       module: module.key,
       quantity: Math.max(1, quantityByModule[module.key] ?? 1),
-    }))
+    }));
 
-  const cartTotal = cartItems.reduce((sum, item) => {
-    const module = modules.find((m) => m.key === item.module)
-    if (!module) return sum
-    return sum + computeModuleAmount(item.module, module.price, item.quantity)
-  }, 0)
 
   const toggle = (key: AccessModuleKey) => {
-    setSelected((current) => ({ ...current, [key]: !current[key] }))
-  }
+    setSelected((current) => ({ ...current, [key]: !current[key] }));
+  };
 
   const handleRedeemPromo = async () => {
-    const trimmed = promoCode.trim()
-    if (!trimmed) return
-    setPromoBusy(true)
-    setPromoError(null)
-    setPromoSuccess(null)
+    const trimmed = promoCode.trim();
+    if (!trimmed) return;
+    setPromoBusy(true);
+    setPromoError(null);
+    setPromoSuccess(null);
     try {
-      const result = await redeemPromoCode(trimmed)
-      setMe(result.access)
+      const result = await redeemPromoCode(trimmed);
+      setMe(result.access);
       const labels = result.modules
         .map((key) => modules.find((m) => m.key === key)?.label || key)
-        .join(', ')
-      setPromoSuccess(`Code activé : ${labels} débloqué${result.modules.length > 1 ? 's' : ''}.`)
-      setPromoCode('')
+        .join(', ');
+      setPromoSuccess(`Code activé : ${labels} débloqué${result.modules.length > 1 ? 's' : ''}.`);
+      setPromoCode('');
     } catch (err) {
-      setPromoError(err instanceof AccessRequestError ? err.message : 'Code invalide')
+      setPromoError(err instanceof AccessRequestError ? err.message : 'Code invalide');
     } finally {
-      setPromoBusy(false)
+      setPromoBusy(false);
     }
-  }
+  };
 
   const sortedModules = [...modules].sort((a, b) => {
-    const ai = PRIMARY_KEYS.indexOf(a.key)
-    const bi = PRIMARY_KEYS.indexOf(b.key)
-    return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi)
-  })
+    const ai = PRIMARY_KEYS.indexOf(a.key);
+    const bi = PRIMARY_KEYS.indexOf(b.key);
+    return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+  });
+
+  const selectedPlan = sortedModules.find(m => PRIMARY_KEYS.includes(m.key) && selected[m.key] && !me?.access[m.key]);
+  const ctaAmount = selectedPlan ? computeModuleAmount(selectedPlan.key, selectedPlan.price, selectedPlan.key === 'conduite_heures' ? quantityByModule[selectedPlan.key] : 1) : 0;
 
   return (
-    <AppShell
-      activeTab="profil"
-      userInitials={userInitialsOf(user?.firstName, user?.lastName)}
-      onNavigate={(tab) => navigate(TAB_ROUTES[tab])}
-      onOpenNotifications={() => navigate('/notifications')}
-      onOpenProfile={() => navigate('/profil')}
-    >
-      <div className="auth-page">
-        <div className="auth-container learner-container">
-          <PageNavbar title="Mes accès" icon={<CreditCard size={25} />} onBack={() => navigate('/accueil')} />
+    <div style={{ minHeight: '100dvh', background: '#F5F7FB', position: 'relative', overflow: 'hidden' }}>
+      <div style={{ position: 'absolute', top: -80, right: -80, width: 260, height: 260, borderRadius: '50%', background: 'rgba(255,180,0,0.16)', filter: 'blur(60px)', pointerEvents: 'none' }} />
+      <div style={{ position: 'relative', boxSizing: 'border-box', padding: '56px 20px 0', display: 'flex', flexDirection: 'column', gap: 14, maxWidth: 390, margin: '0 auto' }}>
 
-          <header className="auth-header learner-header">
-            <p>
-              Achète l’accès Code par Mobile Money (MTN, Moov, Celtiis). Les cours vidéo de
-              conduite sont gratuits dans l’espace Conduite ; les heures moniteur s’achètent
-              aussi là-bas.
-            </p>
-          </header>
-
-          <Button
-            variant="outline"
-            icon={<History size={16} />}
-            onClick={() => navigate('/abonnement/historique')}
-          >
-            Historique des paiements
-          </Button>
-
-          {loading ? (
-            <PageSkeleton variant="list" />
-          ) : (
-            <>
-              {error ? (
-                <EmptyState
-                  tone="error"
-                  icon={<LoaderCircle size={28} />}
-                  title="Chargement impossible"
-                  message={error}
-                  action={
-                    <Button variant="cta" tone="green" onClick={() => void load()}>
-                      Réessayer
-                    </Button>
-                  }
-                />
-              ) : null}
-
-              {me ? (
-                <Reveal delay={60}>
-                <Card>
-                  <section className="subscription-status-card">
-                    <StatCard
-                      icon={<Clock size={14} />}
-                      label="Solde heures moniteur (espace Conduite)"
-                      value={`${me.user.soldeHeures} h`}
-                    />
-                    <p className="subscription-status-copy">
-                      Ce solde sert aux séances moniteur — pas à l’abonnement Code.{' '}
-                      <Button variant="outline" style={{ display: 'inline', padding: '2px 8px', fontSize: 13 }} onClick={() => navigate('/conduite')}>
-                        Ouvrir Conduite
-                      </Button>
-                    </p>
-                    {activeSubscriptions.length > 0 ? (
-                      <div className="subscription-active-list">
-                        {activeSubscriptions.map((sub) => (
-                          <p key={sub.module} className="subscription-status-copy">
-                            <strong>{sub.label}</strong> — expire le{' '}
-                            {formatSubscriptionEndDate(sub.endAt)} ({sub.remainingLabel} restant
-                            {sub.daysLeft > 1 ? 's' : ''}){' '}
-                            <Badge tone={sub.daysLeft <= 7 ? 'orange' : 'green'}>
-                              {sub.daysLeft <= 7 ? 'Expire bientôt' : 'Actif'}
-                            </Badge>
-                            {sub.daysLeft <= 7 ? (
-                              <>
-                                {' '}
-                                <Button
-                                  variant="outline"
-                                  style={{ display: 'inline', padding: '2px 8px', marginLeft: 4, fontSize: 13 }}
-                                  onClick={() => {
-                                    setSelected({ [sub.module]: true })
-                                    window.scrollTo({ top: 0, behavior: 'smooth' })
-                                  }}
-                                >
-                                  Renouveler
-                                </Button>
-                              </>
-                            ) : null}
-                          </p>
-                        ))}
-                      </div>
-                    ) : null}
-                    {me.pendingRequest ? (
-                      <p className="subscription-status-copy">
-                        <Badge tone="orange">Paiement en confirmation</Badge>{' '}
-                        Actualisez après validation sur votre téléphone.
-                      </p>
-                    ) : null}
-                  </section>
-                </Card>
-                </Reveal>
-              ) : null}
-
-              <Reveal delay={120}>
-              <section className="subscription-catalog">
-                <SectionTitle>Offres disponibles</SectionTitle>
-                {sortedModules.filter((module) => PRIMARY_KEYS.includes(module.key)).length === 0 ? (
-                  <p className="subtitle">Aucun accès n’est disponible pour le moment.</p>
-                ) : (
-                  <div className="offer-pick-list">
-                    {sortedModules
-                      .filter((module) => PRIMARY_KEYS.includes(module.key))
-                      .map((module) => {
-                      const isActive = Boolean(me?.access[module.key])
-                      const showsQuantity = module.unit === 'hour'
-                      const quantity = quantityByModule[module.key] ?? 1
-                      const amount = computeModuleAmount(module.key, module.price, showsQuantity ? quantity : 1)
-                      const checked = Boolean(selected[module.key])
-
-                      return (
-                        <Card key={module.key}>
-                          <button
-                            type="button"
-                            className={`offer-pick${checked ? ' is-selected' : ''}`}
-                            disabled={isActive}
-                            onClick={() => toggle(module.key)}
-                          >
-                            <h3>
-                              {module.label}
-                              {isActive ? ' · Actif' : ''}
-                            </h3>
-                            <p>
-                              {formatPrice(module.price)}
-                              {unitSuffix[module.unit]}
-                              {!isActive ? ` · total ${formatPrice(amount)}` : ''}
-                            </p>
-                            {showsQuantity && !isActive ? (
-                              <label
-                                className="access-quantity-field"
-                                onClick={(event) => event.stopPropagation()}
-                                onKeyDown={(event) => event.stopPropagation()}
-                              >
-                                Nombre d’heures
-                                <input
-                                  type="number"
-                                  min={1}
-                                  value={quantity}
-                                  onChange={(event) =>
-                                    setQuantityByModule((current) => ({
-                                      ...current,
-                                      [module.key]: Math.max(1, Number(event.target.value) || 1),
-                                    }))
-                                  }
-                                />
-                              </label>
-                            ) : null}
-                            {isActive ? (
-                              <Badge tone="green" icon={<Check size={15} />}>
-                                Accès actif
-                              </Badge>
-                            ) : null}
-                          </button>
-                        </Card>
-                      )
-                    })}
-                  </div>
-                )}
-
-                <Button
-                  variant="cta"
-                  tone="green"
-                  disabled={cartItems.length === 0}
-                  onClick={() => setCheckoutOpen(true)}
-                  style={{ marginTop: 16 }}
-                >
-                  Payer {formatPrice(cartTotal)}
-                </Button>
-              </section>
-              </Reveal>
-
-              <Card>
-                <section className="subscription-status-card">
-                  <SectionTitle>Vous avez un code promo ?</SectionTitle>
-                  <div className="promo-code-field">
-                    <input
-                      type="text"
-                      value={promoCode}
-                      onChange={(event) => setPromoCode(event.target.value.toUpperCase())}
-                      placeholder="CODE PROMO"
-                      disabled={promoBusy}
-                    />
-                    <Button
-                      variant="outline"
-                      disabled={promoBusy || !promoCode.trim()}
-                      onClick={() => void handleRedeemPromo()}
-                    >
-                      {promoBusy ? 'Vérification…' : 'Valider'}
-                    </Button>
-                  </div>
-                  {promoError ? <p className="form-error">{promoError}</p> : null}
-                  {promoSuccess ? <p className="form-success">{promoSuccess}</p> : null}
-                </section>
-              </Card>
-
-              {!modules.some((m) => me?.access[m.key]) && !(me && me.user.soldeHeures > 0) ? (
-                <Card>
-                  <section className="subscription-status-card">
-                    <IconBadge icon={<Lock size={28} aria-hidden="true" />} tone="orange" />
-                    <p className="subscription-status-copy">
-                      Sélectionnez au moins une offre ci-dessus pour débloquer vos parcours.
-                    </p>
-                  </section>
-                </Card>
-              ) : null}
-
-              <MobileMoneyCheckout
-                open={checkoutOpen}
-                items={cartItems}
-                modules={modules}
-                defaultPhone={user.phone}
-                onClose={() => setCheckoutOpen(false)}
-                onSuccess={(access) => {
-                  setMe(access)
-                  setSelected({})
-                  setCheckoutOpen(false)
-                }}
-              />
-            </>
-          )}
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>
+            <h1 style={{ margin: 0, fontFamily: 'Sora, sans-serif', fontSize: 26, fontWeight: 700, letterSpacing: '-0.02em' }}>Choisis ta formule</h1>
+            <div style={{ fontSize: 13, color: '#5B6680', fontWeight: 600, marginTop: 3 }}>Activation immédiate après paiement</div>
+          </div>
+          <LogoTile size="sm" />
         </div>
+
+        {/* Plans */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {sortedModules.filter(m => PRIMARY_KEYS.includes(m.key)).map((module) => {
+            const isPlanActive = Boolean(me?.access[module.key]);
+            const checked = Boolean(selected[module.key]);
+            const amount = computeModuleAmount(module.key, module.price, module.key === 'conduite_heures' ? quantityByModule[module.key] : 1);
+
+            return (
+              <PlanCard
+                key={module.key}
+                name={module.label}
+                description={isPlanActive ? 'Actif' : `${formatPrice(module.price)}${unitSuffix[module.unit]}`}
+                price={isPlanActive ? 'Actif' : formatPrice(amount)}
+                popular={false}
+                selected={checked || isPlanActive}
+                onSelect={() => (isPlanActive ? undefined : toggle(module.key))}
+              />
+            );
+          })}
+        </div>
+
+        {/* Payment */}
+        <div style={{ fontFamily: "'Sora', sans-serif", fontSize: 16, fontWeight: 700, marginTop: 4 }}>Payer avec Mobile Money</div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8, marginTop: -4 }} role="radiogroup" aria-label="Opérateur Mobile Money">
+          <button
+            type="button"
+            role="radio"
+            aria-checked={operator === 'mtn'}
+            onClick={() => setOperator('mtn')}
+            style={{ height: 50, borderRadius: 25, fontFamily: 'inherit', fontSize: 14, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, background: '#FFFFFF', color: '#0A1B3D', border: operator === 'mtn' ? '2px solid #0A1B3D' : '1.5px solid #E1E6EF' }}
+          >
+            <span style={{ width: 12, height: 12, borderRadius: 6, background: '#FFB400', display: 'inline-block' }} />
+            MTN MoMo
+          </button>
+          <button
+            type="button"
+            role="radio"
+            aria-checked={operator === 'moov'}
+            onClick={() => setOperator('moov')}
+            style={{ height: 50, borderRadius: 25, fontFamily: 'inherit', fontSize: 14, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, background: operator === 'moov' ? '#FFFFFF' : '#EEF1F6', color: '#0A1B3D', border: operator === 'moov' ? '2px solid #0A1B3D' : '1.5px solid transparent' }}
+          >
+            <span style={{ width: 12, height: 12, borderRadius: 6, background: '#0BAA4F', display: 'inline-block' }} />
+            Moov Money
+          </button>
+        </div>
+
+        <TextField
+          type="tel"
+          aria-label="Numéro Mobile Money"
+          placeholder="01 XX XX XX XX"
+          value={payPhone}
+          onChange={(e) => setPayPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+          prefix={<span style={{ height: 40, padding: '0 12px', borderRadius: 20, background: '#F1F4F9', display: 'flex', alignItems: 'center', fontSize: 14, fontWeight: 700 }}>+229</span>}
+        />
+
+        <Button
+          variant="primary"
+          size="md"
+          fullWidth
+          leftIcon={<ShieldCheck size={18} stroke="#FFB400" />}
+          onClick={() => setCheckoutOpen(true)}
+          disabled={cartItems.length === 0}
+        >
+          {ctaAmount > 0 ? `Payer ${formatPrice(ctaAmount)}` : 'Sélectionne une offre'}
+        </Button>
+        <div style={{ textAlign: 'center', fontSize: 12, fontWeight: 600, color: '#5B6680', marginTop: -4 }}>Paiement sécurisé par FedaPay · XOF</div>
+
+        {/* Promo code */}
+        <div style={{ marginTop: 18 }}>
+          <div style={{ borderRadius: 26, background: '#FFFFFF', padding: 18, boxShadow: '0 10px 30px -18px rgba(10,27,61,0.3)' }}>
+            <p style={{ fontFamily: 'Sora, sans-serif', fontSize: 15, fontWeight: 700, marginBottom: 12 }}>Vous avez un code promo ?</p>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <TextField
+                type="text"
+                placeholder="CODE PROMO"
+                value={promoCode}
+                onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+                style={{ flexGrow: 1 }}
+                disabled={promoBusy}
+              />
+              <Button variant="outline" size="sm" onClick={() => void handleRedeemPromo()} disabled={promoBusy || !promoCode.trim()}>
+                {promoBusy ? 'Vérification…' : 'Valider'}
+              </Button>
+            </div>
+            {promoError && <p style={{ fontSize: 12.5, fontWeight: 600, color: '#C2410C', marginTop: 8 }}>{promoError}</p>}
+            {promoSuccess && <p style={{ fontSize: 12.5, fontWeight: 600, color: '#067A37', marginTop: 8 }}>{promoSuccess}</p>}
+          </div>
+        </div>
+
+        {/* MobileMoneyCheckout */}
+        <MobileMoneyCheckout
+          open={checkoutOpen}
+          items={cartItems}
+          modules={modules}
+          defaultPhone={payPhone || user.phone}
+          defaultOperator={operator}
+          onClose={() => setCheckoutOpen(false)}
+          onSuccess={(access) => {
+            setMe(access);
+            setSelected({});
+            setCheckoutOpen(false);
+          }}
+        />
+
       </div>
-    </AppShell>
-  )
+
+      {/* TabBar flottante (TabBar.html) */}
+      <MainTabBar activeId="offres" />
+    </div>
+  );
 }
+
+export default AbonnementPage;

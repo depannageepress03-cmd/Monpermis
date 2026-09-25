@@ -60,6 +60,7 @@ export interface MobileMoneyCheckoutProps {
   items: CheckoutCartItem[]
   modules: AccessModule[]
   defaultPhone?: string
+  defaultOperator?: MobileMoneyOperator | null
   onClose: () => void
   onSuccess: (access: AccessMe) => void
 }
@@ -69,11 +70,12 @@ export function MobileMoneyCheckout({
   items,
   modules,
   defaultPhone = '',
+  defaultOperator = null,
   onClose,
   onSuccess,
 }: MobileMoneyCheckoutProps) {
   const [step, setStep] = useState<'intro' | 'operator' | 'phone' | 'waiting'>('intro')
-  const [operator, setOperator] = useState<MobileMoneyOperator | null>(null)
+  const [operator, setOperator] = useState<MobileMoneyOperator | null>(defaultOperator)
   const [phone, setPhone] = useState(defaultPhone)
   const [busy, setBusy] = useState(false)
   const [verifying, setVerifying] = useState(false)
@@ -85,14 +87,14 @@ export function MobileMoneyCheckout({
   useEffect(() => {
     if (!open) return
     setStep('intro')
-    setOperator(null)
+    setOperator(defaultOperator ?? null)
     setPhone(defaultPhone)
     setError(null)
     setSuccess(null)
     setBusy(false)
     setVerifying(false)
     setPendingId(null)
-  }, [open, defaultPhone])
+  }, [open, defaultPhone, defaultOperator])
 
   useEffect(
     () => () => {
