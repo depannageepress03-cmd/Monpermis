@@ -1,28 +1,21 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import {
-  Activity,
-  ArrowUpRight,
-  Car,
-  CreditCard,
-  RefreshCw,
-  TrendingUp,
-  Wallet,
-  Zap,
-} from 'lucide-react'
-import { MiniDonut } from '../components/AdminCharts'
-import { StatusBadge } from '../components/StatusBadge'
+  Search,
+  Bell,
+  Plus,
+  FileText,
+} from 'lucide-react';
 import {
   fetchDashboardSummary,
-  paymentStatusLabel,
   subscribeToDashboardPaymentEvents,
-  type DashboardPayment,
   type DashboardSummary,
-} from '../api/dashboard'
-import type { AccessModuleKey } from '../api/accessRequests'
-import { paymentChannelLabel } from '../api/accessRequests'
-import { getAdminToken, isAuthError, useAdminAuth } from '../context/AdminAuthContext'
-import { Reveal, Skeleton, SkeletonBlock } from '../ui'
+} from '../api/dashboard';
+import { fetchAdminReservations } from '../api/reservations';
+import type { ReservationAdmin } from '../types/reservations';
+import { getAdminToken, useAdminAuth } from '../context/AdminAuthContext';
+import { Skeleton } from '../ui';
+import { LogoMark } from '../components/icons/LogoMark';
 
 const emptySummary: DashboardSummary = {
   users: { total: 0, active: 0, suspended: 0 },
@@ -42,473 +35,339 @@ const emptySummary: DashboardSummary = {
   revenue: { currency: 'XOF', total: 0, month: 0, transactions: 0 },
   accessRequests: { active: 0, pending: 0, expired: 0 },
   payments: { pending: 0, needsRefund: 0, recent: [] },
-}
-
-const moduleLabels: Record<AccessModuleKey, string> = {
-  code: 'Code de la route',
-  conduite_heures: 'Heures de conduite',
-  conduite_videos: 'Vidéos conduite',
-  aiChat: 'Chat IA',
-}
+};
 
 function formatXof(value: number) {
-  return `${new Intl.NumberFormat('fr-FR').format(value)} FCFA`
+  return `${new Intl.NumberFormat('fr-FR').format(value)} XOF`;
 }
 
-function formatRelativeTime(value: string) {
-  const diffMs = Date.now() - new Date(value).getTime()
-  const minutes = Math.round(diffMs / 60000)
-  if (Number.isNaN(minutes)) return '—'
-  if (minutes < 1) return 'à l’instant'
-  if (minutes < 60) return `il y a ${minutes} min`
-  const hours = Math.round(minutes / 60)
-  if (hours < 24) return `il y a ${hours} h`
-  const days = Math.round(hours / 24)
-  return `il y a ${days} j`
+function adminInitials(fullName?: string | null) {
+  const parts = String(fullName || '').trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return 'AD';
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
 }
 
-function learnerName(payment: DashboardPayment) {
-  if (!payment.learner) return 'Apprenant'
-  return `${payment.learner.firstName} ${payment.learner.lastName}`.trim() || 'Apprenant'
+function learnerInitials(firstName?: string | null, lastName?: string | null) {
+  const name = `${firstName || ''} ${lastName || ''}`.trim();
+  if (!name) return '?';
+  const parts = name.split(/\s+/);
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
 }
+
+function learnerName(firstName?: string | null, lastName?: string | null) {
+  const name = `${firstName || ''} ${lastName || ''}`.trim();
+  return name || 'Apprenant';
+}
+
+function formatShortDate(iso?: string | null) {
+  if (!iso) return '—';
+  const [datePart] = iso.split('T');
+  const [y, m, d] = (datePart || '').split('-').map((v) => parseInt(v, 10));
+  if (!y || !m || !d) return iso;
+  const date = new Date(y, m - 1, d);
+  const weekday = date.toLocaleDateString('fr-FR', { weekday: 'short' });
+  const month = date.toLocaleDateString('fr-FR', { month: 'short' }).replace('.', '');
+  return `${weekday} ${d} ${month}`;
+}
+
+function reservationStatus(reservation: ReservationAdmin): { label: string; confirmed: boolean } {
+  if (reservation.status === 'confirmed' || reservation.paymentStatus === 'paid') {
+    return { label: 'Confirmée', confirmed: true };
+  }
+  return { label: 'En attente', confirmed: false };
+}
+
+const MODULE_LABELS: Record<string, string> = {
+  code: 'Code',
+  conduite_heures: 'Conduite',
+  conduite_videos: 'Vidéos',
+  aiChat: 'Chat IA',
+};
 
 export function DashboardPage() {
-  const { admin, canManageAdmins } = useAdminAuth()
-  const [summary, setSummary] = useState<DashboardSummary>(emptySummary)
-  const [payments, setPayments] = useState<DashboardPayment[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [liveConnected, setLiveConnected] = useState(false)
-  const refreshTimer = useRef<number | null>(null)
+  const { admin } = useAdminAuth();
+  const navigate = useNavigate();
+  const [summary, setSummary] = useState<DashboardSummary>(emptySummary);
+  const [reservations, setReservations] = useState<ReservationAdmin[]>([]);
+  const [loading, setLoading] = useState(true);
+  const refreshTimer = useRef<number | null>(null);
 
   const applySummary = useCallback((next: DashboardSummary) => {
-    setSummary(next)
-    setPayments(next.payments?.recent ?? [])
-  }, [])
+    setSummary(next);
+  }, []);
 
   const load = useCallback(
     async ({ silent = false } = {}) => {
-      const token = getAdminToken()
-      if (!token) return
+      const token = getAdminToken();
+      if (!token) return;
       if (!silent) {
-        setLoading(true)
-        setError(null)
+        setLoading(true);
       }
       try {
-        const data = await fetchDashboardSummary(token)
-        applySummary(data.summary)
+        const [dashboard, reservationsData] = await Promise.all([
+          fetchDashboardSummary(token),
+          fetchAdminReservations(token).catch(() => ({ reservations: [] as ReservationAdmin[] })),
+        ]);
+        applySummary(dashboard.summary);
+        setReservations(reservationsData.reservations);
       } catch (err) {
         if (!silent) {
-          setError(isAuthError(err) ? err.message : 'Impossible de charger le résumé')
+          console.error('Failed to load dashboard:', err);
         }
       } finally {
-        if (!silent) setLoading(false)
+        if (!silent) setLoading(false);
       }
     },
     [applySummary],
-  )
+  );
 
   const scheduleSilentRefresh = useCallback(() => {
-    if (refreshTimer.current != null) window.clearTimeout(refreshTimer.current)
+    if (refreshTimer.current != null) window.clearTimeout(refreshTimer.current);
     refreshTimer.current = window.setTimeout(() => {
-      void load({ silent: true })
-    }, 800)
-  }, [load])
+      void load({ silent: true });
+    }, 800);
+  }, [load]);
 
   useEffect(() => {
-    void load()
-  }, [load])
+    void load();
+  }, [load]);
 
   useEffect(() => {
-    const token = getAdminToken()
-    if (!token) return
+    const token = getAdminToken();
+    if (!token) return;
 
     const unsubscribe = subscribeToDashboardPaymentEvents(
       token,
-      (payment) => {
-        setPayments((current) => {
-          const without = current.filter((item) => item.id !== payment.id)
-          return [payment, ...without].slice(0, 20)
-        })
-        scheduleSilentRefresh()
+      (_payment) => {
+        scheduleSilentRefresh();
       },
-      setLiveConnected,
-    )
+    );
 
     return () => {
-      unsubscribe()
-      if (refreshTimer.current != null) window.clearTimeout(refreshTimer.current)
-    }
-  }, [scheduleSilentRefresh])
+      unsubscribe();
+      if (refreshTimer.current != null) window.clearTimeout(refreshTimer.current);
+    };
+  }, [scheduleSilentRefresh]);
 
-  const codePct =
-    summary.code.chapters > 0
-      ? Math.round((summary.code.published / summary.code.chapters) * 100)
-      : 0
+  const todayLabel = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
-  const activationPct =
-    summary.users.total > 0
-      ? ((summary.users.active / summary.users.total) * 100).toFixed(1)
-      : '0'
+  const upcomingReservations = [...reservations]
+    .filter((item) => item.status !== 'cancelled')
+    .sort((a, b) => String(a.creneau?.date || '').localeCompare(String(b.creneau?.date || '')))
+    .slice(0, 4);
 
-  const monthLabel = new Date().toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })
-
-  const rows = useMemo(
-    () => [
-      {
-        space: 'Abonnés',
-        indicator: `${summary.accessRequests.active} abonnements actifs · ${summary.revenue.transactions} paiements`,
-        tone: 'success' as const,
-        badge: `${summary.accessRequests.active} actifs`,
-        access: 'Admin',
-        to: '/abonnements',
-      },
-      {
-        space: 'Code de la route',
-        indicator: `${summary.code.chapters} chapitres · ${summary.code.questions} questions`,
-        tone: 'success' as const,
-        badge: `${summary.code.published} publiés`,
-        access: 'Publique',
-        to: '/code',
-      },
-      {
-        space: 'Conduite',
-        indicator: `${summary.conduite.courses} cours · ${summary.conduite.moniteursActive} moniteurs`,
-        tone: summary.conduite.moniteursActive > 0 ? ('success' as const) : ('warning' as const),
-        badge: summary.conduite.moniteursActive > 0 ? 'À jour' : 'Aucun moniteur actif',
-        access: 'Modules',
-        to: '/conduite',
-      },
-      {
-        space: 'Réservations',
-        indicator: `${summary.conduite.reservationsPending} en attente`,
-        tone: summary.conduite.reservationsPending > 0 ? ('warning' as const) : ('success' as const),
-        badge: summary.conduite.reservationsPending > 0 ? 'En attente' : 'À jour',
-        access: 'Admin',
-        to: '/conduite/reservations',
-      },
-      {
-        space: 'Utilisateurs',
-        indicator: `${summary.users.active} apprenants actifs`,
-        tone: summary.users.suspended > 0 ? ('danger' as const) : ('success' as const),
-        badge: summary.users.suspended > 0 ? `${summary.users.suspended} suspendus` : 'Actif',
-        access: 'Admin',
-        to: '/utilisateurs',
-      },
-    ],
-    [summary],
-  )
-
-  const approvedLivePayments = useMemo(
-    () => payments.filter((payment) => payment.status === 'approved'),
-    [payments],
-  )
+  const recentPayments = summary.payments.recent.slice(0, 3);
 
   return (
-    <div className="dash-overview">
-      <Reveal variant="blur" delay={0} className="dash-page-head">
-        <header className="admin-module-header">
-          <p className="admin-module-kicker">Exploitation</p>
-          <h1 className="admin-module-title">Tableau de bord</h1>
-          <p className="admin-module-subtitle" style={{ marginTop: 4 }}>
-            {admin?.fullName ? `Bonjour ${admin.fullName.split(' ')[0]} — ` : ''}
-            paiements live, abonnements et file ops.
-          </p>
-        </header>
-        <div className="dash-page-actions">
-          <span className={`dash-live-pill${liveConnected ? ' is-live' : ''}`}>
-            <span className="dash-live-pill-dot" aria-hidden="true" />
-            {liveConnected ? 'Paiements en direct' : 'Reconnexion…'}
-          </span>
-          <span className="dash-month-pill" style={{ textTransform: 'capitalize' }}>
-            {monthLabel}
-          </span>
-          <button type="button" className="dash-export-btn ui-btn" onClick={() => void load()}>
-            <RefreshCw size={13} strokeWidth={2} />
-            Actualiser
+    <div style={{ minHeight: '100vh', background: '#F5F7FB', fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif", color: '#0A1B3D', display: 'flex' }}>
+      {/* Sidebar */}
+      <aside style={{ width: 272, flexShrink: 0, boxSizing: 'border-box', padding: '28px 18px', background: 'radial-gradient(120% 50% at 0% 100%, rgba(11,170,79,0.28) 0%, rgba(11,170,79,0) 60%), linear-gradient(180deg, #0F2554 0%, #0A1B3D 50%, #06122A 100%)', color: '#FFFFFF', display: 'flex', flexDirection: 'column', gap: 26, minHeight: '100vh' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '0 6px' }}>
+          <div style={{ width: 48, height: 48, borderRadius: 15, background: '#FFFFFF', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <LogoMark width={66} height={66} alt="Monpermis.bj" />
+          </div>
+          <div>
+            <div style={{ fontFamily: "'Sora', sans-serif", fontSize: 17, fontWeight: 800 }}>Monpermis<span style={{ color: '#3BE08A' }}>.bj</span></div>
+            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.65)', fontWeight: 600 }}>Administration</div>
+          </div>
+        </div>
+
+        <nav aria-label="Administration" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <Link to="/" style={{ height: 46, boxSizing: 'border-box', padding: '0 14px', borderRadius: 23, display: 'flex', alignItems: 'center', gap: 12, fontSize: 14, fontWeight: 700, textDecoration: 'none', background: 'rgba(255,255,255,0.12)', color: '#FFFFFF' }}>
+            <span style={{ width: 8, height: 8, borderRadius: 4, background: '#FFB400' }} />
+            Tableau de bord
+          </Link>
+
+          <div style={{ padding: '14px 14px 6px', fontSize: 11, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.5)' }}>Contenu</div>
+
+          <Link to="/code/revision-chapitres" style={{ height: 46, boxSizing: 'border-box', padding: '0 14px', borderRadius: 23, display: 'flex', alignItems: 'center', gap: 12, fontSize: 14, fontWeight: 700, textDecoration: 'none', background: 'transparent', color: 'rgba(255,255,255,0.74)' }}>
+            <span style={{ width: 8, height: 8, borderRadius: 4, background: 'rgba(255,255,255,0.25)' }} />
+            Chapitres & cours
+          </Link>
+
+          <Link to="/code/examens-test" style={{ height: 46, boxSizing: 'border-box', padding: '0 14px', borderRadius: 23, display: 'flex', alignItems: 'center', gap: 12, fontSize: 14, fontWeight: 700, textDecoration: 'none', background: 'transparent', color: 'rgba(255,255,255,0.74)' }}>
+            <span style={{ width: 8, height: 8, borderRadius: 4, background: 'rgba(255,255,255,0.25)' }} />
+            QCM & examens
+          </Link>
+
+          <div style={{ padding: '14px 14px 6px', fontSize: 11, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.5)' }}>Conduite</div>
+
+          <Link to="/conduite/lecons" style={{ height: 46, boxSizing: 'border-box', padding: '0 14px', borderRadius: 23, display: 'flex', alignItems: 'center', gap: 12, fontSize: 14, fontWeight: 700, textDecoration: 'none', background: 'transparent', color: 'rgba(255,255,255,0.74)' }}>
+            <span style={{ width: 8, height: 8, borderRadius: 4, background: 'rgba(255,255,255,0.25)' }} />
+            Moniteurs & véhicules
+          </Link>
+
+          <Link to="/conduite/reservations" style={{ height: 46, boxSizing: 'border-box', padding: '0 14px', borderRadius: 23, display: 'flex', alignItems: 'center', gap: 12, fontSize: 14, fontWeight: 700, textDecoration: 'none', background: 'transparent', color: 'rgba(255,255,255,0.74)' }}>
+            <span style={{ width: 8, height: 8, borderRadius: 4, background: 'rgba(255,255,255,0.25)' }} />
+            Créneaux & réservations
+          </Link>
+
+          <div style={{ padding: '14px 14px 6px', fontSize: 11, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.5)' }}>Apprenants</div>
+
+          <Link to="/utilisateurs" style={{ height: 46, boxSizing: 'border-box', padding: '0 14px', borderRadius: 23, display: 'flex', alignItems: 'center', gap: 12, fontSize: 14, fontWeight: 700, textDecoration: 'none', background: 'transparent', color: 'rgba(255,255,255,0.74)' }}>
+            <span style={{ width: 8, height: 8, borderRadius: 4, background: 'rgba(255,255,255,0.25)' }} />
+            Apprenants & heures
+          </Link>
+
+          <Link to="/abonnements" style={{ height: 46, boxSizing: 'border-box', padding: '0 14px', borderRadius: 23, display: 'flex', alignItems: 'center', gap: 12, fontSize: 14, fontWeight: 700, textDecoration: 'none', background: 'transparent', color: 'rgba(255,255,255,0.74)' }}>
+            <span style={{ width: 8, height: 8, borderRadius: 4, background: 'rgba(255,255,255,0.25)' }} />
+            Formules & abonnements
+          </Link>
+        </nav>
+
+        <div style={{ marginTop: 'auto', borderRadius: 22, padding: 14, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.16)', display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ width: 40, height: 40, borderRadius: 20, background: '#FFB400', color: '#0A1B3D', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Sora', sans-serif", fontWeight: 800, fontSize: 14 }}>{adminInitials(admin?.fullName)}</div>
+          <div style={{ flexGrow: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 13.5, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{admin?.fullName || 'Administrateur'}</div>
+            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.65)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{admin?.phone || ''}</div>
+          </div>
+        </div>
+      </aside>
+
+      {/* Main Content */}
+      <main style={{ flexGrow: 1, boxSizing: 'border-box', padding: '30px 34px', display: 'flex', flexDirection: 'column', gap: 22, overflow: 'auto' }}>
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <div style={{ flexGrow: 1 }}>
+            <h1 style={{ margin: 0, fontFamily: "'Sora', sans-serif", fontSize: 28, fontWeight: 700, letterSpacing: '-0.02em', textTransform: 'capitalize' }}>Tableau de bord</h1>
+            <div style={{ fontSize: 13.5, color: '#5B6680', fontWeight: 600, marginTop: 3, textTransform: 'capitalize' }}>{todayLabel}</div>
+          </div>
+          <label style={{ width: 320, height: 48, boxSizing: 'border-box', padding: '0 18px', borderRadius: 24, background: '#FFFFFF', border: '1.5px solid #E1E6EF', display: 'flex', alignItems: 'center', gap: 10, color: '#5B6680' }}>
+            <Search size={18} strokeWidth={2.2} />
+            <input type="search" aria-label="Rechercher" placeholder="Rechercher un apprenant, un cours…" style={{ flexGrow: 1, border: 0, outline: 'none', background: 'transparent', fontFamily: 'inherit', fontSize: 14, color: '#0A1B3D' }} />
+          </label>
+          <button type="button" aria-label="Notifications" style={{ width: 48, height: 48, border: '1.5px solid #E1E6EF', borderRadius: 24, background: '#FFFFFF', color: '#0A1B3D', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+            <Bell size={20} strokeWidth={2} />
+          </button>
+          <button type="button" onClick={() => navigate('/code/cours')} style={{ height: 48, padding: '0 22px', border: 0, borderRadius: 24, background: '#FFB400', color: '#0A1B3D', fontFamily: 'inherit', fontSize: 14, fontWeight: 800, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', boxShadow: '0 12px 24px -12px rgba(255,180,0,0.7)' }}>
+            <Plus size={16} strokeWidth={2.6} />
+            Nouveau cours
           </button>
         </div>
-      </Reveal>
 
-      {error ? <p className="form-error">{error}</p> : null}
+        {/* KPI Cards */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 16 }}>
+          <div style={{ position: 'relative', overflow: 'hidden', borderRadius: 26, padding: 20, background: 'radial-gradient(100% 90% at 100% 0%, rgba(11,170,79,0.42) 0%, rgba(11,170,79,0) 60%), linear-gradient(160deg, #1A3A7A 0%, #0A1B3D 60%, #06122A 100%)', color: '#FFFFFF', boxShadow: '0 24px 40px -24px rgba(10,27,61,0.8)', display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: 'rgba(255,255,255,0.75)' }}>Apprenants actifs</div>
+            <div style={{ fontFamily: "'Sora', sans-serif", fontSize: 36, fontWeight: 700, letterSpacing: '-0.03em' }}>{loading ? <Skeleton height={36} width={80} /> : summary.users.active}</div>
+            <div style={{ height: 28, alignSelf: 'flex-start', padding: '0 11px', borderRadius: 14, background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', fontSize: 12, fontWeight: 700 }}>{summary.users.total} inscrits</div>
+          </div>
 
-      <section className="dash-stats" aria-label="Indicateurs">
-        <Reveal variant="scale" delay={0} className="dash-hero-card">
-          <div className="dash-hero-top">
-            <div>
-              <p className="dash-hero-label">Apprenants actifs</p>
-              <p className="dash-hero-value">
-                {loading ? <Skeleton height={36} width={80} /> : summary.users.active}
-              </p>
-            </div>
-            <div className="dash-hero-delta">
-              <TrendingUp size={12} strokeWidth={2.5} />
-              {summary.users.total}
-            </div>
+          <div style={{ borderRadius: 26, padding: 20, background: '#FFFFFF', boxShadow: '0 12px 30px -22px rgba(10,27,61,0.35)', display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#5B6680' }}>Abonnements actifs</div>
+            <div style={{ fontFamily: "'Sora', sans-serif", fontSize: 36, fontWeight: 700, letterSpacing: '-0.03em' }}>{loading ? <Skeleton height={36} width={80} /> : summary.accessRequests.active}</div>
+            <div style={{ height: 28, alignSelf: 'flex-start', padding: '0 11px', borderRadius: 14, background: '#EAF7EF', color: '#067A37', display: 'flex', alignItems: 'center', fontSize: 12, fontWeight: 800 }}>{summary.revenue.transactions} paiements</div>
           </div>
-          <div className="dash-hero-meta">
-            <div>
-              <p className="dash-hero-meta-label">Inscrits</p>
-              <p className="dash-hero-meta-value">{summary.users.total} comptes</p>
-            </div>
-            <div>
-              <p className="dash-hero-meta-label">Taux activation</p>
-              <p className="dash-hero-meta-value is-gold">{activationPct} %</p>
-            </div>
-          </div>
-        </Reveal>
 
-        <Reveal variant="scale" delay={60} className="dash-stat-card">
-          {canManageAdmins ? (
-            <>
-              <div className="dash-stat-head">
-                <p className="dash-stat-label">Chiffre d&apos;affaires</p>
-                <div className="dash-stat-icon is-green">
-                  <CreditCard size={14} strokeWidth={2} />
-                </div>
-              </div>
-              <p className="dash-stat-num">
-                {loading ? <Skeleton height={28} width={120} /> : formatXof(summary.revenue.total)}
-              </p>
-              <div className="dash-stat-foot is-green">
-                <TrendingUp size={12} strokeWidth={2} />
-                {formatXof(summary.revenue.month)} ce mois · {summary.revenue.transactions} paiements
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="dash-stat-head">
-                <p className="dash-stat-label">À traiter</p>
-                <div className="dash-stat-icon is-gold">
-                  <Wallet size={14} strokeWidth={2} />
-                </div>
-              </div>
-              <p className="dash-stat-num">
-                {loading ? (
-                  <Skeleton height={28} width={48} />
-                ) : (
-                  (summary.accessRequests?.pending ?? 0) +
-                  (summary.conduite?.reservationsPending ?? 0)
-                )}
-              </p>
-              <div className="dash-stat-foot is-green">Abonnés + réservations en attente</div>
-            </>
-          )}
-        </Reveal>
+          <div style={{ borderRadius: 26, padding: 20, background: '#FFFFFF', boxShadow: '0 12px 30px -22px rgba(10,27,61,0.35)', display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#5B6680' }}>Revenus du mois</div>
+            <div style={{ fontFamily: "'Sora', sans-serif", fontSize: 36, fontWeight: 700, letterSpacing: '-0.03em' }}>{loading ? <Skeleton height={36} width={120} /> : formatXof(summary.revenue.month)}</div>
+            <div style={{ height: 28, alignSelf: 'flex-start', padding: '0 11px', borderRadius: 14, background: '#FFF4D6', color: '#7A5200', display: 'flex', alignItems: 'center', fontSize: 12, fontWeight: 800 }}>FedaPay · Mobile Money</div>
+          </div>
 
-        <Reveal variant="scale" delay={120} className="dash-stat-card">
-          <div className="dash-stat-head">
-            <p className="dash-stat-label">Paiements réussis</p>
-            <div className="dash-stat-icon is-green">
-              <Wallet size={14} strokeWidth={2} />
-            </div>
-          </div>
-          <p className="dash-stat-num">
-            {loading ? <Skeleton height={28} width={48} /> : summary.revenue.transactions}
-          </p>
-          <div className="dash-stat-foot is-green">
-            <TrendingUp size={12} strokeWidth={2} />
-            {formatXof(summary.revenue.month)} ce mois
-          </div>
-        </Reveal>
-
-        <Reveal variant="scale" delay={180} className="dash-stat-card">
-          <div className="dash-stat-head">
-            <p className="dash-stat-label">Abonnements actifs</p>
-            <div className="dash-stat-icon is-gold">
-              <CreditCard size={14} strokeWidth={2} />
-            </div>
-          </div>
-          <p className="dash-stat-num">
-            {loading ? <Skeleton height={28} width={48} /> : summary.accessRequests.active}
-          </p>
-          <div className="dash-stat-foot is-red">
-            <TrendingUp size={12} strokeWidth={2} />
-            {summary.accessRequests.expired} expirés
-          </div>
-        </Reveal>
-
-        <Reveal variant="scale" delay={240} className="dash-stat-card">
-          <div className="dash-stat-head">
-            <p className="dash-stat-label">Leçons conduite</p>
-            <div className="dash-stat-icon is-gold">
-              <Car size={14} strokeWidth={2} />
-            </div>
-          </div>
-          <p className="dash-stat-num">
-            {loading ? <Skeleton height={28} width={48} /> : summary.conduite.courses}
-          </p>
-          <div className="dash-stat-foot is-green">
-            <TrendingUp size={12} strokeWidth={2} />
-            {summary.conduite.moniteursActive} moniteurs actifs
-          </div>
-        </Reveal>
-      </section>
-
-      <Reveal as="section" className="dash-secondary" delay={100}>
-        <div className="dash-secondary-card">
-          <div className="dash-donut-wrap">
-            <MiniDonut pct={codePct} color="#00B050" />
-          </div>
-          <div>
-            <p className="dash-stat-label">Chapitres code</p>
-            <p className="dash-secondary-num">
-              {loading ? (
-                <Skeleton height={24} width={64} />
-              ) : (
-                <>
-                  {summary.code.published}
-                  <span className="muted">/{summary.code.chapters}</span>
-                </>
-              )}
-            </p>
-            <p className="dash-secondary-hint">
-              {Math.max(summary.code.chapters - summary.code.published, 0)} en rédaction
-            </p>
+          <div style={{ borderRadius: 26, padding: 20, background: '#FFFFFF', boxShadow: '0 12px 30px -22px rgba(10,27,61,0.35)', display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#5B6680' }}>Réservations</div>
+            <div style={{ fontFamily: "'Sora', sans-serif", fontSize: 36, fontWeight: 700, letterSpacing: '-0.03em' }}>{loading ? <Skeleton height={36} width={48} /> : summary.conduite.reservations}</div>
+            <div style={{ height: 28, alignSelf: 'flex-start', padding: '0 11px', borderRadius: 14, background: '#E8EDF6', color: '#0A1B3D', display: 'flex', alignItems: 'center', fontSize: 12, fontWeight: 800 }}>{summary.conduite.moniteursActive} moniteurs actifs</div>
           </div>
         </div>
 
-        <div className="dash-live-card">
-          <div className="dash-live-icon">
-            <Zap size={18} color="#fff" strokeWidth={2} />
-          </div>
-          <div>
-            <p className="dash-stat-label">Créneaux libres</p>
-            <p className="dash-secondary-num">
-              {loading ? <Skeleton height={24} width={48} /> : summary.conduite.creneauxLibre}
-            </p>
-            <p className="dash-secondary-hint">disponibles</p>
-          </div>
-        </div>
-      </Reveal>
-
-      <section className="dash-bottom dash-bottom-live">
-        <Reveal delay={140} className="dash-panel">
-          <div className="dash-panel-head">
-            <div>
-              <h3>Vue d&apos;ensemble</h3>
-              <p>État de chaque espace</p>
-            </div>
-          </div>
-          <div className="admin-data-table-wrap">
-            <table className="admin-data-table">
-              <thead>
-                <tr>
-                  <th>Espace</th>
-                  <th>Indicateur</th>
-                  <th>Statut</th>
-                  <th>Accès</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row) => (
-                  <tr key={row.space}>
-                    <td>
-                      <strong style={{ fontSize: 13, fontWeight: 600 }}>{row.space}</strong>
-                    </td>
-                    <td className="muted">{row.indicator}</td>
-                    <td>
-                      <StatusBadge tone={row.tone}>{row.badge}</StatusBadge>
-                    </td>
-                    <td>
-                      <Link to={row.to} className="admin-access-pill">
-                        {row.access}
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Reveal>
-
-        <Reveal delay={200} className="dash-panel dash-payments-panel">
-          <div className="dash-panel-head">
-            <div className="dash-payments-head-title">
-              <Activity size={14} color="#00B050" strokeWidth={2} />
-              <div>
-                <h3>Paiements réussis</h3>
-                <p>
-                  {liveConnected ? 'Flux SSE connecté' : 'Connexion au flux…'}
-                  {admin?.fullName ? ` · ${admin.fullName}` : ''}
-                </p>
+        {/* Charts Row */}
+        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 16 }}>
+          {/* Revenue Chart */}
+          <div style={{ borderRadius: 26, padding: 22, background: '#FFFFFF', boxShadow: '0 12px 30px -22px rgba(10,27,61,0.35)', display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ fontFamily: "'Sora', sans-serif", fontSize: 17, fontWeight: 700 }}>Revenus par mois</div>
+              <div style={{ display: 'flex', gap: 14, fontSize: 12.5, fontWeight: 700, color: '#5B6680' }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 10, height: 10, borderRadius: 5, background: '#0A1B3D' }} />Abonnements</span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 10, height: 10, borderRadius: 5, background: '#0BAA4F' }} />Heures de conduite</span>
               </div>
             </div>
-            <Link to="/abonnements?tab=payments" className="dash-filter-btn" style={{ textDecoration: 'none' }}>
-              Voir tout
-            </Link>
+            <div style={{ minHeight: 210, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px 12px', borderRadius: 18, background: '#F5F7FB', fontSize: 13.5, fontWeight: 600, color: '#5B6680', textAlign: 'center' }}>
+              Détail mensuel indisponible — l'API expose les totaux du jour, de la semaine et du mois (voir Finances).
+            </div>
           </div>
 
-          <div className="dash-activity-list">
-            {loading && approvedLivePayments.length === 0 ? (
-              <SkeletonBlock rows={3} />
-            ) : approvedLivePayments.length === 0 ? (
-              <div className="dash-activity-item">
-                <span className="dash-activity-dot" style={{ background: '#00B050' }} />
-                <div>
-                  <strong>Aucun paiement réussi récent</strong>
-                  <span>Les nouveaux paiements apparaîtront ici automatiquement</span>
-                </div>
+          {/* Donut Chart */}
+          <div style={{ borderRadius: 26, padding: 22, background: '#FFFFFF', boxShadow: '0 12px 30px -22px rgba(10,27,61,0.35)', display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{ fontFamily: "'Sora', sans-serif", fontSize: 17, fontWeight: 700 }}>Répartition des formules</div>
+            <div style={{ minHeight: 140, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px 12px', borderRadius: 18, background: '#F5F7FB', fontSize: 13.5, fontWeight: 600, color: '#5B6680', textAlign: 'center' }}>
+              Répartition indisponible — aucune ventilation par formule côté API.
+            </div>
+            <button type="button" onClick={() => navigate('/abonnements')} style={{ marginTop: 'auto', height: 44, border: '1.5px solid #E1E6EF', borderRadius: 22, background: '#FFFFFF', fontFamily: 'inherit', fontSize: 13.5, fontWeight: 700, color: '#0A1B3D', cursor: 'pointer' }}>Gérer les formules</button>
+          </div>
+        </div>
+
+        {/* Bottom Row */}
+        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 16, flexGrow: 1, minHeight: 0 }}>
+          {/* Upcoming Reservations */}
+          <div style={{ borderRadius: 26, padding: '20px 22px', background: '#FFFFFF', boxShadow: '0 12px 30px -22px rgba(10,27,61,0.35)', display: 'flex', flexDirection: 'column', gap: 10, overflow: 'hidden' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ fontFamily: "'Sora', sans-serif", fontSize: 17, fontWeight: 700 }}>Réservations à venir</div>
+              <Link to="/conduite/reservations" style={{ fontSize: 13, fontWeight: 700, color: '#067A37', textDecoration: 'none' }}>Voir le planning</Link>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1.3fr 1.1fr 1fr 0.8fr 0.9fr', gap: 12, padding: '8px 12px', borderRadius: 14, background: '#F5F7FB', fontSize: 11.5, fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase', color: '#5B6680' }}>
+              <span>Apprenant</span><span>Moniteur</span><span>Date</span><span>Créneau</span><span>Statut</span>
+            </div>
+            {loading ? (
+              <Skeleton height={120} width="100%" />
+            ) : upcomingReservations.length === 0 ? (
+              <div style={{ padding: '20px 12px', fontSize: 13.5, fontWeight: 600, color: '#5B6680', textAlign: 'center' }}>
+                Aucune réservation à venir.
               </div>
             ) : (
-              approvedLivePayments.map((payment) => {
-                const modules =
-                  payment.modules && payment.modules.length > 0
-                    ? payment.modules
-                    : payment.module
-                      ? [payment.module]
-                      : []
-                const moduleText = modules.map((key) => moduleLabels[key] || key).join(' + ')
+              upcomingReservations.map((item) => {
+                const status = reservationStatus(item);
                 return (
-                  <Link
-                    key={payment.id}
-                    to="/abonnements?tab=payments"
-                    className="dash-activity-item dash-payment-item"
-                  >
-                    <span
-                      className="dash-activity-dot"
-                      style={{ background: '#00B050' }}
-                    />
-                    <div>
-                      <strong>{learnerName(payment)}</strong>
-                      <span>
-                        {formatXof(payment.amount)}
-                        {moduleText ? ` · ${moduleText}` : ''}
-                        {modules.length > 1 ? ` (${modules.length} offres)` : ''}
-                        {` · ${paymentChannelLabel(payment)}`}
-                      </span>
-                      <small>
-                        <StatusBadge tone="success">
-                          {paymentStatusLabel(payment.status)}
-                        </StatusBadge>
-                        {' · '}
-                        {formatRelativeTime(payment.updatedAt || payment.createdAt)}
-                      </small>
-                    </div>
-                  </Link>
-                )
+                  <div key={item.id} style={{ display: 'grid', gridTemplateColumns: '1.3fr 1.1fr 1fr 0.8fr 0.9fr', gap: 12, alignItems: 'center', padding: '6px 12px', fontSize: 13.5, fontWeight: 600 }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 10, fontWeight: 700 }}>
+                      <span style={{ width: 32, height: 32, borderRadius: 16, background: '#E8EDF6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11.5, fontWeight: 800 }}>{learnerInitials(item.user?.firstName, item.user?.lastName)}</span>
+                      {learnerName(item.user?.firstName, item.user?.lastName)}
+                    </span>
+                    <span>{item.moniteur?.fullName || '—'}</span>
+                    <span>{formatShortDate(item.creneau?.date)}</span>
+                    <span>{item.creneau?.startTime || '—'}</span>
+                    <span style={{ justifySelf: 'start', height: 26, padding: '0 10px', borderRadius: 13, display: 'flex', alignItems: 'center', fontSize: 11.5, fontWeight: 800, background: status.confirmed ? '#EAF7EF' : '#FFF4D6', color: status.confirmed ? '#067A37' : '#7A5200' }}>{status.label}</span>
+                  </div>
+                );
               })
             )}
           </div>
-        </Reveal>
-      </section>
 
-      <Reveal delay={260} className="dash-quick-links">
-        {[
-          { to: '/abonnements', label: 'Abonnés' },
-          { to: '/abonnements?tab=payments', label: 'Paiements réussis' },
-          { to: '/code/revision-chapitres', label: 'Révision chapitres' },
-          { to: '/conduite/lecons', label: 'Leçons conduite' },
-          { to: '/conduite/reservations', label: 'Réservations' },
-          { to: '/utilisateurs', label: 'Utilisateurs' },
-          { to: '/annonces', label: 'Annonces' },
-        ].map((item) => (
-          <Link key={item.to} to={item.to} className="dash-quick-link">
-            <ArrowUpRight size={12} strokeWidth={2} />
-            {item.label}
-          </Link>
-        ))}
-      </Reveal>
+          {/* Recent Payments */}
+          <div style={{ borderRadius: 26, padding: '20px 22px', background: '#FFFFFF', boxShadow: '0 12px 30px -22px rgba(10,27,61,0.35)', display: 'flex', flexDirection: 'column', gap: 12, overflow: 'hidden' }}>
+            <div style={{ fontFamily: "'Sora', sans-serif", fontSize: 17, fontWeight: 700 }}>Paiements récents</div>
+            {loading ? (
+              <Skeleton height={120} width="100%" />
+            ) : recentPayments.length === 0 ? (
+              <div style={{ padding: '20px 12px', fontSize: 13.5, fontWeight: 600, color: '#5B6680', textAlign: 'center' }}>
+                Aucun paiement récent.
+              </div>
+            ) : (
+              recentPayments.map((item) => {
+                const modules = item.modules && item.modules.length > 0 ? item.modules : item.module ? [item.module] : [];
+                const planLabel = modules.map((key) => MODULE_LABELS[key] ?? key).join(' + ') || 'Abonnement';
+                return (
+                  <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <span style={{ width: 38, height: 38, borderRadius: 13, background: '#FFF4D6', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0A1B3D' }}>
+                      <FileText size={18} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+                    </span>
+                    <span style={{ flexGrow: 1, display: 'flex', flexDirection: 'column', gap: 1, minWidth: 0 }}>
+                      <span style={{ fontSize: 13.5, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{learnerName(item.learner?.firstName, item.learner?.lastName)} · {planLabel}</span>
+                      <span style={{ fontSize: 12, color: '#5B6680', fontWeight: 600 }}>{String(item.paymentMethod || '').toUpperCase()} · {item.activatedAt ? 'activé auto' : 'en cours'}</span>
+                    </span>
+                    <span style={{ fontFamily: "'Sora', sans-serif", fontSize: 14, fontWeight: 700, whiteSpace: 'nowrap' }}>{formatXof(item.amount)}</span>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+      </main>
     </div>
-  )
+  );
 }
+
+export default DashboardPage;
