@@ -1,65 +1,57 @@
 import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { LinearGradient } from 'expo-linear-gradient'
 import { setStatusBarStyle } from 'expo-status-bar'
+import { Check, ChevronLeft, Eye, EyeOff, LockKeyhole, Mail, Phone } from 'lucide-react-native'
 import {
   Animated,
-  ImageBackground,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
   View,
-  Alert,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { loginUser, type AuthUser } from '../api/auth'
-import { AuthInput } from '../components/AuthInput'
-import { Bouncy } from '../components/Bouncy'
 import { GoogleAuthButton } from '../components/GoogleAuthButton'
-import { LegalFooter } from '../components/LegalFooter'
-import { AuthLogoBadge } from '../components/AuthLogoBadge'
-import { BrandName } from '../components/BrandName'
 import { useAuth } from '../context/AuthContext'
 import type { RootStackParamList } from '../navigation/types'
-import { brand, dark, fonts, gradients } from '../theme'
+import { colors, textStyles } from '../theme/tokens'
 import {
   normalizePhone,
   PHONE_PLACEHOLDER,
+  validateEmail,
   validatePhone,
   validatePassword,
 } from '../utils/validation'
 import { showAuthError } from '../utils/showAuthError'
+import { AppButton, AppTextField, IconButton, LogoTile, SegmentedControl } from '../components/ui-kit-core'
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'Login'>
 type Route = RouteProp<RootStackParamList, 'Login'>
+type Mode = 'email' | 'phone'
 
 export function LoginScreen() {
   const navigation = useNavigation<Nav>()
   const route = useRoute<Route>()
   const { signIn } = useAuth()
-  const [phone, setPhone] = useState('')
+  const [mode, setMode] = useState<Mode>('email')
+  const [identifier, setIdentifier] = useState('')
   const [password, setPassword] = useState('')
-  const [errors, setErrors] = useState<{ phone?: string; password?: string; info?: string; form?: string }>({})
+  const [showPassword, setShowPassword] = useState(false)
+  const [remember, setRemember] = useState(true)
+  const [errors, setErrors] = useState<{ identifier?: string; password?: string; info?: string; form?: string }>({})
   const [loading, setLoading] = useState(false)
   const contentOpacity = useRef(new Animated.Value(0)).current
   const contentTranslate = useRef(new Animated.Value(16)).current
 
   useEffect(() => {
-    setStatusBarStyle('light')
+    setStatusBarStyle('dark')
     Animated.parallel([
-      Animated.timing(contentOpacity, {
-        toValue: 1,
-        duration: 520,
-        useNativeDriver: true,
-      }),
-      Animated.timing(contentTranslate, {
-        toValue: 0,
-        duration: 520,
-        useNativeDriver: true,
-      }),
+      Animated.timing(contentOpacity, { toValue: 1, duration: 200, useNativeDriver: true }),
+      Animated.timing(contentTranslate, { toValue: 0, duration: 200, useNativeDriver: true }),
     ]).start()
     return () => setStatusBarStyle('dark')
   }, [contentOpacity, contentTranslate])
@@ -72,15 +64,13 @@ export function LoginScreen() {
     }
   }, [route.params?.message, navigation])
 
+  // Case « Rester connecté 7 jours » (maquette) : la session mobile est
+  // toujours persistée (SecureStore) et le JWT dure 7 j côté serveur.
   const finishAuth = useCallback(
     async (token: string, user: Awaited<ReturnType<typeof loginUser>>['user']) => {
       await signIn(token, user)
       if (!String(user.phone || '').trim()) {
         navigation.reset({ index: 0, routes: [{ name: 'Profile' }] })
-        Alert.alert(
-          'Téléphone requis',
-          'Ajoute ton numéro pour payer en Mobile Money et recevoir les rappels.',
-        )
         return
       }
       navigation.reset({ index: 0, routes: [{ name: 'Home' }] })
@@ -89,11 +79,11 @@ export function LoginScreen() {
   )
 
   const handleSubmit = async () => {
-    const phoneError = validatePhone(phone)
+    const identifierError = mode === 'email' ? validateEmail(identifier) : validatePhone(identifier)
     const passwordError = validatePassword(password)
 
-    if (phoneError || passwordError) {
-      setErrors({ phone: phoneError, password: passwordError })
+    if (identifierError || passwordError) {
+      setErrors({ identifier: identifierError, password: passwordError })
       return
     }
 
@@ -102,7 +92,7 @@ export function LoginScreen() {
 
     try {
       const { user, token } = await loginUser({
-        identifier: normalizePhone(phone),
+        identifier: mode === 'email' ? identifier.trim() : normalizePhone(identifier),
         password,
       })
       await finishAuth(token, user)
@@ -117,54 +107,129 @@ export function LoginScreen() {
     await finishAuth(token, user)
   }
 
+  const switchMode = (value: string) => {
+    setMode(value as Mode)
+    setIdentifier('')
+    setErrors((prev) => ({ ...prev, identifier: undefined, form: undefined }))
+  }
+
   return (
     <View style={styles.root}>
-      <ImageBackground
-        source={require('../../assets/home/i2.jpg')}
-        style={styles.hero}
-        imageStyle={styles.heroImage}
-      >
-        <LinearGradient
-          colors={['rgba(0,16,48,0.55)', 'rgba(0,16,48,0.82)', brand.navy]}
-          locations={[0, 0.55, 1]}
-          style={StyleSheet.absoluteFill}
-        />
-        <SafeAreaView edges={['top']} style={styles.heroSafe}>
-          <Animated.View
-            style={[
-              styles.heroCopy,
-              {
-                opacity: contentOpacity,
-                transform: [{ translateY: contentTranslate }],
-              },
-            ]}
+      <View style={styles.halo} pointerEvents="none" />
+      <SafeAreaView edges={['top']} style={styles.safe}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.flex}>
+          <ScrollView
+            contentContainerStyle={styles.scroll}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
           >
-            <AuthLogoBadge size={72} style={styles.logoBadge} />
-            <BrandName size={34} mainColor="#ffffff" style={styles.brand} />
-            <Text style={styles.tagline}>Code, conduite, confiance, avance à ton rythme.</Text>
-          </Animated.View>
-        </SafeAreaView>
-      </ImageBackground>
+            <Animated.View style={{ opacity: contentOpacity, transform: [{ translateY: contentTranslate }] }}>
+              <View style={styles.topRow}>
+                <IconButton
+                  accessibilityLabel="Retour"
+                  onPress={() => navigation.goBack()}
+                >
+                  <ChevronLeft size={20} color={colors.navy} strokeWidth={2.2} />
+                </IconButton>
+                <LogoTile />
+              </View>
 
-      <View style={styles.panel}>
-        <SafeAreaView style={styles.panelSafe} edges={['bottom']}>
-          <KeyboardAvoidingView
-            style={styles.flex}
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          >
-            <ScrollView
-              contentContainerStyle={styles.scroll}
-              keyboardShouldPersistTaps="handled"
-              showsVerticalScrollIndicator={false}
-            >
-              <Text style={styles.kicker}>Connexion</Text>
-              <Text style={styles.title}>Content de te revoir</Text>
-              <Text style={styles.subtitle}>
-                Connecte-toi pour reprendre ta préparation au permis.
-              </Text>
+              <View style={styles.heading}>
+                <Text style={styles.title}>Content de te revoir</Text>
+                <Text style={styles.subtitle}>Connecte-toi pour reprendre ta préparation.</Text>
+              </View>
 
-              {errors.info ? <Text style={styles.info}>{errors.info}</Text> : null}
-              {errors.form ? <Text style={styles.formError}>{errors.form}</Text> : null}
+              <SegmentedControl
+                options={[
+                  { value: 'email', label: 'E-mail' },
+                  { value: 'phone', label: 'Téléphone' },
+                ]}
+                value={mode}
+                onChange={switchMode}
+              />
+
+              <View style={styles.fields}>
+                {errors.info ? <Text style={styles.info}>{errors.info}</Text> : null}
+                {errors.form ? <Text style={styles.formError}>{errors.form}</Text> : null}
+                {mode === 'phone' ? (
+                  <AppTextField
+                    label="Téléphone"
+                    placeholder={PHONE_PLACEHOLDER}
+                    keyboardType="phone-pad"
+                    value={identifier}
+                    onChangeText={(value) => {
+                      setIdentifier(normalizePhone(value))
+                      if (errors.identifier) setErrors((prev) => ({ ...prev, identifier: undefined }))
+                    }}
+                    error={errors.identifier}
+                    prefix={
+                      <View style={styles.prefix}>
+                        <Text style={styles.prefixText}>+229</Text>
+                      </View>
+                    }
+                    left={<Phone size={20} color={colors.greenDark} strokeWidth={2} />}
+                  />
+                ) : (
+                  <AppTextField
+                    label="Adresse e-mail"
+                    placeholder="aicha@exemple.bj"
+                    keyboardType="email-address"
+                    value={identifier}
+                    onChangeText={(value) => {
+                      setIdentifier(value)
+                      if (errors.identifier) setErrors((prev) => ({ ...prev, identifier: undefined }))
+                    }}
+                    error={errors.identifier}
+                    left={<Mail size={20} color={colors.greenDark} strokeWidth={2} />}
+                  />
+                )}
+                <AppTextField
+                  label="Mot de passe"
+                  placeholder="••••••••"
+                  secureTextEntry={!showPassword}
+                  value={password}
+                  onChangeText={(value) => {
+                    setPassword(value)
+                    if (errors.password) setErrors((prev) => ({ ...prev, password: undefined }))
+                  }}
+                  error={errors.password}
+                  left={<LockKeyhole size={20} color={colors.muted} strokeWidth={2} />}
+                  right={
+                    showPassword ? (
+                      <EyeOff size={20} color={colors.muted} strokeWidth={2} />
+                    ) : (
+                      <Eye size={20} color={colors.muted} strokeWidth={2} />
+                    )
+                  }
+                  onRightPress={() => setShowPassword((value) => !value)}
+                  rightAccessibilityLabel={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+                />
+                <View style={styles.rememberRow}>
+                  <Pressable
+                    onPress={() => setRemember((value) => !value)}
+                    accessibilityRole="checkbox"
+                    accessibilityState={{ checked: remember }}
+                    accessibilityLabel="Rester connecté 7 jours"
+                    style={styles.remember}
+                  >
+                    <View style={[styles.box, remember && styles.boxOn]}>
+                      {remember ? <Check size={14} color="#FFFFFF" strokeWidth={3} /> : null}
+                    </View>
+                    <Text style={styles.rememberText}>Rester connecté 7 jours</Text>
+                  </Pressable>
+                  <Text style={styles.forgot} onPress={() => navigation.navigate('ForgotPassword')}>
+                    Mot de passe oublié ?
+                  </Text>
+                </View>
+              </View>
+
+              <AppButton variant="primary" title={loading ? 'Connexion…' : 'Se connecter'} onPress={handleSubmit} disabled={loading} />
+
+              <View style={styles.dividerRow}>
+                <View style={styles.dividerLine} />
+                <Text style={styles.dividerText}>ou</Text>
+                <View style={styles.dividerLine} />
+              </View>
 
               <GoogleAuthButton
                 label="Continuer avec Google"
@@ -172,70 +237,16 @@ export function LoginScreen() {
                 onError={(message) => setErrors({ form: message })}
               />
 
-              <View style={styles.dividerRow}>
-                <View style={styles.dividerLine} />
-                <Text style={styles.dividerText}>ou avec ton téléphone</Text>
-                <View style={styles.dividerLine} />
-              </View>
-
-              <View style={styles.fields}>
-                <AuthInput
-                  label="Téléphone"
-                  placeholder={PHONE_PLACEHOLDER}
-                  keyboardType="phone-pad"
-                  autoComplete="tel"
-                  value={phone}
-                  onChangeText={(value) => setPhone(normalizePhone(value))}
-                  error={errors.phone}
-                />
-                <AuthInput
-                  label="Mot de passe"
-                  placeholder="Ton mot de passe"
-                  secureTextEntry
-                  autoComplete="password"
-                  value={password}
-                  onChangeText={setPassword}
-                  error={errors.password}
-                />
-                <Text style={styles.forgotWrap}>
-                  <Text
-                    style={styles.link}
-                    onPress={() => navigation.navigate('ForgotPassword')}
-                  >
-                    Mot de passe oublié ?
-                  </Text>
-                </Text>
-              </View>
-
-              <Bouncy
-                onPress={handleSubmit}
-                disabled={loading}
-                scaleTo={0.97}
-                style={loading ? styles.disabled : undefined}
-              >
-                <LinearGradient
-                  colors={gradients.green}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.submitBtn}
-                >
-                  <Text style={styles.submitText}>
-                    {loading ? 'Connexion en cours…' : 'Se connecter'}
-                  </Text>
-                </LinearGradient>
-              </Bouncy>
-
               <Text style={styles.footer}>
                 Pas encore de compte ?{' '}
                 <Text style={styles.link} onPress={() => navigation.navigate('Register')}>
                   Créer un compte
                 </Text>
               </Text>
-              <LegalFooter />
-            </ScrollView>
-          </KeyboardAvoidingView>
-        </SafeAreaView>
-      </View>
+            </Animated.View>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
     </View>
   )
 }
@@ -243,50 +254,19 @@ export function LoginScreen() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: brand.navy,
+    backgroundColor: colors.bg,
   },
-  hero: {
-    minHeight: 240,
-    justifyContent: 'flex-end',
+  halo: {
+    position: 'absolute',
+    top: -100,
+    right: -100,
+    width: 280,
+    height: 280,
+    borderRadius: 140,
+    backgroundColor: colors.green,
+    opacity: 0.12,
   },
-  heroImage: {
-    resizeMode: 'cover',
-  },
-  heroSafe: {
-    paddingHorizontal: 24,
-    paddingBottom: 28,
-  },
-  heroCopy: {
-    alignItems: 'center',
-  },
-  logoBadge: {
-    marginBottom: 14,
-  },
-  brand: {
-    marginBottom: 10,
-  },
-  tagline: {
-    fontFamily: fonts.bodyMedium,
-    fontSize: 15,
-    lineHeight: 22,
-    color: 'rgba(255,255,255,0.88)',
-    textAlign: 'center',
-    maxWidth: 300,
-  },
-  panel: {
-    flex: 1,
-    marginTop: -18,
-    backgroundColor: '#F4F7FB',
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    overflow: 'hidden',
-    shadowColor: brand.navy,
-    shadowOffset: { width: 0, height: -8 },
-    shadowOpacity: 0.18,
-    shadowRadius: 20,
-    elevation: 10,
-  },
-  panelSafe: {
+  safe: {
     flex: 1,
   },
   flex: {
@@ -294,112 +274,127 @@ const styles = StyleSheet.create({
   },
   scroll: {
     flexGrow: 1,
-    paddingHorizontal: 24,
-    paddingTop: 24,
+    paddingHorizontal: 22,
+    paddingTop: 56,
     paddingBottom: 28,
+    gap: 20,
   },
-  kicker: {
-    fontFamily: fonts.displayBold,
-    fontSize: 12,
-    letterSpacing: 1.2,
-    textTransform: 'uppercase',
-    color: dark.green,
-    marginBottom: 6,
+  topRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  heading: {
+    gap: 6,
+    marginTop: 6,
   },
   title: {
-    fontFamily: fonts.displayExtraBold,
-    fontSize: 26,
-    color: dark.textPrimary,
-    marginBottom: 6,
-    letterSpacing: -0.4,
+    fontFamily: 'Sora_700Bold',
+    fontSize: 30,
+    letterSpacing: -0.6,
+    color: colors.navy,
   },
   subtitle: {
-    fontFamily: fonts.body,
-    fontSize: 14,
-    lineHeight: 20,
-    color: dark.textMuted,
-    marginBottom: 20,
-    maxWidth: 320,
+    fontFamily: 'PlusJakartaSans_500Medium',
+    fontSize: 14.5,
+    color: colors.muted,
+  },
+  fields: {
+    gap: 14,
   },
   info: {
-    color: dark.green,
-    fontFamily: fonts.bodyMedium,
-    fontSize: 13,
-    textAlign: 'center',
-    marginBottom: 12,
-    backgroundColor: dark.greenSoft,
-    borderRadius: 12,
+    fontFamily: 'PlusJakartaSans_600SemiBold',
+    fontSize: 13.5,
+    color: colors.greenInk,
+    backgroundColor: colors.greenTint,
+    borderRadius: 18,
     paddingHorizontal: 14,
     paddingVertical: 12,
     overflow: 'hidden',
   },
   formError: {
-    color: dark.coral,
-    fontFamily: fonts.bodyMedium,
-    fontSize: 13,
-    textAlign: 'center',
-    marginBottom: 12,
-    backgroundColor: dark.coralSoft,
-    borderRadius: 12,
+    fontFamily: 'PlusJakartaSans_600SemiBold',
+    fontSize: 13.5,
+    color: colors.wrongInk,
+    backgroundColor: colors.wrongBg,
+    borderRadius: 18,
     paddingHorizontal: 14,
     paddingVertical: 12,
     overflow: 'hidden',
+  },
+  prefix: {
+    height: 40,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    backgroundColor: colors.fieldPrefix,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  prefixText: {
+    fontFamily: 'PlusJakartaSans_700Bold',
+    fontSize: 14,
+    color: colors.navy,
+  },
+  rememberRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    minHeight: 44,
+  },
+  remember: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    minHeight: 44,
+  },
+  box: {
+    width: 18,
+    height: 18,
+    borderRadius: 5,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  boxOn: {
+    backgroundColor: colors.green,
+    borderColor: colors.green,
+  },
+  rememberText: {
+    fontFamily: 'PlusJakartaSans_600SemiBold',
+    fontSize: 13,
+    color: colors.ink2,
+  },
+  forgot: {
+    fontFamily: 'PlusJakartaSans_700Bold',
+    fontSize: 13,
+    color: colors.greenDark,
   },
   dividerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    marginVertical: 16,
   },
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: dark.border,
+    backgroundColor: colors.border,
   },
   dividerText: {
-    fontFamily: fonts.bodyMedium,
-    fontSize: 13,
-    color: dark.textMuted,
-  },
-  fields: {
-    gap: 18,
-    marginBottom: 12,
-  },
-  forgotWrap: {
-    marginTop: -8,
-    textAlign: 'right',
-  },
-  submitBtn: {
-    width: '100%',
-    minHeight: 54,
-    borderRadius: 999,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 16,
-    shadowColor: dark.green,
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.35,
-    shadowRadius: 18,
-    elevation: 5,
-  },
-  submitText: {
-    fontFamily: fonts.displayBold,
-    fontSize: 16,
-    color: '#FFFFFF',
+    fontFamily: 'PlusJakartaSans_600SemiBold',
+    fontSize: 12.5,
+    color: colors.subtle,
   },
   footer: {
-    marginTop: 28,
+    marginTop: 8,
     textAlign: 'center',
-    fontFamily: fonts.body,
+    fontFamily: 'PlusJakartaSans_500Medium',
     fontSize: 14,
-    color: dark.textMuted,
+    color: colors.muted,
   },
   link: {
-    color: dark.green,
-    fontFamily: fonts.bodyBold,
-    fontSize: 14,
+    fontFamily: 'PlusJakartaSans_800ExtraBold',
+    color: colors.greenDark,
   },
-  disabled: {
-    opacity: 0.6,
-  },
-})
+});
