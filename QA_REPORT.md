@@ -80,6 +80,12 @@
 ### B7. Filtre période Progrès inerte — CORRIGÉ (bouton `onClick={() => {}}`)
 - Correctif appliqué : le bouton cycle 7 jours → 30 jours → Tout et filtre réellement l'activité récente (`src/pages/ProfilePage.tsx`).
 
+### B8. Page Conduite blanche : crash `creneaux?.find is not a function` — CORRIGÉ
+- Repro : ouvrir `/conduite` (ou `/conduite/reservation`) — le contenu apparaît puis la page se vide (l'exception React démonte l'arbre).
+- Cause : `GET /api/reservations/creneaux` renvoie `data: {from, to, days: [...]}` mais le front faisait `.find()` dessus comme un tableau.
+- Correctif : `setCreneaux(data?.days ?? [])` + garde `Array.isArray` (`ConduitePage.tsx`, `ReservationPage.tsx`). Preuve : sonde E2E (hero présent, 0 erreur JS).
+- Note dev : accès Code offert à `eleve@test.local` via `POST /api/admin/access-requests/grant` pour tester sujets/examens (le paywall 403 fonctionnait correctement).
+
 Note : `RevisionPanneauxPages.tsx` utilise une banque statique (`MOCK_CATEGORIES`, TODO API) — assumé comme contenu statique (pas d'API panneaux côté serveur, comme les banques QCM codées), navigation vérifiée fonctionnelle.
 
 ## 4. Couverture / non testé
