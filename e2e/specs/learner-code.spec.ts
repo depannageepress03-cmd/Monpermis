@@ -45,9 +45,9 @@ test('examen blanc complet : 20 questions puis score', async ({ page }) => {
     await next.focus()
     await page.keyboard.press('Enter')
   }
-  // Dernier « Question suivante » termine l'examen côté serveur.
-  // B3 (rapport) : aucun écran de score ne s'affiche après la Q20 —
-  // on vérifie le score persisté dans Mes notes.
-  await page.goto('/code-de-la-route/mes-notes')
+  // Dernier « Question suivante » termine l'examen : écran de score (B3).
+  await expect(page.getByText(/Examen blanc n°1 terminé/i)).toBeVisible({ timeout: 30000 })
+  await page.getByRole('button', { name: /Voir mes notes/ }).click()
+  // Score persisté dans Mes notes.
   await expect(page.getByText(/Examen 1(?!\d)/).first()).toBeVisible({ timeout: 30000 })
 })

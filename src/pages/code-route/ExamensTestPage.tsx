@@ -181,7 +181,7 @@ export function ExamensTestTakePage() {
   const [submitted, setSubmitted] = useState(false);
   const [answeredCount, setAnsweredCount] = useState(0);
   const [finished, setFinished] = useState(false);
-  const [, setFinalScore] = useState<{
+  const [finalScore, setFinalScore] = useState<{
     correct: number;
     total: number;
     scoreLabel: string;
@@ -422,7 +422,7 @@ export function ExamensTestTakePage() {
   return (
     <div style={{ minHeight: '100dvh', background: '#F5F7FB', position: 'relative', overflow: 'hidden' }}>
       <div style={{ position: 'absolute', top: -100, right: -100, width: 280, height: 280, borderRadius: '50%', background: 'rgba(11,170,79,0.12)', filter: 'blur(60px)', pointerEvents: 'none' }} />
-      <div style={{ width: '100%', maxWidth: 1120, margin: '0 auto', boxSizing: 'border-box', padding: '56px 20px 28px', background: '#F5F7FB', fontFamily: 'Plus Jakarta Sans, sans-serif', color: '#0A1B3D', display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div style={{ width: '100%', maxWidth: 1120, margin: '0 auto', boxSizing: 'border-box', padding: '56px 20px 120px', background: '#F5F7FB', fontFamily: 'Plus Jakarta Sans, sans-serif', color: '#0A1B3D', display: 'flex', flexDirection: 'column', gap: 16 }}>
 
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -490,6 +490,28 @@ export function ExamensTestTakePage() {
           {question?.prompt?.text || 'Que vous indique ce panneau ?'}
         </h1>
 
+        {/* Résultat final (B3) */}
+        {finished && finalScore ? (
+          <div role="status" style={{ borderRadius: 28, background: '#0A1B3D', color: '#FFFFFF', padding: '28px 22px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, textAlign: 'center' }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: 'rgba(255,255,255,0.7)' }}>Examen blanc n°{number} terminé</div>
+            <div style={{ fontFamily: "'Sora', sans-serif", fontSize: 52, fontWeight: 800, letterSpacing: '-0.03em' }}>
+              {finalScore.correct}<span style={{ fontSize: 22, color: 'rgba(255,255,255,0.55)' }}>/{finalScore.total}</span>
+            </div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: 'rgba(255,255,255,0.85)' }}>{finalScore.scoreLabel}</div>
+            <div style={{ height: 34, padding: '0 16px', borderRadius: 17, display: 'flex', alignItems: 'center', fontSize: 13.5, fontWeight: 800, background: finalScore.passed ? '#0BAA4F' : '#FFB400', color: finalScore.passed ? '#FFFFFF' : '#0A1B3D' }}>
+              {finalScore.passed ? 'Réussi' : 'À revoir'}
+            </div>
+            <div style={{ display: 'flex', gap: 8, marginTop: 10, width: '100%' }}>
+              <NewButton variant="primary" size="md" fullWidth onClick={() => navigate('/code-de-la-route/mes-notes')}>
+                Voir mes notes
+              </NewButton>
+            </div>
+            <button type="button" onClick={() => navigate('/code-de-la-route/examens-test')} style={{ border: 0, background: 'none', color: 'rgba(255,255,255,0.75)', fontSize: 13.5, fontWeight: 700, cursor: 'pointer', padding: 8 }}>
+              Autres examens
+            </button>
+          </div>
+        ) : (
+        <>
         {/* Options */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {displayAnswers.map((answer) => (
@@ -549,6 +571,8 @@ export function ExamensTestTakePage() {
         >
           {checking ? 'Enregistrement…' : submitted ? 'Question suivante' : 'Valider ma réponse'}
         </NewButton>
+        </>
+        )}
 
       </div>
 
