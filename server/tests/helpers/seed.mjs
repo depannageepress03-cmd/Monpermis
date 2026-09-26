@@ -5,6 +5,7 @@ import bcrypt from 'bcryptjs'
 import { models } from './db.mjs'
 
 export const QA_PASSWORD = 'QaTest1234'
+export const QA_ADMIN_PASSWORD = 'QaAdmin1234'
 
 function futureDate(days) {
   const d = new Date()
@@ -17,13 +18,13 @@ function dateLabel(offsetDays) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
-export async function seedAdmin() {
+export async function seedAdmin(password = QA_ADMIN_PASSWORD) {
   const { Admin } = models
   await Admin.deleteMany({ phone: '0199000001' })
   const admin = new Admin({
     fullName: 'QA Admin',
     phone: '0199000001',
-    password: QA_PASSWORD,
+    password,
     role: 'superadmin',
     isActive: true,
   })

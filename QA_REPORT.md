@@ -5,9 +5,10 @@
 > aucun fix métier sans ordre « corrige » — les bugs sont listés, pas corrigés.
 
 ## 1. Résumé (3 lignes)
-- _À compléter en fin de recette._
-- Statique : builds web/admin/moniteur OK, `mobile lint` OK, 22 tests unitaires maison OK, audit 0 vulnérabilité, `expo-doctor` 3 échecs (non bloquants, voir §4).
-- ⚠️ **Alerte env** : `server/.env` local pointe vers Atlas partagé + `FEDAPAY_ENVIRONMENT=live`. Toute la recette paiement/DB utilise `.env.test` + sandbox + base isolée.
+- **Pas prêt pour la prod** : 5 bugs ouverts dont 2 bloquants (B1 réservation web sur mocks, B5 bundle mobile cassé par les SVG).
+- API : 43/43 tests verts (auth, sécurité, conduite, webhook sandbox, contenu) sur base isolée. E2E : 10/12 verts (auth, code, examen 20 questions, admin, responsive 390px).
+- Mobile sans émulateur (non testé dynamiquement) ; APK CI et FedaPay live non touchés (sandbox uniquement).
+- ⚠️ **Alerte env** : `server/.env` local pointe vers Atlas partagé + `FEDAPAY_ENVIRONMENT=live`. Toute la recette utilise `.env.test` + base mémoire + sandbox.
 
 ## 2. Tableau de recette
 | Fonctionnalité | App | Statut | Preuve | Gravité |
@@ -26,6 +27,15 @@
 | Conduite : catalogue, verrou concurrent 200+409, solde, annulation | API | OK | `tests/conduite.test.js` (7 tests) | — |
 | Webhook FedaPay : HMAC valide/invalide, rejeu idempotent, échec, crédit heures | API | OK | `tests/payments.test.js` (6 tests, signature via SDK `fedapay`) | — |
 | Code : verrou 403, QCM juste/faux, examen 20/20 idempotent | API | OK | `tests/content.test.js` (3 tests + B2 ci-dessous) | — |
+| E2E inscription/connexion/session/erreur | web | OK | `e2e/specs/learner-auth.spec.ts` (4 tests : register, login+reload, 401, token invalide→login ; ce dernier instable 1/2, voir §4) | — |
+| E2E QCM + examen blanc 20 questions → note Mes notes | web | OK | `e2e/specs/learner-code.spec.ts` (2 tests) | — |
+| E2E admin login/dashboard + refus apprenant | admin | OK | `e2e/specs/admin.spec.ts` (2 tests) | — |
+| E2E réservation (vrais moniteurs) | web | KO | `e2e/specs/learner-conduite-b1.spec.ts` : B1 (mock affiché, screenshot+trace) | bloquant |
+| E2E responsive 390px (login, accueil, pas de scroll-X) | web | OK | `e2e/specs/responsive.spec.ts` (2 tests) | — |
+| `expo export` (build JS Android) | mobile | KO | B5 : `route-pattern-*.svg` non résolus (pas de svg-transformer) | bloquant |
+| Émulateur / Maestro | mobile | Non testé | aucun émulateur disponible | — |
+| Build APK (GitHub Actions) | CI | Non testé | workflow relu : Node 20, JDK 17, keystore via secrets, dispatch manuel — non exécuté | — |
+| FedaPay live / prod | — | Non testé | volontaire (sandbox uniquement) | — |
 
 ## 3. Bugs (reproduire → attendu/obtenu → suspect → correctif proposé, NON appliqués)
 ### B1. Page `/conduite/reservation` (web) rend des données mock
@@ -42,12 +52,39 @@
 - Suspect : `server/src/routes/content.js:280` (ou service appelé) — `findById` sans garde ObjectId.
 - Correctif : valider l'id (`isValidObjectId` / try) et répondre 404 `Question introuvable`.
 
+### B3. Examen blanc : aucun écran de score après la Q20
+- Repro : passer un examen blanc complet côté web (`/code-de-la-route/examens-test/:n`, 20 réponses).
+- Attendu : score affiché (correct/total, réussite). Obtenu : l'UI reste sur la Q20 (le flag `finished` n'est jamais rendu).
+- Suspect : `src/pages/code-route/ExamensTestPage.tsx` (`ExamensTestTakePage`) — `setFinished(true)` sans vue résultat.
+- Preuve E2E : `learner-code.spec.ts` contourne via Mes notes (`Examen 1` visible). Correctif : vue résultat (score, verdict, CTA Revoir/Repasser).
+
+### B4. CTA « Question suivante » recouvert par le dock TabBar
+- Repro : bas de page examen (viewport 1440×900) — le bouton est sous la TabBar flottante (`nav[aria-label="Navigation principale"]` intercepte le clic).
+- Attendu : CTA cliquable. Obtenu : clic Playwright impossible sans clavier (`TabBar.html : marge basse ~120 px` non appliquée ici : conteneur `padding: 56px 20px 28px`).
+- Suspect : `src/pages/code-route/ExamensTestPage.tsx:425` (padding bas 28px au lieu de ~120px / classe `mp-page-stage`).
+- Correctif : `paddingBottom: 120` ou wrapper `mp-page-stage`. Preuve E2E : contournement clavier dans le spec.
+
+### B5. Mobile : `expo export` échoue sur les SVG (bloquant)
+- Repro : `npx expo export --platform android` dans `mobile/`.
+- Attendu : bundle OK. Obtenu : `Unable to resolve module ../assets/route-pattern-home.svg from src/theme/tokens.ts`.
+- Suspect : `mobile/src/theme/tokens.ts:369-373` (`require` SVG) sans `react-native-svg-transformer` dans `mobile/metro.config.js` (fichiers pourtant présents dans `mobile/assets/`).
+- Correctif : ajouter `react-native-svg-transformer` + config metro, ou remplacer les `require(.svg)` par des composants.
+
 ## 4. Couverture / non testé
 - E2E Playwright, tests API, export Expo, workflow APK : à venir (§5-6).
+- Test E2E « token invalide » : vert 1 fois sur 2 (redirection `/profil` → `/` → `/connexion` en 2 temps, race) — à stabiliser, non bloquant.
+- Abonnements E2E (webhook signé direct) : couvert côté API uniquement ; parcours FedaPay sandbox UI non automatisé.
+- Comportement timeout d'examen (tentative `in_progress` abandonnée) : non testé (pas de watchdog serveur identifié).
+- Rate limiting : non testé en charge (évite de polluer les limiters ; code relu : login 12/15min, register 15/h).
+- Google OAuth : non testé (nécessite un vrai `id_token` ; code relu : création/liaison/backfill OK).
+- Rewrites SPA Render : config relue (`/* → /index.html` sur les 3 statiques), non vérifiée en prod (jamais la prod).
+- APK : déclenchement manuel non exécuté (secrets keystore requis).
 
 ## 5. Commandes
 ```bash
 npm run build:learner-web && npm run build --prefix administration && npm run build --prefix moniteur
 npm run lint --prefix mobile && npm test --prefix mobile
 npx expo-doctor # dans mobile/
+npm run test:api    # 43 tests API (base mémoire + sandbox)
+npm run test:e2e    # Playwright (API 5011 + web 5179 + admin 5180, seed auto)
 ```

@@ -18,6 +18,8 @@
     "build:admin": "npm run build --prefix administration",
     "build:moniteur": "npm run build --prefix moniteur",
     "lint": "npm run lint --prefix mobile",
+    "test:api": "npm run test:api --prefix server",
+    "test:e2e": "playwright test",
     "check:banks-sync": "npm run check:banks-sync --prefix server",
     "generate:learner-banks": "npm run generate:learner-banks --prefix server"
   },
@@ -29,6 +31,7 @@
     "react-router-dom": "^7.18.4"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@types/react": "^19.2.5",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.1",

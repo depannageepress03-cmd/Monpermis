@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest'
 import { api, useQaWorld } from './helpers/world.mjs'
 import { models } from './helpers/db.mjs'
-import { QA_PASSWORD, seedAdmin, seedLearner, grantCodeAccess, seedCodeContent } from './helpers/seed.mjs'
+import { QA_ADMIN_PASSWORD, QA_PASSWORD, seedAdmin, seedLearner, grantCodeAccess, seedCodeContent } from './helpers/seed.mjs'
 
 useQaWorld()
 
@@ -19,7 +19,7 @@ async function adminToken() {
   await seedAdmin()
   const { status, json } = await api('/api/admin/auth/login', {
     method: 'POST',
-    body: { phone: '0199000001', password: QA_PASSWORD },
+    body: { phone: '0199000001', password: QA_ADMIN_PASSWORD },
   })
   expect(status).toBe(200)
   return json.data.token
