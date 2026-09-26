@@ -63,3 +63,8 @@ server/web-dist/
 
 # Config locale d'outils (Claude Code, etc.)
 .claude/
+
+# Playwright (recette QA)
+/e2e/report/
+/test-results/
+/playwright/.auth/
