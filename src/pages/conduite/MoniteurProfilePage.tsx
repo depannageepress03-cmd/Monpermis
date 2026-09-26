@@ -1,33 +1,18 @@
-import { useEffect, useMemo, useState } from 'react'
-import { Car, CheckCircle2, MapPin, User, X } from 'lucide-react'
-import { Navigate, useNavigate, useParams } from 'react-router-dom'
-import {
-  fetchMoniteurAvailability,
-  fetchMoniteurProfile,
-  ReservationError,
-  type AvailabilityDay,
-  type MoniteurProfile,
-} from '../../api/reservations'
-import { PageNavbar } from '../../components/PageNavbar'
-import { useAuth } from '../../hooks/useAuth'
-import { AppShell, userInitialsOf, type AppTab } from '../../components/layout/AppShell'
-import { Badge, Button, Card, IconBadge, SectionTitle, StatCard } from '../../components/ui'
-import { resolveMoniteurVideoEmbed } from '../../utils/mediaEmbed'
-import { resolveMediaUrl } from '../../utils/mediaUrl'
-import '../../styles/auth.css'
-import '../../styles/learner.css'
-import '../../styles/reservation.css'
+import { useEffect, useMemo, useState } from 'react';
+import { Car, CheckCircle2, MapPin, X } from 'lucide-react';
+import { Navigate, useNavigate, useParams } from 'react-router-dom';
+import { fetchMoniteurAvailability, fetchMoniteurProfile, ReservationError, type AvailabilityDay, type MoniteurProfile } from '../../api/reservations';
+;
+import { useAuth } from '../../hooks/useAuth';
+import { Badge, Button, Card, IconButton, SectionTitle, StatCard } from '../../components/ui';
+import { MainTabBar } from '../../components/MainTabBar';
+import { resolveMoniteurVideoEmbed } from '../../utils/mediaEmbed';
+import { resolveMediaUrl } from '../../utils/mediaUrl';
+;
 
-const TAB_ROUTES: Record<AppTab, string> = {
-  accueil: '/accueil',
-  code: '/code-de-la-route',
-  conduite: '/conduite',
-  progres: '/code-de-la-route/mes-notes',
-  profil: '/profil',
-}
 
 function mediaSrc(url: string) {
-  return resolveMediaUrl(url)
+  return resolveMediaUrl(url);
 }
 
 function formatDayLabel(date: string) {
@@ -36,187 +21,206 @@ function formatDayLabel(date: string) {
       weekday: 'short',
       day: 'numeric',
       month: 'short',
-    })
+    });
   } catch {
-    return date
+    return date;
+  }
+}
+
+function formatTime(time: string) {
+  try {
+    return new Date(`1970-01-01T${time}`).toLocaleTimeString('fr-FR', {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  } catch {
+    return time;
   }
 }
 
 export function MoniteurProfilePage() {
-  const navigate = useNavigate()
-  const { id } = useParams<{ id: string }>()
-  const { user, loading } = useAuth()
-  const [moniteur, setMoniteur] = useState<MoniteurProfile | null>(null)
-  const [busy, setBusy] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [availabilityDays, setAvailabilityDays] = useState<AvailabilityDay[]>([])
-  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
+  const navigate = useNavigate();
+  const { id } = useParams<{ id: string }>();
+  const { user, loading } = useAuth();
+  const [moniteur, setMoniteur] = useState<MoniteurProfile | null>(null);
+  const [busy, setBusy] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [availabilityDays, setAvailabilityDays] = useState<AvailabilityDay[]>([]);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
   useEffect(() => {
-    if (!id || !user) return
-    let cancelled = false
-    setBusy(true)
-    setError(null)
-    setMoniteur(null)
-    setAvailabilityDays([])
+    if (!id || !user) return;
+    let cancelled = false;
+    setBusy(true);
+    setError(null);
+    setMoniteur(null);
+    setAvailabilityDays([]);
 
     Promise.all([
       fetchMoniteurProfile(id),
       fetchMoniteurAvailability({ moniteurId: id, days: 14 }).catch(() => null),
     ])
       .then(([profileData, availability]) => {
-        if (cancelled) return
-        setMoniteur(profileData.moniteur)
-        const days = availability?.days?.filter((d) => d.windows?.length) ?? []
-        setAvailabilityDays(days.slice(0, 5))
+        if (cancelled) return;
+        setMoniteur(profileData.moniteur);
+        const days = availability?.days?.filter((d) => d.windows?.length) ?? [];
+        setAvailabilityDays(days.slice(0, 5));
       })
       .catch((err) => {
-        if (cancelled) return
-        setError(err instanceof ReservationError ? err.message : 'Profil indisponible')
+        if (cancelled) return;
+        setError(err instanceof ReservationError ? err.message : 'Profil indisponible');
       })
       .finally(() => {
-        if (!cancelled) setBusy(false)
-      })
+        if (!cancelled) setBusy(false);
+      });
 
     return () => {
-      cancelled = true
-    }
-  }, [id, user])
+      cancelled = true;
+    };
+  }, [id, user]);
 
   const vehicleTypesLabel = useMemo(() => {
-    const types = moniteur?.vehicleTypes?.filter(Boolean) ?? []
-    return types.length ? types.join(' · ') : 'Véhicule'
-  }, [moniteur])
+    const types = moniteur?.vehicleTypes?.filter(Boolean) ?? [];
+    return types.length ? types.join(' · ') : 'Véhicule';
+  }, [moniteur]);
 
   const safeVideos = useMemo(() => {
     return (moniteur?.videos ?? [])
       .map((video) => ({ video, embed: resolveMoniteurVideoEmbed(video) }))
       .filter((item): item is { video: string; embed: NonNullable<typeof item.embed> } =>
         Boolean(item.embed),
-      )
-  }, [moniteur])
+      );
+  }, [moniteur]);
 
   if (loading) {
     return (
-      <div className="auth-page">
-        <div className="auth-container learner-container">
-          <p className="subtitle">Chargement…</p>
+      <div style={{ minHeight: '100dvh', background: '#F5F7FB' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>
+          <p style={{ color: '#5B6680' }}>Chargement…</p>
         </div>
       </div>
-    )
+    );
   }
 
   if (!user) {
-    return <Navigate to="/" replace state={{ message: 'Connecte-toi pour voir les moniteurs.' }} />
+    return <Navigate to="/" replace state={{ message: 'Connecte-toi pour voir les moniteurs.' }} />;
   }
 
-  const photos = moniteur?.photos ?? []
-  const lightboxPhoto = lightboxIndex != null ? photos[lightboxIndex] : null
+  const photos = moniteur?.photos ?? [];
+  const lightboxPhoto = lightboxIndex != null ? photos[lightboxIndex] : null;
 
   return (
-    <AppShell
-      activeTab="conduite"
-      userInitials={userInitialsOf(user?.firstName, user?.lastName)}
-      onNavigate={(tab) => navigate(TAB_ROUTES[tab])}
-      onOpenNotifications={() => navigate('/notifications')}
-      onOpenProfile={() => navigate('/profil')}
-    >
-    <div className="auth-page">
-      <div className="auth-container learner-container">
-        <PageNavbar
-          title="Profil du moniteur"
-          icon={<User size={22} />}
-          tone="drive"
-          onBack={() => navigate('/conduite/reservation')}
-        />
+    <div style={{ minHeight: '100dvh', background: '#F5F7FB', position: 'relative', overflow: 'hidden' }}>
+      <div style={{ position: 'absolute', top: -100, right: -100, width: 280, height: 280, borderRadius: '50%', background: 'rgba(255,180,0,0.16)', filter: 'blur(60px)', pointerEvents: 'none' }} />
+      <div style={{ position: 'relative', boxSizing: 'border-box', padding: '56px 20px 0', display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 1120, margin: '0 auto' }}>
 
-        <Card className="reservation-card">
-          {error ? <p className="form-error">{error}</p> : null}
-          {busy ? <p className="subtitle">Chargement du profil…</p> : null}
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <IconButton
+            icon={({ size, color }) => (
+              <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="m15 6-6 6 6 6" />
+              </svg>
+            )}
+            ariaLabel="Retour"
+            onPress={() => navigate('/conduite/reservation')}
+          />
+          <h1 style={{ margin: 0, fontFamily: 'Sora, sans-serif', fontSize: 26, fontWeight: 700, letterSpacing: '-0.02em', flex: 1, textAlign: 'center', color: '#0A1B3D' }}>
+            Profil du moniteur
+          </h1>
+          <div style={{ width: 46 }} />
+        </div>
+
+        <div style={{ borderRadius: 26, background: '#FFFFFF', padding: 18, boxShadow: '0 10px 30px -18px rgba(10,27,61,0.3)', display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {error && <p style={{ color: '#C2410C', fontSize: 12.5, fontWeight: 600 }}>{error}</p>}
+          {busy && <p style={{ color: '#5B6680', fontSize: 14, fontWeight: 600 }}>Chargement du profil…</p>}
 
           {!busy && !error && !moniteur ? (
-            <p className="subtitle">Moniteur introuvable.</p>
-          ) : null}
-
-          {moniteur ? (
-            <div className="reservation-step">
-              <Card className="moniteur-profile-head moniteur-profile-head--split">
-                <div className="moniteur-profile-portrait">
+            <p style={{ color: '#5B6680' }}>Moniteur introuvable.</p>
+          ) : moniteur ? (
+            <>
+              {/* Profile Head */}
+              <Card style={{ background: '#0A1B3D', color: '#FFFFFF', padding: '20px', borderRadius: 24, display: 'flex', gap: 16 }}>
+                <div style={{ width: 80, height: 80, borderRadius: 20, overflow: 'hidden', flexShrink: 0 }}>
                   {moniteur.photoUrl ? (
                     <img
-                      className="moniteur-profile-avatar"
                       src={mediaSrc(moniteur.photoUrl)}
                       alt={`Portrait de ${moniteur.fullName}`}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                     />
                   ) : (
-                    <div className="moniteur-profile-avatar moniteur-choice-placeholder" aria-hidden>
+                    <div style={{ width: '100%', height: '100%', borderRadius: 20, background: '#FFB400', color: '#0A1B3D', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Sora, sans-serif', fontWeight: 800, fontSize: 24 }}>
                       {moniteur.fullName.slice(0, 1).toUpperCase()}
                     </div>
                   )}
-                  <div className="moniteur-profile-identity">
-                    <h2>{moniteur.fullName}</h2>
-                    {moniteur.city ? (
-                      <p className="subtitle">
-                        <IconBadge icon={<MapPin size={15} />} tone="orange" /> {moniteur.city}
-                      </p>
-                    ) : null}
-                    <StatCard
-                      icon={<Car size={14} />}
-                      label="Tarif horaire"
-                      value={`${moniteur.defaultPriceFcfa.toLocaleString('fr-FR')} FCFA/h`}
-                    />
-                    <p className="subtitle">
-                      <IconBadge icon={<Car size={15} />} tone="orange" /> {vehicleTypesLabel}
+                </div>
+                <div style={{ flex: 1 }}>
+                  <h2 style={{ margin: 0, fontFamily: 'Sora, sans-serif', fontSize: 22, fontWeight: 700 }}>{moniteur.fullName}</h2>
+                  {moniteur.city && (
+                    <p style={{ margin: '4px 0 0', fontSize: 13, color: 'rgba(255,255,255,0.7)' }}>
+                      <MapPin size={14} style={{ verticalAlign: 'middle', marginRight: 4 }} /> {moniteur.city}
                     </p>
-                  </div>
+                  )}
+                  <StatCard
+                    icon={<Car size={14} />}
+                    label="Tarif horaire"
+                    value={`${moniteur.defaultPriceFcfa.toLocaleString('fr-FR')} XOF/h`}
+                  />
+                  <p style={{ marginTop: 8, fontSize: 13, color: 'rgba(255,255,255,0.7)' }}>
+                    <Car size={14} style={{ verticalAlign: 'middle', marginRight: 4 }} /> {vehicleTypesLabel}
+                  </p>
                 </div>
               </Card>
 
-              <Card className="moniteur-vehicle-card">
+              {/* Vehicle */}
+              <Card style={{ padding: '20px' }}>
                 <SectionTitle>Véhicule utilisé</SectionTitle>
                 {moniteur.vehiclePhotoUrl ? (
                   <img
-                    className="moniteur-vehicle-photo"
                     src={mediaSrc(moniteur.vehiclePhotoUrl)}
                     alt={`Véhicule ${moniteur.vehicleBrand || ''}`.trim()}
+                    style={{ width: '100%', borderRadius: 16, objectFit: 'cover', marginTop: 12 }}
                   />
                 ) : (
-                  <div className="moniteur-vehicle-photo moniteur-choice-placeholder">
+                  <div style={{ height: 160, borderRadius: 16, background: '#F1F4F9', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#8A93A8', marginTop: 12 }}>
                     Photo véhicule non disponible
                   </div>
                 )}
-                <p className="subtitle">{moniteur.vehicleBrand || 'Marque non renseignée'}</p>
+                <p style={{ marginTop: 12, fontSize: 14, fontWeight: 600, color: '#0A1B3D' }}>{moniteur.vehicleBrand || 'Marque non renseignée'}</p>
               </Card>
 
+              {/* Bio */}
               {moniteur.bio ? (
-                <Card className="moniteur-profile-bio">
+                <Card style={{ padding: '20px' }}>
                   <SectionTitle>Présentation</SectionTitle>
-                  <p>{moniteur.bio}</p>
+                  <p style={{ marginTop: 12, color: '#0A1B3D', lineHeight: 1.6 }}>{moniteur.bio}</p>
                 </Card>
               ) : (
-                <p className="moniteur-profile-empty">Présentation non renseignée pour le moment.</p>
+                <p style={{ color: '#8A93A8', marginTop: 12 }}>Présentation non renseignée pour le moment.</p>
               )}
 
+              {/* Specialties */}
               {moniteur.specialties?.length ? (
-                <div className="moniteur-profile-specialties">
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
                   {moniteur.specialties.map((item) => (
-                    <Badge key={item} tone="green" icon={<CheckCircle2 size={13} />}>{item}</Badge>
+                    <Badge key={item} variant="green" icon={<CheckCircle2 size={13} />}>{item}</Badge>
                   ))}
                 </div>
               ) : null}
 
-              <Card className="moniteur-profile-section">
+              {/* Availability */}
+              <Card style={{ padding: '20px' }}>
                 <SectionTitle>Prochaines disponibilités</SectionTitle>
                 {availabilityDays.length ? (
-                  <ul className="moniteur-availability-list">
+                  <ul className="mp-grid-desktop" style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 12 }}>
                     {availabilityDays.map((day) => (
-                      <li key={day.date}>
-                        <strong>{formatDayLabel(day.date)}</strong>
+                      <li key={day.date} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: '#F5F7FB', borderRadius: 14 }}>
+                        <strong style={{ fontSize: 14 }}>{formatDayLabel(day.date)}</strong>
                         <span>
-                          <Badge tone="orange">
+                          <Badge variant="yellow" size="sm">
                             {day.windows
                               .slice(0, 3)
-                              .map((w) => `${w.start}–${w.end}`)
+                              .map((w) => `${formatTime(w.start)}–${formatTime(w.end)}`)
                               .join(' · ')}
                             {day.windows.length > 3 ? '…' : ''}
                           </Badge>
@@ -225,38 +229,38 @@ export function MoniteurProfilePage() {
                     ))}
                   </ul>
                 ) : (
-                  <p className="moniteur-profile-empty">
-                    Aucune plage libre sur les 14 prochains jours (ou calendrier non chargé).
-                  </p>
+                  <p style={{ color: '#8A93A8', marginTop: 12 }}>Aucune plage libre sur les 14 prochains jours (ou calendrier non chargé).</p>
                 )}
               </Card>
 
-              <Card className="moniteur-profile-section">
+              {/* Photos */}
+              <Card style={{ padding: '20px' }}>
                 <SectionTitle>Photos</SectionTitle>
                 {photos.length ? (
-                  <div className="moniteur-profile-gallery">
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginTop: 12 }}>
                     {photos.map((photo, index) => (
                       <button
                         key={photo}
                         type="button"
-                        className="moniteur-gallery-thumb"
+                        style={{ aspectRatio: '1', borderRadius: 14, overflow: 'hidden', border: 0, background: 'none', padding: 0, cursor: 'pointer' }}
                         onClick={() => setLightboxIndex(index)}
                       >
-                        <img src={mediaSrc(photo)} alt={`Photo ${index + 1} de ${moniteur.fullName}`} />
+                        <img src={mediaSrc(photo)} alt={`Photo ${index + 1} de ${moniteur.fullName}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                       </button>
                     ))}
                   </div>
                 ) : (
-                  <p className="moniteur-profile-empty">Pas encore de galerie photo.</p>
+                  <p style={{ color: '#8A93A8', marginTop: 12 }}>Pas encore de galerie photo.</p>
                 )}
               </Card>
 
-              <Card className="moniteur-profile-section">
+              {/* Videos */}
+              <Card style={{ padding: '20px' }}>
                 <SectionTitle>Vidéos de présentation</SectionTitle>
                 {safeVideos.length ? (
-                  <div className="moniteur-profile-videos">
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 12 }}>
                     {safeVideos.map(({ video, embed }, index) => (
-                      <div key={video} className="moniteur-profile-video">
+                      <div key={video} style={{ borderRadius: 16, overflow: 'hidden', background: '#000' }}>
                         <iframe
                           src={embed.src}
                           title={`Vidéo de présentation ${index + 1} — ${moniteur.fullName}`}
@@ -265,12 +269,13 @@ export function MoniteurProfilePage() {
                           sandbox="allow-scripts allow-same-origin allow-presentation"
                           referrerPolicy="strict-origin-when-cross-origin"
                           loading="lazy"
+                          style={{ width: '100%', aspectRatio: '16/9', border: 0 }}
                         />
                         <a
-                          className="moniteur-video-external"
                           href={embed.watchUrl}
                           target="_blank"
                           rel="noopener noreferrer"
+                          style={{ display: 'block', marginTop: 8, textAlign: 'center', color: '#067A37', fontWeight: 700, textDecoration: 'none' }}
                         >
                           Ouvrir la vidéo
                         </a>
@@ -278,38 +283,39 @@ export function MoniteurProfilePage() {
                     ))}
                   </div>
                 ) : (
-                  <p className="moniteur-profile-empty">Pas encore de vidéo de présentation.</p>
+                  <p style={{ color: '#8A93A8', marginTop: 12 }}>Pas encore de vidéo de présentation.</p>
                 )}
               </Card>
 
               <Button
-                variant="cta"
-                tone="orange"
+                variant="accent"
+                fullWidth
                 icon={<Car size={16} />}
-                className="reservation-calendar-btn"
                 onClick={() => navigate(`/conduite/reservation?moniteurId=${moniteur.id}`)}
               >
                 Choisir ce moniteur
               </Button>
-            </div>
+            </>
           ) : null}
-        </Card>
+        </div>
+
       </div>
 
+      {/* TabBar flottante (TabBar.html) */}
+      <MainTabBar activeId="conduite" />
+
+      {/* Lightbox */}
       {lightboxPhoto ? (
         <div
-          className="moniteur-lightbox"
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.9)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           role="dialog"
           aria-modal="true"
           aria-label="Aperçu photo"
           onClick={() => setLightboxIndex(null)}
-          onKeyDown={(e) => {
-            if (e.key === 'Escape') setLightboxIndex(null)
-          }}
+          onKeyDown={(e) => { if (e.key === 'Escape') setLightboxIndex(null) }}
         >
           <button
-            type="button"
-            className="moniteur-lightbox-close"
+            style={{ position: 'absolute', top: 20, right: 20, width: 44, height: 44, borderRadius: 22, background: 'rgba(255,255,255,0.1)', border: 0, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
             aria-label="Fermer"
             onClick={() => setLightboxIndex(null)}
           >
@@ -318,11 +324,13 @@ export function MoniteurProfilePage() {
           <img
             src={mediaSrc(lightboxPhoto)}
             alt={`Photo ${(lightboxIndex ?? 0) + 1} de ${moniteur?.fullName || 'moniteur'}`}
+            style={{ maxWidth: '90%', maxHeight: '90%', objectFit: 'contain' }}
             onClick={(e) => e.stopPropagation()}
           />
         </div>
       ) : null}
     </div>
-    </AppShell>
-  )
+  );
 }
+
+export default MoniteurProfilePage;

@@ -86,7 +86,7 @@ export function ExamensTestPage() {
       onOpenNotifications={() => navigate('/notifications')}
       onOpenProfile={() => navigate('/profil')}
     >
-      <div style={{ maxWidth: 390, margin: '0 auto', padding: '56px 20px 0', display: 'flex', flexDirection: 'column', gap: 18 }}>
+      <div style={{ maxWidth: 1120, margin: '0 auto', padding: '56px 20px 0', display: 'flex', flexDirection: 'column', gap: 18 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
             <h1 style={{ margin: 0, fontFamily: 'Sora, sans-serif', fontSize: 26, fontWeight: 700, letterSpacing: '-0.02em' }}>Examens test</h1>
@@ -122,7 +122,7 @@ export function ExamensTestPage() {
                   <Button variant="outline" onClick={() => navigate('/code-de-la-route/mes-notes')}>Voir mes notes</Button>
                 </Card2>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div className="mp-grid-desktop" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   {(data.exams ?? []).map((exam, examIndex) => (
                     <Reveal key={exam.id} delay={Math.min(examIndex, 8) * 45}>
                       <button
@@ -422,7 +422,7 @@ export function ExamensTestTakePage() {
   return (
     <div style={{ minHeight: '100dvh', background: '#F5F7FB', position: 'relative', overflow: 'hidden' }}>
       <div style={{ position: 'absolute', top: -100, right: -100, width: 280, height: 280, borderRadius: '50%', background: 'rgba(11,170,79,0.12)', filter: 'blur(60px)', pointerEvents: 'none' }} />
-      <div style={{ width: '100%', maxWidth: 390, margin: '0 auto', boxSizing: 'border-box', padding: '56px 20px 28px', background: '#F5F7FB', fontFamily: 'Plus Jakarta Sans, sans-serif', color: '#0A1B3D', display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div style={{ width: '100%', maxWidth: 1120, margin: '0 auto', boxSizing: 'border-box', padding: '56px 20px 28px', background: '#F5F7FB', fontFamily: 'Plus Jakarta Sans, sans-serif', color: '#0A1B3D', display: 'flex', flexDirection: 'column', gap: 16 }}>
 
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>

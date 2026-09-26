@@ -92,7 +92,7 @@ export function CodeRoutePage() {
   if (!accessMe?.access.code) {
     return (
       <AppShell activeTab="code" onNavigate={(tab) => navigate(TAB_ROUTES[tab])} onOpenNotifications={() => navigate('/notifications')} onOpenProfile={() => navigate('/profil')}>
-        <div style={{ maxWidth: 390, margin: '0 auto', padding: '56px 20px 0', display: 'flex', flexDirection: 'column', gap: 18 }}>
+        <div style={{ maxWidth: 1120, margin: '0 auto', padding: '56px 20px 0', display: 'flex', flexDirection: 'column', gap: 18 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div>
               <h1 style={{ margin: 0, fontFamily: 'Sora, sans-serif', fontSize: 26, fontWeight: 700, letterSpacing: '-0.02em' }}>Code de la route</h1>
@@ -140,7 +140,7 @@ export function CodeRoutePage() {
 
   return (
     <AppShell activeTab="code" onNavigate={(tab) => navigate(TAB_ROUTES[tab])} onOpenNotifications={() => navigate('/notifications')} onOpenProfile={() => navigate('/profil')}>
-      <div style={{ maxWidth: 390, margin: '0 auto', padding: '56px 20px 0', display: 'flex', flexDirection: 'column', gap: 18 }}>
+      <div style={{ maxWidth: 1120, margin: '0 auto', padding: '56px 20px 0', display: 'flex', flexDirection: 'column', gap: 18 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
             <h1 style={{ margin: 0, fontFamily: 'Sora, sans-serif', fontSize: 26, fontWeight: 700, letterSpacing: '-0.02em' }}>Code de la route</h1>
@@ -184,7 +184,7 @@ export function CodeRoutePage() {
           <span style={{ fontSize: 12.5, fontWeight: 700, color: '#5B6680' }}>{doneChapters} sur {chapters.length} terminés</span>
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: -6 }}>
+        <div className="mp-grid-desktop" style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: -6 }}>
           {chapters.length === 0 ? (
             <div style={{ borderRadius: 22, background: '#FFFFFF', padding: 18, boxShadow: '0 8px 22px -18px rgba(10,27,61,0.35)', fontSize: 13.5, fontWeight: 600, color: '#5B6680' }}>
               Aucun chapitre publié pour le moment. Ils apparaîtront ici dès leur publication.

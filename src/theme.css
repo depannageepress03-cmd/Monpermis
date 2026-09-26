@@ -426,3 +426,48 @@ a {
 .mp-page-stage {
   padding-bottom: 120px;
 }
+
+/* ============================================================
+   Desktop (≥1024px) : les pages apprenant passent de 390px
+   à un conteneur large avec grilles multi-colonnes.
+   Les conteneurs portent maxWidth inline (390 contenu, 1120
+   desktop via édition des pages) ; ici seules les grilles.
+   ============================================================ */
+@media (min-width: 1024px) {
+  /* Liste verticale mobile -> grille fluide desktop.
+     `display: grid !important` surcharge le `display:flex`
+     inline des conteneurs. Le `gap` inline est conservé. */
+  .mp-grid-desktop {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    align-items: start;
+  }
+  ul.mp-grid-desktop,
+  ol.mp-grid-desktop {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  /* Variante colonnes fixes (créneaux, jours, forfaits). */
+  .mp-grid-3 {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: start;
+  }
+  .mp-grid-4 {
+    display: grid !important;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    align-items: start;
+  }
+
+  /* Disclaimer / aide pleine largeur sous la grille. */
+  .mp-grid-full {
+    grid-column: 1 / -1;
+  }
+
+  /* Dock TabBar : reste compact et centré sur grand écran. */
+  .mp-tabbar-dock {
+    max-width: 560px !important;
+  }
+}

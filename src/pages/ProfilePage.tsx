@@ -82,7 +82,7 @@ export function ProfilePage() {
   return (
     <div style={{ minHeight: '100dvh', background: 'linear-gradient(180deg, #FFFFFF 0%, #F5F7FB 46%)', position: 'relative', overflow: 'hidden' }}>
       <div style={{ position: 'absolute', top: 120, left: 50, width: 290, height: 290, borderRadius: '50%', background: 'rgba(11,170,79,0.10)', filter: 'blur(60px)', pointerEvents: 'none' }} />
-      <div style={{ position: 'relative', boxSizing: 'border-box', padding: '56px 20px 0', display: 'flex', flexDirection: 'column', gap: 14, maxWidth: 390, margin: '0 auto' }}>
+      <div style={{ position: 'relative', boxSizing: 'border-box', padding: '56px 20px 0', display: 'flex', flexDirection: 'column', gap: 14, maxWidth: 1120, margin: '0 auto' }}>
 
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>

@@ -36,7 +36,7 @@ export function MainTabBar({ activeId }: { activeId: MainTabId }) {
         pointerEvents: 'none',
       }}
     >
-      <div style={{ width: '100%', maxWidth: 390, pointerEvents: 'auto' }}>
+      <div className="mp-tabbar-dock" style={{ width: '100%', maxWidth: 390, pointerEvents: 'auto' }}>
         <TabBar
           items={[
             { id: 'accueil', icon: <Home size={ICON_SIZE} strokeWidth={ICON_STROKE} />, label: 'Accueil' },

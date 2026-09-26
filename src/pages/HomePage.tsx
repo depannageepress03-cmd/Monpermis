@@ -1,99 +1,97 @@
-import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import {
-  Flame, Play, Lock, ChevronRight,
-  CalendarClock, BookOpen, Car, Target, Calendar,
-} from 'lucide-react'
-import { supportWhatsAppUrl } from '../utils/support'
-import { clearSession } from '../api/auth'
-import { tracker } from '../utils/tracker'
-import { fetchUnreadCount } from '../api/notifications'
-import { fetchAccessMe, type AccessMe } from '../api/accessRequests'
-import { AccountSheet } from '../components/AccountSheet'
-import { PageSkeleton } from '../components/PageSkeleton'
-import { useAuth } from '../hooks/useAuth'
-import { ContentReveal } from '../components/ContentReveal'
-import { useFocusRefresh } from '../hooks/useFocusRefresh'
-import { AppShell, type AppTab } from '../components/layout/AppShell'
-import {
-  Badge,
-  Button,
-  Card,
-  IconBadge,
-  ProgressBar,
-  ProgressRing,
-  SectionTitle,
-  StatCard,
-} from '../components/ui'
-import '../styles/accueil.css'
-
-interface AccueilProps {
-  firstName?: string
-  streakDays?: number
-  progressPercent?: number
-  currentLesson?: { title: string; category: string; progress: number; total: number }
-  codeStats?: { totalLessons: number; unlocked: boolean }
-  conduiteStats?: { nextSession?: string; reservedCount: number }
-  stats?: { lessonsDone: number; lessonsTotal: number; avgScore: number; examDate: string }
-}
-
-const TAB_ROUTES: Record<AppTab, string> = {
-  accueil: '/accueil',
-  code: '/code-de-la-route',
-  conduite: '/conduite',
-  progres: '/code-de-la-route/mes-notes',
-  profil: '/profil',
-}
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Bell, Menu, BookOpen, Flag, CalendarClock, TrendingUp } from 'lucide-react';
+import { supportWhatsAppUrl } from '../utils/support';
+import { clearSession } from '../api/auth';
+import { tracker } from '../utils/tracker';
+import { fetchUnreadCount } from '../api/notifications';
+import { fetchAccessMe, type AccessMe } from '../api/accessRequests';
+import { fetchLearnerJourney, fetchPracticeExamScores, type LearnerJourney, type PracticeExamScore } from '../api/content';
+import { fetchDrivingDashboard, type ReservationItem } from '../api/reservations';
+import { AccountSheet } from '../components/AccountSheet';
+import { PageSkeleton } from '../components/PageSkeleton';
+import { useAuth } from '../hooks/useAuth';
+;
+import { useFocusRefresh } from '../hooks/useFocusRefresh';
+import { LogoMark } from '../components/icons/LogoMark';
+import { IconButton } from '../components/ui/IconButton';
+import { Button } from '../components/ui/Button';
+import { Chip } from '../components/ui/Chip';
+import { GlassAction } from '../components/ui/GlassAction';
+import { NotchedCard } from '../components/ui/NotchedCard';
+import { ScoreBars } from '../components/ui/ScoreBars';
+import { HeroCard } from '../components/ui/HeroCard';
+import { MainTabBar } from '../components/MainTabBar';
 
 function greetingWord() {
-  const hour = new Date().getHours()
-  if (hour < 12) return 'Bonjour'
-  if (hour < 18) return 'Bon après-midi'
-  return 'Bonsoir'
+  const hour = new Date().getHours();
+  if (hour < 12) return 'Bonjour';
+  if (hour < 18) return 'Bon après-midi';
+  return 'Bonsoir';
 }
 
-export function HomePage({
-  firstName = 'Jean-Eudes',
-  streakDays = 5,
-  progressPercent = 35,
-  currentLesson = { title: 'Leçon 3 · Priorités et intersections', category: 'Code de la route', progress: 3, total: 5 },
-  codeStats = { totalLessons: 40, unlocked: false },
-  conduiteStats = { nextSession: 'Sam 21 sept · 14h00', reservedCount: 3 },
-  stats = { lessonsDone: 12, lessonsTotal: 40, avgScore: 68, examDate: '15 nov' },
-}: AccueilProps) {
-  const navigate = useNavigate()
-  const { user, loading } = useAuth()
-  const [profileOpen, setProfileOpen] = useState(false)
-  const [accessMe, setAccessMe] = useState<AccessMe | null>(null)
-  const [accessReady, setAccessReady] = useState(false)
-  const [unreadCount, setUnreadCount] = useState(0)
+function formatReservationDate(iso: string) {
+  const [year, month, day] = iso.split('-');
+  if (!year || !month || !day) return iso;
+  return `${day}-${month}-${year}`;
+}
+
+function initialsOf(name: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return '??';
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+}
+
+export function HomePage() {
+  const navigate = useNavigate();
+  const { user, loading } = useAuth();
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [accessMe, setAccessMe] = useState<AccessMe | null>(null);
+  const [, setAccessReady] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [journey, setJourney] = useState<LearnerJourney | null>(null);
+  const [upcoming, setUpcoming] = useState<ReservationItem[]>([]);
+  const [examScores, setExamScores] = useState<PracticeExamScore[]>([]);
 
   const loadUnread = () => {
     void fetchUnreadCount()
       .then(({ unreadCount: count }) => setUnreadCount(count))
-      .catch(() => setUnreadCount(0))
-  }
+      .catch(() => setUnreadCount(0));
+  };
+
+  const loadInsights = () => {
+    void fetchLearnerJourney().then(setJourney).catch(() => setJourney(null));
+    void fetchDrivingDashboard()
+      .then((data) => setUpcoming(data.upcoming ?? []))
+      .catch(() => setUpcoming([]));
+    void fetchPracticeExamScores()
+      .then((data) => setExamScores(data.scores ?? []))
+      .catch(() => setExamScores([]));
+  };
 
   useEffect(() => {
-    if (!user) return
-    setAccessReady(false)
+    if (!user) return;
+    setAccessReady(false);
     void fetchAccessMe()
       .then(setAccessMe)
       .catch(() => setAccessMe(null))
-      .finally(() => setAccessReady(true))
-    loadUnread()
-  }, [user])
+      .finally(() => setAccessReady(true));
+    loadUnread();
+    loadInsights();
+  }, [user]);
 
   useFocusRefresh(Boolean(user), () => {
-    void fetchAccessMe().then(setAccessMe).catch(() => setAccessMe(null))
-    loadUnread()
-  })
+    void fetchAccessMe().then(setAccessMe).catch(() => setAccessMe(null));
+    loadUnread();
+    loadInsights();
+  });
 
   const handleLogout = () => {
-    clearSession()
-    tracker.reset()
-    navigate('/intro', { replace: true })
-  }
+    clearSession();
+    tracker.reset();
+    navigate('/intro', { replace: true });
+  };
 
   if (loading || !user) {
     return (
@@ -102,112 +100,171 @@ export function HomePage({
           <PageSkeleton variant="home" />
         </main>
       </div>
-    )
+    );
   }
 
-  const greeting = greetingWord()
-  // Données réelles branchées sur les props de la maquette (fallback = valeurs maquette).
-  const displayName = user.firstName?.trim() || firstName
-  const initials = `${user.firstName?.trim()?.[0] ?? ''}${user.lastName?.trim()?.[0] ?? ''}`.toUpperCase() || 'JE'
-  const hasUnread = unreadCount > 0
-  const codeUnlocked = accessMe ? accessMe.access.code : codeStats.unlocked
-  const effectiveCodeStats = { ...codeStats, unlocked: codeUnlocked }
-  const codeLocked = !codeUnlocked
-  const conduiteLocked = accessMe
-    ? !(accessMe.access.conduite_videos || accessMe.access.conduite_heures || accessMe.user.soldeHeures > 0)
-    : false
-  void codeLocked
-  void conduiteLocked
+  const greeting = greetingWord();
+  const displayName = user.firstName?.trim() || 'apprenant';
 
-  const lessonPct = Math.round((currentLesson.progress / currentLesson.total) * 100)
+  // Données réelles
+  const code = journey?.code;
+  const codeDone = code?.chaptersDone ?? 0;
+  const codeTotal = code?.chaptersTotal ?? 0;
+  const codeRatio = codeTotal > 0 ? codeDone / codeTotal : 0;
+  const lastExam = examScores[examScores.length - 1];
+  const previousExam = examScores[examScores.length - 2];
+  const trendDelta = lastExam && previousExam ? lastExam.correct - previousExam.correct : null;
+  const nextLesson = upcoming[0];
+  const soldeHeures = accessMe?.user.soldeHeures ?? 0;
+
+  // Scores pour ScoreBars
+  const recentScores = examScores.slice(-6);
+  const scoreBarsData = Array.from({ length: 6 }, (_, index) => {
+    const score = recentScores[index - (6 - recentScores.length)];
+    return {
+      label: `S${index + 1}`,
+      value: score && score.total > 0 ? Math.round((score.correct / score.total) * 100) : 0,
+      color: (index < 3 ? 'old' : index < 5 ? 'recent' : 'latest') as 'old' | 'recent' | 'latest',
+    };
+  });
 
   return (
-    <AppShell
-      activeTab="accueil"
-      userInitials={initials}
-      hasUnread={hasUnread}
-      onNavigate={(tab) => navigate(TAB_ROUTES[tab])}
-      onOpenNotifications={() => navigate('/notifications')}
-      onOpenProfile={() => setProfileOpen(true)}
-    >
-      <ContentReveal
-        loading={!accessReady}
-        skeleton={<PageSkeleton variant="home" />}
-      >
-      <section className="accueil-greeting">
-        <p className="accueil-greeting-label">{greeting},</p>
-        <div className="accueil-greeting-row">
-          <div>
-            <h1 className="accueil-greeting-name">{displayName}</h1>
-            <div className="accueil-streak">
-              <Flame size={13} />
-              <span>{streakDays} jours de suite</span>
+    <div style={{ minHeight: '100dvh', background: '#F5F7FB', position: 'relative', overflow: 'hidden' }}>
+      <div style={{ position: 'absolute', top: -120, left: -60, width: 300, height: 300, borderRadius: '50%', background: 'rgba(11,170,79,0.10)', filter: 'blur(60px)', pointerEvents: 'none' }} />
+      <div style={{ position: 'relative', boxSizing: 'border-box', padding: '56px 20px 0', display: 'flex', flexDirection: 'column', gap: 20, maxWidth: 1120, margin: '0 auto' }}>
+
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ width: 46, height: 46, borderRadius: 15, background: '#FFFFFF', boxShadow: '0 6px 18px -8px rgba(10,27,61,0.25)', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <LogoMark width={62} height={62} alt="Monpermis.bj" />
+          </div>
+          <div style={{ flexGrow: 1, display: 'flex', flexDirection: 'column', gap: 1 }}>
+            <div style={{ fontSize: 12.5, color: '#5B6680', fontWeight: 600 }}>Bonjour,</div>
+            <div style={{ fontFamily: 'Sora, sans-serif', fontSize: 20, fontWeight: 700, letterSpacing: '-0.01em' }}>{displayName}</div>
+          </div>
+          <IconButton
+            icon={Bell}
+            variant="bell"
+            badge={unreadCount}
+            onPress={() => navigate('/notifications')}
+            accessibilityLabel="Mes notifications"
+          />
+          <IconButton
+            icon={Menu}
+            onPress={() => setProfileOpen(true)}
+            accessibilityLabel="Voir mon profil"
+          />
+        </div>
+
+        {/* HeroCard - Ta préparation au code */}
+        <HeroCard>
+          <svg width="170" height="200" viewBox="0 0 170 200" fill="none" style={{ position: 'absolute', right: -30, top: -18, opacity: 0.16, pointerEvents: 'none' }}>
+            <path d="M20 200 L150 0H174L70 200Z" fill="#FFFFFF" />
+            <path d="M130 46L121 60M110 78L101 92M90 110L81 124M70 142L61 156" stroke="#FFB400" strokeWidth="5" strokeLinecap="round" />
+          </svg>
+          <div style={{ fontSize: 13.5, color: 'rgba(255,255,255,0.78)', fontWeight: 600 }}>Ta préparation au code</div>
+          <div style={{ display: 'flex', alignItems: 'flexEnd', gap: 10 }}>
+            <div style={{ fontFamily: 'Sora, sans-serif', fontSize: 58, lineHeight: 0.95, fontWeight: 700, letterSpacing: '-0.04em' }}>
+              {codeTotal > 0 ? Math.round(codeRatio * 100) : 0}<span style={{ color: 'rgba(255,255,255,0.45)' }}>%</span>
+            </div>
+            <div style={{ paddingBottom: 6, fontSize: 13, color: 'rgba(255,255,255,0.75)', fontWeight: 600 }}>
+              {lastExam ? `Dernier examen blanc · ${lastExam.correct}/${lastExam.total}` : 'prête pour l\'examen'}
             </div>
           </div>
-          <ProgressRing percent={progressPercent} />
-        </div>
-      </section>
-
-      <section className="accueil-hero">
-        <Car className="accueil-hero-bg-icon" size={100} aria-hidden="true" />
-        <p className="accueil-hero-eyebrow">Reprendre où tu t'es arrêté</p>
-        <p className="accueil-hero-title">{currentLesson.title}</p>
-        <p className="accueil-hero-subtitle">{currentLesson.category}</p>
-        <div className="accueil-hero-progress">
-          <div style={{ flex: 1 }}>
-            <ProgressBar percent={lessonPct} dark />
+          <div style={{ display: 'flex', gap: 8 }}>
+            {trendDelta != null && trendDelta !== 0 ? (
+              <Chip variant="glass" size="sm">
+                <TrendingUp size={14} strokeWidth={2.4} stroke="#3BE08A" />
+                {trendDelta > 0 ? `+${trendDelta}` : trendDelta} pts
+              </Chip>
+            ) : null}
+            <Chip variant="glass" size="sm">
+              {codeTotal > 0 ? `${codeDone}/${codeTotal} chapitres` : 'Commence ton premier chapitre'}
+            </Chip>
           </div>
-          <span>{currentLesson.progress}/{currentLesson.total}</span>
-        </div>
-        <Button variant="cta" tone="green" icon={<Play size={14} />} onClick={() => navigate('/code-de-la-route')} style={{ marginTop: 16 }}>
-          Continuer
-        </Button>
-      </section>
-
-      <SectionTitle>Choisis ton parcours</SectionTitle>
-
-      <Card>
-        <div className="accueil-card-row">
-          <IconBadge icon={<BookOpen size={20} />} tone="green" />
-          <div className="accueil-card-text">
-            <p className="accueil-card-title">Code de la route</p>
-            <p className="accueil-card-subtitle">{effectiveCodeStats.totalLessons} leçons · quiz inclus</p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 10, marginTop: 4 }}>
+            <GlassAction
+              icon={<BookOpen size={22} strokeWidth={1.9} />}
+              label="Réviser"
+              onPress={() => navigate('/code-de-la-route/revision-chapitres')}
+            />
+            <GlassAction
+              icon={<Flag size={22} strokeWidth={1.9} />}
+              label="Examen blanc"
+              onPress={() => navigate('/code-de-la-route/examens-test')}
+            />
+            <GlassAction
+              icon={<CalendarClock size={22} strokeWidth={2} />}
+              label="Réserver"
+              accent
+              onPress={() => navigate('/conduite/reservation')}
+            />
           </div>
-        </div>
-        {!effectiveCodeStats.unlocked && (
-          <Button variant="outline" icon={<Lock size={13} />} onClick={() => navigate('/abonnement')}>
-            Débloquer l'accès
-          </Button>
-        )}
-      </Card>
+        </HeroCard>
 
-      <Card>
-        <div className="accueil-card-row">
-          <IconBadge icon={<Car size={20} />} tone="orange" />
-          <div className="accueil-card-text">
-            <p className="accueil-card-title">Conduite</p>
-            <p className="accueil-card-subtitle">Leçons vidéo et réservations</p>
-          </div>
-          <Button variant="icon" tone="orange" aria-label="Voir Conduite" onClick={() => navigate('/conduite')}>
-            <ChevronRight size={16} />
-          </Button>
+        {/* Section Prochaine leçon */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <h2 style={{ margin: 0, fontFamily: 'Sora, sans-serif', fontSize: 18, fontWeight: 700 }}>Prochaine leçon</h2>
+          <a href="/conduite/mes-reservations" style={{ fontSize: 13, fontWeight: 700, textDecoration: 'underline', color: '#067A37' }}>Tout voir</a>
         </div>
-        {conduiteStats.nextSession && (
-          <div className="accueil-card-footer">
-            <span className="accueil-card-footer-date">
-              <CalendarClock size={13} />
-              {conduiteStats.nextSession}
-            </span>
-            <Badge tone="orange">{conduiteStats.reservedCount} réservées</Badge>
-          </div>
-        )}
-      </Card>
 
-      <div className="accueil-stats">
-        <StatCard icon={<BookOpen size={14} />} label="Leçons" value={`${stats.lessonsDone}/${stats.lessonsTotal}`} />
-        <StatCard icon={<Target size={14} />} label="Score moyen" value={`${stats.avgScore}%`} />
-        <StatCard icon={<Calendar size={14} />} label="Examen" value={stats.examDate} />
+        <div style={{ display: 'flex', flexDirection: 'column', marginTop: -8 }}>
+          <NotchedCard
+            tabLabel="Conduite"
+            tabColor="#0A1B3D"
+            tabIcon={<span style={{ width: 8, height: 8, borderRadius: 4, background: '#0BAA4F' }} />}
+            time={nextLesson?.creneau ? `${nextLesson.creneau.startTime}` : '08:00'}
+            date={nextLesson?.creneau ? formatReservationDate(nextLesson.creneau.date) : '29-09-2026'}
+          >
+            {nextLesson ? (
+              <>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={{ width: 44, height: 44, borderRadius: 22, background: '#FFB400', color: '#0A1B3D', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Sora, sans-serif', fontWeight: 800, fontSize: 15 }}>
+                    {initialsOf(nextLesson.moniteur?.fullName || 'Moniteur')}
+                  </div>
+                  <div style={{ flexGrow: 1 }}>
+                    <div style={{ fontFamily: 'Sora, sans-serif', fontSize: 16, fontWeight: 700 }}>
+                      {nextLesson.creneau ? `${formatReservationDate(nextLesson.creneau.date)} · ${nextLesson.creneau.startTime}` : 'Séance programmée'}
+                    </div>
+                    <div style={{ fontSize: 12.5, color: 'rgba(255,255,255,0.72)', marginTop: 2 }}>
+                      avec {nextLesson.moniteur?.fullName || 'ton moniteur'} · 2 h
+                    </div>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <Chip variant="green" size="sm">
+                    {nextLesson.paymentStatus === 'paid' || nextLesson.status === 'confirmed' ? 'Confirmée' : 'En attente'}
+                  </Chip>
+                  <Chip variant="glass" size="sm">
+                    Solde : {soldeHeures} h restantes
+                  </Chip>
+                </div>
+              </>
+            ) : (
+              <>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={{ width: 44, height: 44, borderRadius: 22, background: '#FFB400', color: '#0A1B3D', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Sora, sans-serif', fontWeight: 800, fontSize: 15 }}>MP</div>
+                  <div style={{ flexGrow: 1 }}>
+                    <div style={{ fontFamily: 'Sora, sans-serif', fontSize: 16, fontWeight: 700 }}>Réserve ta prochaine leçon</div>
+                    <div style={{ fontSize: 12.5, color: 'rgba(255,255,255,0.72)', marginTop: 2 }}>Choisis ton moniteur et ton créneau</div>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <Chip variant="green" size="sm">Solde : {soldeHeures} h restantes</Chip>
+                  <Button variant="accent" size="sm" onClick={() => navigate('/conduite/reservation')}>Voir les moniteurs</Button>
+                </div>
+              </>
+            )}
+          </NotchedCard>
+        </div>
+
+        {/* ScoreBars : la carte et son en-tête sont fournis par le composant. */}
+        <ScoreBars scores={scoreBarsData} />
+
       </div>
+
+      {/* TabBar flottante (TabBar.html) */}
+      <MainTabBar activeId="accueil" />
 
       <AccountSheet
         visible={profileOpen}
@@ -215,30 +272,13 @@ export function HomePage({
         greeting={greeting}
         onClose={() => setProfileOpen(false)}
         onLogout={handleLogout}
-        onOpenAbonnement={() => {
-          setProfileOpen(false)
-          navigate('/abonnement')
-        }}
-        onOpenPayments={() => {
-          setProfileOpen(false)
-          navigate('/abonnement/historique')
-        }}
-        onOpenSupport={() => {
-          setProfileOpen(false)
-          window.open(
-            supportWhatsAppUrl('Bonjour Monpermis, j’ai besoin d’aide.'),
-            '_blank',
-            'noopener,noreferrer',
-          )
-        }}
-        onOpenProfile={() => {
-          setProfileOpen(false)
-          navigate('/profil')
-        }}
+        onOpenAbonnement={() => { setProfileOpen(false); navigate('/abonnement'); }}
+        onOpenPayments={() => { setProfileOpen(false); navigate('/abonnement/historique'); }}
+        onOpenSupport={() => { setProfileOpen(false); window.open(supportWhatsAppUrl('Bonjour Monpermis, j\'ai besoin d\'aide.'), '_blank', 'noopener,noreferrer'); }}
+        onOpenProfile={() => { setProfileOpen(false); navigate('/profil'); }}
       />
-      </ContentReveal>
-    </AppShell>
-  )
+    </div>
+  );
 }
 
-export default HomePage
+export default HomePage;

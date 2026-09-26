@@ -121,7 +121,7 @@ export function AbonnementPage() {
   return (
     <div style={{ minHeight: '100dvh', background: '#F5F7FB', position: 'relative', overflow: 'hidden' }}>
       <div style={{ position: 'absolute', top: -80, right: -80, width: 260, height: 260, borderRadius: '50%', background: 'rgba(255,180,0,0.16)', filter: 'blur(60px)', pointerEvents: 'none' }} />
-      <div style={{ position: 'relative', boxSizing: 'border-box', padding: '56px 20px 0', display: 'flex', flexDirection: 'column', gap: 14, maxWidth: 390, margin: '0 auto' }}>
+      <div style={{ position: 'relative', boxSizing: 'border-box', padding: '56px 20px 0', display: 'flex', flexDirection: 'column', gap: 14, maxWidth: 1120, margin: '0 auto' }}>
 
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -133,7 +133,7 @@ export function AbonnementPage() {
         </div>
 
         {/* Plans */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div className="mp-grid-desktop" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {sortedModules.filter(m => PRIMARY_KEYS.includes(m.key)).map((module) => {
             const isPlanActive = Boolean(me?.access[module.key]);
             const checked = Boolean(selected[module.key]);
