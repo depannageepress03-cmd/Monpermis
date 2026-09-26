@@ -367,12 +367,6 @@ export const layout = {
   tabBarBottomInset: 22,
 };
 
-export const routePattern = {
-  home: require('../assets/route-pattern-home.svg'),
-  admin: require('../assets/route-pattern-admin.svg'),
-  login: require('../assets/route-pattern-login.svg'),
-};
-
 export const fontFamilies = {
   display: {
     500: 'Sora_500Medium',
@@ -1309,7 +1303,6 @@ export const theme = {
   fontFamilies,
   textStyles,
   componentStyles,
-  routePattern,
 } as const;
 
 export type Theme = typeof theme;

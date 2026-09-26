@@ -7,7 +7,6 @@ export {
   fontFamilies,
   textStyles,
   componentStyles,
-  routePattern,
   theme,
   type Theme,
   type Colors,
