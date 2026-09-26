@@ -74,9 +74,9 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 export function registerUser(data: {
   firstName: string
   lastName: string
-  phone: string
+  email: string
   password: string
-  email?: string
+  phone?: string
 }) {
   return request<{ message: string; email?: string; phone?: string }>('/auth/register', {
     method: 'POST',
@@ -84,13 +84,11 @@ export function registerUser(data: {
   })
 }
 
-export function loginUser(data: { phone?: string; identifier?: string; password: string }) {
-  const phone = (data.phone || data.identifier || '').trim()
+export function loginUser(data: { email: string; password: string }) {
   return request<AuthData>('/auth/login', {
     method: 'POST',
     body: JSON.stringify({
-      phone,
-      identifier: phone,
+      identifier: data.email,
       password: data.password,
     }),
   })

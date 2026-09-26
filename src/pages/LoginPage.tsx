@@ -3,29 +3,20 @@ import { type FormEvent, useEffect, useState } from 'react'
 import { ChevronLeft, Eye, EyeOff } from 'lucide-react'
 import { getAuthErrorDetails, loginUser, saveSession, type AuthUser } from '../api/auth'
 import { GoogleAuthButton } from '../components/GoogleAuthButton'
-import { Button, IconButton, LogoTile, SegmentedControl, TextField } from '../components/ui'
-import {
-  normalizePhone,
-  PHONE_PLACEHOLDER,
-  validateEmail,
-  validatePassword,
-  validatePhone,
-} from '../utils/validation'
-
-type LoginMode = 'phone' | 'email'
+import { Button, IconButton, LogoTile, TextField } from '../components/ui'
+import { validateEmail, validatePassword } from '../utils/validation'
 
 export function LoginPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const flashMessage = (location.state as { message?: string } | null)?.message
 
-  const [mode, setMode] = useState<LoginMode>('email')
-  const [identifier, setIdentifier] = useState('')
+  const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [remember, setRemember] = useState(true)
   const [errors, setErrors] = useState<{
-    identifier?: string
+    email?: string
     password?: string
     form?: string
     info?: string
@@ -56,12 +47,11 @@ export function LoginPage() {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
 
-    const identifierError =
-      mode === 'email' ? validateEmail(identifier) : validatePhone(identifier)
+    const emailError = validateEmail(email)
     const passwordError = validatePassword(password)
 
-    if (identifierError || passwordError) {
-      setErrors({ identifier: identifierError, password: passwordError })
+    if (emailError || passwordError) {
+      setErrors({ email: emailError, password: passwordError })
       return
     }
 
@@ -69,11 +59,7 @@ export function LoginPage() {
     setLoading(true)
 
     try {
-      const { user, token } = await loginUser({
-        identifier: mode === 'email' ? identifier.trim() : normalizePhone(identifier),
-        password,
-        isEmail: mode === 'email',
-      })
+      const { user, token } = await loginUser({ email: email.trim(), password })
       saveSession(token, user, remember)
       redirectAfterAuth(user)
     } catch (error) {
@@ -87,13 +73,6 @@ export function LoginPage() {
   const handleGoogleSuccess = (user: AuthUser, token: string) => {
     saveSession(token, user, true)
     redirectAfterAuth(user)
-  }
-
-  const switchMode = (value: string) => {
-    const next = value as LoginMode
-    setMode(next)
-    setIdentifier('')
-    setErrors((prev) => ({ ...prev, identifier: undefined, form: undefined }))
   }
 
   return (
@@ -170,15 +149,6 @@ export function LoginPage() {
           </p>
         </div>
 
-        <SegmentedControl
-          value={mode}
-          onChange={switchMode}
-          options={[
-            { value: 'email', label: 'E-mail' },
-            { value: 'phone', label: 'Téléphone' },
-          ]}
-        />
-
         {errors.info && (
           <p
             style={{
@@ -214,54 +184,20 @@ export function LoginPage() {
         )}
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          {mode === 'phone' ? (
-            <TextField
-              id="login-phone"
-              label="Téléphone"
-              type="tel"
-              inputMode="tel"
-              autoComplete="tel"
-              placeholder={PHONE_PLACEHOLDER}
-              value={identifier}
-              onChange={(e) => {
-                setIdentifier(normalizePhone(e.target.value))
-                if (errors.identifier) setErrors((prev) => ({ ...prev, identifier: undefined }))
-              }}
-              error={errors.identifier}
-              prefix={
-                <span
-                  style={{
-                    height: 40,
-                    padding: '0 12px',
-                    borderRadius: 20,
-                    background: '#F1F4F9',
-                    display: 'flex',
-                    alignItems: 'center',
-                    fontSize: 14,
-                    fontWeight: 700,
-                    color: '#0A1B3D',
-                  }}
-                >
-                  +229
-                </span>
-              }
-            />
-          ) : (
-            <TextField
-              id="login-email"
-              label="E-mail"
-              type="email"
-              inputMode="email"
-              autoComplete="email"
-              placeholder="aicha@exemple.bj"
-              value={identifier}
-              onChange={(e) => {
-                setIdentifier(e.target.value)
-                if (errors.identifier) setErrors((prev) => ({ ...prev, identifier: undefined }))
-              }}
-              error={errors.identifier}
-            />
-          )}
+          <TextField
+            id="login-email"
+            label="E-mail"
+            type="email"
+            inputMode="email"
+            autoComplete="email"
+            placeholder="aicha@exemple.bj"
+            value={email}
+            onChange={(e) => {
+              setEmail(e.target.value)
+              if (errors.email) setErrors((prev) => ({ ...prev, email: undefined }))
+            }}
+            error={errors.email}
+          />
 
           <TextField
             id="login-password"

@@ -38,12 +38,12 @@ interface FormErrors {
 export function RegisterPasswordScreen() {
   const navigation = useNavigation<Nav>()
   const route = useRoute<Route>()
-  const { firstName = '', lastName = '', phone = '' } = route.params ?? {}
+  const { firstName = '', lastName = '', email = '', phone = '' } = route.params ?? {}
 
   // Accès direct (deep link) sans étape 1 : retour à l'inscription.
   useEffect(() => {
-    if (!phone.trim()) navigation.replace('Register')
-  }, [phone, navigation])
+    if (!email.trim()) navigation.replace('Register')
+  }, [email, navigation])
 
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -89,7 +89,8 @@ export function RegisterPasswordScreen() {
       const { message } = await registerUser({
         firstName,
         lastName,
-        phone,
+        email,
+        phone: phone || undefined,
         password,
       })
       navigation.reset({
@@ -99,7 +100,7 @@ export function RegisterPasswordScreen() {
             name: 'Login',
             params: {
               message:
-                message || 'Compte créé. Connecte-toi avec ton téléphone et ton mot de passe.',
+                message || 'Compte créé. Vérifie ton email puis connecte-toi.',
             },
           },
         ],

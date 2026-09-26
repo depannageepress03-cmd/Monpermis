@@ -2,7 +2,7 @@ import { useNavigation, useRoute, type RouteProp } from '@react-navigation/nativ
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { setStatusBarStyle } from 'expo-status-bar'
-import { Check, ChevronLeft, Eye, EyeOff, LockKeyhole, Mail, Phone } from 'lucide-react-native'
+import { Check, ChevronLeft, Eye, EyeOff, LockKeyhole, Mail } from 'lucide-react-native'
 import {
   Animated,
   KeyboardAvoidingView,
@@ -20,29 +20,24 @@ import { useAuth } from '../context/AuthContext'
 import type { RootStackParamList } from '../navigation/types'
 import { colors, textStyles } from '../theme/tokens'
 import {
-  normalizePhone,
-  PHONE_PLACEHOLDER,
   validateEmail,
-  validatePhone,
   validatePassword,
 } from '../utils/validation'
 import { showAuthError } from '../utils/showAuthError'
-import { AppButton, AppTextField, IconButton, LogoTile, SegmentedControl } from '../components/ui-kit-core'
+import { AppButton, AppTextField, IconButton, LogoTile } from '../components/ui-kit-core'
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'Login'>
 type Route = RouteProp<RootStackParamList, 'Login'>
-type Mode = 'email' | 'phone'
 
 export function LoginScreen() {
   const navigation = useNavigation<Nav>()
   const route = useRoute<Route>()
   const { signIn } = useAuth()
-  const [mode, setMode] = useState<Mode>('email')
-  const [identifier, setIdentifier] = useState('')
+  const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [remember, setRemember] = useState(true)
-  const [errors, setErrors] = useState<{ identifier?: string; password?: string; info?: string; form?: string }>({})
+  const [errors, setErrors] = useState<{ email?: string; password?: string; info?: string; form?: string }>({})
   const [loading, setLoading] = useState(false)
   const contentOpacity = useRef(new Animated.Value(0)).current
   const contentTranslate = useRef(new Animated.Value(16)).current
@@ -79,11 +74,11 @@ export function LoginScreen() {
   )
 
   const handleSubmit = async () => {
-    const identifierError = mode === 'email' ? validateEmail(identifier) : validatePhone(identifier)
+    const emailError = validateEmail(email)
     const passwordError = validatePassword(password)
 
-    if (identifierError || passwordError) {
-      setErrors({ identifier: identifierError, password: passwordError })
+    if (emailError || passwordError) {
+      setErrors({ email: emailError, password: passwordError })
       return
     }
 
@@ -91,10 +86,7 @@ export function LoginScreen() {
     setLoading(true)
 
     try {
-      const { user, token } = await loginUser({
-        identifier: mode === 'email' ? identifier.trim() : normalizePhone(identifier),
-        password,
-      })
+      const { user, token } = await loginUser({ email, password })
       await finishAuth(token, user)
     } catch (error) {
       showAuthError(error)
@@ -105,12 +97,6 @@ export function LoginScreen() {
 
   const handleGoogleSuccess = async (user: AuthUser, token: string) => {
     await finishAuth(token, user)
-  }
-
-  const switchMode = (value: string) => {
-    setMode(value as Mode)
-    setIdentifier('')
-    setErrors((prev) => ({ ...prev, identifier: undefined, form: undefined }))
   }
 
   return (
@@ -139,50 +125,21 @@ export function LoginScreen() {
                 <Text style={styles.subtitle}>Connecte-toi pour reprendre ta préparation.</Text>
               </View>
 
-              <SegmentedControl
-                options={[
-                  { value: 'email', label: 'E-mail' },
-                  { value: 'phone', label: 'Téléphone' },
-                ]}
-                value={mode}
-                onChange={switchMode}
-              />
-
               <View style={styles.fields}>
                 {errors.info ? <Text style={styles.info}>{errors.info}</Text> : null}
                 {errors.form ? <Text style={styles.formError}>{errors.form}</Text> : null}
-                {mode === 'phone' ? (
-                  <AppTextField
-                    label="Téléphone"
-                    placeholder={PHONE_PLACEHOLDER}
-                    keyboardType="phone-pad"
-                    value={identifier}
-                    onChangeText={(value) => {
-                      setIdentifier(normalizePhone(value))
-                      if (errors.identifier) setErrors((prev) => ({ ...prev, identifier: undefined }))
-                    }}
-                    error={errors.identifier}
-                    prefix={
-                      <View style={styles.prefix}>
-                        <Text style={styles.prefixText}>+229</Text>
-                      </View>
-                    }
-                    left={<Phone size={20} color={colors.greenDark} strokeWidth={2} />}
-                  />
-                ) : (
-                  <AppTextField
-                    label="Adresse e-mail"
-                    placeholder="aicha@exemple.bj"
-                    keyboardType="email-address"
-                    value={identifier}
-                    onChangeText={(value) => {
-                      setIdentifier(value)
-                      if (errors.identifier) setErrors((prev) => ({ ...prev, identifier: undefined }))
-                    }}
-                    error={errors.identifier}
-                    left={<Mail size={20} color={colors.greenDark} strokeWidth={2} />}
-                  />
-                )}
+                <AppTextField
+                  label="Adresse e-mail"
+                  placeholder="aicha@exemple.bj"
+                  keyboardType="email-address"
+                  value={email}
+                  onChangeText={(value) => {
+                    setEmail(value)
+                    if (errors.email) setErrors((prev) => ({ ...prev, email: undefined }))
+                  }}
+                  error={errors.email}
+                  left={<Mail size={20} color={colors.greenDark} strokeWidth={2} />}
+                />
                 <AppTextField
                   label="Mot de passe"
                   placeholder="••••••••"

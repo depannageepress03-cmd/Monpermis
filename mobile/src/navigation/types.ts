@@ -1,7 +1,8 @@
 export type RegisterProfileParams = {
   firstName: string
   lastName: string
-  phone: string
+  email: string
+  phone?: string
 }
 
 export type RootStackParamList = {

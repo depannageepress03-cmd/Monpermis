@@ -29,6 +29,7 @@ import { brand, dark, fonts, gradients } from '../theme'
 import {
   normalizePhone,
   PHONE_PLACEHOLDER,
+  validateEmail,
   validateName,
   validatePhone,
 } from '../utils/validation'
@@ -38,6 +39,7 @@ type Nav = NativeStackNavigationProp<RootStackParamList, 'Register'>
 interface FormErrors {
   firstName?: string
   lastName?: string
+  email?: string
   phone?: string
   terms?: string
 }
@@ -47,6 +49,7 @@ export function RegisterScreen() {
   const { signIn } = useAuth()
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
+  const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
   const [acceptTerms, setAcceptTerms] = useState(false)
   const [errors, setErrors] = useState<FormErrors & { form?: string }>({})
@@ -74,7 +77,8 @@ export function RegisterScreen() {
     const newErrors: FormErrors = {
       firstName: validateName(firstName, 'Le prénom'),
       lastName: validateName(lastName, 'Le nom'),
-      phone: validatePhone(phone),
+      email: validateEmail(email),
+      phone: phone.trim() ? validatePhone(phone) : undefined,
       terms: !acceptTerms ? "Veuillez accepter les conditions d'utilisation" : undefined,
     }
 
@@ -87,7 +91,8 @@ export function RegisterScreen() {
     navigation.navigate('RegisterPassword', {
       firstName: firstName.trim(),
       lastName: lastName.trim(),
-      phone: normalizePhone(phone),
+      email: email.trim().toLowerCase(),
+      phone: phone.trim() ? normalizePhone(phone) : '',
     })
   }
 
@@ -160,7 +165,7 @@ export function RegisterScreen() {
 
               <View style={styles.dividerRow}>
                 <View style={styles.dividerLine} />
-                <Text style={styles.dividerText}>ou avec ton téléphone</Text>
+                <Text style={styles.dividerText}>ou avec ton e-mail</Text>
                 <View style={styles.dividerLine} />
               </View>
 
@@ -189,7 +194,16 @@ export function RegisterScreen() {
 
               <View style={styles.fields}>
                 <AuthInput
-                  label="Téléphone"
+                  label="E-mail"
+                  placeholder="aicha@exemple.bj"
+                  keyboardType="email-address"
+                  autoComplete="email"
+                  value={email}
+                  onChangeText={setEmail}
+                  error={errors.email}
+                />
+                <AuthInput
+                  label="Téléphone (optionnel)"
                   placeholder={PHONE_PLACEHOLDER}
                   keyboardType="phone-pad"
                   autoComplete="tel"

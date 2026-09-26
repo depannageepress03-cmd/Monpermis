@@ -47,13 +47,14 @@ async function assertPhoneAvailable(normalizedPhone, excludeUserId = null) {
 
 router.post('/register', learnerRegisterLimiter, async (req, res) => {
   try {
-    const { firstName, lastName, phone, password } = req.body
+    const { firstName, lastName, password } = req.body
     const rawEmail = String(req.body?.email || '').trim()
+    const rawPhone = String(req.body?.phone || '').trim()
 
-    if (!firstName || !lastName || !phone || !password) {
+    if (!firstName || !lastName || !rawEmail || !password) {
       return res.status(400).json({
         success: false,
-        error: 'Prénom, nom, téléphone et mot de passe sont requis',
+        error: 'Prénom, nom, email et mot de passe sont requis',
       })
     }
 
@@ -68,68 +69,68 @@ router.post('/register', learnerRegisterLimiter, async (req, res) => {
       })
     }
 
-    if (firstName.length > 100 || lastName.length > 100 || phone.length > 30) {
+    if (firstName.length > 100 || lastName.length > 100) {
       return res.status(400).json({ success: false, error: 'Un ou plusieurs champs sont trop longs' })
     }
 
-    if (rawEmail && rawEmail.length > 254) {
-      return res.status(400).json({ success: false, error: 'Email trop long' })
+    const normalizedEmail = rawEmail.toLowerCase()
+    if (normalizedEmail.length > 254 || !/^\S+@\S+\.\S+$/.test(normalizedEmail)) {
+      return res.status(400).json({ success: false, error: 'Email invalide' })
     }
 
-    const normalizedPhone = normalizeLearnerPhone(phone)
-    if (!normalizedPhone) {
-      return res.status(400).json({
-        success: false,
-        error: 'Numéro de téléphone invalide. Exemple : 0147880143',
-      })
-    }
+    // Téléphone optionnel (rappels, Mobile Money) : validé seulement si fourni.
+    let normalizedPhone = ''
+    if (rawPhone) {
+      if (rawPhone.length > 30) {
+        return res.status(400).json({ success: false, error: 'Un ou plusieurs champs sont trop longs' })
+      }
+      normalizedPhone = normalizeLearnerPhone(rawPhone)
+      if (!normalizedPhone) {
+        return res.status(400).json({
+          success: false,
+          error: 'Numéro de téléphone invalide. Exemple : 0147880143',
+        })
+      }
 
-    try {
-      await assertPhoneAvailable(normalizedPhone)
-    } catch (phoneError) {
-      return res.status(phoneError.status || 409).json({
-        success: false,
-        error: phoneError.message,
-      })
-    }
-
-    const normalizedEmail = rawEmail ? rawEmail.toLowerCase() : ''
-    if (normalizedEmail) {
-      const existing = await User.findOne({ email: normalizedEmail })
-      if (existing) {
-        if (existing.googleId) {
-          return res.status(409).json({
-            success: false,
-            error: 'Cet email est déjà associé à un compte. Utilise ton téléphone pour te connecter, ou contacte le support.',
-          })
-        }
-        return res.status(409).json({ success: false, error: 'Cet email est déjà utilisé' })
+      try {
+        await assertPhoneAvailable(normalizedPhone)
+      } catch (phoneError) {
+        return res.status(phoneError.status || 409).json({
+          success: false,
+          error: phoneError.message,
+        })
       }
     }
 
-    const hasEmail = Boolean(normalizedEmail)
-    const verificationToken = hasEmail ? generateVerificationToken() : undefined
+    const existing = await User.findOne({ email: normalizedEmail })
+    if (existing) {
+      if (existing.googleId) {
+        return res.status(409).json({
+          success: false,
+          error: 'Cet email est déjà associé à un compte Google. Connecte-toi avec Google.',
+        })
+      }
+      return res.status(409).json({ success: false, error: 'Cet email est déjà utilisé' })
+    }
+
+    const verificationToken = generateVerificationToken()
     const userPayload = {
       firstName: String(firstName).trim(),
       lastName: String(lastName).trim(),
       phone: normalizedPhone,
       password,
       authProvider: 'local',
-      isEmailVerified: !hasEmail,
-    }
-    if (hasEmail) {
-      userPayload.email = normalizedEmail
-      userPayload.emailVerificationToken = verificationToken
-      userPayload.emailVerificationExpires = getVerificationExpiry()
+      isEmailVerified: false,
+      email: normalizedEmail,
+      emailVerificationToken: verificationToken,
+      emailVerificationExpires: getVerificationExpiry(),
     }
 
     const user = await User.create(userPayload)
 
-    if (hasEmail && verificationToken) {
-      sendVerificationEmail(user, verificationToken).catch((err) => {
-        console.error('Email de vérification non envoyé:', err.message)
-      })
-    }
+    sendVerificationEmail(user, verificationToken).catch((err) => {
+      console.error('Email de vérification non envoyé:', err.message)
+    })
 
     logUserActivity(req, {
       user,
@@ -138,15 +139,13 @@ router.post('/register', learnerRegisterLimiter, async (req, res) => {
       resourceId: String(user._id),
       summary: `Inscription · ${user.firstName} ${user.lastName}`,
       severity: 'success',
-      metadata: { phone: user.phone, hasEmail },
+      metadata: { phone: user.phone, hasEmail: true },
     })
 
     res.status(201).json({
       success: true,
       data: {
-        message: hasEmail
-          ? 'Compte créé. Vérifiez votre email pour activer votre compte, puis connectez-vous.'
-          : 'Compte créé. Connectez-vous avec votre téléphone et votre mot de passe.',
+        message: 'Compte créé. Vérifiez votre email pour activer votre compte, puis connectez-vous.',
         email: user.email || '',
         phone: user.phone,
       },
@@ -175,32 +174,33 @@ router.post('/login', learnerLoginLimiter, async (req, res) => {
     if (!identifier || !password) {
       return res.status(400).json({
         success: false,
-error: 'Téléphone et mot de passe requis',
+error: 'Email et mot de passe requis',
       })
     }
 
+    // Connexion par email. Les comptes historiques sans email restent
+    // joignables par leur numéro (compatibilité, invisible côté UI).
+    let user = null
     if (identifier.includes('@')) {
-      return res.status(400).json({
-        success: false,
-error: 'Connecte-toi avec ton numéro de téléphone',
-      })
+      const normalizedEmail = identifier.toLowerCase()
+      if (!/^\S+@\S+\.\S+$/.test(normalizedEmail)) {
+        return res.status(400).json({
+          success: false,
+          error: 'Email invalide',
+        })
+      }
+      user = await User.findOne({ email: normalizedEmail }).select('+password')
+    } else {
+      const normalizedPhone = normalizeLearnerPhone(identifier)
+      if (normalizedPhone) {
+        user = await User.findOne({ phone: normalizedPhone }).select('+password')
+      }
     }
-
-    const normalizedPhone = normalizeLearnerPhone(identifier)
-
-    if (!normalizedPhone) {
-      return res.status(400).json({
-        success: false,
-        error: 'Numéro de téléphone invalide. Exemple : 0147880143',
-      })
-    }
-
-    const user = await User.findOne({ phone: normalizedPhone }).select('+password')
 
     if (!user) {
       return res.status(401).json({
         success: false,
-error: 'Téléphone ou mot de passe incorrect',
+error: 'Email ou mot de passe incorrect',
       })
     }
 
@@ -223,7 +223,7 @@ error:
     if (!(await user.comparePassword(password))) {
       return res.status(401).json({
         success: false,
-error: 'Téléphone ou mot de passe incorrect',
+error: 'Email ou mot de passe incorrect',
       })
     }
 
@@ -231,8 +231,8 @@ error: 'Téléphone ou mot de passe incorrect',
     const clientBody = String(req.body?.client || '').toLowerCase()
     const isMobileClient = clientHeader === 'mobile' || clientBody === 'mobile'
 
-    // Comptes téléphone sans email : déjà vérifiés.
-    // Seuls les locaux avec email non vérifié sont bloqués (web, legacy).
+    // Les comptes locaux avec email non vérifié sont bloqués sur web.
+    // (Mobile contourne pour compatibilité historique.)
     const hasEmail = Boolean(String(user.email || '').trim())
     if (
       !isMobileClient &&
