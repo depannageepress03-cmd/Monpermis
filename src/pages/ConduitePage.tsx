@@ -106,7 +106,7 @@ export function ConduitePage() {
         setSelectedDate('');
       });
     void fetchAvailableCreneaux({ moniteurId: selectedMoniteurId })
-      .then(setCreneaux)
+      .then((data) => setCreneaux(Array.isArray(data?.days) ? data.days : []))
       .catch(() => setCreneaux(null));
   }, [selectedMoniteurId]);
 
