@@ -15,6 +15,12 @@ dist-ssr
 server/.env
 mobile/.env
 administration/.env
+# Fichiers de recette QA (valeurs factices, jamais de secrets réels)
+.env.test
+server/.env.test
+mobile/.env.test
+administration/.env.test
+moniteur/.env.test
 
 # Android signing (never commit)
 *.keystore

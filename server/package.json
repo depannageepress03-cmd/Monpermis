@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "node --watch src/index.js",
     "start": "node src/index.js",
+    "test:api": "vitest run",
     "test:email": "node scripts/test-email.js",
     "verify:user": "node scripts/verify-user.js",
     "seed:admin": "node scripts/seed-admin.js",
@@ -37,5 +38,10 @@
   },
   "overrides": {
     "axios": "^1.13.2"
+  },
+  "devDependencies": {
+    "mongodb-memory-server": "^11.3.0",
+    "supertest": "^7.3.0",
+    "vitest": "^5.0.2"
   }
 }
