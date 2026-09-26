@@ -1,4 +1,5 @@
 import { Router } from 'express'
+import mongoose from 'mongoose'
 import { Chapter } from '../models/Chapter.js'
 import { Question } from '../models/Question.js'
 import { RevisionCourse } from '../models/RevisionCourse.js'
@@ -298,6 +299,11 @@ router.post('/chapters/:chapterId/questions/check', ...withCodeAccess, async (re
         success: true,
         data: hardcodedCheck,
       })
+    }
+
+    // Id Mongo invalide (ex. « nope ») : 404 propre au lieu d'un 500 CastError.
+    if (!mongoose.isValidObjectId(questionId)) {
+      return res.status(404).json({ success: false, error: 'Question introuvable' })
     }
 
     const question = await Question.findOne({

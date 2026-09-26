@@ -88,8 +88,8 @@ describe('qcm', () => {
       token,
       body: { questionId: 'nope', answerIds: [] },
     })
-    // B2 (rapport) : id invalide → 500 CastError non gérée au lieu de 400/404.
-    expect(invalid.status).toBe(500)
+    // B2 corrigé : id invalide → 404 propre (plus de 500 CastError).
+    expect(invalid.status).toBe(404)
   })
 })
 
