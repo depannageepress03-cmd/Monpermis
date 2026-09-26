@@ -1,281 +1,312 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ChevronRight } from 'lucide-react';
-import { useSearchParams } from 'react-router-dom';
-import { earliestBookableTime, fetchMoniteurAvailability, fetchPublicMoniteurs, HOURS_DISCOUNT_FCFA, HOURS_DISCOUNT_MIN_HOURS, ReservationError, type AvailabilityDay, type MoniteurPublic, type ReservationSlot } from '../../api/reservations';
-import { fetchAccessMe } from '../../api/accessRequests';
-;
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { createReservation, fetchAvailableCreneaux, fetchDrivingDashboard, fetchMoniteurAvailability, fetchPublicMoniteurs, requestReservationSlot, ReservationError, type AvailabilityDay, type DrivingProgress, type MoniteurPublic, type ReservationSlot } from '../../api/reservations';
 import { PageLoader } from '../../components/PageLoader';
-;
-;
 import { useAuth } from '../../hooks/useAuth';
-import { Button, DayPill, SlotButton, MonitorChip } from '../../components/ui';
+import { Button, DayPill, HeroCard, LogoTile, MonitorChip, SlotButton } from '../../components/ui';
 import { MainTabBar } from '../../components/MainTabBar';
-import { LogoMark } from '../../components/icons/LogoMark';
 
+const FR_DAYS = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
+const FR_MONTHS = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
 
-type Step = 'moniteur' | 'calendar' | 'payment' | 'success';
+function parseDay(iso: string): Date | null {
+  const [y, m, d] = iso.split('-').map((v) => parseInt(v, 10));
+  if (!y || !m || !d) return null;
+  return new Date(y, m - 1, d);
+}
 
+function isoWeek(date: Date): number {
+  const t = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const day = (t.getUTCDay() + 6) % 7;
+  t.setUTCDate(t.getUTCDate() - day + 3);
+  const first = new Date(Date.UTC(t.getUTCFullYear(), 0, 4));
+  return 1 + Math.round(((t.getTime() - first.getTime()) / 86400000 - 3 + ((first.getUTCDay() + 6) % 7)) / 7);
+}
 
+function initialsOf(name: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return '??';
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+}
 
-
-
-const MONITEURS = [
-  { id: '1', name: 'M. Houngbo', initials: 'KH' },
-  { id: '2', name: 'Mme Dossou', initials: 'AD' },
-  { id: '3', name: 'M. Agbo', initials: 'SA' },
-];
-
-const DAYS = [
-  { day: 'Lun', date: 28, active: false },
-  { day: 'Mar', date: 29, active: true },
-  { day: 'Mer', date: 30, active: false },
-  { day: 'Jeu', date: 1, active: false },
-  { day: 'Ven', date: 2, active: false },
-  { day: 'Sam', date: 3, active: false },
-];
-
-const SLOTS = [
-  { time: '07:00', state: 'available' as const },
-  { time: '08:00', state: 'selected' as const },
-  { time: '10:00', state: 'unavailable' as const },
-  { time: '14:00', state: 'available' as const },
-  { time: '15:00', state: 'unavailable' as const },
-  { time: '16:00', state: 'available' as const },
-];
+function slotHours(slot: ReservationSlot): number {
+  const [sh, sm] = slot.startTime.split(':').map((v) => parseInt(v, 10) || 0);
+  const [eh, em] = slot.endTime.split(':').map((v) => parseInt(v, 10) || 0);
+  return Math.max(0.5, Math.round((eh - sh + (em - sm) / 60) * 2) / 2);
+}
 
 export function ReservationPage() {
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { user, loading } = useAuth();
-  const [step, setStep] = useState<Step>('moniteur');
-  const [moniteurId, setMoniteurId] = useState<string | undefined>();
-  const [, setMoniteurs] = useState<MoniteurPublic[]>([]);
-  const [] = useState<string>('');
+  const [progress, setProgress] = useState<DrivingProgress | null>(null);
+  const [moniteurs, setMoniteurs] = useState<MoniteurPublic[]>([]);
   const [availabilityDays, setAvailabilityDays] = useState<AvailabilityDay[]>([]);
-  const [, setHourlyPriceFcfa] = useState(5000);
+  const [creneaux, setCreneaux] = useState<{ date: string; creneaux: ReservationSlot[] }[] | null>(null);
+  const [selectedMoniteurId, setSelectedMoniteurId] = useState('');
   const [selectedDate, setSelectedDate] = useState('');
-  const [, setStartTime] = useState('');
-  const [, setEndTime] = useState('');
-  const [] = useState<ReservationSlot | null>(null);
-  const [] = useState(0);
-  const [] = useState<string | null>(null);
-  const [, setHoursDiscount] = useState(HOURS_DISCOUNT_FCFA);
-  const [, setHoursDiscountMin] = useState(HOURS_DISCOUNT_MIN_HOURS);
-  const [soldeHeures, setSoldeHeures] = useState<number | null>(null);
-  const [, setBusy] = useState(false);
-  const [, setError] = useState<string | null>(null);
-  const [] = useState('');
-  const [] = useState('');
-  const [] = useState(false);
-  const [selectedMoniteur, setSelectedMoniteur] = useState<string>('1');
-  const [selectedDay, setSelectedDay] = useState<number>(1);
-  const [selectedSlot, setSelectedSlot] = useState<string>('08:00');
+  const [selectedSlotId, setSelectedSlotId] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState(false);
 
-
-
-
-
-
-  const selectedDayObj = useMemo(
-    () => availabilityDays.find((day) => day.date === selectedDate) ?? null,
-    [availabilityDays, selectedDate],
-  );
-
-  const visibleWindows = useMemo(() => {
-    const windows = selectedDayObj?.windows ?? [];
-    const floor = selectedDate ? earliestBookableTime(selectedDate) : null;
-    if (!floor) return windows;
-    return windows
-      .map((window) => (window.start >= floor ? window : { start: floor, end: window.end }))
-      .filter((window) => window.end > window.start);
-  }, [selectedDayObj, selectedDate]);
-
-
-
-
-
-  const loadMoniteurs = useCallback(async () => {
-    setBusy(true);
-    setError(null);
+  const loadProgress = useCallback(async () => {
     try {
-      const data = await fetchPublicMoniteurs();
-      setMoniteurs(data.moniteurs);
-    } catch (err) {
-      setError(err instanceof ReservationError ? err.message : 'Moniteurs indisponibles');
-    } finally {
-      setBusy(false);
+      const data = await fetchDrivingDashboard();
+      setProgress(data.progress);
+    } catch {
+      setProgress(null);
     }
   }, []);
 
-  const loadAvailability = useCallback(async () => {
-    if (!moniteurId) return;
-    setBusy(true);
-    setError(null);
-    try {
-      const data = await fetchMoniteurAvailability({ moniteurId, days: 14 });
-      const days = data.days ?? [];
-      setAvailabilityDays(days);
-      setHourlyPriceFcfa(data.hourlyPriceFcfa || data.moniteur?.defaultPriceFcfa || 5000);
-      if (data.hoursDiscountFcfa !== undefined) setHoursDiscount(data.hoursDiscountFcfa);
-      if (data.hoursDiscountMinHours !== undefined) setHoursDiscountMin(data.hoursDiscountMinHours);
-      const first = days[0];
-      if (first) {
-        setSelectedDate(first.date);
-        setStartTime(first.windows[0]?.start || '');
-        setEndTime(first.windows[0]?.end || '');
-      } else {
+  useEffect(() => {
+    if (!user) return;
+    void loadProgress();
+    void fetchPublicMoniteurs()
+      .then((data) => {
+        setMoniteurs(data.moniteurs);
+        const fromQuery = searchParams.get('moniteurId') || '';
+        const initial = data.moniteurs.some((m) => m.id === fromQuery)
+          ? fromQuery
+          : data.moniteurs[0]?.id || '';
+        setSelectedMoniteurId(initial);
+      })
+      .catch(() => setMoniteurs([]));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
+
+  useEffect(() => {
+    if (!selectedMoniteurId) return;
+    setSelectedSlotId('');
+    void fetchMoniteurAvailability({ moniteurId: selectedMoniteurId, days: 14 })
+      .then((data) => {
+        const days = (data.days ?? []).filter((day) => day.windows.length > 0);
+        setAvailabilityDays(days);
+        const wanted = searchParams.get('date') || '';
+        setSelectedDate(days.some((d) => d.date === wanted) ? wanted : days[0]?.date || '');
+      })
+      .catch(() => {
+        setAvailabilityDays([]);
         setSelectedDate('');
-        setStartTime('');
-        setEndTime('');
+      });
+    void fetchAvailableCreneaux({ moniteurId: selectedMoniteurId })
+      .then(setCreneaux)
+      .catch(() => setCreneaux(null));
+  }, [selectedMoniteurId, searchParams]);
+
+  const weekDays = useMemo(() => availabilityDays.slice(0, 6), [availabilityDays]);
+
+  const daySlots = useMemo(() => {
+    const entry = creneaux?.find((day) => day.date === selectedDate);
+    return [...(entry?.creneaux ?? [])].sort((a, b) => a.startTime.localeCompare(b.startTime));
+  }, [creneaux, selectedDate]);
+
+  // Présélection du créneau via query (?date=…&start=…) ou premier libre.
+  useEffect(() => {
+    const wantedStart = searchParams.get('start') || '';
+    const match = wantedStart
+      ? daySlots.find((slot) => slot.startTime === wantedStart && slot.available)
+      : daySlots.find((slot) => slot.available);
+    setSelectedSlotId(match?.id ?? '');
+  }, [daySlots, searchParams]);
+
+  const selectedSlot = daySlots.find((slot) => slot.id === selectedSlotId) ?? null;
+  const selectedMoniteur = moniteurs.find((m) => m.id === selectedMoniteurId) ?? null;
+  const selectedDayDate = parseDay(selectedDate);
+  const monthLabel = useMemo(() => {
+    const dates = weekDays.map((day) => parseDay(day.date)).filter((d): d is Date => d !== null);
+    if (dates.length === 0) return '';
+    const first = FR_MONTHS[dates[0].getMonth()];
+    const last = FR_MONTHS[dates[dates.length - 1].getMonth()];
+    return first === last ? first : `${first} – ${last}`;
+  }, [weekDays]);
+
+  const soldeHeures = progress?.soldeHeures ?? 0;
+  const slotPrice = selectedSlot?.priceFcfa ?? 0;
+  const slotLabel = selectedSlot && selectedDayDate
+    ? `${FR_DAYS[selectedDayDate.getDay()]} ${selectedDayDate.getDate()} · ${selectedSlot.startTime} – ${selectedSlot.endTime}`
+    : null;
+
+  const handleConfirm = async () => {
+    if (!selectedSlot || !selectedMoniteurId || confirming) return;
+    setConfirming(true);
+    setError(null);
+    try {
+      const held = await requestReservationSlot({
+        moniteurId: selectedMoniteurId,
+        date: selectedSlot.date,
+        startTime: selectedSlot.startTime,
+        endTime: selectedSlot.endTime,
+        vehicleType: selectedSlot.vehicleType || 'voiture',
+      });
+      if (!held.creneau) {
+        throw new ReservationError('Ce créneau vient d’être pris. Choisis un autre horaire.');
       }
+      const hours = slotHours(selectedSlot);
+      if ((progress?.soldeHeures ?? 0) < hours) {
+        setError(`Solde insuffisant (${hours} h requise${hours > 1 ? 's' : ''}). Recharge tes heures sur Offres pour confirmer.`);
+        return;
+      }
+      await createReservation({
+        creneauIds: [String(held.creneau.id)],
+        vehicleType: held.creneau.vehicleType || selectedSlot.vehicleType || 'voiture',
+        moniteurId: selectedMoniteurId,
+        paymentMethod: 'solde',
+      });
+      navigate('/conduite/mes-reservations', { replace: true });
     } catch (err) {
-      setError(err instanceof ReservationError ? err.message : 'Disponibilités indisponibles');
+      setError(err instanceof ReservationError ? err.message : 'Confirmation impossible');
     } finally {
-      setBusy(false);
+      setConfirming(false);
     }
-  }, [moniteurId]);
-
-  useEffect(() => {
-    void loadMoniteurs();
-  }, [loadMoniteurs]);
-
-  useEffect(() => {
-    const fromQuery = searchParams.get('moniteurId');
-    if (fromQuery) {
-      setMoniteurId(fromQuery);
-      setStep('calendar');
-    }
-  }, [searchParams]);
-
-  useEffect(() => {
-    fetchAccessMe()
-      .then((data) => setSoldeHeures(data.user.soldeHeures))
-      .catch(() => setSoldeHeures(null));
-  }, []);
-
-  useEffect(() => {
-    if (step === 'calendar') void loadAvailability();
-  }, [step, loadAvailability]);
-
-  useEffect(() => {
-    if (!visibleWindows.length) return;
-    const first = visibleWindows[0];
-    setStartTime(first.start);
-    setEndTime(first.end);
-  }, [visibleWindows]);
-
-
-
-
-
+  };
 
   if (loading || !user) return <PageLoader />;
-
-  const soldeHeuresVal = soldeHeures ?? 0;
-  const heuresEffectuees = 14;
-  const heuresObjectif = 20;
-  const doneSegments = Math.round((heuresEffectuees / heuresObjectif) * 20);
 
   return (
     <div style={{ minHeight: '100dvh', background: '#F5F7FB', position: 'relative', overflow: 'hidden' }}>
       <div style={{ position: 'absolute', top: -100, right: -100, width: 280, height: 280, borderRadius: '50%', background: 'rgba(255,180,0,0.16)', filter: 'blur(60px)', pointerEvents: 'none' }} />
-      <div style={{ position: 'relative', boxSizing: 'border-box', padding: '56px 20px 0', display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 1120, margin: '0 auto' }}>
+      <div className="mp-page-stage" style={{ position: 'relative', boxSizing: 'border-box', padding: '56px 20px 0', display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 1120, margin: '0 auto' }}>
 
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <button type="button" onClick={() => navigate('/conduite')} aria-label="Retour" style={{ width: 44, height: 44, borderRadius: 22, border: '1.5px solid #E1E6EF', background: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+            <ChevronLeft size={22} color="#0A1B3D" />
+          </button>
           <div>
-            <h1 style={{ margin: 0, fontFamily: 'Sora, sans-serif', fontSize: 26, fontWeight: 700, letterSpacing: '-0.02em' }}>Conduite</h1>
-            <div style={{ fontSize: 13, color: '#5B6680', fontWeight: 600, marginTop: 3 }}>Réserve ton prochain créneau</div>
+            <h1 style={{ margin: 0, fontFamily: 'Sora, sans-serif', fontSize: 26, fontWeight: 700, letterSpacing: '-0.02em', textAlign: 'center' }}>Réserver une séance</h1>
+            <div style={{ fontSize: 13, color: '#5B6680', fontWeight: 600, marginTop: 3, textAlign: 'center' }}>Moniteur, jour puis créneau libre</div>
           </div>
-          <div style={{ width: 46, height: 46, borderRadius: 15, background: '#FFFFFF', boxShadow: '0 6px 18px -8px rgba(10,27,61,0.25)', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <LogoMark width={62} height={62} alt="Monpermis.bj" />
-          </div>
+          <LogoTile size="sm" />
         </div>
 
-        {/* HeroCard - Solde d'heures */}
-        <div style={{ position: 'relative', overflow: 'hidden', borderRadius: 28, padding: '18px 18px 16px', background: 'radial-gradient(100% 90% at 100% 0%, rgba(255,180,0,0.28) 0%, rgba(255,180,0,0) 55%), linear-gradient(160deg, #1A3A7A 0%, #0A1B3D 60%, #06122A 100%)', color: '#FFFFFF', boxShadow: '0 24px 40px -22px rgba(10,27,61,0.75), inset 0 1px 0 rgba(255,255,255,0.18)', display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
-            <div>
-              <div style={{ fontSize: 12.5, fontWeight: 600, color: 'rgba(255,255,255,0.75)' }}>Solde d'heures</div>
-              <div style={{ fontFamily: 'Sora, sans-serif', fontSize: 44, lineHeight: 1, fontWeight: 700, letterSpacing: '-0.03em', marginTop: 6 }}>
-                {soldeHeuresVal} h<span style={{ fontSize: 18, color: 'rgba(255,255,255,0.5)' }}> restantes</span>
-              </div>
-            </div>
-            <a href="/abonnement" style={{ height: 38, padding: '0 14px', borderRadius: 19, background: 'rgba(255,255,255,0.10)', border: '1px solid rgba(255,255,255,0.22)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, fontWeight: 700, textDecoration: 'none', color: '#FFFFFF' }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>Heures
-            </a>
+        {error ? (
+          <p role="alert" style={{ margin: 0, fontSize: 13, fontWeight: 600, color: '#C2410C' }}>{error}</p>
+        ) : null}
+
+        {/* Récap solde */}
+        <HeroCard variant="conduite">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ fontSize: 12.5, fontWeight: 600, color: 'rgba(255,255,255,0.75)' }}>Solde d'heures</div>
+            <div style={{ fontFamily: "'Sora', sans-serif", fontSize: 28, fontWeight: 700 }}>{soldeHeures} h</div>
           </div>
-          <div style={{ display: 'flex', gap: 4 }}>
-            {Array.from({ length: 20 }, (_, index) => (
-              <div
-                key={index}
-                style={{
-                  flexGrow: 1,
-                  height: 8,
-                  borderRadius: 4,
-                  background: index < doneSegments ? '#0BAA4F' : 'rgba(255,255,255,0.18)',
-                  transition: 'background 0.3s ease',
+        </HeroCard>
+
+        {/* Moniteur */}
+        <div style={{ fontFamily: "'Sora', sans-serif", fontSize: 16, fontWeight: 700 }}>Moniteur</div>
+        {moniteurs.length === 0 ? (
+          <div style={{ borderRadius: 22, background: '#FFFFFF', padding: 16, fontSize: 13.5, fontWeight: 600, color: '#5B6680' }}>
+            Aucun moniteur disponible pour le moment.
+          </div>
+        ) : (
+          <div style={{ display: 'flex', gap: 8, marginTop: -6, marginRight: -20, overflowX: 'auto', paddingRight: 20 }}>
+            {moniteurs.map((moniteur) => (
+              <MonitorChip
+                key={moniteur.id}
+                initials={initialsOf(moniteur.fullName)}
+                name={moniteur.fullName}
+                selected={selectedMoniteurId === moniteur.id}
+                onSelect={() => {
+                  setSelectedMoniteurId(moniteur.id);
+                  setSelectedDate('');
+                  setSelectedSlotId('');
                 }}
               />
             ))}
           </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.78)' }}>
-            <span>{heuresEffectuees} h effectuées</span>
-            <span>Forfait {heuresObjectif} h</span>
-          </div>
-        </div>
-
-        {/* Moniteur */}
-        <div style={{ fontFamily: 'Sora, sans-serif', fontSize: 16, fontWeight: 700 }}>Moniteur</div>
-        <div style={{ display: 'flex', gap: 8, marginTop: -6, marginRight: -20, overflowX: 'auto', paddingRight: 20 }}>
-          {MONITEURS.map((m) => (
-            <MonitorChip
-              key={m.id}
-              initials={m.initials}
-              name={m.name}
-              selected={selectedMoniteur === m.id}
-              onSelect={() => setSelectedMoniteur(m.id)}
-            />
-          ))}
-        </div>
+        )}
 
         {/* Jours */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ fontFamily: 'Sora, sans-serif', fontSize: 16, fontWeight: 700 }}>Septembre – Octobre</div>
-          <div style={{ fontSize: 12.5, fontWeight: 700, color: '#5B6680' }}>Semaine 40</div>
+          <div style={{ fontFamily: "'Sora', sans-serif", fontSize: 16, fontWeight: 700 }}>{monthLabel || 'Jours'}</div>
+          <div style={{ fontSize: 12.5, fontWeight: 700, color: '#5B6680' }}>
+            {selectedDayDate ? `Semaine ${isoWeek(selectedDayDate)}` : ''}
+          </div>
         </div>
-        <div style={{ display: 'flex', gap: 8, marginTop: -6 }}>
-          {DAYS.map((d, i) => (
-            <DayPill
-              key={i}
-              day={d.day}
-              date={d.date}
-              selected={selectedDay === i}
-              onSelect={() => setSelectedDay(i)}
-            />
-          ))}
-        </div>
+        {weekDays.length === 0 ? (
+          <div style={{ borderRadius: 22, background: '#FFFFFF', padding: 16, fontSize: 13.5, fontWeight: 600, color: '#5B6680' }}>
+            Aucune disponibilité sur les 14 prochains jours pour ce moniteur.
+          </div>
+        ) : (
+          <div style={{ display: 'flex', gap: 8, marginTop: -6 }}>
+            {weekDays.map((day) => {
+              const date = parseDay(day.date);
+              if (!date) return null;
+              return (
+                <DayPill
+                  key={day.date}
+                  day={FR_DAYS[date.getDay()]}
+                  date={date.getDate()}
+                  selected={selectedDate === day.date}
+                  onSelect={() => {
+                    setSelectedDate(day.date);
+                    setSelectedSlotId('');
+                  }}
+                />
+              );
+            })}
+          </div>
+        )}
 
         {/* Créneaux */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 8 }}>
-          {SLOTS.map((slot) => (
-            <SlotButton
-              key={slot.time}
-              time={slot.time}
-              state={selectedSlot === slot.time ? 'selected' : slot.state}
-              onSelect={() => setSelectedSlot(slot.time)}
-            />
-          ))}
-        </div>
+        {selectedDate && daySlots.length === 0 ? (
+          <div style={{ borderRadius: 22, background: '#FFFFFF', padding: 16, fontSize: 13.5, fontWeight: 600, color: '#5B6680' }}>
+            Plus de créneau disponible ce jour. Choisis un autre jour.
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 8 }}>
+            {daySlots.map((slot) => (
+              <SlotButton
+                key={slot.id}
+                time={`${slot.startTime} – ${slot.endTime}`}
+                state={!slot.available ? 'unavailable' : selectedSlotId === slot.id ? 'selected' : 'available'}
+                onSelect={() => setSelectedSlotId(slot.id)}
+              />
+            ))}
+          </div>
+        )}
 
-        {/* CTA Slider */}
-        <Button variant="slider" size="md" fullWidth onClick={() => setStep('payment')}>
-          <span>Réserver · Mar 29 · 08:00</span>
-          <ChevronRight size={20} strokeWidth={2.4} />
-        </Button>
+        {/* Récapitulatif */}
+        {selectedSlot ? (
+          <div style={{ borderRadius: 22, background: '#FFFFFF', padding: 16, display: 'flex', flexDirection: 'column', gap: 6, fontSize: 13.5, fontWeight: 600, color: '#0A1B3D' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ color: '#5B6680' }}>Moniteur</span>
+              <span>{selectedMoniteur?.fullName || 'Moniteur'}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ color: '#5B6680' }}>Séance</span>
+              <span>{slotLabel}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ color: '#5B6680' }}>Durée</span>
+              <span>{slotHours(selectedSlot)} h</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 15, fontWeight: 800 }}>
+              <span>Total</span>
+              <span>{slotPrice.toLocaleString('fr-FR')} FCFA</span>
+            </div>
+          </div>
+        ) : null}
+
+        {/* CTA */}
+        {soldeHeures <= 0 ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <Button variant="slider" size="md" fullWidth disabled rightIcon={ChevronRight} iconSize={20}>
+              <span>Solde épuisé</span>
+            </Button>
+            <Link to="/abonnement" style={{ textAlign: 'center', fontSize: 14, fontWeight: 800, color: '#067A37', textDecoration: 'none' }}>
+              Recharger mes heures sur Offres
+            </Link>
+          </div>
+        ) : (
+          <Button variant="slider" size="md" fullWidth disabled={!selectedSlot || confirming} rightIcon={ChevronRight} iconSize={20} onClick={() => void handleConfirm()}>
+            <span>{confirming ? 'Confirmation…' : selectedSlot ? `Confirmer · ${slotLabel} · ${slotPrice.toLocaleString('fr-FR')} FCFA` : 'Choisis un créneau'}</span>
+          </Button>
+        )}
 
       </div>
 
-      {/* TabBar flottante (TabBar.html) */}
       <MainTabBar activeId="conduite" />
     </div>
   );
