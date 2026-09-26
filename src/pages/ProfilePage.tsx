@@ -30,7 +30,24 @@ export function ProfilePage() {
   const [examScores, setExamScores] = useState<PracticeExamScore[]>([]);
   const [drivingDone, setDrivingDone] = useState(0);
   const [drivingTotal, setDrivingTotal] = useState(20);
-  const [periodFilter] = useState('30 jours');
+  const [periodFilter, setPeriodFilter] = useState<'7 jours' | '30 jours' | 'Tout'>('30 jours');
+
+  const cyclePeriod = () => {
+    setPeriodFilter((current) =>
+      current === '7 jours' ? '30 jours' : current === '30 jours' ? 'Tout' : '7 jours',
+    );
+  };
+
+  const visibleScores = useMemo(() => {
+    if (periodFilter === 'Tout') return examScores;
+    const days = periodFilter === '7 jours' ? 7 : 30;
+    const cutoff = Date.now() - days * 86400000;
+    return examScores.filter((score) => {
+      if (!score.completedAt) return true;
+      const time = new Date(score.completedAt).getTime();
+      return Number.isNaN(time) || time >= cutoff;
+    });
+  }, [examScores, periodFilter]);
 
   useEffect(() => {
     if (!user) return;
@@ -56,8 +73,8 @@ export function ProfilePage() {
 
     const drivePct = drivingTotal > 0 ? Math.min(1, drivingDone / drivingTotal) : 0;
 
-    const last = examScores[examScores.length - 1];
-    const prev = examScores[examScores.length - 2];
+    const last = visibleScores[visibleScores.length - 1];
+    const prev = visibleScores[visibleScores.length - 2];
     const examDelta = last && prev ? last.correct - prev.correct : null;
 
     return {
@@ -67,11 +84,11 @@ export function ProfilePage() {
       percent: Math.round(coursePct * 100),
       delta: examDelta,
     };
-  }, [journey, examScores, drivingDone, drivingTotal]);
+  }, [journey, visibleScores, drivingDone, drivingTotal]);
 
   if (loading || !user) return null;
 
-  const lastExam = examScores[examScores.length - 1];
+  const lastExam = visibleScores[visibleScores.length - 1];
   const lastExamErrors = lastExam ? Math.max(0, lastExam.total - lastExam.correct) : 0;
 
   const codeDone = journey?.code?.chaptersDone ?? 0;
@@ -90,7 +107,7 @@ export function ProfilePage() {
             <h1 style={{ margin: 0, fontFamily: 'Sora, sans-serif', fontSize: 26, fontWeight: 700, letterSpacing: '-0.02em' }}>Ma progression</h1>
             <div style={{ fontSize: 13, color: '#5B6680', fontWeight: 600, marginTop: 3 }}>Code, examens et conduite</div>
           </div>
-          <Button variant="outline" size="sm" leftIcon={ChevronDown} onClick={() => {}} style={{ height: 40, borderRadius: 20, border: '1.5px solid #E1E6EF', background: '#FFFFFF' }}>
+          <Button variant="outline" size="sm" leftIcon={ChevronDown} onClick={cyclePeriod} aria-label="Changer la période" style={{ height: 40, borderRadius: 20, border: '1.5px solid #E1E6EF', background: '#FFFFFF' }}>
             {periodFilter}
           </Button>
         </div>

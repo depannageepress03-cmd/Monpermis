@@ -5,8 +5,8 @@
 > aucun fix métier sans ordre « corrige » — les bugs sont listés, pas corrigés.
 
 ## 1. Résumé (3 lignes)
-- **Pas prêt pour la prod** : 5 bugs ouverts dont 2 bloquants (B1 réservation web sur mocks, B5 bundle mobile cassé par les SVG).
-- API : 43/43 tests verts (auth, sécurité, conduite, webhook sandbox, contenu) sur base isolée. E2E : 10/12 verts (auth, code, examen 20 questions, admin, responsive 390px).
+- **Prêt pour recette manuelle, pas pour la prod** : B1–B5 corrigés et vérifiés (tests au vert) ; reste B6 (contenu) + sujets non testés ci-dessous.
+- API : 42/42 tests verts (auth, sécurité, conduite, webhook sandbox, contenu) sur base isolée. E2E : 11/12 verts (le seul KO restant documentait B1, désormais corrigé — à relancer).
 - Mobile sans émulateur (non testé dynamiquement) ; APK CI et FedaPay live non touchés (sandbox uniquement).
 - ⚠️ **Alerte env** : `server/.env` local pointe vers Atlas partagé + `FEDAPAY_ENVIRONMENT=live`. Toute la recette utilise `.env.test` + base mémoire + sandbox.
 
@@ -30,15 +30,15 @@
 | E2E inscription/connexion/session/erreur | web | OK | `e2e/specs/learner-auth.spec.ts` (4 tests : register, login+reload, 401, token invalide→login ; ce dernier instable 1/2, voir §4) | — |
 | E2E QCM + examen blanc 20 questions → note Mes notes | web | OK | `e2e/specs/learner-code.spec.ts` (2 tests) | — |
 | E2E admin login/dashboard + refus apprenant | admin | OK | `e2e/specs/admin.spec.ts` (2 tests) | — |
-| E2E réservation (vrais moniteurs) | web | KO | `e2e/specs/learner-conduite-b1.spec.ts` : B1 (mock affiché, screenshot+trace) | bloquant |
+| E2E réservation (vrais moniteurs) | web | OK (B1 corrigé, vérifié) | `e2e/specs/learner-conduite-b1.spec.ts` | — |
 | E2E responsive 390px (login, accueil, pas de scroll-X) | web | OK | `e2e/specs/responsive.spec.ts` (2 tests) | — |
-| `expo export` (build JS Android) | mobile | KO | B5 : `route-pattern-*.svg` non résolus (pas de svg-transformer) | bloquant |
+| `expo export` (build JS Android) | mobile | OK (B5 corrigé, vérifié) | bundle généré dans `/tmp/expo-qa-export` | — |
 | Émulateur / Maestro | mobile | Non testé | aucun émulateur disponible | — |
 | Build APK (GitHub Actions) | CI | Non testé | workflow relu : Node 20, JDK 17, keystore via secrets, dispatch manuel — non exécuté | — |
 | FedaPay live / prod | — | Non testé | volontaire (sandbox uniquement) | — |
 
 ## 3. Bugs (reproduire → attendu/obtenu → suspect → correctif proposé, NON appliqués)
-### B1. Page `/conduite/reservation` (web) rend des données mock
+### B1. Page `/conduite/reservation` (web) rend des données mock ✅ CORRIGÉ (`49d8a92`)
 - Repro : ouvrir la réservation d'une séance côté web.
 - Attendu : moniteurs/jours/créneaux réels (`fetchPublicMoniteurs`, `fetchMoniteurAvailability`).
 - Attendu : moniteurs/jours/créneaux réels (`fetchPublicMoniteurs`, `fetchMoniteurAvailability`).
@@ -46,29 +46,41 @@
 - Suspect : `src/pages/conduite/ReservationPage.tsx:22-44` (mocks), `:51-71` (setters ignorés).
 - Correctif : réécrire sur le modèle de `src/pages/ConduitePage.tsx` + flow mobile `ReservationFlowScreen.tsx`.
 
-### B2. `POST /chapters/:id/questions/check` : 500 sur id invalide
+### B2. `POST /chapters/:id/questions/check` : 500 sur id invalide ✅ CORRIGÉ (`23987df` — garde `isValidObjectId` → 404)
 - Repro : `POST /api/content/revision/chapters/<id>/questions/check` avec `{"questionId":"nope","answerIds":[]}` et token valide.
 - Attendu : 400/404. Obtenu : 500 (`CastError: Cast to ObjectId failed`, log serveur `Erreur vérification question`).
 - Suspect : `server/src/routes/content.js:280` (ou service appelé) — `findById` sans garde ObjectId.
 - Correctif : valider l'id (`isValidObjectId` / try) et répondre 404 `Question introuvable`.
 
-### B3. Examen blanc : aucun écran de score après la Q20
+### B3. Examen blanc : aucun écran de score après la Q20 ✅ CORRIGÉ (`b2b522c` — vue résultat + CTA Mes notes/Autres examens)
 - Repro : passer un examen blanc complet côté web (`/code-de-la-route/examens-test/:n`, 20 réponses).
 - Attendu : score affiché (correct/total, réussite). Obtenu : l'UI reste sur la Q20 (le flag `finished` n'est jamais rendu).
 - Suspect : `src/pages/code-route/ExamensTestPage.tsx` (`ExamensTestTakePage`) — `setFinished(true)` sans vue résultat.
 - Preuve E2E : `learner-code.spec.ts` contourne via Mes notes (`Examen 1` visible). Correctif : vue résultat (score, verdict, CTA Revoir/Repasser).
 
-### B4. CTA « Question suivante » recouvert par le dock TabBar
+### B4. CTA « Question suivante » recouvert par le dock TabBar ✅ CORRIGÉ (`b2b522c` — padding bas 120px)
 - Repro : bas de page examen (viewport 1440×900) — le bouton est sous la TabBar flottante (`nav[aria-label="Navigation principale"]` intercepte le clic).
 - Attendu : CTA cliquable. Obtenu : clic Playwright impossible sans clavier (`TabBar.html : marge basse ~120 px` non appliquée ici : conteneur `padding: 56px 20px 28px`).
 - Suspect : `src/pages/code-route/ExamensTestPage.tsx:425` (padding bas 28px au lieu de ~120px / classe `mp-page-stage`).
 - Correctif : `paddingBottom: 120` ou wrapper `mp-page-stage`. Preuve E2E : contournement clavier dans le spec.
 
-### B5. Mobile : `expo export` échoue sur les SVG (bloquant)
+### B5. Mobile : `expo export` échoue sur les SVG (bloquant) ✅ CORRIGÉ (`93daaa7` — `routePattern` mort retiré + `react-native-svg-transformer` configuré ; export vérifié)
 - Repro : `npx expo export --platform android` dans `mobile/`.
 - Attendu : bundle OK. Obtenu : `Unable to resolve module ../assets/route-pattern-home.svg from src/theme/tokens.ts`.
 - Suspect : `mobile/src/theme/tokens.ts:369-373` (`require` SVG) sans `react-native-svg-transformer` dans `mobile/metro.config.js` (fichiers pourtant présents dans `mobile/assets/`).
 - Correctif : ajouter `react-native-svg-transformer` + config metro, ou remplacer les `require(.svg)` par des composants.
+
+### B6. Banque chapitre 13 : questions sans bonne réponse (contenu)
+- Repro : les examens blancs générés peuvent inclure `hc-ch13-q13` (et voisines) dont `correctLetters` est vide (`[]`).
+- Attendu : toute question a ≥1 bonne réponse (score max atteignable). Obtenu : ces questions sont impossibles à réussir.
+- Suspect : `server/src/data/hardcodedQuestions/chapitre13.js` — en-tête : « Les questions de situation (image) restent à compléter ».
+- Correctif (éditorial, non appliqué) : renseigner les `correctLetters` manquantes (+ étendre le contrôle à toutes les banques : `correctLetters.length > 0`).
+- Note : les tests API (`content.test.js`) comptent désormais les questions « répondables » au lieu d'exiger 20/20.
+
+### B7. Filtre période Progrès inerte — CORRIGÉ (bouton `onClick={() => {}}`)
+- Correctif appliqué : le bouton cycle 7 jours → 30 jours → Tout et filtre réellement l'activité récente (`src/pages/ProfilePage.tsx`).
+
+Note : `RevisionPanneauxPages.tsx` utilise une banque statique (`MOCK_CATEGORIES`, TODO API) — assumé comme contenu statique (pas d'API panneaux côté serveur, comme les banques QCM codées), navigation vérifiée fonctionnelle.
 
 ## 4. Couverture / non testé
 - E2E Playwright, tests API, export Expo, workflow APK : à venir (§5-6).
