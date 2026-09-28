@@ -1,206 +1,142 @@
-import { FormEvent, useMemo, useState } from 'react'
-import { Navigate, useNavigate } from 'react-router-dom'
-import {
-  Eye,
-  EyeOff,
-  History,
-  LockKeyhole,
-  Phone,
-  ShieldCheck,
-  UserRound,
-} from 'lucide-react'
-import logoUrl from '../assets/logo.png'
-import { BrandName } from '../components/BrandName'
-import { isAuthError, useAdminAuth } from '../context/AdminAuthContext'
-import { SITE_NAME } from '../theme/brand'
-import { normalizePhone, PHONE_PLACEHOLDER } from '../utils/validation'
+import { FormEvent, useMemo, useState } from 'react';
+import { Navigate, useNavigate } from 'react-router-dom';
+import { Eye, EyeOff, LockKeyhole, Mail, UserRound } from 'lucide-react';
+import { isAuthError, useAdminAuth } from '../context/AdminAuthContext';
+import { normalizePhone, PHONE_PLACEHOLDER } from '../utils/validation';
+import { LogoMark } from '../components/icons/LogoMark';
+import { Button, TextField, IconButton } from '../../../src/components/ui';
 
 export function LoginPage() {
-  const { admin, loading, signIn, canManageAdmins } = useAdminAuth()
-  const navigate = useNavigate()
-  const [phone, setPhone] = useState('')
-  const [password, setPassword] = useState('')
-  const [showPassword, setShowPassword] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [submitting, setSubmitting] = useState(false)
+  const { admin, loading, signIn, canManageAdmins } = useAdminAuth();
+  const navigate = useNavigate();
+  const [phone, setPhone] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState<string | undefined>(undefined);
+  const [submitting, setSubmitting] = useState(false);
 
   const homePath = useMemo(
     () => (canManageAdmins || admin?.role === 'superadmin' ? '/cockpit' : '/'),
     [admin?.role, canManageAdmins],
-  )
+  );
 
   if (!loading && admin) {
-    return <Navigate to={homePath} replace />
+    return <Navigate to={homePath} replace />;
   }
 
   const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault()
-    setError(null)
-    setSubmitting(true)
+    e.preventDefault();
+    setError(undefined);
+    setSubmitting(true);
 
     try {
-      const result = await signIn(normalizePhone(phone), password)
-      navigate(result.homePath || '/', { replace: true })
+      const result = await signIn(normalizePhone(phone), password);
+      navigate(result.homePath || '/', { replace: true });
     } catch (err) {
       if (isAuthError(err)) {
-        setError(err.message)
+        setError(err.message);
       } else {
-        setError('Connexion impossible. Vérifiez votre connexion réseau.')
+        setError('Connexion impossible. Vérifiez votre connexion réseau.');
       }
     } finally {
-      setSubmitting(false)
+      setSubmitting(false);
     }
-  }
+  };
 
   return (
-    <div className="login-page">
-      <div className="login-bg" aria-hidden="true">
-        <span className="login-bg-halo login-bg-halo--green" />
-        <span className="login-bg-halo login-bg-halo--blue" />
-        <span className="login-bg-dots login-bg-dots--tr" />
-        <span className="login-bg-dots login-bg-dots--bl" />
-      </div>
+    <div style={{ minHeight: '100vh', background: '#EAEFF6', position: 'relative', overflow: 'hidden' }}>
+      <div style={{ position: 'absolute', top: -100, right: -100, width: 280, height: 280, borderRadius: '50%', background: 'rgba(11,170,79,0.12)', filter: 'blur(60px)', pointerEvents: 'none' }} />
+      <div style={{ boxSizing: 'border-box', padding: '56px 22px 28px', maxWidth: 390, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'relative' }}>
+          <IconButton
+            icon={({ size, color }: { size: number; color: string }) => (
+              <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="m15 6-6 6 6 6" />
+              </svg>
+            )}
+            aria-label="Retour"
+            onPress={() => window.history.back()}
+          />
+          <div style={{ width: 46, height: 46, borderRadius: 15, background: '#FFFFFF', boxShadow: '0 6px 18px -8px rgba(10,27,61,0.25)', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <LogoMark width={62} height={62} alt="Monpermis.bj" />
+          </div>
+        </div>
 
-      <div className="login-shell">
-        <aside className="login-aside" aria-label="Présentation Monpermis">
-          <div className="login-aside-glow" aria-hidden="true" />
-          <img src={logoUrl} alt="" className="login-aside-logo" />
-          <BrandName as="p" className="login-aside-brand" onDark />
-          <p className="login-aside-text">
-            Espace admin Monpermis — pilotage des apprenants, du contenu et des opérations.
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 6 }}>
+          <h1 style={{ margin: 0, fontFamily: 'Sora, sans-serif', fontSize: 30, fontWeight: 700, letterSpacing: '-0.02em', color: '#0A1B3D' }}>
+            Content de te revoir
+          </h1>
+          <p style={{ margin: 0, fontSize: 14.5, color: '#5B6680' }}>
+            Connecte-toi pour reprendre la gestion.
           </p>
-          <ul className="login-aside-points">
-            <li>
-              <span className="login-aside-point-icon" aria-hidden="true">
-                <UserRound size={16} />
-              </span>
-              <span>Admin : opérations quotidiennes (contenu, abonnements, conduite)</span>
-            </li>
-            <li>
-              <span className="login-aside-point-icon" aria-hidden="true">
-                <ShieldCheck size={16} />
-              </span>
-              <span>Superadmin : crée les comptes admin et gère finances / audit</span>
-            </li>
-            <li>
-              <span className="login-aside-point-icon" aria-hidden="true">
-                <LockKeyhole size={16} />
-              </span>
-              <span>Un seul formulaire — les droits dépendent du rôle du compte</span>
-            </li>
-          </ul>
-          <div className="login-aside-skyline" aria-hidden="true">
-            <svg viewBox="0 0 360 72" preserveAspectRatio="none">
-              <path
-                d="M0 72V48h18V28h10v20h14V18h8v10h12V8h16v20h10V32h22V14h12v18h18V24h14v24h20V36h10v12h16V20h12v28h18V40h14v32H0z"
-                fill="currentColor"
-              />
-            </svg>
-          </div>
-        </aside>
+        </div>
 
-        <div className="login-card">
-          <div className="login-card-top">
-            <img src={logoUrl} alt={SITE_NAME} className="login-logo" />
-            <BrandName as="p" className="login-brand-name" />
-            <p className="login-badge-text">
-              <ShieldCheck size={16} aria-hidden="true" />
-              <span>
-                Espace sécurisé · <strong>Administration</strong>
-              </span>
-            </p>
+        <div style={{ height: 52, boxSizing: 'border-box', padding: 5, borderRadius: 26, background: '#E8EDF6', display: 'flex', gap: 4 }}>
+          <button type="button" style={{ flexGrow: 1, flexBasis: 0, border: 0, borderRadius: 21, fontFamily: 'inherit', fontSize: 14, fontWeight: 700, cursor: 'pointer', background: '#FFFFFF', color: '#0A1B3D', boxShadow: '0 4px 12px -4px rgba(10,27,61,0.25)' }}>
+            Téléphone
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} noValidate>
+          {error && (
+            <div style={{ background: '#FFF1E6', border: '1px solid #F5C2C2', borderRadius: 12, padding: '12px 14px', color: '#C2410C', fontSize: 14, lineHeight: 1.45, marginBottom: 16 }} role="alert">
+              {error}
+            </div>
+          )}
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <TextField
+              id="phone"
+              type="tel"
+              placeholder={PHONE_PLACEHOLDER}
+              value={phone}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => { setPhone(normalizePhone(e.target.value)); if (error) setError(''); }}
+              error={error}
+              prefix={<span style={{ height: 40, padding: '0 12px', borderRadius: 20, background: '#F1F4F9', display: 'flex', alignItems: 'center', fontSize: 14, fontWeight: 700 }}>+229</span>}
+              leftIcon={Mail}
+            />
+
+            <TextField
+              id="password"
+              type={showPassword ? 'text' : 'password'}
+              placeholder="••••••••"
+              value={password}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => { setPassword(e.target.value); if (error) setError(''); }}
+              error={error}
+              leftIcon={LockKeyhole}
+              rightIcon={showPassword ? EyeOff : Eye}
+              onRightIconClick={() => setShowPassword(!showPassword)}
+            />
           </div>
 
-          <form onSubmit={handleSubmit} className="login-form" autoComplete="on">
-            <label htmlFor="phone">Téléphone</label>
-            <div className="login-phone-field">
-              <span className="login-phone-prefix" aria-hidden="true">
-                <span className="login-flag" title="Bénin">
-                  🇧🇯
-                </span>
-                <span className="login-phone-cc">+229</span>
-              </span>
-              <input
-                id="phone"
-                type="tel"
-                inputMode="numeric"
-                autoComplete="username"
-                required
-                value={phone}
-                onChange={(e) => setPhone(normalizePhone(e.target.value))}
-                placeholder={PHONE_PLACEHOLDER}
-              />
-              <Phone className="login-phone-icon" size={16} aria-hidden="true" />
-            </div>
+          <Button
+            variant="primary"
+            size="md"
+            fullWidth
+            loading={submitting}
+            rightIcon={UserRound}
+            onClick={handleSubmit}
+          >
+            Se connecter
+          </Button>
 
-            <label htmlFor="password">Mot de passe</label>
-            <div className="login-input-wrap">
-              <LockKeyhole className="login-input-leading" size={16} aria-hidden="true" />
-              <input
-                id="password"
-                type={showPassword ? 'text' : 'password'}
-                autoComplete="current-password"
-                required
-                minLength={8}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-              />
-              <button
-                type="button"
-                className="login-input-toggle"
-                onClick={() => setShowPassword((v) => !v)}
-                aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
-              >
-                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-              </button>
-            </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, color: '#8A93A8', fontSize: 12.5, fontWeight: 600, marginTop: 8 }}>
+            <div style={{ flexGrow: 1, height: 1, background: '#E1E6EF' }} />
+            ou
+            <div style={{ flexGrow: 1, height: 1, background: '#E1E6EF' }} />
+          </div>
+        </form>
 
-            <p className="login-hint">
-              <LockKeyhole size={13} aria-hidden="true" />
-              <span>
-                Connectez-vous avec votre téléphone et mot de passe. Vos droits (admin ou
-                superadmin) sont appliqués automatiquement.
-              </span>
-            </p>
-
-            {error ? (
-              <p className="form-error" role="alert">
-                {error}
-              </p>
-            ) : null}
-
-            <button type="submit" className="btn-primary login-submit" disabled={submitting}>
-              <LockKeyhole size={18} />
-              {submitting ? 'Connexion…' : 'Se connecter'}
-            </button>
-          </form>
-
-          <div className="login-card-footer">
-            <p className="login-footer-label">Sécurité et confidentialité</p>
-            <ul className="login-trust">
-              <li>
-                <span className="login-trust-icon" aria-hidden="true">
-                  <ShieldCheck size={14} />
-                </span>
-                Connexion sécurisée
-              </li>
-              <li>
-                <span className="login-trust-icon" aria-hidden="true">
-                  <UserRound size={14} />
-                </span>
-                Accès réservé et contrôlé
-              </li>
-              <li>
-                <span className="login-trust-icon" aria-hidden="true">
-                  <History size={14} />
-                </span>
-                Activité tracée
-              </li>
-            </ul>
+        <div style={{ marginTop: 'auto', textAlign: 'center', fontSize: 14, color: '#5B6680' }}>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 24, fontSize: 12, color: '#8A93A8', marginTop: 24 }}>
+            <a href="/conditions-utilisation" style={{ textDecoration: 'none', color: '#8A93A8' }}>Conditions d'utilisation</a>
+            <a href="/politique-de-confidentialite" style={{ textDecoration: 'none', color: '#8A93A8' }}>Confidentialité</a>
+            <a href="/mentions-legales" style={{ textDecoration: 'none', color: '#8A93A8' }}>Mentions légales</a>
           </div>
         </div>
       </div>
     </div>
-  )
+  );
 }
+
+export default LoginPage;

@@ -1,21 +1,115 @@
+/* ============================================================
+   MONPERMIS.BJ — DESIGN TOKENS (charte « route 2026 »)
+   Sources de vérité : design/maquettes/*.html + PROMPT_OPENCODE.md
+   ============================================================ */
 :root {
-  --mp-navy: #0F2A4A;
-  --mp-green: #2FB673;
-  --mp-green-dark: #1F8A56;
-  --mp-green-tint: #E7F6ED;
-  --mp-orange: #C24A24;
-  --mp-orange-tint: #FDECE5;
-  --mp-amber-tint: #FDF1E7;
-  --mp-bg: #F6F9F7;
-  --mp-border: #E1E6E2;
-  --mp-border-soft: #F0F3F1;
-  --mp-border-strong: #C9D3CD;
-  --mp-text-muted: #647069;
-  --mp-text-mutedlight: #8B958F;
-  --mp-metric-bg: #EFF3F0;
+  /* --- Couleurs maquettes (noms du design) --- */
+  --d-navy: #0a1b3d;
+  --d-navy-light: #16306a;
+  --d-navy-deep: #06122a;
+  --d-green: #0baa4f;
+  --d-green-dark: #067a37;
+  --d-green-ink: #065c2a;
+  --d-green-tint: #eaf7ef;
+  --d-green-tint-2: #ddf3e6;
+  --d-green-glow: #3be08a;
+  --d-yellow: #ffb400;
+  --d-yellow-tint: #fff4d6;
+  --d-yellow-ink: #7a5200;
+  --d-bg: #eaeff6;
+  --d-surface: #ffffff;
+  --d-surface-2: #f6f8fc;
+  --d-surface-3: #f1f4f9;
+  --d-border: #e1e6ef;
+  --d-navy-tint: #e8edf6;
+  --d-field-prefix: #f1f4f9;
+  --d-track: #e6ecf5;
+  --d-track-2: #dde3ee;
+  --d-muted: #5b6680;
+  --d-subtle: #8a93a8;
+  --d-text: #0a1b3d;
+  --d-ink-2: #3c4760;
+  --d-disabled-bg: #eef1f6;
+  --d-disabled-border: #cbd3e1;
+  --d-wrong-bg: #fff1e6;
+  --d-wrong: #c2410c;
+  --d-wrong-ink: #9a3412;
+  --d-score-old: #c9d3e6;
 
-  --mp-radius-badge: 11px;
-  --mp-radius-card: 14px;
-  --mp-radius-hero: 18px;
+  /* --- Dégradés --- */
+  --d-hero-gradient: radial-gradient(110% 80% at 100% 0%, rgba(11, 170, 79, 0.42) 0%, rgba(11, 170, 79, 0) 55%),
+    linear-gradient(160deg, #16306a 0%, #0a1b3d 58%, #06122a 100%);
+  --d-hero-gradient-yellow: radial-gradient(110% 80% at 100% 0%, rgba(255, 180, 0, 0.28) 0%, rgba(255, 180, 0, 0) 55%),
+    linear-gradient(160deg, #16306a 0%, #0a1b3d 58%, #06122a 100%);
+  --d-progress-gradient: linear-gradient(90deg, #0baa4f, #ffb400);
+  --d-band: radial-gradient(55% 120% at 100% 0%, rgba(11, 170, 79, 0.32) 0%, rgba(11, 170, 79, 0) 60%),
+    linear-gradient(165deg, #16306a 0%, #0a1b3d 55%, #081733 100%);
+  --d-sidebar: radial-gradient(130% 35% at 0% 100%, rgba(11, 170, 79, 0.3) 0%, rgba(11, 170, 79, 0) 65%),
+    linear-gradient(180deg, #102859 0%, #0a1b3d 50%, #06122a 100%);
+
+  /* --- Effet verre (sur fond sombre) --- */
+  --d-glass-bg: rgba(255, 255, 255, 0.08);
+  --d-glass-border: rgba(255, 255, 255, 0.2);
+
+  /* --- Ombres --- */
+  --d-shadow-card: 0 10px 30px -18px rgba(10, 27, 61, 0.3);
+  --d-shadow-hero: 0 26px 44px -22px rgba(10, 27, 61, 0.75);
+  --d-shadow-round: 0 6px 18px -8px rgba(10, 27, 61, 0.25);
+  --d-shadow-yellow: 0 16px 30px -12px rgba(255, 180, 0, 0.6);
+  --d-shadow-navy: 0 18px 32px -14px rgba(10, 27, 61, 0.65);
+  --d-shadow-tabbar: 0 20px 40px -14px rgba(10, 27, 61, 0.6);
+  --d-shadow-segment: 0 4px 12px -4px rgba(10, 27, 61, 0.25);
+  --d-shadow-card-over-band: 0 1px 2px rgba(10, 27, 61, 0.05), 0 28px 56px -28px rgba(6, 18, 42, 0.55);
+
+  /* --- Typographie --- */
+  --d-font-display: 'Sora', 'Poppins', system-ui, sans-serif;
+  --d-font-body: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
+
+  /* --- Mise en page responsive partagée --- */
+  --gutter: 16px;
+  --gap: 12px;
+  --overlap: 40px;
+  --card-pad: 18px;
+  --card-radius: 20px;
+  --tabbar-h: 72px;
+  --tabbar-space: calc(var(--tabbar-h) + 16px + env(safe-area-inset-bottom, 0px));
+  --content-max: 100%;
+  --fs-h1: clamp(1.625rem, 1.2rem + 1.6vw, 2.25rem);
+  --fs-hero: clamp(2.75rem, 1.9rem + 3.6vw, 4rem);
+  --fs-big: clamp(1.875rem, 1.5rem + 1.4vw, 2.5rem);
+  --fs-h2: clamp(1.0625rem, 1rem + 0.3vw, 1.125rem);
+  --fs-body: clamp(0.9375rem, 0.9rem + 0.15vw, 1rem);
+  --fs-landing: clamp(2.5rem, 1.2rem + 5.4vw, 4.75rem);
+
+  --d-bg: #eaeff6;
+
+  /* ============================================================
+     Anciens noms de variables (compatibilité code existant)
+     — réalignés sur la nouvelle charte.
+     ============================================================ */
+  --mp-navy: var(--d-navy);
+  --mp-green: var(--d-green);
+  --mp-green-dark: var(--d-green-dark);
+  --mp-green-tint: var(--d-green-tint);
+  --mp-orange: var(--d-wrong);
+  --mp-orange-tint: var(--d-wrong-bg);
+  --mp-amber-tint: var(--d-yellow-tint);
+  --mp-bg: var(--d-bg);
+  --mp-border: var(--d-border);
+  --mp-border-soft: #eef1f6;
+  --mp-border-strong: #cbd3e1;
+  --mp-text-muted: var(--d-muted);
+  --mp-text-mutedlight: var(--d-subtle);
+  --mp-metric-bg: var(--d-navy-tint);
+
+  --mp-radius-badge: 14px;
+  --mp-radius-card: 24px;
+  --mp-radius-hero: 32px;
   --mp-radius-pill: 999px;
+
+  /* Aliasts utilisés par les autres feuilles de style */
+  --brand-green: var(--d-green);
+  --brand-gold: var(--d-yellow);
+  --brand-navy: var(--d-navy);
+  --mp-green-vibrant: var(--d-green);
 }

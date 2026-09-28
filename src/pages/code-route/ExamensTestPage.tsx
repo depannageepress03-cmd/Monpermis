@@ -420,9 +420,9 @@ export function ExamensTestTakePage() {
   if (authLoading || !user) return <PageLoader />;
 
   return (
-    <div style={{ minHeight: '100dvh', background: '#F5F7FB', position: 'relative', overflow: 'hidden' }}>
+    <div style={{ minHeight: '100dvh', background: '#EAEFF6', position: 'relative', overflow: 'hidden' }}>
       <div style={{ position: 'absolute', top: -100, right: -100, width: 280, height: 280, borderRadius: '50%', background: 'rgba(11,170,79,0.12)', filter: 'blur(60px)', pointerEvents: 'none' }} />
-      <div style={{ width: '100%', maxWidth: 1120, margin: '0 auto', boxSizing: 'border-box', padding: '56px 20px 120px', background: '#F5F7FB', fontFamily: 'Plus Jakarta Sans, sans-serif', color: '#0A1B3D', display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div style={{ width: '100%', maxWidth: 1120, margin: '0 auto', boxSizing: 'border-box', padding: '56px 20px 120px', background: '#EAEFF6', fontFamily: 'Plus Jakarta Sans, sans-serif', color: '#0A1B3D', display: 'flex', flexDirection: 'column', gap: 16 }}>
 
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>

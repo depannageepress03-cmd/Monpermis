@@ -29,24 +29,39 @@ export function MoniteurLayout() {
 
   return (
     <div className={`admin-shell ${open ? 'nav-open' : ''}`}>
-      <aside className="admin-sidebar">
+      {open ? (
+        <button
+          type="button"
+          className="admin-sidebar-backdrop"
+          onClick={() => setOpen(false)}
+          aria-label="Fermer le menu"
+        />
+      ) : null}
+      <aside className="admin-sidebar" id="admin-sidebar">
         <div className="admin-sidebar-brand">
           <img src={logoUrl} alt="" />
           <div>
             <strong>{SITE_NAME}</strong>
             <span>Portail moniteur</span>
           </div>
-          <button type="button" className="admin-nav-close" onClick={() => setOpen(false)}>
+          <button
+            type="button"
+            className="admin-nav-close"
+            onClick={() => setOpen(false)}
+            aria-label="Fermer le menu"
+            title="Fermer le menu"
+          >
             <X size={18} />
           </button>
         </div>
 
-        <nav className="admin-nav">
+        <nav className="admin-nav" aria-label="Navigation principale">
           {navItems.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
               end={item.end}
+              title={item.label}
               className={({ isActive }) => (isActive ? 'active' : undefined)}
               onClick={() => setOpen(false)}
             >
@@ -58,7 +73,13 @@ export function MoniteurLayout() {
 
         <div className="admin-sidebar-footer">
           <p className="admin-muted">{moniteur?.fullName}</p>
-          <button type="button" className="btn-outline" onClick={signOut}>
+          <button
+            type="button"
+            className="btn-outline"
+            onClick={signOut}
+            title="Déconnexion"
+            aria-label="Déconnexion"
+          >
             <LogOut size={16} />
             Déconnexion
           </button>
@@ -67,7 +88,14 @@ export function MoniteurLayout() {
 
       <div className="admin-main">
         <header className="admin-topbar">
-          <button type="button" className="btn-icon" onClick={() => setOpen(true)}>
+          <button
+            type="button"
+            className="btn-icon"
+            onClick={() => setOpen(true)}
+            aria-label="Ouvrir le menu"
+            aria-controls="admin-sidebar"
+            aria-expanded={open}
+          >
             <Menu size={18} />
           </button>
           <div>

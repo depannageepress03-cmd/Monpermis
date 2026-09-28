@@ -35,6 +35,110 @@ describe('catalogue', () => {
   })
 })
 
+describe('accès aux offres', () => {
+  it('n’active que les formules liées à un paiement confirmé', async () => {
+    const email = `qa.pay.access.${Date.now()}@test.local`
+    const user = await seedLearner({
+      email,
+      phone: `03${String(Date.now()).slice(-8)}`,
+    })
+    const login = await api('/api/auth/login', {
+      method: 'POST',
+      body: { identifier: email, password: QA_PASSWORD, client: 'mobile' },
+    })
+    const token = login.json.data.token
+    const { AccessRequest, Payment } = models
+    const future = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+
+    const code = await AccessRequest.create({
+      userId: user._id,
+      module: 'code',
+      status: 'actif',
+      quantity: 1,
+      amount: 2000,
+      currency: 'XOF',
+      unit: 'month',
+      startAt: new Date(),
+      endAt: future,
+    })
+    const hours = await AccessRequest.create({
+      userId: user._id,
+      module: 'conduite_heures',
+      status: 'valide',
+      quantity: 2,
+      amount: 9000,
+      currency: 'XOF',
+      unit: 'hour',
+      hoursCredited: true,
+    })
+    const videos = await AccessRequest.create({
+      userId: user._id,
+      module: 'conduite_videos',
+      status: 'actif',
+      quantity: 1,
+      amount: 0,
+      currency: 'XOF',
+      unit: 'month',
+      startAt: new Date(),
+      endAt: future,
+    })
+
+    const codePayment = await Payment.create({
+      accessRequestId: code._id,
+      accessRequestIds: [code._id],
+      userId: user._id,
+      method: 'fedapay',
+      amount: 2000,
+      currency: 'XOF',
+      status: 'pending',
+    })
+    await Payment.create({
+      accessRequestId: hours._id,
+      accessRequestIds: [hours._id],
+      userId: user._id,
+      method: 'manual',
+      amount: 9000,
+      currency: 'XOF',
+      status: 'approved',
+    })
+    const videosPayment = await Payment.create({
+      accessRequestId: videos._id,
+      accessRequestIds: [videos._id],
+      userId: user._id,
+      method: 'fedapay',
+      amount: 0,
+      currency: 'XOF',
+      status: 'approved',
+    })
+
+    const beforeConfirmation = await api('/api/access-requests/me', { token })
+    expect(beforeConfirmation.json.data.access).toMatchObject({
+      code: false,
+      conduite_heures: true,
+      conduite_videos: false,
+    })
+
+    const freeClaim = await api('/api/access-requests/claim-free', {
+      method: 'POST',
+      token,
+      body: { modules: ['conduite_videos'] },
+    })
+    expect(freeClaim.status).toBe(403)
+
+    await Payment.updateOne({ _id: codePayment._id }, { $set: { status: 'approved' } })
+    await Promise.all([
+      AccessRequest.updateOne({ _id: videos._id }, { $set: { amount: 2000 } }),
+      Payment.updateOne({ _id: videosPayment._id }, { $set: { amount: 2000 } }),
+    ])
+    const afterConfirmation = await api('/api/access-requests/me', { token })
+    expect(afterConfirmation.json.data.access).toMatchObject({
+      code: true,
+      conduite_heures: true,
+      conduite_videos: true,
+    })
+  })
+})
+
 describe('webhook fedapay', () => {
   async function setupPendingAccess() {
     const email = `qa.pay.${Date.now()}${Math.floor(Math.random() * 1000)}@test.local`

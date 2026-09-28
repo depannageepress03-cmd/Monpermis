@@ -33,8 +33,8 @@ export function AbonnementPage() {
 
   const [modules, setModules] = useState<AccessModule[]>([]);
   const [me, setMe] = useState<AccessMe | null>(null);
-  const [, setLoading] = useState(true);
-  const [, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<Partial<Record<AccessModuleKey, boolean>>>({});
   const [quantityByModule] = useState<Record<string, number>>({});
   const [checkoutOpen, setCheckoutOpen] = useState(false);
@@ -76,6 +76,7 @@ export function AbonnementPage() {
       if (!PRIMARY_KEYS.includes(module.key)) return false;
       if (!selected[module.key]) return false;
       if (me?.access[module.key]) return false;
+      if (module.price <= 0) return false;
       return true;
     })
     .map((module) => ({
@@ -115,11 +116,11 @@ export function AbonnementPage() {
     return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
   });
 
-  const selectedPlan = sortedModules.find(m => PRIMARY_KEYS.includes(m.key) && selected[m.key] && !me?.access[m.key]);
+  const selectedPlan = sortedModules.find(m => PRIMARY_KEYS.includes(m.key) && selected[m.key] && !me?.access[m.key] && m.price > 0);
   const ctaAmount = selectedPlan ? computeModuleAmount(selectedPlan.key, selectedPlan.price, selectedPlan.key === 'conduite_heures' ? quantityByModule[selectedPlan.key] : 1) : 0;
 
   return (
-    <div style={{ minHeight: '100dvh', background: '#F5F7FB', position: 'relative', overflow: 'hidden' }}>
+    <div style={{ minHeight: '100dvh', background: '#EAEFF6', position: 'relative', overflow: 'hidden' }}>
       <div style={{ position: 'absolute', top: -80, right: -80, width: 260, height: 260, borderRadius: '50%', background: 'rgba(255,180,0,0.16)', filter: 'blur(60px)', pointerEvents: 'none' }} />
       <div style={{ position: 'relative', boxSizing: 'border-box', padding: '56px 20px 0', display: 'flex', flexDirection: 'column', gap: 14, maxWidth: 1120, margin: '0 auto' }}>
 
@@ -134,7 +135,16 @@ export function AbonnementPage() {
 
         {/* Plans */}
         <div className="mp-grid-desktop" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {sortedModules.filter(m => PRIMARY_KEYS.includes(m.key)).map((module) => {
+          {loading ? (
+            <div role="status" style={{ padding: 18, color: '#5B6680', textAlign: 'center' }}>
+              Chargement de tes accès…
+            </div>
+          ) : error ? (
+            <div role="alert" style={{ borderRadius: 18, background: '#FFFFFF', padding: 18, color: '#9B1C1C' }}>
+              <p style={{ margin: '0 0 12px' }}>Impossible de vérifier l’état de tes offres : {error}</p>
+              <Button variant="outline" size="sm" onClick={() => void load()}>Réessayer</Button>
+            </div>
+          ) : sortedModules.filter(m => PRIMARY_KEYS.includes(m.key)).map((module) => {
             const isPlanActive = Boolean(me?.access[module.key]);
             const checked = Boolean(selected[module.key]);
             const amount = computeModuleAmount(module.key, module.price, module.key === 'conduite_heures' ? quantityByModule[module.key] : 1);
@@ -143,11 +153,12 @@ export function AbonnementPage() {
               <PlanCard
                 key={module.key}
                 name={module.label}
-                description={isPlanActive ? 'Actif' : `${formatPrice(module.price)}${unitSuffix[module.unit]}`}
-                price={isPlanActive ? 'Actif' : formatPrice(amount)}
+                description={isPlanActive ? 'Actif' : 'Inactif'}
+                price={isPlanActive ? 'Actif' : `${formatPrice(amount)}${unitSuffix[module.unit]}`}
                 popular={false}
                 selected={checked || isPlanActive}
-                onSelect={() => (isPlanActive ? undefined : toggle(module.key))}
+                disabled={isPlanActive || amount <= 0}
+                onSelect={isPlanActive || amount <= 0 ? undefined : () => toggle(module.key)}
               />
             );
           })}
@@ -193,7 +204,7 @@ export function AbonnementPage() {
           fullWidth
           leftIcon={<ShieldCheck size={18} stroke="#FFB400" />}
           onClick={() => setCheckoutOpen(true)}
-          disabled={cartItems.length === 0}
+          disabled={loading || Boolean(error) || cartItems.length === 0}
         >
           {ctaAmount > 0 ? `Payer ${formatPrice(ctaAmount)}` : 'Sélectionne une offre'}
         </Button>

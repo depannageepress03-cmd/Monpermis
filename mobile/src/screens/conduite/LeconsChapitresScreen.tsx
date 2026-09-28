@@ -5,6 +5,7 @@ import { setStatusBarStyle } from 'expo-status-bar'
 import {
   AlertCircle,
   BookOpen,
+  Check,
   ChevronLeft,
   ChevronRight,
   Lightbulb,
@@ -21,7 +22,7 @@ import {
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import Svg, { Ellipse, Path, Rect } from 'react-native-svg'
-import { ContentError, fetchConduiteChapters, type ConduiteChapter } from '../../api/conduite'
+import { ContentError, fetchConduiteChapters, fetchLearnerProgress, type ConduiteChapter } from '../../api/conduite'
 import { Bouncy } from '../../components/Bouncy'
 import { EmptyState } from '../../components/EmptyState'
 import { FadeUp } from '../../components/FadeUp'
@@ -30,7 +31,7 @@ import { ScreenLoader } from '../../components/ScreenLoader'
 import { SkeletonList } from '../../components/Skeleton'
 import { useRequireAuth } from '../../hooks/useRequireAuth'
 import type { RootStackParamList } from '../../navigation/types'
-import { dark, fonts, shadows } from '../../theme'
+import { brand, dark, fonts, shadows } from '../../theme'
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'LeconsChapitres'>
 
@@ -83,6 +84,8 @@ export function LeconsChapitresScreen() {
   const navigation = useNavigation<Nav>()
   const { user, loading: authLoading } = useRequireAuth(navigation)
   const [chapters, setChapters] = useState<ConduiteChapter[]>([])
+  const [completedTestIds, setCompletedTestIds] = useState<Set<string>>(new Set())
+  const [doneByChapter, setDoneByChapter] = useState<Record<string, number>>({})
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -91,8 +94,21 @@ export function LeconsChapitresScreen() {
     if (!silent) setLoading(true)
     setError(null)
     try {
-      const data = await fetchConduiteChapters()
+      // Parité web (LearnerChapterListPage) : chapitres + progression complète.
+      // L'endpoint mobile /content/conduite/progress existe via fetchLearnerProgress.
+      const [data, progress] = await Promise.all([
+        fetchConduiteChapters(),
+        fetchLearnerProgress().catch(() => null),
+      ])
       setChapters(data)
+      setCompletedTestIds(
+        new Set((progress?.completedTests ?? []).map((entry) => entry.chapterId)),
+      )
+      const done: Record<string, number> = {}
+      for (const entry of progress?.completedCourses ?? []) {
+        done[entry.chapterId] = (done[entry.chapterId] ?? 0) + 1
+      }
+      setDoneByChapter(done)
     } catch (err) {
       setError(err instanceof ContentError ? err.message : 'Chargement impossible')
     } finally {
@@ -212,6 +228,8 @@ export function LeconsChapitresScreen() {
           {!loading && !error
             ? chapters.map((chapter, index) => {
                 const courseCount = chapter.courses.length
+                const doneCount = doneByChapter[chapter.id] ?? 0
+                const testDone = completedTestIds.has(chapter.id)
                 return (
                   <FadeUp key={chapter.id} delay={80 + index * 40}>
                     <Bouncy
@@ -240,7 +258,16 @@ export function LeconsChapitresScreen() {
                           <Text style={styles.cardTitle}>{chapter.name}</Text>
                           <Text style={styles.cardSubtitle}>
                             {courseCount} cours
+                            {doneCount > 0
+                              ? ` · ${doneCount} terminé${doneCount > 1 ? 's' : ''}`
+                              : ''}
                           </Text>
+                          {testDone ? (
+                            <View style={styles.validBadge}>
+                              <Check size={12} color={dark.green} strokeWidth={3} />
+                              <Text style={styles.validBadgeText}>Test validé</Text>
+                            </View>
+                          ) : null}
                         </View>
                         <ChevronRight size={22} color={ORANGE} />
                       </View>
@@ -393,6 +420,22 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
     color: dark.textMuted,
+  },
+  validBadge: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginTop: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+    backgroundColor: brand.greenPale,
+  },
+  validBadgeText: {
+    fontFamily: fonts.bodyBold,
+    fontSize: 12,
+    color: dark.green,
   },
   tipCard: {
     flexDirection: 'row',

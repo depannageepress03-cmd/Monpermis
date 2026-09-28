@@ -47,7 +47,7 @@ export function AppShell({ activeTab, children, userInitials = 'JE', hasUnread =
             <Bell size={19} />{hasUnread ? <span className="mp-dot" /> : null}
           </button>
           {onOpenProfile ? (
-            <button type="button" className="mp-avatar mp-avatar--btn" aria-label="Voir mes accès" onClick={onOpenProfile}>{userInitials}</button>
+            <button type="button" className="mp-avatar mp-avatar--btn" aria-label="Voir mon profil" onClick={onOpenProfile}>{userInitials}</button>
           ) : (
             <div className="mp-avatar">{userInitials}</div>
           )}

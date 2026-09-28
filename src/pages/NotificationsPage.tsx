@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useCallback, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Bell,
   CalendarCheck,
@@ -7,27 +7,27 @@ import {
   CreditCard,
   Megaphone,
   TriangleAlert,
-} from 'lucide-react'
-import type { ComponentType, SVGProps } from 'react'
+} from 'lucide-react';
+import type { ComponentType, SVGProps } from 'react';
 import {
   fetchNotifications,
   markAllNotificationsRead,
   markNotificationRead,
   type AppNotification,
-} from '../api/notifications'
-import { EmptyState } from '../components/EmptyState'
-import { PageLoader } from '../components/PageLoader'
-import { PageNavbar } from '../components/PageNavbar'
-import { ContentReveal } from '../components/ContentReveal'
-import { SegmentedTabs } from '../components/SegmentedTabs'
-import { PageSkeleton } from '../components/PageSkeleton'
-import { useAuth } from '../hooks/useAuth'
-import { AppShell, userInitialsOf, type AppTab } from '../components/layout/AppShell'
-import { Badge, Button, Card, IconBadge } from '../components/ui'
-import '../styles/auth.css'
-import '../styles/learner.css'
+} from '../api/notifications';
+import { EmptyState } from '../components/EmptyState';
+import { PageLoader } from '../components/PageLoader';
+import { PageNavbar } from '../components/PageNavbar';
+import { ContentReveal } from '../components/ContentReveal';
+import { SegmentedTabs } from '../components/SegmentedTabs';
+import { PageSkeleton } from '../components/PageSkeleton';
+import { useAuth } from '../hooks/useAuth';
+import { AppShell, userInitialsOf, type AppTab } from '../components/layout/AppShell';
+import { Badge, Button, Card, IconBadge } from '../components/ui';
+import '../styles/auth.css';
+import '../styles/learner.css';
 
-type IconComp = ComponentType<SVGProps<SVGSVGElement> & { size?: number }>
+type IconComp = ComponentType<SVGProps<SVGSVGElement> & { size?: number }>;
 
 const TAB_ROUTES: Record<AppTab, string> = {
   accueil: '/accueil',
@@ -35,7 +35,7 @@ const TAB_ROUTES: Record<AppTab, string> = {
   conduite: '/conduite',
   progres: '/code-de-la-route/mes-notes',
   profil: '/profil',
-}
+};
 
 const iconFor: Record<string, IconComp> = {
   subscription_activated: CreditCard,
@@ -46,7 +46,7 @@ const iconFor: Record<string, IconComp> = {
   reservation_cancelled: TriangleAlert,
   announcement: Megaphone,
   general: Bell,
-}
+};
 
 function toneFor(type: string): 'green' | 'orange' {
   if (
@@ -54,9 +54,9 @@ function toneFor(type: string): 'green' | 'orange' {
     type === 'subscription_expiring' ||
     type === 'reservation_cancelled'
   ) {
-    return 'orange'
+    return 'orange';
   }
-  return 'green'
+  return 'green';
 }
 
 const linkToPath: Record<string, string> = {
@@ -65,79 +65,79 @@ const linkToPath: Record<string, string> = {
   profil: '/profil',
   notifications: '/notifications',
   actualites: '/actualites',
-}
+};
 
 function resolveNotificationPath(link: string): string | null {
-  if (!link) return null
-  if (linkToPath[link]) return linkToPath[link]
+  if (!link) return null;
+  if (linkToPath[link]) return linkToPath[link];
   if (link.startsWith('actualites/')) {
-    const id = link.slice('actualites/'.length)
-    return id ? `/actualites/${id}` : '/actualites'
+    const id = link.slice('actualites/'.length);
+    return id ? `/actualites/${id}` : '/actualites';
   }
-  if (link.startsWith('/')) return link
-  return null
+  if (link.startsWith('/')) return link;
+  return null;
 }
 
 function timeAgo(iso: string) {
-  const diff = Date.now() - new Date(iso).getTime()
-  const mins = Math.floor(diff / 60000)
-  if (mins < 1) return "à l'instant"
-  if (mins < 60) return `il y a ${mins} min`
-  const hours = Math.floor(mins / 60)
-  if (hours < 24) return `il y a ${hours} h`
-  const days = Math.floor(hours / 24)
-  if (days < 7) return `il y a ${days} j`
-  return new Date(iso).toLocaleDateString('fr-FR')
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "à l'instant";
+  if (mins < 60) return `il y a ${mins} min`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `il y a ${hours} h`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `il y a ${days} j`;
+  return new Date(iso).toLocaleDateString('fr-FR');
 }
 
 export function NotificationsPage() {
-  const navigate = useNavigate()
-  const { user, loading } = useAuth()
-  const [items, setItems] = useState<AppNotification[]>([])
-  const [filter, setFilter] = useState<'all' | 'unread'>('all')
-  const [fetching, setFetching] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const navigate = useNavigate();
+  const { user, loading } = useAuth();
+  const [items, setItems] = useState<AppNotification[]>([]);
+  const [filter, setFilter] = useState<'all' | 'unread'>('all');
+  const [fetching, setFetching] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    setFetching(true)
-    setError(null)
+    setFetching(true);
+    setError(null);
     try {
-      const { notifications } = await fetchNotifications()
-      setItems(notifications)
+      const { notifications } = await fetchNotifications();
+      setItems(notifications);
     } catch {
-      setError('Impossible de charger les notifications.')
-      setItems([])
+      setError('Impossible de charger les notifications.');
+      setItems([]);
     } finally {
-      setFetching(false)
+      setFetching(false);
     }
-  }, [])
+  }, []);
 
   useEffect(() => {
-    if (!user) return
-    void load()
-  }, [user, load])
+    if (!user) return;
+    void load();
+  }, [user, load]);
 
   const handleTap = async (notification: AppNotification) => {
     if (!notification.read) {
       setItems((prev) =>
         prev.map((n) => (n.id === notification.id ? { ...n, read: true } : n)),
-      )
-      void markNotificationRead(notification.id).catch(() => undefined)
+      );
+      void markNotificationRead(notification.id).catch(() => undefined);
     }
-    const path = resolveNotificationPath(notification.link)
-    if (path && path !== '/notifications') navigate(path)
-  }
+    const path = resolveNotificationPath(notification.link);
+    if (path && path !== '/notifications') navigate(path);
+  };
 
   const handleMarkAll = () => {
-    setItems((prev) => prev.map((n) => ({ ...n, read: true })))
-    void markAllNotificationsRead().catch(() => undefined)
-  }
+    setItems((prev) => prev.map((n) => ({ ...n, read: true })));
+    void markAllNotificationsRead().catch(() => undefined);
+  };
 
-  if (loading || !user) return <PageLoader />
+  if (loading || !user) return <PageLoader />;
 
-  const hasUnread = items.some((n) => !n.read)
-  const visible = filter === 'unread' ? items.filter((n) => !n.read) : items
-  const unreadCount = items.filter((n) => !n.read).length
+  const hasUnread = items.some((n) => !n.read);
+  const visible = filter === 'unread' ? items.filter((n) => !n.read) : items;
+  const unreadCount = items.filter((n) => !n.read).length;
 
   return (
     <AppShell
@@ -203,14 +203,14 @@ export function NotificationsPage() {
               title={filter === 'unread' ? 'Tout est lu' : 'Aucune notification'}
               message={
                 filter === 'unread'
-                  ? 'Tu n’as plus de notifications non lues.'
-                  : 'Tu seras prévenu ici dès qu’un paiement est validé, une leçon confirmée ou une annonce publiée.'
+                  ? 'Tu n\'as plus de notifications non lues.'
+                  : 'Tu seras prévenu ici dès qu\'un paiement est validé, une leçon confirmée ou une annonce publiée.'
               }
             />
           ) : (
             <div className="home-notif-list">
               {visible.map((n) => {
-                const Icon = iconFor[n.type] ?? Bell
+                const Icon = iconFor[n.type] ?? Bell;
                 return (
                   <Card key={n.id}>
                     <button
@@ -227,7 +227,7 @@ export function NotificationsPage() {
                       {!n.read ? <Badge tone="orange">Non lue</Badge> : null}
                     </button>
                   </Card>
-                )
+                );
               })}
             </div>
           )}
@@ -235,5 +235,7 @@ export function NotificationsPage() {
         </div>
       </div>
     </AppShell>
-  )
+  );
 }
+
+export default NotificationsPage;

@@ -268,7 +268,7 @@ const styles = StyleSheet.create({
   panel: {
     flex: 1,
     marginTop: -18,
-    backgroundColor: '#F4F7FB',
+    backgroundColor: '#EAEFF6',
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     overflow: 'hidden',

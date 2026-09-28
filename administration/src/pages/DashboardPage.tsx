@@ -161,7 +161,7 @@ export function DashboardPage() {
   const recentPayments = summary.payments.recent.slice(0, 3);
 
   return (
-    <div style={{ minHeight: '100vh', background: '#F5F7FB', fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif", color: '#0A1B3D', display: 'flex' }}>
+    <div style={{ minHeight: '100vh', background: '#EAEFF6', fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif", color: '#0A1B3D', display: 'flex' }}>
       {/* Sidebar */}
       <aside style={{ width: 272, flexShrink: 0, boxSizing: 'border-box', padding: '28px 18px', background: 'radial-gradient(120% 50% at 0% 100%, rgba(11,170,79,0.28) 0%, rgba(11,170,79,0) 60%), linear-gradient(180deg, #0F2554 0%, #0A1B3D 50%, #06122A 100%)', color: '#FFFFFF', display: 'flex', flexDirection: 'column', gap: 26, minHeight: '100vh' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '0 6px' }}>
@@ -249,7 +249,7 @@ export function DashboardPage() {
 
         {/* KPI Cards */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 16 }}>
-          <div style={{ position: 'relative', overflow: 'hidden', borderRadius: 26, padding: 20, background: 'radial-gradient(100% 90% at 100% 0%, rgba(11,170,79,0.42) 0%, rgba(11,170,79,0) 60%), linear-gradient(160deg, #1A3A7A 0%, #0A1B3D 60%, #06122A 100%)', color: '#FFFFFF', boxShadow: '0 24px 40px -24px rgba(10,27,61,0.8)', display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div style={{ position: 'relative', overflow: 'hidden', borderRadius: 26, padding: 20, background: 'radial-gradient(100% 90% at 100% 0%, rgba(11,170,79,0.42) 0%, rgba(11,170,79,0) 60%), linear-gradient(160deg, #16306A 0%, #0A1B3D 60%, #06122A 100%)', color: '#FFFFFF', boxShadow: '0 24px 40px -24px rgba(10,27,61,0.8)', display: 'flex', flexDirection: 'column', gap: 10 }}>
             <div style={{ fontSize: 13, fontWeight: 700, color: 'rgba(255,255,255,0.75)' }}>Apprenants actifs</div>
             <div style={{ fontFamily: "'Sora', sans-serif", fontSize: 36, fontWeight: 700, letterSpacing: '-0.03em' }}>{loading ? <Skeleton height={36} width={80} /> : summary.users.active}</div>
             <div style={{ height: 28, alignSelf: 'flex-start', padding: '0 11px', borderRadius: 14, background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', fontSize: 12, fontWeight: 700 }}>{summary.users.total} inscrits</div>
@@ -285,7 +285,7 @@ export function DashboardPage() {
                 <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 10, height: 10, borderRadius: 5, background: '#0BAA4F' }} />Heures de conduite</span>
               </div>
             </div>
-            <div style={{ minHeight: 210, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px 12px', borderRadius: 18, background: '#F5F7FB', fontSize: 13.5, fontWeight: 600, color: '#5B6680', textAlign: 'center' }}>
+            <div style={{ minHeight: 210, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px 12px', borderRadius: 18, background: '#EAEFF6', fontSize: 13.5, fontWeight: 600, color: '#5B6680', textAlign: 'center' }}>
               Détail mensuel indisponible — l'API expose les totaux du jour, de la semaine et du mois (voir Finances).
             </div>
           </div>
@@ -293,7 +293,7 @@ export function DashboardPage() {
           {/* Donut Chart */}
           <div style={{ borderRadius: 26, padding: 22, background: '#FFFFFF', boxShadow: '0 12px 30px -22px rgba(10,27,61,0.35)', display: 'flex', flexDirection: 'column', gap: 14 }}>
             <div style={{ fontFamily: "'Sora', sans-serif", fontSize: 17, fontWeight: 700 }}>Répartition des formules</div>
-            <div style={{ minHeight: 140, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px 12px', borderRadius: 18, background: '#F5F7FB', fontSize: 13.5, fontWeight: 600, color: '#5B6680', textAlign: 'center' }}>
+            <div style={{ minHeight: 140, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px 12px', borderRadius: 18, background: '#EAEFF6', fontSize: 13.5, fontWeight: 600, color: '#5B6680', textAlign: 'center' }}>
               Répartition indisponible — aucune ventilation par formule côté API.
             </div>
             <button type="button" onClick={() => navigate('/abonnements')} style={{ marginTop: 'auto', height: 44, border: '1.5px solid #E1E6EF', borderRadius: 22, background: '#FFFFFF', fontFamily: 'inherit', fontSize: 13.5, fontWeight: 700, color: '#0A1B3D', cursor: 'pointer' }}>Gérer les formules</button>
@@ -308,7 +308,7 @@ export function DashboardPage() {
               <div style={{ fontFamily: "'Sora', sans-serif", fontSize: 17, fontWeight: 700 }}>Réservations à venir</div>
               <Link to="/conduite/reservations" style={{ fontSize: 13, fontWeight: 700, color: '#067A37', textDecoration: 'none' }}>Voir le planning</Link>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1.3fr 1.1fr 1fr 0.8fr 0.9fr', gap: 12, padding: '8px 12px', borderRadius: 14, background: '#F5F7FB', fontSize: 11.5, fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase', color: '#5B6680' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1.3fr 1.1fr 1fr 0.8fr 0.9fr', gap: 12, padding: '8px 12px', borderRadius: 14, background: '#EAEFF6', fontSize: 11.5, fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase', color: '#5B6680' }}>
               <span>Apprenant</span><span>Moniteur</span><span>Date</span><span>Créneau</span><span>Statut</span>
             </div>
             {loading ? (

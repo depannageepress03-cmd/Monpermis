@@ -1,22 +1,22 @@
-import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
-import { ExternalLink, Megaphone } from 'lucide-react'
+import { useEffect, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { ExternalLink, Megaphone } from 'lucide-react';
 import {
   announcementLooksLikeHtml,
   fetchAnnouncement,
   type Announcement,
-} from '../api/announcements'
-import { EmptyState } from '../components/EmptyState'
-import { PageNavbar } from '../components/PageNavbar'
-import { PageLoader } from '../components/PageLoader'
-import { PageSkeleton } from '../components/PageSkeleton'
-import { useAuth } from '../hooks/useAuth'
-import { resolveMediaUrl } from '../utils/mediaUrl'
-import { sanitizeCmsHtml } from '../utils/sanitizeHtml'
-import { AppShell, userInitialsOf, type AppTab } from '../components/layout/AppShell'
-import { Badge, Card, IconBadge } from '../components/ui'
-import '../styles/auth.css'
-import '../styles/learner.css'
+} from '../api/announcements';
+import { EmptyState } from '../components/EmptyState';
+import { PageNavbar } from '../components/PageNavbar';
+import { PageLoader } from '../components/PageLoader';
+import { PageSkeleton } from '../components/PageSkeleton';
+import { useAuth } from '../hooks/useAuth';
+import { resolveMediaUrl } from '../utils/mediaUrl';
+import { sanitizeCmsHtml } from '../utils/sanitizeHtml';
+import { AppShell, userInitialsOf, type AppTab } from '../components/layout/AppShell';
+import { Badge, Card, IconBadge } from '../components/ui';
+import '../styles/auth.css';
+import '../styles/learner.css';
 
 const TAB_ROUTES: Record<AppTab, string> = {
   accueil: '/accueil',
@@ -24,38 +24,38 @@ const TAB_ROUTES: Record<AppTab, string> = {
   conduite: '/conduite',
   progres: '/code-de-la-route/mes-notes',
   profil: '/profil',
-}
+};
 
 /**
  * CTA fourni par le CMS : chemin interne simple (/...) ou URL https externe.
  * Bloque javascript:, data:, //hôte-externe et backslashes (bypass open-redirect).
  */
 function isSafeCtaUrl(url: string): boolean {
-  const value = url.trim()
-  if (!value || value.includes('\\') || /[\s<>"]/.test(value)) return false
-  if (value.startsWith('/')) return !value.startsWith('//')
-  return /^https:\/\/[^/]+\.[^/]+/i.test(value)
+  const value = url.trim();
+  if (!value || value.includes('\\') || /[\s<>"]/.test(value)) return false;
+  if (value.startsWith('/')) return !value.startsWith('//');
+  return /^https:\/\/[^/]+\.[^/]+/i.test(value);
 }
 
 export function ActualiteDetailPage() {
-  const { id } = useParams<{ id: string }>()
-  const navigate = useNavigate()
-  const { user, loading } = useAuth()
-  const [item, setItem] = useState<Announcement | null>(null)
-  const [fetching, setFetching] = useState(true)
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const { user, loading } = useAuth();
+  const [item, setItem] = useState<Announcement | null>(null);
+  const [fetching, setFetching] = useState(true);
 
   useEffect(() => {
-    if (!user || !id) return
-    setFetching(true)
+    if (!user || !id) return;
+    setFetching(true);
     void fetchAnnouncement(id)
       .then(setItem)
-      .finally(() => setFetching(false))
-  }, [user, id])
+      .finally(() => setFetching(false));
+  }, [user, id]);
 
-  if (loading || !user) return <PageLoader />
+  if (loading || !user) return <PageLoader />;
 
-  const isHtml = item ? announcementLooksLikeHtml(item.body) : false
-  const image = item ? resolveMediaUrl(item.imageUrl) : ''
+  const isHtml = item ? announcementLooksLikeHtml(item.body) : false;
+  const image = item ? resolveMediaUrl(item.imageUrl) : '';
 
   return (
     <AppShell
@@ -120,8 +120,8 @@ export function ActualiteDetailPage() {
                     rel={item.ctaUrl.startsWith('/') ? undefined : 'noopener noreferrer'}
                     onClick={(e) => {
                       if (item.ctaUrl?.startsWith('/')) {
-                        e.preventDefault()
-                        navigate(item.ctaUrl)
+                        e.preventDefault();
+                        navigate(item.ctaUrl);
                       }
                     }}
                   >
@@ -135,5 +135,7 @@ export function ActualiteDetailPage() {
         </div>
       </div>
     </AppShell>
-  )
+  );
 }
+
+export default ActualiteDetailPage;

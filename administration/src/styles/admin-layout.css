@@ -41,7 +41,7 @@
   border-right: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-.admin-app.is-tablet { --sidebar-w: 60px; }
+.admin-app.is-tablet { --sidebar-w: 80px; }
 
 .admin-app.is-mobile .admin-sidebar {
   position: fixed;

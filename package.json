@@ -20,6 +20,7 @@
     "lint": "npm run lint --prefix mobile",
     "test:api": "npm run test:api --prefix server",
     "test:e2e": "playwright test",
+    "test:responsive": "playwright test e2e/specs/responsive.spec.ts --project=mobile-web",
     "check:banks-sync": "npm run check:banks-sync --prefix server",
     "generate:learner-banks": "npm run generate:learner-banks --prefix server"
   },

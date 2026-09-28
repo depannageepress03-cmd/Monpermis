@@ -1,19 +1,19 @@
-import { useCallback, useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { CalendarCheck, CreditCard, History, LoaderCircle } from 'lucide-react'
+import { useCallback, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { CalendarCheck, CreditCard, History, LoaderCircle } from 'lucide-react';
 import {
   fetchMyPayments,
   paymentChannelLabel,
   paymentStatusLabel,
   PaymentHistoryError,
   type PaymentHistoryItem,
-} from '../api/payments'
-import { PageNavbar } from '../components/PageNavbar'
-import { useAuth } from '../hooks/useAuth'
-import { AppShell, userInitialsOf, type AppTab } from '../components/layout/AppShell'
-import { Badge, Card, IconBadge } from '../components/ui'
-import '../styles/auth.css'
-import '../styles/learner.css'
+} from '../api/payments';
+import { PageNavbar } from '../components/PageNavbar';
+import { useAuth } from '../hooks/useAuth';
+import { AppShell, userInitialsOf, type AppTab } from '../components/layout/AppShell';
+import { Badge, Card, IconBadge } from '../components/ui';
+import '../styles/auth.css';
+import '../styles/learner.css';
 
 const TAB_ROUTES: Record<AppTab, string> = {
   accueil: '/accueil',
@@ -21,61 +21,61 @@ const TAB_ROUTES: Record<AppTab, string> = {
   conduite: '/conduite',
   progres: '/code-de-la-route/mes-notes',
   profil: '/profil',
-}
+};
 
 function formatPrice(amount: number, currency = 'XOF') {
   return new Intl.NumberFormat('fr-FR', {
     style: 'currency',
     currency,
     maximumFractionDigits: 0,
-  }).format(amount)
+  }).format(amount);
 }
 
 function formatDate(iso: string) {
   try {
     return new Intl.DateTimeFormat('fr-FR', { dateStyle: 'long', timeStyle: 'short' }).format(
       new Date(iso),
-    )
+    );
   } catch {
-    return iso
+    return iso;
   }
 }
 
 function statusTone(status: PaymentHistoryItem['status']): 'green' | 'orange' {
-  if (status === 'approved') return 'green'
-  return 'orange'
+  if (status === 'approved') return 'green';
+  return 'orange';
 }
 
 function iconTone(item: PaymentHistoryItem): 'green' | 'orange' {
-  if (item.status === 'pending') return 'orange'
-  if (item.status === 'approved') return 'green'
-  return 'orange'
+  if (item.status === 'pending') return 'orange';
+  if (item.status === 'approved') return 'green';
+  return 'orange';
 }
 
 export function PaymentHistoryPage() {
-  const navigate = useNavigate()
-  const { user, loading: authLoading } = useAuth()
-  const [items, setItems] = useState<PaymentHistoryItem[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const navigate = useNavigate();
+  const { user, loading: authLoading } = useAuth();
+  const [items, setItems] = useState<PaymentHistoryItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    setLoading(true)
-    setError(null)
+    setLoading(true);
+    setError(null);
     try {
-      setItems(await fetchMyPayments())
+      setItems(await fetchMyPayments());
     } catch (err) {
-      setError(err instanceof PaymentHistoryError ? err.message : 'Chargement impossible')
+      setError(err instanceof PaymentHistoryError ? err.message : 'Chargement impossible');
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }, [])
+  }, []);
 
   useEffect(() => {
-    if (user) void load()
-  }, [user, load])
+    if (user) void load();
+  }, [user, load]);
 
-  if (authLoading || !user) return null
+  if (authLoading || !user) return null;
 
   return (
     <AppShell
@@ -114,7 +114,7 @@ export function PaymentHistoryPage() {
                     <IconBadge icon={<CreditCard size={28} />} tone="green" />
                     <strong>Aucun paiement pour le moment</strong>
                     <p>
-                      Vos achats d’accès et vos réservations payées apparaîtront ici dès votre première
+                      Vos achats d'accès et vos réservations payées apparaîtront ici dès votre première
                       transaction.
                     </p>
                   </div>
@@ -177,5 +177,7 @@ export function PaymentHistoryPage() {
         </div>
       </div>
     </AppShell>
-  )
+  );
 }
+
+export default PaymentHistoryPage;

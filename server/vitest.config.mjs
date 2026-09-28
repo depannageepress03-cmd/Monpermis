@@ -8,7 +8,7 @@ export default defineConfig({
     hookTimeout: 60000,
     // Un seul worker : le serveur de test est partagé par fichier via setup global.
     pool: 'forks',
-    poolOptions: { forks: { singleFork: true } },
+    singleFork: true,
     sequence: { shuffle: false },
   },
 })

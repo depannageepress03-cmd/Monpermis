@@ -5,7 +5,7 @@
   background:
     radial-gradient(120% 65% at 14% 0%, rgba(0,176,80,0.09) 0%, transparent 46%),
     radial-gradient(110% 70% at 96% 12%, rgba(255,192,0,0.11) 0%, transparent 40%),
-    linear-gradient(180deg, #F6F8FC 0%, #EFF3F8 28%, #F4F7FB 100%);
+    linear-gradient(180deg, #F6F8FC 0%, #EFF3F8 28%, #EAEFF6 100%);
 }
 .auth-card,
 .home-app-inner > .home-app-phone-strip,

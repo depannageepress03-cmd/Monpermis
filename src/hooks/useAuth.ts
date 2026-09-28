@@ -32,7 +32,7 @@ export function useAuth() {
     const stored = getStoredUser()
     if (!stored) {
       setUser(null)
-      navigate('/', { replace: true })
+      navigate('/connexion', { replace: true })
       return
     }
     setUser(stored)
@@ -43,7 +43,7 @@ export function useAuth() {
       setUser(null)
       clearSession()
       tracker.reset()
-      navigate('/', {
+      navigate('/connexion', {
         replace: true,
         state: { message: 'Session expirée. Reconnecte-toi pour continuer.' },
       })

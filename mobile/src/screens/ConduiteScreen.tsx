@@ -36,7 +36,6 @@ import {
   fetchAccessMe,
   fetchAccessModules,
   computeModuleAmount,
-  claimFreeAccess,
   type AccessMe,
   type AccessModule,
   type CheckoutCartItem,
@@ -87,7 +86,6 @@ export function ConduiteScreen() {
   const [pickHours, setPickHours] = useState(false)
   const [hoursQty, setHoursQty] = useState('1')
   const [checkoutOpen, setCheckoutOpen] = useState(false)
-  const [claimingFree, setClaimingFree] = useState(false)
 
   const load = useCallback(async (silent = false) => {
     if (!silent) setLoadingDash(true)
@@ -143,8 +141,7 @@ export function ConduiteScreen() {
   const conduiteUnlocked = Boolean(
     accessMe &&
       (accessMe.access?.conduite_videos ||
-        accessMe.access?.conduite_heures ||
-        (accessMe.user?.soldeHeures || 0) > 0),
+        accessMe.access?.conduite_heures),
   )
 
   useEffect(() => {
@@ -188,20 +185,6 @@ export function ConduiteScreen() {
       ? [{ module: 'conduite_heures', quantity: qty }]
       : []
 
-    const activateFreeVideos = async () => {
-      setClaimingFree(true)
-      setError(null)
-      try {
-        const result = await claimFreeAccess(['conduite_videos'])
-        setAccessMe(result.access)
-        navigation.navigate('LeconsChapitres')
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Activation impossible')
-      } finally {
-        setClaimingFree(false)
-      }
-    }
-
     return (
       <View style={styles.root}>
         <View style={styles.halo} pointerEvents="none" />
@@ -223,17 +206,15 @@ export function ConduiteScreen() {
             </View>
             <Text style={styles.h1}>Choisir tes accès conduite</Text>
             <Text style={styles.sub}>
-              Les cours vidéo sont gratuits. Les heures avec moniteur restent payantes.
+              Les accès s’activent après confirmation du paiement correspondant.
             </Text>
             {error ? <Text style={styles.error}>{error}</Text> : null}
 
             {!accessMe?.access?.conduite_videos ? (
               <PlanCard
                 name="Cours vidéo de conduite"
-                description="Gratuit · activation immédiate"
-                price={claimingFree ? '…' : 'Gratuit'}
-                selected
-                onPress={claimingFree ? undefined : () => void activateFreeVideos()}
+                description="Inactif · aucun paiement confirmé"
+                price="Inactif"
               />
             ) : null}
 
@@ -259,7 +240,6 @@ export function ConduiteScreen() {
             {pickHours ? (
               <Pressable
                 style={({ pressed }) => [styles.payBtn, pressed && styles.pressed]}
-                disabled={claimingFree}
                 onPress={() => setCheckoutOpen(true)}
               >
                 <Text style={styles.payText}>Payer {formatPrice(hoursPrice)}</Text>

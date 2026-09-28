@@ -3,7 +3,11 @@ import { fetchWithTimeout } from './http'
 import { getStoredToken, invalidateSessionIfUnauthorized } from './auth'
 
 function getToken() {
-  return getStoredToken()
+  const token = getStoredToken()
+  if (!token) {
+    throw new Error('Session expirée. Veuillez vous reconnecter.')
+  }
+  return token
 }
 
 async function parseJson(res: Response) {

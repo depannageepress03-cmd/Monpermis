@@ -615,7 +615,7 @@ const mstyles = StyleSheet.create({
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: '#F4F7FB',
+    backgroundColor: '#EAEFF6',
   },
   safe: {
     flex: 1,

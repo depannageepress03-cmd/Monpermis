@@ -5,7 +5,7 @@
 :root {
   /* ===== COULEURS ADMIN ===== */
   --navy: #0A1B3D;
-  --navy-light: #1A3A7A;
+  --navy-light: #16306A;
   --navy-deep: #06122A;
   --navy-muted: #5B6680;
   --navy-soft: #8A93A8;
@@ -21,7 +21,7 @@
   --gold-ink: #7A5200;
 
   --white: #FFFFFF;
-  --surface: #F5F7FB;
+  --surface: #EAEFF6;
   --border: rgba(10, 27, 61, 0.12);
   --error: #C2410C;
   --error-light: #FFF1E6;
@@ -37,7 +37,12 @@
   --yellow: #FFB400;
   --yellow-tint: #FFF4D6;
   --yellow-ink: #7A5200;
-  --bg: #F5F7FB;
+  --bg: #EAEFF6;
+  --gutter: 16px;
+  --gap: 12px;
+  --content-max: 1280px;
+  --fs-h1: clamp(1.625rem, 1.2rem + 1.6vw, 2.25rem);
+  --fs-body: clamp(.9375rem, .9rem + .15vw, 1rem);
   --field-prefix: #F1F4F9;
   --track: #E6ECF5;
   --track-2: #DDE3EE;
@@ -54,7 +59,7 @@
 
   /* ===== DÉGRADÉS ADMIN ===== */
   --gradient-hero: radial-gradient(100% 90% at 100% 0%, rgba(11, 170, 79, 0.42) 0%, rgba(11, 170, 79, 0) 60%),
-    linear-gradient(160deg, #1A3A7A 0%, #0A1B3D 60%, #06122A 100%);
+    linear-gradient(160deg, #16306A 0%, #0A1B3D 60%, #06122A 100%);
   --gradient-sidebar: radial-gradient(120% 50% at 0% 100%, rgba(11, 170, 79, 0.28) 0%, rgba(11, 170, 79, 0) 60%),
     linear-gradient(180deg, #0F2554 0%, #0A1B3D 50%, #06122A 100%);
   --gradient-login-aside: linear-gradient(165deg, #001830 0%, #002818 48%, #003820 100%);
@@ -146,18 +151,18 @@
   --radius-donut: 46px;
   --radius-search: 24px;
   --radius-notification-btn: 24px;
-  --radius-btn-new: 24px.
-  --radius-table-header: 14px.
-  --radius-table-row: 13px.
-  --radius-status-badge: 13px.
-  --radius-payment-icon: 13px.
-  --radius-user-avatar: 20px.
-  --radius-login-shell: 32px.
-  --radius-login-aside: 0.
-  --radius-login-input: 14px.
-  --radius-login-btn: 14px.
-  --radius-portal-tab: 14px.
-  --radius-card: 26px.
+  --radius-btn-new: 24px;
+  --radius-table-header: 14px;
+  --radius-table-row: 13px;
+  --radius-status-badge: 13px;
+  --radius-payment-icon: 13px;
+  --radius-user-avatar: 20px;
+  --radius-login-shell: 32px;
+  --radius-login-aside: 0;
+  --radius-login-input: 14px;
+  --radius-login-btn: 14px;
+  --radius-portal-tab: 14px;
+  --radius-card: 26px;
 
   /* ===== ESPACEMENTS ADMIN ===== */
   --sp-1: 4px;
@@ -181,42 +186,42 @@
   --sidebar-width: 272px;
   --sidebar-padding: 28px 18px;
   --sidebar-gap: 26px;
-  --nav-gap: 4px.
-  --nav-padding: 0 14px.
-  --nav-height: 46px.
-  --nav-group-padding: 14px 14px 6px.
-  --content-padding: 30px 34px.
-  --content-gap: 22px.
-  --kpi-gap: 16px.
-  --kpi-padding: 20px.
-  --chart-gap: 16px.
-  --chart-padding: 22px.
-  --chart-height: 210px.
-  --chart-bar-gap: 18px.
-  --chart-bar-gap-vertical: 3px.
-  --donut-size: 140px.
-  --donut-stroke: 16px.
-  --donut-radius: 46px.
-  --table-header-padding: 8px 12px.
-  --table-row-padding: 6px 12px.
-  --table-col-gap: 12px.
-  --payment-gap: 12px.
-  --payment-icon-size: 38px.
-  --login-shell-max: 980px.
-  --login-aside-padding: 36px 32px 28px.
-  --login-aside-gap: 14px.
-  --login-card-padding: 40px 40px 28px.
-  --login-portal-tab-height: 48px.
-  --login-input-height: 54px.
-  --login-btn-height: 54px.
-  --control-h: 36px.
-  --row-h: 40px.
+  --nav-gap: 4px;
+  --nav-padding: 0 14px;
+  --nav-height: 46px;
+  --nav-group-padding: 14px 14px 6px;
+  --content-padding: 30px 34px;
+  --content-gap: 22px;
+  --kpi-gap: 16px;
+  --kpi-padding: 20px;
+  --chart-gap: 16px;
+  --chart-padding: 22px;
+  --chart-height: 210px;
+  --chart-bar-gap: 18px;
+  --chart-bar-gap-vertical: 3px;
+  --donut-size: 140px;
+  --donut-stroke: 16px;
+  --donut-radius: 46px;
+  --table-header-padding: 8px 12px;
+  --table-row-padding: 6px 12px;
+  --table-col-gap: 12px;
+  --payment-gap: 12px;
+  --payment-icon-size: 38px;
+  --login-shell-max: 980px;
+  --login-aside-padding: 36px 32px 28px;
+  --login-aside-gap: 14px;
+  --login-card-padding: 40px 40px 28px;
+  --login-portal-tab-height: 48px;
+  --login-input-height: 54px;
+  --login-btn-height: 54px;
+  --control-h: 36px;
+  --row-h: 40px;
 
   /* ===== HALOS LOGIN ===== */
-  --login-halo-green-size: 280px.
-  --login-halo-blue-size: 320px.
-  --login-halo-blur: blur(40px).
-  --login-halo-opacity: 0.55.
+  --login-halo-green-size: 280px;
+  --login-halo-blue-size: 320px;
+  --login-halo-blur: blur(40px);
+  --login-halo-opacity: 0.55;
 
   /* ===== TRANSITIONS ===== */
   --transition-fast: 150ms ease;

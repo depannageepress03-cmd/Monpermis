@@ -8,9 +8,12 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack'
 import * as Linking from 'expo-linking'
 import { StatusBar } from 'expo-status-bar'
 import { useEffect, useRef } from 'react'
+import { StyleSheet, View } from 'react-native'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
+import { useBreakpoint } from '../hooks/useBreakpoint'
+import { colors } from '../theme/tokens'
 
-const BOOT_BG = '#FAF9F6'
+const BOOT_BG = colors.bg
 const navTheme = {
   ...DefaultTheme,
   colors: {
@@ -295,6 +298,7 @@ function AppNavigator() {
 
 export function RootNavigator() {
   const lastScreenRef = useRef('')
+  const breakpoint = useBreakpoint()
 
   useEffect(() => {
     tracker.start()
@@ -326,10 +330,17 @@ export function RootNavigator() {
                 tracker.track('screen_view', { screen: name })
               }}
             >
-              <StatusBar style="dark" />
-              <OfflineBanner />
-              <AppNavigator />
-              <AppToastHost />
+              <View
+                style={[
+                  styles.navigatorViewport,
+                  breakpoint === 'tabletLarge' && styles.tabletLargeViewport,
+                ]}
+              >
+                <StatusBar style="dark" />
+                <OfflineBanner />
+                <AppNavigator />
+                <AppToastHost />
+              </View>
             </NavigationContainer>
           </AuthProvider>
         </OfflineProvider>
@@ -337,3 +348,14 @@ export function RootNavigator() {
     </SafeAreaProvider>
   )
 }
+
+const styles = StyleSheet.create({
+  navigatorViewport: {
+    flex: 1,
+    width: '100%',
+  },
+  tabletLargeViewport: {
+    maxWidth: 1024,
+    alignSelf: 'center',
+  },
+})

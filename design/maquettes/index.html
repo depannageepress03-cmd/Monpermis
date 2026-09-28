@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Monpermis.bj — Maquettes UI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&amp;family=Plus+Jakarta+Sans:wght@500;600;700&amp;display=swap">
+<style>
+:root{--navy:#0A1B3D;--green:#0BAA4F;--yellow:#FFB400;--bg:#EEF2F8;--muted:#5B6680}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);font-family:'Plus Jakarta Sans',sans-serif;color:var(--navy)}
+header{display:flex;align-items:center;gap:16px;padding:32px 40px 8px}
+.logo{width:56px;height:56px;border-radius:17px;background:#fff;overflow:hidden;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 20px -10px rgba(10,27,61,.35)}
+.logo img{width:76px;height:76px;object-fit:cover}
+h1{margin:0;font-family:'Sora',sans-serif;font-size:26px;letter-spacing:-.02em}
+h1 span{color:var(--green)}
+header p{margin:2px 0 0;color:var(--muted);font-weight:600;font-size:14px}
+h2{font-family:'Sora',sans-serif;font-size:20px;margin:36px 40px 16px}
+.grid{display:flex;flex-wrap:wrap;gap:28px;padding:0 40px}
+figure{margin:0;display:flex;flex-direction:column;gap:10px}
+figcaption{font-weight:700;font-size:14px}
+figcaption a{color:var(--navy)}
+.phone{width:273px;height:591px;border-radius:32px;overflow:hidden;background:#fff;box-shadow:0 30px 60px -30px rgba(10,27,61,.5)}
+.phone iframe{width:390px;height:844px;border:0;transform:scale(.7);transform-origin:0 0}
+.desk{width:936px;max-width:100%;height:624px;border-radius:18px;overflow:hidden;background:#fff;box-shadow:0 30px 60px -30px rgba(10,27,61,.5)}
+.desk iframe{width:1440px;height:960px;border:0;transform:scale(.65);transform-origin:0 0}
+footer{padding:40px;color:var(--muted);font-size:13px;font-weight:600}
+</style>
+</head>
+<body>
+<header>
+<div class="logo"><img src="assets/logo.png" alt="Monpermis.bj"></div>
+<div><h1>Monpermis<span>.bj</span> — Maquettes UI</h1><p>Clique sur un titre pour ouvrir l'écran en grand.</p></div>
+</header>
+
+<h2>App apprenant (mobile 390 × 844)</h2>
+<div class="grid">
+<figure><figcaption><a href="Main.html">Bienvenue</a></figcaption><div class="phone"><iframe src="Main.html#embed" title="Bienvenue" loading="lazy"></iframe></div></figure>
+<figure><figcaption><a href="Login.html">Connexion</a></figcaption><div class="phone"><iframe src="Login.html#embed" title="Connexion" loading="lazy"></iframe></div></figure>
+<figure><figcaption><a href="Home.html">Accueil</a></figcaption><div class="phone"><iframe src="Home.html#embed" title="Accueil" loading="lazy"></iframe></div></figure>
+<figure><figcaption><a href="Code.html">Code de la route</a></figcaption><div class="phone"><iframe src="Code.html#embed" title="Code de la route" loading="lazy"></iframe></div></figure>
+<figure><figcaption><a href="Quiz.html">QCM / examen blanc</a></figcaption><div class="phone"><iframe src="Quiz.html#embed" title="QCM" loading="lazy"></iframe></div></figure>
+<figure><figcaption><a href="Conduite.html">Réserver une leçon</a></figcaption><div class="phone"><iframe src="Conduite.html#embed" title="Conduite" loading="lazy"></iframe></div></figure>
+<figure><figcaption><a href="Progres.html">Ma progression</a></figcaption><div class="phone"><iframe src="Progres.html#embed" title="Progression" loading="lazy"></iframe></div></figure>
+<figure><figcaption><a href="Offres.html">Formules &amp; paiement</a></figcaption><div class="phone"><iframe src="Offres.html#embed" title="Formules" loading="lazy"></iframe></div></figure>
+</div>
+
+<h2>Back-office administrateur (1440 × 960)</h2>
+<div class="grid">
+<figure><figcaption><a href="Admin.html">Tableau de bord</a></figcaption><div class="desk"><iframe src="Admin.html#embed" title="Back-office" loading="lazy"></iframe></div></figure>
+</div>
+
+<footer>Composant isolé : <a href="TabBar.html">barre d'onglets</a>. Les maquettes sont statiques ; les interactions sont décrites dans PROMPT_OPENCODE.md.</footer>
+</body>
+</html>

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell, Menu, BookOpen, Flag, CalendarClock, TrendingUp } from 'lucide-react';
+import { BookOpen, Flag, CalendarClock, TrendingUp } from 'lucide-react';
 import { supportWhatsAppUrl } from '../utils/support';
 import { clearSession } from '../api/auth';
 import { tracker } from '../utils/tracker';
@@ -13,15 +13,13 @@ import { PageSkeleton } from '../components/PageSkeleton';
 import { useAuth } from '../hooks/useAuth';
 ;
 import { useFocusRefresh } from '../hooks/useFocusRefresh';
-import { LogoMark } from '../components/icons/LogoMark';
-import { IconButton } from '../components/ui/IconButton';
 import { Button } from '../components/ui/Button';
 import { Chip } from '../components/ui/Chip';
 import { GlassAction } from '../components/ui/GlassAction';
 import { NotchedCard } from '../components/ui/NotchedCard';
 import { ScoreBars } from '../components/ui/ScoreBars';
 import { HeroCard } from '../components/ui/HeroCard';
-import { MainTabBar } from '../components/MainTabBar';
+import { AppShell, userInitialsOf } from '../components/layout/AppShell';
 
 function greetingWord() {
   const hour = new Date().getHours();
@@ -129,32 +127,19 @@ export function HomePage() {
   });
 
   return (
-    <div style={{ minHeight: '100dvh', background: '#F5F7FB', position: 'relative', overflow: 'hidden' }}>
-      <div style={{ position: 'absolute', top: -120, left: -60, width: 300, height: 300, borderRadius: '50%', background: 'rgba(11,170,79,0.10)', filter: 'blur(60px)', pointerEvents: 'none' }} />
-      <div style={{ position: 'relative', boxSizing: 'border-box', padding: '56px 20px 0', display: 'flex', flexDirection: 'column', gap: 20, maxWidth: 1120, margin: '0 auto' }}>
-
-        {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div style={{ width: 46, height: 46, borderRadius: 15, background: '#FFFFFF', boxShadow: '0 6px 18px -8px rgba(10,27,61,0.25)', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <LogoMark width={62} height={62} alt="Monpermis.bj" />
+    <AppShell
+      activeTab="accueil"
+      userInitials={userInitialsOf(user.firstName, user.lastName)}
+      hasUnread={unreadCount > 0}
+      onOpenNotifications={() => navigate('/notifications')}
+      onOpenProfile={() => setProfileOpen(true)}
+    >
+      <div className="home-dashboard">
+        <div className="home-dashboard-content">
+          <div className="home-dashboard-greeting">
+            <span>{greeting},</span>
+            <h1>{displayName}</h1>
           </div>
-          <div style={{ flexGrow: 1, display: 'flex', flexDirection: 'column', gap: 1 }}>
-            <div style={{ fontSize: 12.5, color: '#5B6680', fontWeight: 600 }}>Bonjour,</div>
-            <div style={{ fontFamily: 'Sora, sans-serif', fontSize: 20, fontWeight: 700, letterSpacing: '-0.01em' }}>{displayName}</div>
-          </div>
-          <IconButton
-            icon={Bell}
-            variant="bell"
-            badge={unreadCount}
-            onPress={() => navigate('/notifications')}
-            accessibilityLabel="Mes notifications"
-          />
-          <IconButton
-            icon={Menu}
-            onPress={() => setProfileOpen(true)}
-            accessibilityLabel="Voir mon profil"
-          />
-        </div>
 
         {/* HeroCard - Ta préparation au code */}
         <HeroCard>
@@ -213,8 +198,8 @@ export function HomePage() {
             tabLabel="Conduite"
             tabColor="#0A1B3D"
             tabIcon={<span style={{ width: 8, height: 8, borderRadius: 4, background: '#0BAA4F' }} />}
-            time={nextLesson?.creneau ? `${nextLesson.creneau.startTime}` : '08:00'}
-            date={nextLesson?.creneau ? formatReservationDate(nextLesson.creneau.date) : '29-09-2026'}
+            time={nextLesson?.creneau?.startTime ?? (nextLesson ? 'À confirmer' : '—')}
+            date={nextLesson?.creneau ? formatReservationDate(nextLesson.creneau.date) : '—'}
           >
             {nextLesson ? (
               <>
@@ -262,9 +247,7 @@ export function HomePage() {
         <ScoreBars scores={scoreBarsData} />
 
       </div>
-
-      {/* TabBar flottante (TabBar.html) */}
-      <MainTabBar activeId="accueil" />
+      </div>
 
       <AccountSheet
         visible={profileOpen}
@@ -277,7 +260,7 @@ export function HomePage() {
         onOpenSupport={() => { setProfileOpen(false); window.open(supportWhatsAppUrl('Bonjour Monpermis, j\'ai besoin d\'aide.'), '_blank', 'noopener,noreferrer'); }}
         onOpenProfile={() => { setProfileOpen(false); navigate('/profil'); }}
       />
-    </div>
+    </AppShell>
   );
 }
 

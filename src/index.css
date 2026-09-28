@@ -8,11 +8,11 @@
 
 :root {
   /* Route claire — Monpermis (aligné mobile/src/theme) — Premium */
-  --color-primary: #001030;
-  --color-primary-dark: #0a1530;
-  --color-accent: #ffc000;
-  --color-success: #00b050;
-  --color-error: #e85d3b;
+  --color-primary: #0a1b3d;
+  --color-primary-dark: #06122a;
+  --color-accent: #ffb400;
+  --color-success: #0baa4f;
+  --color-error: #c2410c;
   --color-bg: #f4f7fb;
   --color-surface: #ffffff;
   --color-surface-raised: #eef2f7;
@@ -20,29 +20,29 @@
   --color-text-muted: #3d5a73;
   --color-border: rgba(0, 16, 48, 0.08);
   --brand-black: #000000;
-  --brand-green: #00b050;
-  --brand-green-gradient: linear-gradient(135deg, #00d566 0%, #00b050 48%, #008a3e 100%);
-  --brand-green-soft: rgba(0, 176, 80, 0.10);
-  --brand-gold: #ffc000;
-  --brand-gold-soft: rgba(255, 192, 0, 0.14);
-  --brand-navy: #001030;
-  --brand-navy-soft: rgba(0, 16, 48, 0.06);
-  --brand-coral: #e85d3b;
-  --brand-coral-soft: rgba(232, 93, 59, 0.10);
+  --brand-green: #0baa4f;
+  --brand-green-gradient: linear-gradient(135deg, #0baa4f 0%, #067a37 100%);
+  --brand-green-soft: rgba(11, 170, 79, 0.1);
+  --brand-gold: #ffb400;
+  --brand-gold-soft: rgba(255, 180, 0, 0.14);
+  --brand-navy: #0a1b3d;
+  --brand-navy-soft: rgba(10, 27, 61, 0.06);
+  --brand-coral: #c2410c;
+  --brand-coral-soft: rgba(194, 65, 12, 0.1);
   --intro-bg: #faf9f6;
   --cta-bg: var(--brand-green-gradient);
   --cta-fg: #ffffff;
   --hero-overlay: linear-gradient(
     180deg,
-    rgba(0, 16, 48, 0.52) 0%,
-    rgba(0, 16, 48, 0.78) 58%,
-    #001030 100%
+    rgba(10, 27, 61, 0.52) 0%,
+    rgba(10, 27, 61, 0.78) 58%,
+    #0a1b3d 100%
   );
   --page-max: 720px;
   --page-pad: 1.25rem;
-  --font-body: 'Inter', system-ui, -apple-system, sans-serif;
-  --font-display: 'Poppins', 'Inter', system-ui, sans-serif;
-  --font-heading: 'Poppins', 'Inter', system-ui, sans-serif;
+  --font-body: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
+  --font-display: 'Sora', 'Poppins', system-ui, sans-serif;
+  --font-heading: 'Sora', 'Poppins', system-ui, sans-serif;
   --radius-xs: 6px;
   --radius-sm: 10px;
   --radius-md: 14px;
@@ -73,7 +73,6 @@
   letter-spacing: -0.03em;
   line-height: 1.1;
 }
-
 .brand-name-main {
   color: var(--brand-black);
 }

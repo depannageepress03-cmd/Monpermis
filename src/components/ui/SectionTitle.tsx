@@ -1,5 +1,17 @@
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 
-export function SectionTitle({ children }: { children: ReactNode }) {
-  return <p className="mp-section-title">{children}</p>;
+export function SectionTitle({
+  children,
+  className = '',
+  style,
+}: {
+  children: ReactNode;
+  className?: string;
+  style?: CSSProperties;
+}) {
+  return (
+    <p className={`mp-section-title ${className}`} style={style}>
+      {children}
+    </p>
+  );
 }

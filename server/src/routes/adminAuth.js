@@ -50,8 +50,12 @@ router.get('/registration-status', requireAdminAuth, requireSuperAdmin, async (r
     // Superadmin : toujours autorisé à créer. Sinon (migration) : env.
     const allowed = gated ? req.admin.role === 'superadmin' : isRegistrationAllowed()
     res.json({ success: true, data: { allowed } })
-  } catch {
-    res.json({ success: true, data: { allowed: isRegistrationAllowed() } })
+  } catch (error) {
+    logger.error('Erreur vérification inscription admin', { error: error.message })
+    res.status(503).json({
+      success: false,
+      error: 'Vérification des droits administrateur indisponible',
+    })
   }
 })
 

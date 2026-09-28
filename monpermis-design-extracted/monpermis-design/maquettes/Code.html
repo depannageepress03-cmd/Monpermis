@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Monpermis — Code de la route</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700;800&amp;family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap">
+<style>body{margin:0;background:#F5F7FB}a{color:#0A1B3D}a:hover{color:#067A37}input::placeholder{color:#8A93A8}</style>
+<style>
+/* Présentation de la maquette (pas du design de l'app) */
+html,body{margin:0}
+body{min-height:100vh;display:flex;justify-content:center;align-items:flex-start;padding:32px 16px;box-sizing:border-box;background:#E6EBF3}
+.mp-frame{border-radius:44px;overflow:hidden;box-shadow:0 40px 80px -40px rgba(10,27,61,.45);flex-shrink:0}
+body.mp-embed{padding:0;background:transparent;min-height:0}
+body.mp-embed .mp-frame{border-radius:0;box-shadow:none}
+</style>
+</head>
+<body>
+<script>if (location.hash === '#embed') document.body.classList.add('mp-embed');</script>
+<div class="mp-frame">
+<div style="width: 390px; height: 844px; position: relative; overflow: hidden; background: #F5F7FB; font-family: 'Plus Jakarta Sans', sans-serif; color: #0A1B3D">
+<div style="position: relative; box-sizing: border-box; padding: 56px 20px 0; display: flex; flex-direction: column; gap: 18px">
+
+<div style="display: flex; align-items: center; justify-content: space-between">
+<div>
+<h1 style="margin: 0; font-family: 'Sora', sans-serif; font-size: 26px; font-weight: 700; letter-spacing: -0.02em">Code de la route</h1>
+<div style="font-size: 13px; color: #5B6680; font-weight: 600; margin-top: 3px">Cours, QCM et examens blancs</div>
+</div>
+<div style="width: 46px; height: 46px; border-radius: 15px; background: #FFFFFF; box-shadow: 0 6px 18px -8px rgba(10,27,61,0.25); overflow: hidden; display: flex; align-items: center; justify-content: center"><img src="assets/logo.png" alt="Monpermis.bj" style="width: 62px; height: 62px; object-fit: cover"></div>
+</div>
+
+<label style="height: 52px; box-sizing: border-box; padding: 0 18px; border-radius: 26px; background: #FFFFFF; border: 1.5px solid #E1E6EF; display: flex; align-items: center; gap: 10px; color: #5B6680">
+<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"></circle><path d="m20 20-4.2-4.2"></path></svg>
+<input type="search" aria-label="Rechercher" placeholder="Rechercher un panneau, un cours…" style="flex-grow: 1; border: 0; outline: none; background: transparent; font-family: inherit; font-size: 14.5px; color: #0A1B3D">
+</label>
+
+<div style="position: relative; overflow: hidden; border-radius: 28px; padding: 18px; background: radial-gradient(100% 90% at 100% 0%, rgba(11,170,79,0.40) 0%, rgba(11,170,79,0) 60%), linear-gradient(160deg, #1A3A7A 0%, #0A1B3D 60%, #06122A 100%); color: #FFFFFF; box-shadow: 0 24px 40px -22px rgba(10,27,61,0.75), inset 0 1px 0 rgba(255,255,255,0.18); display: flex; align-items: center; gap: 14px">
+<div style="flex-grow: 1; display: flex; flex-direction: column; gap: 8px">
+<div style="font-size: 12px; font-weight: 700; color: #FFB400; letter-spacing: 0.06em; text-transform: uppercase">Reprendre</div>
+<div style="font-family: 'Sora', sans-serif; font-size: 17px; font-weight: 700; line-height: 1.25">Chapitre 4 · Intersections et priorités</div>
+<div style="display: flex; align-items: center; gap: 10px">
+<div style="flex-grow: 1; height: 8px; border-radius: 4px; background: rgba(255,255,255,0.16)"><div style="width: 62%; height: 8px; border-radius: 4px; background: linear-gradient(90deg, #0BAA4F, #FFB400)"></div></div>
+<div style="font-size: 12px; font-weight: 700">5/8 cours</div>
+</div>
+</div>
+<a href="Quiz.html" aria-label="Continuer le chapitre" style="width: 56px; height: 56px; flex-shrink: 0; border-radius: 28px; background: #FFB400; color: #0A1B3D; display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 22px -10px rgba(255,180,0,0.8)"><svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13l10.5-6.5z"></path></svg></a>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px">
+<a href="#" style="border-radius: 24px; background: #FFFFFF; padding: 16px; box-shadow: 0 10px 26px -18px rgba(10,27,61,0.3); text-decoration: none; display: flex; flex-direction: column; gap: 10px">
+<span style="width: 42px; height: 42px; border-radius: 14px; background: #EAF7EF; color: #067A37; display: flex; align-items: center; justify-content: center"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A1.5 1.5 0 0 1 5.5 4H11v16H5.5A1.5 1.5 0 0 1 4 18.5zM20 5.5A1.5 1.5 0 0 0 18.5 4H13v16h5.5a1.5 1.5 0 0 0 1.5-1.5z"></path></svg></span>
+<span style="font-family: 'Sora', sans-serif; font-size: 15px; font-weight: 700">Révision</span>
+<span style="font-size: 12px; color: #5B6680; font-weight: 600">Chapitres &amp; cours</span>
+</a>
+<a href="Quiz.html" style="border-radius: 24px; background: #FFFFFF; padding: 16px; box-shadow: 0 10px 26px -18px rgba(10,27,61,0.3); text-decoration: none; display: flex; flex-direction: column; gap: 10px">
+<span style="width: 42px; height: 42px; border-radius: 14px; background: #E8EDF6; color: #0A1B3D; display: flex; align-items: center; justify-content: center"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="4"></rect><path d="m8.5 12 2.5 2.5 4.5-5"></path></svg></span>
+<span style="font-family: 'Sora', sans-serif; font-size: 15px; font-weight: 700">QCM</span>
+<span style="font-size: 12px; color: #5B6680; font-weight: 600">Par thème</span>
+</a>
+<a href="Quiz.html" style="border-radius: 24px; background: #FFFFFF; padding: 16px; box-shadow: 0 10px 26px -18px rgba(10,27,61,0.3); text-decoration: none; display: flex; flex-direction: column; gap: 10px">
+<span style="width: 42px; height: 42px; border-radius: 14px; background: #FFF4D6; color: #7A5200; display: flex; align-items: center; justify-content: center"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V4M5 4h11l-2 4 2 4H5"></path></svg></span>
+<span style="font-family: 'Sora', sans-serif; font-size: 15px; font-weight: 700">Examens blancs</span>
+<span style="font-size: 12px; color: #5B6680; font-weight: 600">Conditions réelles</span>
+</a>
+<a href="#" style="border-radius: 24px; background: #0BAA4F; padding: 16px; box-shadow: 0 14px 26px -16px rgba(11,170,79,0.7); text-decoration: none; display: flex; flex-direction: column; gap: 10px; color: #06122A">
+<span style="width: 42px; height: 42px; border-radius: 14px; background: rgba(255,255,255,0.9); color: #067A37; display: flex; align-items: center; justify-content: center"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="4.5" width="17" height="12" rx="2.5"></rect><path d="M9 20h6M12 16.5V20"></path></svg></span>
+<span style="font-family: 'Sora', sans-serif; font-size: 15px; font-weight: 800">E-Codepermis</span>
+<span style="font-size: 12px; font-weight: 700">Entraînement dédié</span>
+</a>
+</div>
+
+<div style="display: flex; align-items: center; justify-content: space-between">
+<h2 style="margin: 0; font-family: 'Sora', sans-serif; font-size: 18px; font-weight: 700">Chapitres</h2>
+<span style="font-size: 12.5px; font-weight: 700; color: #5B6680">3 sur 12 terminés</span>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 10px; margin-top: -6px">
+
+<a href="Quiz.html" style="height: 68px; box-sizing: border-box; padding: 0 16px 0 12px; border-radius: 22px; background: #FFFFFF; box-shadow: 0 8px 22px -18px rgba(10,27,61,0.35); text-decoration: none; display: flex; align-items: center; gap: 12px">
+<span style="width: 44px; height: 44px; border-radius: 15px; display: flex; align-items: center; justify-content: center; font-family: 'Sora', sans-serif; font-weight: 800; font-size: 15px; background: #EAF7EF; color: #067A37">03</span>
+<span style="flex-grow: 1; display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 14.5px; font-weight: 700; color: #0A1B3D">La signalisation</span>
+<span style="font-size: 12px; font-weight: 600; color: #5B6680">8 cours · 64 questions</span>
+</span>
+<span style="height: 28px; padding: 0 10px; border-radius: 14px; display: flex; align-items: center; font-size: 11.5px; font-weight: 800; background: #EAF7EF; color: #067A37">Terminé</span>
+</a>
+
+<a href="Quiz.html" style="height: 68px; box-sizing: border-box; padding: 0 16px 0 12px; border-radius: 22px; background: #FFFFFF; box-shadow: 0 8px 22px -18px rgba(10,27,61,0.35); text-decoration: none; display: flex; align-items: center; gap: 12px">
+<span style="width: 44px; height: 44px; border-radius: 15px; display: flex; align-items: center; justify-content: center; font-family: 'Sora', sans-serif; font-weight: 800; font-size: 15px; background: #0A1B3D; color: #FFB400">04</span>
+<span style="flex-grow: 1; display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 14.5px; font-weight: 700; color: #0A1B3D">Intersections et priorités</span>
+<span style="font-size: 12px; font-weight: 600; color: #5B6680">8 cours · 5 terminés</span>
+</span>
+<span style="height: 28px; padding: 0 10px; border-radius: 14px; display: flex; align-items: center; font-size: 11.5px; font-weight: 800; background: #FFF4D6; color: #7A5200">En cours</span>
+</a>
+
+<a href="Quiz.html" style="height: 68px; box-sizing: border-box; padding: 0 16px 0 12px; border-radius: 22px; background: #FFFFFF; box-shadow: 0 8px 22px -18px rgba(10,27,61,0.35); text-decoration: none; display: flex; align-items: center; gap: 12px">
+<span style="width: 44px; height: 44px; border-radius: 15px; display: flex; align-items: center; justify-content: center; font-family: 'Sora', sans-serif; font-weight: 800; font-size: 15px; background: #F1F4F9; color: #8A93A8">05</span>
+<span style="flex-grow: 1; display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 14.5px; font-weight: 700; color: #0A1B3D">Croisement et dépassement</span>
+<span style="font-size: 12px; font-weight: 600; color: #5B6680">6 cours · 48 questions</span>
+</span>
+<span style="height: 28px; padding: 0 10px; border-radius: 14px; display: flex; align-items: center; font-size: 11.5px; font-weight: 800; background: #F1F4F9; color: #5B6680">À venir</span>
+</a>
+
+</div>
+</div>
+<div style="position: absolute; left: 0; bottom: 0; width: 390px; height: 104px">
+<nav aria-label="Navigation principale" style="width: 390px; height: 104px; box-sizing: border-box; padding: 0 16px 22px; display: flex; align-items: flex-end; font-family: 'Plus Jakarta Sans', sans-serif; color: #FFFFFF">
+<div style="flex-grow: 1; height: 72px; box-sizing: border-box; padding: 0 8px; border-radius: 36px; background: rgba(10,27,61,0.93); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); box-shadow: 0 20px 40px -14px rgba(10,27,61,0.6), inset 0 1px 0 rgba(255,255,255,0.14); display: flex; align-items: center; justify-content: space-between">
+<a href="Home.html" style="width: 64px; height: 56px; border-radius: 28px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; font-size: 10.5px; font-weight: 700; text-decoration: none; background: transparent; color: rgba(255,255,255,0.74)">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5 12 4l8 6.5V19a1 1 0 0 1-1 1h-4.5v-5.5h-5V20H5a1 1 0 0 1-1-1z"></path></svg>
+<span>Accueil</span>
+</a>
+<a href="Code.html" style="width: 64px; height: 56px; border-radius: 28px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; font-size: 10.5px; font-weight: 700; text-decoration: none; background: #FFB400; color: #0A1B3D">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5 21 19H3z"></path><path d="M12 10v4M12 16.8v.2"></path></svg>
+<span>Code</span>
+</a>
+<a href="Conduite.html" style="width: 64px; height: 56px; border-radius: 28px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; font-size: 10.5px; font-weight: 700; text-decoration: none; background: transparent; color: rgba(255,255,255,0.74)">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"></circle><circle cx="12" cy="12" r="2.2"></circle><path d="M3.8 10.8h6M14.2 10.8h6M12 14.2v6.2"></path></svg>
+<span>Conduite</span>
+</a>
+<a href="Progres.html" style="width: 64px; height: 56px; border-radius: 28px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; font-size: 10.5px; font-weight: 700; text-decoration: none; background: transparent; color: rgba(255,255,255,0.74)">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M5 20v-8M12 20V5M19 20v-5"></path></svg>
+<span>Progrès</span>
+</a>
+<a href="Offres.html" style="width: 64px; height: 56px; border-radius: 28px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; font-size: 10.5px; font-weight: 700; text-decoration: none; background: transparent; color: rgba(255,255,255,0.74)">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 12.2V5A1.5 1.5 0 0 1 5 3.5h7.2l8.3 8.3-8.7 8.7z"></path><circle cx="8" cy="8" r="1.4"></circle></svg>
+<span>Offres</span>
+</a>
+</div>
+</nav>
+</div>
+</div>
+</div>
+</body>
+</html>

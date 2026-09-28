@@ -2,11 +2,12 @@ import { useEffect, useRef } from 'react'
 import { Animated, Easing, StyleSheet, View, useWindowDimensions } from 'react-native'
 import Svg, { ClipPath, Defs, G, Path } from 'react-native-svg'
 import { fonts } from '../theme'
+import { colors } from '../theme/tokens'
 
-const BG = '#FAF9F6'
-const GREEN = '#1FA857'
-const YELLOW = '#F5B31B'
-const NAVY = '#14263F'
+const BG = colors.bg
+const GREEN = colors.green
+const YELLOW = colors.yellow
+const NAVY = colors.navy
 const EASE_OUT = Easing.bezier(0.22, 1, 0.36, 1)
 
 const ROAD_D =

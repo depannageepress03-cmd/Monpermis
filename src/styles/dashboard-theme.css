@@ -1,0 +1,912 @@
+/* ============================================================
+   MONPERMIS — THÈME « DASHBOARD » (langage visuel Flight Dashboard)
+   ============================================================
+   Couche CSS pure, importée en DERNIER dans main.tsx.
+   - Aucun changement de DOM, de routes, de logique ou d'appels API.
+   - Charte conservée : navy #001030 · vert #00B050/#007A38 · corail #E85D3B.
+   - Mobile-first intact : tout est enrichi en min-width (≥768 / ≥1024).
+   ============================================================ */
+
+/* ---------- 1. Tokens dashboard ---------- */
+:root {
+  --dash-green-grad: linear-gradient(135deg, #00d566 0%, #00b050 55%, #008a3e 100%);
+  --dash-navy-grad: linear-gradient(160deg, #16306b 0%, #001030 62%, #000a20 100%);
+  --dash-coral-grad: linear-gradient(135deg, #f07a55 0%, #e85d3b 55%, #c74a28 100%);
+  --dash-card-shadow: 0 24px 48px -28px rgba(0, 16, 48, 0.22), 0 2px 6px rgba(0, 16, 48, 0.04);
+  --dash-sidebar-w: 264px;
+  --dash-radius: 20px;
+}
+
+body {
+  background:
+    radial-gradient(620px 380px at 88% 4%, rgba(0, 176, 80, 0.09), transparent 62%),
+    radial-gradient(520px 340px at 2% 98%, rgba(0, 176, 80, 0.07), transparent 60%),
+    var(--color-bg);
+  background-attachment: fixed;
+}
+
+/* ---------- 2. Typographie : titres en Poppins (polices déjà chargées) ---------- */
+.mp-greeting-name,
+.accueil-greeting-name,
+.code-route-navbar h1,
+.page-navbar h1,
+.learner-navbar h1,
+.learner-courses-lead,
+.signin-title {
+  font-family: var(--font-display, Poppins, Inter, sans-serif);
+  letter-spacing: -0.02em;
+}
+
+/* ---------- 3. Cartes : style dashboard (blanches, ombres douces, coins 20px) ---------- */
+.mp-card,
+.accueil-card,
+.learner-card,
+.conduite-card,
+.reservation-card,
+.practice-exam-card,
+.day-card,
+.recap-card {
+  border: none;
+  border-radius: var(--dash-radius);
+  box-shadow: var(--dash-card-shadow);
+  background: #fff;
+}
+
+.mp-card,
+.accueil-card {
+  padding: 18px;
+}
+
+/* Icônes en badge arrondi (tuiles colorées façon dashboard) */
+.mp-icon-badge,
+.accueil-card-icon,
+.page-nav-icon,
+.learner-nav-icon,
+.code-route-nav-icon {
+  border: none;
+  border-radius: 14px;
+}
+
+/* ---------- 4. Boutons : pilules brillantes ---------- */
+.mp-btn {
+  border-radius: var(--mp-radius-pill);
+  font-family: var(--font-display, Poppins, Inter, sans-serif);
+  font-weight: 700;
+  transition: transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.18s;
+}
+
+.mp-btn--cta {
+  padding: 12px 24px;
+  font-size: 14px;
+}
+
+.mp-btn--cta.mp-btn--green {
+  background: var(--dash-green-grad);
+  color: #fff;
+  box-shadow: 0 14px 28px -12px rgba(0, 176, 80, 0.65);
+}
+
+.mp-btn--cta.mp-btn--green:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 18px 32px -12px rgba(0, 176, 80, 0.75);
+}
+
+.mp-btn--cta.mp-btn--orange {
+  background: var(--dash-coral-grad);
+  color: #fff;
+  box-shadow: 0 14px 28px -12px rgba(232, 93, 59, 0.55);
+}
+
+.mp-btn--outline {
+  border: 1.5px solid var(--mp-border-strong);
+  border-radius: var(--mp-radius-pill);
+  padding: 11px 20px;
+  font-size: 13.5px;
+  font-weight: 600;
+  background: #fff;
+}
+
+.mp-btn--outline:hover {
+  border-color: rgba(0, 176, 80, 0.5);
+  background: var(--mp-green-tint);
+}
+
+@media (hover: none) {
+  .mp-btn--cta.mp-btn--green:hover,
+  .mp-btn--outline:hover {
+    transform: none;
+  }
+}
+
+/* ---------- 5. StatCards : cartes en dégradé ---------- */
+.mp-stat {
+  position: relative;
+  overflow: hidden;
+  border-radius: 18px;
+  padding: 14px 16px;
+  color: #fff;
+  background: var(--dash-green-grad);
+  box-shadow: var(--dash-card-shadow);
+}
+
+.mp-stat::after {
+  content: '';
+  position: absolute;
+  right: -22px;
+  bottom: -26px;
+  width: 110px;
+  height: 110px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.mp-stat .mp-stat-label {
+  color: rgba(255, 255, 255, 0.92);
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  margin: 10px 0 2px;
+}
+
+.mp-stat .mp-stat-value {
+  color: #fff;
+  font-size: 22px;
+  font-weight: 800;
+  font-family: var(--font-display, Poppins, Inter, sans-serif);
+  letter-spacing: -0.02em;
+  position: relative;
+}
+
+.mp-stat svg {
+  color: rgba(255, 255, 255, 0.95);
+}
+
+/* StatCard « conduite » (contexte conduite) : corail */
+.conduite-card .mp-stat,
+.reservation-page .mp-stat {
+  background: var(--dash-coral-grad);
+}
+
+/* StatCard sur fond navy : variante navy */
+.mp-shell .accueil-hero .mp-stat {
+  background: var(--dash-navy-grad);
+}
+
+/* ---------- 6. Badges & icônes ---------- */
+.mp-badge {
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 5px 12px;
+}
+
+.mp-badge--orange {
+  background: var(--mp-orange-tint);
+  color: var(--mp-orange);
+}
+
+.mp-badge--green {
+  background: var(--mp-green-tint);
+  color: var(--mp-green-dark);
+}
+
+/* ---------- 7. Anneau de progression ---------- */
+.mp-ring-track {
+  stroke: #e4efe8;
+}
+
+.mp-ring-value {
+  stroke: #00b050;
+  stroke-width: 5.5;
+}
+
+.mp-ring-label {
+  font-family: var(--font-display, Poppins, Inter, sans-serif);
+  font-weight: 800;
+  font-size: 13px;
+  color: var(--mp-navy);
+}
+
+/* ---------- 8. Section titles ---------- */
+.mp-section-title {
+  font-family: var(--font-display, Poppins, Inter, sans-serif);
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  color: #55636e;
+}
+
+/* ============================================================
+   9. APPSHELL — sidebar desktop + topbar + tabbar mobile
+   ============================================================ */
+
+/* Le shell devient un conteneur global (fond mesh, pas de plafond 430px) */
+.mp-shell {
+  max-width: none;
+  background: transparent;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* --- MOBILE (défaut) : header simple + tabbar bas (inchangés, juste stylés) --- */
+.mp-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px 0;
+  position: relative;
+  z-index: 30;
+}
+
+.mp-logo {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.mp-logo-mark {
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  background: var(--dash-navy-grad);
+  color: var(--mp-green-vibrant);
+  font-weight: 700;
+  font-size: 16px;
+  font-family: var(--font-display, Poppins, Inter, sans-serif);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 18px -8px rgba(0, 16, 48, 0.5);
+}
+
+.mp-logo-word {
+  font-family: var(--font-display, Poppins, Inter, sans-serif);
+  font-weight: 700;
+  font-size: 17px;
+  color: var(--mp-navy);
+  letter-spacing: -0.02em;
+}
+
+.mp-icon-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #fff;
+  border: none;
+  box-shadow: 0 4px 12px rgba(0, 16, 48, 0.08);
+}
+
+.mp-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--dash-green-grad);
+  color: #fff;
+  font-weight: 700;
+}
+
+/* Nav du header : en flux normal (la tabbar fixe est ce même élément en ≤1023px) */
+.mp-header .mp-nav {
+  display: flex;
+  gap: 4px;
+  margin-top: 12px;
+  justify-content: space-around;
+  border-top: 0.5px solid var(--mp-border);
+  padding: 10px 6px 14px;
+}
+
+.mp-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  min-height: 44px;
+  min-width: 56px;
+  justify-content: center;
+  padding: 5px 13px;
+  border-radius: 14px;
+  border: none;
+  background: transparent;
+  color: #7d8a80;
+  font-size: 10px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.mp-nav-item--active {
+  background: var(--mp-green-tint);
+  color: var(--mp-green-dark);
+  font-weight: 600;
+}
+
+/* --- DESKTOP ≥1024px : layout sidebar + contenu --- */
+@media (min-width: 1024px) {
+  .mp-shell {
+    flex-direction: row;
+    align-items: stretch;
+    max-width: 1280px;
+    margin-inline: auto;
+    padding: 28px 32px;
+    gap: 24px;
+  }
+
+  /* Header devient la sidebar (colonne gauche, carte navy arrondie) */
+  .mp-header {
+    position: sticky;
+    top: 28px;
+    align-self: flex-start;
+    flex-direction: column;
+    align-items: stretch;
+    width: var(--dash-sidebar-w);
+    min-height: calc(100dvh - 56px);
+    padding: 24px 20px;
+    border-radius: 26px;
+    background: var(--dash-navy-grad);
+    box-shadow: 0 30px 60px -30px rgba(0, 16, 48, 0.55);
+    overflow: hidden;
+  }
+
+  /* Sur desktop, les actions passent sous la nav (margin-top:auto) — ordre visuel géré ici */
+  .mp-header-actions { order: 3; }
+  .mp-header .mp-nav { order: 2; }
+
+  /* Halo vert en bas de sidebar */
+  .mp-header::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 90px;
+    background:
+      radial-gradient(140px 60px at 22% 100%, rgba(0, 176, 80, 0.4), transparent 70%),
+      radial-gradient(180px 70px at 78% 100%, rgba(0, 176, 80, 0.18), transparent 70%);
+    pointer-events: none;
+  }
+
+  .mp-logo {
+    justify-content: center;
+    padding-bottom: 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    margin-bottom: 16px;
+  }
+
+  .mp-logo-mark {
+    width: 64px;
+    height: 64px;
+    border-radius: 20px;
+    background: #fff;
+    color: #00b050;
+    font-size: 30px;
+  }
+
+  .mp-logo-word {
+    color: #fff;
+    font-size: 21px;
+  }
+
+  /* Zone d'actions (cloche + avatar) sous le logo */
+  .mp-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 4px 2px 16px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .mp-icon-btn {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    box-shadow: none;
+  }
+
+  .mp-avatar {
+    box-shadow: 0 10px 20px -10px rgba(0, 176, 80, 0.8);
+  }
+
+  /* Nav : liste verticale façon sidebar ; actions collées en bas de sidebar */
+  .mp-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 12px;
+    border-top: none;
+    padding: 0;
+  }
+
+  .mp-nav-item {
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 12px;
+    min-height: 46px;
+    padding: 0 16px;
+    border-radius: 14px;
+    font-size: 14px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.72);
+    transition: background 0.16s, color 0.16s;
+  }
+
+  .mp-nav-item:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: #fff;
+  }
+
+  .mp-nav-item--active {
+    background: var(--dash-green-grad);
+    color: #fff;
+    box-shadow: 0 12px 24px -12px rgba(0, 176, 80, 0.8);
+  }
+
+  .mp-header-actions {
+    margin-top: auto;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    border-bottom: none;
+    padding: 16px 2px 0;
+  }
+
+  /* Barre d'onglets jamais détachée en bas sur desktop */
+  .mp-header .mp-nav {
+    position: static;
+  }
+
+  /* Contenu principal à droite */
+  .mp-content {
+    flex: 1;
+    min-width: 0;
+    max-width: none;
+    padding: 0;
+  }
+}
+
+/* Tablette <1024px : shell simple, contenu pleine largeur */
+@media (max-width: 1023px) {
+  .mp-content {
+    max-width: none;
+    padding: 0;
+  }
+
+  /* La nav (dans le header) devient la barre d'onglets fixe en bas */
+  .mp-shell {
+    padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .mp-header .mp-nav {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 40;
+    margin-top: 0;
+    background: rgba(255, 255, 255, 0.94);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border-top: 1px solid var(--mp-border);
+    padding: 8px 6px calc(8px + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+/* ============================================================
+   10. ACCUEIL — grille dashboard desktop
+   ============================================================ */
+
+/* Mobile : la page d'accueil hérite du shell (plus de double plafond) */
+.accueil {
+  max-width: none;
+  background: transparent;
+}
+
+.accueil-greeting {
+  padding: 20px 20px 0;
+}
+
+.accueil-greeting-name {
+  font-size: 28px;
+  font-weight: 700;
+  font-family: var(--font-display, Poppins, Inter, sans-serif);
+}
+
+.accueil-streak {
+  background: var(--mp-orange-tint);
+  color: var(--mp-orange);
+  font-weight: 600;
+  height: 28px;
+  padding: 0 12px;
+  font-size: 12px;
+}
+
+.accueil-progress-ring,
+.mp-ring {
+  filter: drop-shadow(0 10px 18px rgba(0, 176, 80, 0.25));
+}
+
+/* Hero « Reprendre » : carte navy premium avec voiture en filigrane */
+.accueil-hero {
+  margin: 18px 20px 0;
+  border-radius: 24px;
+  background: var(--dash-navy-grad);
+  padding: 22px 20px 20px;
+  box-shadow: 0 30px 60px -28px rgba(0, 16, 48, 0.55);
+}
+
+.accueil-hero-bg-icon {
+  color: rgba(255, 255, 255, 0.08);
+  right: -6px;
+  bottom: -18px;
+}
+
+.accueil-hero-eyebrow {
+  color: #7be495;
+  font-weight: 600;
+}
+
+.accueil-hero-title {
+  font-family: var(--font-display, Poppins, Inter, sans-serif);
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.accueil-hero-bar {
+  height: 8px;
+  border-radius: 999px;
+}
+
+.accueil-hero-bar-fill {
+  background: var(--dash-green-grad);
+}
+
+.accueil-cta {
+  background: var(--dash-green-grad);
+  color: #fff;
+  height: 46px;
+  padding: 0 24px;
+  font-weight: 700;
+  font-family: var(--font-display, Poppins, Inter, sans-serif);
+  box-shadow: 0 14px 28px -12px rgba(0, 176, 80, 0.75);
+}
+
+.accueil-cta:hover {
+  transform: translateY(-2px);
+}
+
+/* Cartes parcours */
+.accueil-card {
+  margin: 0 20px 14px;
+}
+
+.accueil-card-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+}
+
+.accueil-card-title {
+  font-family: var(--font-display, Poppins, Inter, sans-serif);
+  font-weight: 700;
+  font-size: 16px;
+}
+
+.accueil-unlock-btn {
+  border: 1.5px solid var(--mp-border-strong);
+  border-radius: 999px;
+  min-height: 44px;
+  font-weight: 600;
+  background: #fff;
+  transition: border-color 0.16s, background 0.16s;
+}
+
+.accueil-unlock-btn:hover {
+  border-color: rgba(0, 176, 80, 0.5);
+  background: var(--mp-green-tint);
+}
+
+.accueil-stats {
+  gap: 12px;
+  margin: 8px 20px 24px;
+}
+
+.accueil-stat {
+  background: #fff;
+}
+
+/* Grille desktop accueil : hero 8 col + anneau 4 col, parcours 2 col */
+@media (min-width: 1024px) {
+  .accueil-content-grid {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    gap: 20px;
+    align-items: start;
+  }
+
+  .accueil-content-grid > .accueil-greeting {
+    grid-column: 1 / -1;
+    padding: 6px 0 2px;
+  }
+
+  .accueil-content-grid > .accueil-hero {
+    grid-column: 1 / 9;
+    margin: 0;
+    padding: 26px 26px 24px;
+  }
+
+  .accueil-content-grid > .accueil-side-panel {
+    grid-column: 9 / -1;
+    margin: 0;
+    background: #fff;
+    border-radius: 24px;
+    box-shadow: var(--dash-card-shadow);
+    padding: 22px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    text-align: center;
+  }
+
+  .accueil-content-grid > .accueil-side-panel .mp-ring {
+    width: 120px;
+    height: 120px;
+  }
+
+  .accueil-content-grid > .accueil-side-panel .mp-ring svg {
+    width: 100%;
+    height: 100%;
+  }
+
+  .accueil-content-grid > .mp-section-title {
+    grid-column: 1 / -1;
+    margin: 8px 0 0;
+  }
+
+  .accueil-content-grid > .mp-card {
+    margin: 0;
+    grid-column: span 6;
+  }
+
+  .accueil-content-grid > .accueil-stats {
+    grid-column: 1 / -1;
+    margin: 4px 0 0;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  .accueil-hero {
+    margin: 18px 24px 0;
+  }
+
+  .accueil-card,
+  .accueil-greeting {
+    margin-left: 24px;
+    margin-right: 24px;
+  }
+
+  .accueil-stats {
+    margin: 8px 24px 24px;
+  }
+
+  .accueil-card:first-of-type {
+    margin-bottom: 14px;
+  }
+
+  /* Sur tablette : les deux parcours côte à côte */
+  .mp-content .accueil-card {
+    display: inline-block;
+    vertical-align: top;
+    width: calc(50% - 17px);
+  }
+
+  .mp-content .accueil-card + .accueil-card {
+    margin-left: 10px;
+  }
+}
+
+/* ============================================================
+   11. CODE DE LA ROUTE / CONDUITE / PROFIL / ABONNEMENT
+   ============================================================ */
+
+/* En-têtes de pages (navbar interne) */
+.page-navbar,
+.learner-navbar,
+.code-route-navbar {
+  border-bottom: none;
+  margin-bottom: 1.25rem;
+}
+
+.page-nav-icon,
+.learner-nav-icon,
+.code-route-nav-icon {
+  box-shadow: 0 8px 18px -8px rgba(0, 176, 80, 0.4);
+}
+
+/* Cartes de catégories code de la route */
+.category-pink,
+.category-cyan,
+.category-yellow,
+.category-green,
+.category-purple {
+  border: none;
+  border-radius: var(--dash-radius);
+  box-shadow: var(--dash-card-shadow);
+}
+
+/* Offres / listes d'options */
+.offer-pick {
+  border-radius: 16px;
+  border: 1.5px solid var(--mp-border);
+  transition: border-color 0.16s, box-shadow 0.16s, background 0.16s;
+}
+
+.offer-pick.is-selected {
+  border-color: #00b050;
+  box-shadow: 0 0 0 3px rgba(0, 176, 80, 0.14);
+  background: var(--mp-green-tint);
+}
+
+/* Champs de formulaire */
+.auth-input,
+.field-input,
+.promo-code-field input,
+.cancel-reason-input {
+  border-radius: 14px;
+  border: 1.5px solid var(--mp-border);
+  background: #f4f7fa;
+  min-height: 48px;
+  transition: border-color 0.16s, box-shadow 0.16s, background 0.16s;
+}
+
+.auth-input:focus,
+.field-input:focus,
+.promo-code-field input:focus,
+.cancel-reason-input:focus {
+  outline: none;
+  background: #fff;
+  border-color: #00b050;
+  box-shadow: 0 0 0 4px rgba(0, 176, 80, 0.14);
+}
+
+/* Pastilles calendrier / jours */
+.day-card {
+  border: 1.5px solid var(--mp-border);
+  border-radius: 16px;
+  transition: border-color 0.16s, box-shadow 0.16s;
+}
+
+.day-card.is-selected,
+.day-card[aria-pressed='true'] {
+  border-color: #00b050;
+  box-shadow: 0 0 0 3px rgba(0, 176, 80, 0.14);
+  background: var(--mp-green-tint);
+}
+
+.slot-btn {
+  border-radius: 12px;
+  min-height: 44px;
+}
+
+/* ============================================================
+   12. TEXTES — lisibilité AA partout (aucune couleur < contraste 4.5)
+   ============================================================ */
+.subtitle,
+.learner-courses-detail,
+.subscription-status-copy {
+  color: var(--mp-text-muted);
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+.mp-stat-label {
+  text-transform: none;
+}
+
+/* ============================================================
+   13. FINITIONS — corrections des conflits d'ordre d'injection CSS
+   (les pages importent leur CSS après le thème → spécificité renforcée)
+   ============================================================ */
+
+/* Item actif de la nav : lisible dans TOUS les contextes (pages qui réécrivent la couleur) */
+.mp-header .mp-nav-item--active {
+  background: var(--dash-green-grad) !important;
+  color: #fff !important;
+}
+
+.mp-header .mp-nav-item--active svg {
+  color: #fff !important;
+}
+
+@media (min-width: 1024px) {
+  .mp-header .mp-nav-item:hover {
+    background: rgba(255, 255, 255, 0.08) !important;
+    color: #fff !important;
+  }
+
+  /* Anneau agrandi malgré le style inline (width/height posés en attribut) */
+  .accueil-side-panel .mp-ring {
+    width: 120px !important;
+    height: 120px !important;
+  }
+
+  .accueil-side-panel .mp-ring svg {
+    width: 100% !important;
+    height: 100% !important;
+  }
+
+  .accueil-side-panel .mp-ring-label {
+    font-size: 16px;
+  }
+}
+
+/* Stats d'accueil : vert / navy / corail (comme la maquette) */
+.accueil-stats .mp-stat:nth-child(1) { background: var(--dash-green-grad); }
+.accueil-stats .mp-stat:nth-child(2) { background: var(--dash-navy-grad); }
+.accueil-stats .mp-stat:nth-child(3) { background: var(--dash-coral-grad); }
+
+/* Panneau latéral (anneau) : carte blanche aussi sur mobile */
+.accueil-side-panel {
+  margin: 16px 20px 0;
+  background: #fff;
+  border-radius: 24px;
+  box-shadow: var(--dash-card-shadow);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  text-align: center;
+}
+
+.accueil-side-panel-note {
+  color: var(--mp-text-muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* Textes d'intro de pages : jamais blanc sur fond clair */
+.learner-header p,
+.auth-header p,
+.learner-courses-intro p {
+  color: var(--mp-text-muted) !important;
+}
+
+/* Champ code promo : l'input prend la place (spécificité > règles de page) */
+.promo-code-field {
+  display: flex;
+  gap: 10px;
+  align-items: stretch;
+}
+
+.promo-code-field input[type='text'] {
+  flex: 1;
+  min-width: 0;
+  width: auto;
+}
+
+/* Le bouton ne doit pas prendre 100 % de la ligne flex (il écrasait l'input) */
+.promo-code-field .mp-btn--outline {
+  width: auto;
+  flex-shrink: 0;
+}
+
+/* Ligne Progression / Réservations : empilée sur mobile, jamais compressée */
+.conduite-top-row {
+  flex-wrap: wrap;
+}
+
+.conduite-top-row > * {
+  min-width: 0;
+}
+
+@media (max-width: 767px) {
+  .conduite-top-row {
+    flex-direction: column;
+  }
+
+  .conduite-top-row > * {
+    width: 100%;
+  }
+}
+
+/* ============================================================
+   14. ANIMATIONS RESPECTÉES — rien de nouveau, on hérite de motion.css
+   (prefers-reduced-motion est déjà géré globalement dans index.css)
+   ============================================================ */

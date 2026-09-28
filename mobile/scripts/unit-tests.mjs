@@ -62,8 +62,8 @@ ok('computeModuleAmount code flat', () => {
 ok('isChapterUnlocked first', () => {
   assert.equal(isChapterUnlocked(0, undefined, new Set()), true)
 })
-ok('isChapterUnlocked locked', () => {
-  assert.equal(isChapterUnlocked(1, 'prev', new Set()), false)
+ok('isChapterUnlocked free access', () => {
+  assert.equal(isChapterUnlocked(1, 'prev', new Set()), true)
 })
 ok('isCourseUnlocked sequential', () => {
   assert.equal(isCourseUnlocked(1, 'c0', new Set(['c0'])), true)

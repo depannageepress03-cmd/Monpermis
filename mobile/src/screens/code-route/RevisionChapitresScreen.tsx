@@ -245,7 +245,7 @@ export function RevisionChapitresScreen() {
         >
           <FadeUp delay={40}>
             <LinearGradient
-              colors={['#E8F8EF', '#F4F7FB']}
+              colors={['#E8F8EF', '#EAEFF6']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={styles.intro}
@@ -409,7 +409,7 @@ export function RevisionChapitresScreen() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: '#F4F7FB',
+    backgroundColor: '#EAEFF6',
   },
   safe: {
     flex: 1,

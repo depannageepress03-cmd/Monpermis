@@ -1,6 +1,6 @@
 // QA — variables de test (jamais la prod). La base Mongo est fournie
 // par mongodb-memory-server (voir mongo.mjs) et écrase MONGODB_URI.
-export const QA_PORT = 5011
+export const QA_PORT = Number(process.env.QA_PORT) || 5011
 export const QA_JWT_SECRET = 'qa-jwt-secret-min-32-chars-0123456789abcdef'
 export const QA_WEBHOOK_SECRET = 'whsec_qa_test_secret_0123456789'
 export const QA_CRON_KEY = 'qa-cron-key'

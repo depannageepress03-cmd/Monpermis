@@ -6,6 +6,7 @@ import { Image, Platform, StyleSheet, View } from 'react-native'
 import { WebView, type WebViewMessageEvent } from 'react-native-webview'
 import { IntroLogoMark } from '../components/IntroLogoMark'
 import { MONPERMIS_INTRO_HTML } from '../assets/monpermisIntroHtml'
+import { colors } from '../theme/tokens'
 import { getStoredUser } from '../api/auth'
 import { useAuth } from '../context/AuthContext'
 import type { RootStackParamList } from '../navigation/types'
@@ -13,7 +14,7 @@ import { hasCompletedOnboarding } from '../utils/onboarding'
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'Intro'>
 
-const INTRO_BG = '#FAF9F6'
+const INTRO_BG = colors.bg
 const MAX_INTRO_MS = 5500
 
 export function IntroScreen() {

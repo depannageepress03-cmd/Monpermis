@@ -123,6 +123,23 @@ export function MesReservationsScreen() {
         {error ? <Text style={styles.error}>{error}</Text> : null}
         {busy ? <ActivityIndicator color={dark.green} style={{ marginVertical: 20 }} /> : null}
 
+        {!busy ? (
+          <View style={styles.countersRow}>
+            <View style={styles.counterCard}>
+              <Text style={styles.counterValue}>{confirmed.length}</Text>
+              <Text style={styles.counterLabel}>Confirmées</Text>
+            </View>
+            <View style={styles.counterCard}>
+              <Text style={styles.counterValue}>{awaitingMoniteur.length}</Text>
+              <Text style={styles.counterLabel}>En attente</Text>
+            </View>
+            <View style={styles.counterCard}>
+              <Text style={styles.counterValue}>{pending.length}</Text>
+              <Text style={styles.counterLabel}>Paiement</Text>
+            </View>
+          </View>
+        ) : null}
+
         {!busy && items.length === 0 ? (
           <View style={styles.empty}>
             <Text style={styles.emptyTitle}>Aucune réservation</Text>
@@ -260,6 +277,15 @@ export function MesReservationsScreen() {
             ))}
           </View>
         ) : null}
+
+        {!busy && items.length > 0 ? (
+          <Pressable
+            style={styles.primaryBtn}
+            onPress={() => navigation.navigate('ReservationFlow')}
+          >
+            <Text style={styles.primaryBtnText}>Nouvelle réservation</Text>
+          </Pressable>
+        ) : null}
       </ScrollView>
 
       <Modal
@@ -318,6 +344,34 @@ export function MesReservationsScreen() {
 
 const styles = StyleSheet.create({
   scroll: { paddingHorizontal: 22, paddingTop: 14, paddingBottom: 32, gap: 8 },
+  countersRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 8,
+  },
+  counterCard: {
+    flex: 1,
+    minWidth: 0,
+    alignItems: 'center',
+    gap: 2,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: dark.border,
+    backgroundColor: dark.surface,
+    paddingVertical: 12,
+    paddingHorizontal: 6,
+  },
+  counterValue: {
+    fontFamily: fonts.displayBold,
+    fontSize: 18,
+    color: dark.textPrimary,
+  },
+  counterLabel: {
+    fontFamily: fonts.body,
+    fontSize: 11.5,
+    color: dark.textMuted,
+    textAlign: 'center',
+  },
   section: {
     fontFamily: fonts.displayBold,
     fontSize: 15,

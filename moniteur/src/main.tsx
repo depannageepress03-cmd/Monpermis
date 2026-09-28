@@ -7,6 +7,7 @@ import './styles/moniteur-base.css'
 import './styles/moniteur-layout.css'
 import './styles/moniteur-ui.css'
 import './styles/moniteur-app.css'
+import './styles/moniteur-responsive.css'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

@@ -542,7 +542,7 @@ export function ChapterTestSubjectScreen() {
 const qStyles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: '#F4F7FB',
+    backgroundColor: '#EAEFF6',
   },
   safe: {
     flex: 1,
@@ -754,7 +754,7 @@ const qStyles = StyleSheet.create({
 const tStyles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: '#F4F7FB',
+    backgroundColor: '#EAEFF6',
   },
   safe: {
     flex: 1,

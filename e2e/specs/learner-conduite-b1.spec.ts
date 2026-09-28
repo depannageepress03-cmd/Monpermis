@@ -27,5 +27,5 @@ test('réservation affiche les vrais moniteurs', async ({ page }) => {
   await page.goto(`/conduite/reservation?moniteurId=${realId}`)
 
   // Doit lister le vrai moniteur seedé, pas les mocks.
-  await expect(page.getByText('E2e Moniteur')).toBeVisible({ timeout: 20000 })
+  await expect(page.getByRole('button', { name: /E2e Moniteur/ })).toBeVisible({ timeout: 20000 })
 })

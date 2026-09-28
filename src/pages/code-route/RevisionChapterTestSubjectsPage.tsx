@@ -48,7 +48,7 @@ export function RevisionChapterTestSubjectsPage() {
 
   if (authLoading) {
     return (
-      <div style={{ minHeight: '100dvh', background: '#F5F7FB', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ minHeight: '100dvh', background: '#EAEFF6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <p style={{ color: '#5B6680' }}>Chargement…</p>
       </div>
     );

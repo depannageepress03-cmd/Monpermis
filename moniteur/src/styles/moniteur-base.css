@@ -1,22 +1,22 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Sora:wght@500;600;700;800&display=swap');
 
 :root {
-  --green: #00b050;
-  --green-deep: #00863c;
-  --gold: #ffc000;
-  --navy: #001030;
-  --navy-muted: #3d4f63;
-  --navy-soft: #64748b;
-  --green-light: #e8f8ef;
-  --gold-light: #fff8e6;
+  --green: #0baa4f;
+  --green-deep: #067a37;
+  --gold: #ffb400;
+  --navy: #0a1b3d;
+  --navy-muted: #5b6680;
+  --navy-soft: #8a93a8;
+  --green-light: #eaf7ef;
+  --gold-light: #fff4d6;
   --white: #ffffff;
   --error: #dc2626;
   --error-light: #fdeaea;
-  --border: rgba(9, 20, 41, 0.11);
-  --surface: #f4f6f8;
-  --brand-black: #000000;
-  --font-display: Inter, system-ui, sans-serif;
-  --font-body: Inter, system-ui, sans-serif;
+  --border: rgba(10, 27, 61, 0.12);
+  --surface: #eaeff6;
+  --brand-black: #06122a;
+  --font-display: 'Sora', Inter, system-ui, sans-serif;
+  --font-body: 'Plus Jakarta Sans', Inter, system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
 
   /* Densité data — typo SaaS */

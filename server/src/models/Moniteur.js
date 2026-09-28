@@ -25,7 +25,6 @@ const moniteurSchema = new mongoose.Schema(
       default: '',
       trim: true,
       lowercase: true,
-      index: true,
     },
     passwordHash: { type: String, default: '', select: false },
     activeLogin: { type: Boolean, default: false },

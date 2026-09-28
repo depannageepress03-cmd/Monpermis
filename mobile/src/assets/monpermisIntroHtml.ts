@@ -7,10 +7,10 @@ export const MONPERMIS_INTRO_HTML = `<!DOCTYPE html>
 <title>monpermis.bj — Animation</title>
 <style>
   :root{
-    --bg:        #FAF9F6;
-    --green:     #1FA857;
-    --yellow:    #F5B31B;
-    --navy:      #14263F;
+    --bg:        #EAEFF6;
+    --green:     #0BAA4F;
+    --yellow:    #FFB400;
+    --navy:      #0A1B3D;
     --ease-out:  cubic-bezier(.22, 1, .36, 1);
     --logo-w:    min(232px, 56vw);
   }

@@ -1,22 +1,23 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sora:wght@500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
 :root {
-  --green: #00b050;
-  --green-deep: #00863c;
-  --gold: #ffc000;
-  --navy: #001030;
-  --navy-muted: #3d4f63;
-  --navy-soft: #64748b;
-  --green-light: #e8f8ef;
-  --gold-light: #fff8e6;
+  /* Charte maquettes Admin (Admin.html) : navy #0A1B3D · vert #0BAA4F · jaune #FFB400 */
+  --green: #0baa4f;
+  --green-deep: #067a37;
+  --gold: #ffb400;
+  --navy: #0a1b3d;
+  --navy-muted: #5b6680;
+  --navy-soft: #8a93a8;
+  --green-light: #eaf7ef;
+  --gold-light: #fff4d6;
   --white: #ffffff;
-  --error: #dc2626;
-  --error-light: #fdeaea;
-  --border: rgba(9, 20, 41, 0.11);
-  --surface: #f4f6f8;
-  --brand-black: #000000;
-  --font-display: Inter, system-ui, sans-serif;
-  --font-body: Inter, system-ui, sans-serif;
+  --error: #c2410c;
+  --error-light: #fff1e6;
+  --border: rgba(10, 27, 61, 0.12);
+  --surface: #eaeff6;
+  --brand-black: #06122a;
+  --font-display: 'Sora', Inter, system-ui, sans-serif;
+  --font-body: 'Plus Jakarta Sans', Inter, system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
 
   /* Densité data — typo SaaS */
@@ -858,4 +859,69 @@ textarea {
 .admin-section-subtitle {
   font-size: var(--text-sm) !important;
   color: var(--navy-muted);
+}
+
+/* Route 2026 surface language shared by every admin module. */
+.admin-app {
+  background:
+    radial-gradient(620px 380px at 88% 4%, rgba(11, 170, 79, 0.09), transparent 62%),
+    var(--surface);
+  color: var(--navy);
+}
+
+.admin-sidebar {
+  background: var(--gradient-sidebar);
+  box-shadow: 0 26px 44px -22px rgba(10, 27, 61, 0.75);
+}
+
+.sidebar-link {
+  min-height: 44px;
+  border-radius: 14px;
+  font-family: var(--font-body);
+  font-weight: 700;
+}
+
+.sidebar-link.active {
+  background: linear-gradient(100deg, var(--green), var(--green-deep));
+  box-shadow: 0 12px 24px -12px rgba(11, 170, 79, 0.65);
+}
+
+.admin-main,
+.admin-content,
+.page-content {
+  background: transparent;
+}
+
+.admin-card,
+.card,
+.module-card,
+.stat-card,
+.kpi-card,
+.table-card,
+.content-card {
+  border-radius: 24px;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-card);
+  background: var(--white);
+}
+
+.admin-app button:not(.sidebar-link),
+.admin-app a.admin-button {
+  border-radius: 999px;
+  font-family: var(--font-display);
+}
+
+.admin-app input,
+.admin-app select,
+.admin-app textarea {
+  border-radius: 18px;
+  border-color: var(--d-border, #e1e6ef);
+}
+
+.admin-app h1,
+.admin-app h2,
+.admin-app h3,
+.admin-app h4 {
+  font-family: var(--font-display);
+  letter-spacing: -0.02em;
 }

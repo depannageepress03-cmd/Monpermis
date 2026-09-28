@@ -293,18 +293,39 @@ export async function getUserModuleAccess(userId) {
   await expireDueAccessRequests(userId)
   const requests = await AccessRequest.find({ userId }).sort({ createdAt: -1 }).limit(50)
   const now = new Date()
+  const eligibleRequests = await AccessRequest.find({
+    userId,
+    $or: [
+      { module: { $in: TIME_BASED_MODULES }, status: 'actif' },
+      { module: { $in: QUANTITY_BASED_MODULES }, status: 'valide' },
+    ],
+  })
+  const eligibleRequestIds = eligibleRequests.map((request) => request._id)
+  const approvedPayments = eligibleRequestIds.length
+    ? await Payment.find({
+        userId,
+        status: 'approved',
+        amount: { $gt: 0 },
+        $or: [
+          { accessRequestId: { $in: eligibleRequestIds } },
+          { accessRequestIds: { $in: eligibleRequestIds } },
+        ],
+      }).select('accessRequestId accessRequestIds')
+    : []
+  const paidRequestIds = new Set(
+    approvedPayments.flatMap((payment) =>
+      payment.linkedRequestIds().map((requestId) => String(requestId)),
+    ),
+  )
 
   const access = {}
   for (const key of ['code', 'conduite_heures', 'conduite_videos', 'aiChat']) {
-    // Les vidéos de conduite sont gratuites pour tous, y compris sans achat du code.
-    access[key] =
-      key === 'conduite_videos' ||
-      requests.some((r) => {
-        if (r.module !== key) return false
-        if (QUANTITY_BASED_MODULES.includes(key)) return r.status === 'valide'
-        // Source de vérité = dates : refuse dès now >= endAt, même si status encore « actif ».
-        return isTimeBasedAccessLive(r, now)
-      })
+    access[key] = eligibleRequests.some((request) => {
+      if (request.module !== key || !paidRequestIds.has(String(request._id))) return false
+      if (QUANTITY_BASED_MODULES.includes(key)) return true
+      // Source de vérité = dates : refuse dès now >= endAt, même si status encore « actif ».
+      return isTimeBasedAccessLive(request, now)
+    })
   }
 
   const pending = requests.find((r) =>
@@ -797,7 +818,7 @@ export async function checkoutCartOnlineAccess({
 
     const pricing = await getModulePricing(module)
     const amount = computeModuleAmount(pricing, quantity)
-    // Modules gratuits : activés hors FedaPay (claim-free), jamais facturés ici.
+    // Les offres à 0 FCFA ne sont pas facturées par FedaPay.
     if (amount <= 0) continue
     normalizedItems.push({
       module,
@@ -1067,11 +1088,8 @@ export async function adminGrantModuleAccess({ userId, module, quantity = 1, not
   return request
 }
 
-/**
- * Active uniquement les modules toujours gratuits (whitelist stricte).
- * `conduite_heures` n’est jamais claimable ici, même à prix 0.
- */
-const CLAIM_FREE_WHITELIST = ['conduite_videos']
+/** Aucun module ne peut être activé sans paiement confirmé. */
+const CLAIM_FREE_WHITELIST = []
 
 export async function activateFreeAccessModules({ user, modules }) {
   const wanted = Array.isArray(modules)
@@ -1086,9 +1104,9 @@ export async function activateFreeAccessModules({ user, modules }) {
   const rejected = wanted.filter((key) => !CLAIM_FREE_WHITELIST.includes(key))
   if (rejected.length) {
     const error = new Error(
-      `Modules non éligibles au gratuit : ${rejected.join(', ')}. Seul « conduite_videos » peut être activé sans paiement.`,
+      `Activation sans paiement indisponible pour : ${rejected.join(', ')}.`,
     )
-    error.status = 400
+    error.status = 403
     throw error
   }
 

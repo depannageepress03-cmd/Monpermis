@@ -49,5 +49,13 @@ export default defineConfig({
       timeout: 120000,
       reuseExistingServer: false,
     },
+    {
+      command: 'npx vite --port 5176 --strictPort',
+      cwd: 'moniteur',
+      env: { ...process.env, API_PROXY_TARGET: API },
+      url: 'http://localhost:5176',
+      timeout: 120000,
+      reuseExistingServer: false,
+    },
   ],
 })

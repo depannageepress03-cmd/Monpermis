@@ -26,10 +26,7 @@ function imageUrl(n) {
 
 /** Images disponibles (N.png = question N). */
 const QUESTIONS_WITH_IMAGES = new Set([
-  13, 18, 19, 20, 21, 22, 23, 24, 26, 27,
-  28, 29, 30, 32, 33, 34, 36, 37, 38, 39,
-  40, 41, 42, 43, 69, 70, 71, 72, 73,
-  80, 81, 82, 83, 84, 85, 86, 87,
+  13, 18, 19, 20, 21, 22, 23, 24, 26, 27, 28, 29,
 ])
 
 function answers(questionIndex, letters, correctLetters) {

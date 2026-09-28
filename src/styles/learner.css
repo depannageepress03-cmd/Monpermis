@@ -2279,3 +2279,28 @@
     to { transform: translateY(10px) scale(1.03); }
   }
 }
+
+/* ===== Headers learner sur fond clair (mes-notes, conduite, examens…) =====
+   .auth-header impose un texte blanc prévu pour les pages d'auth sombres :
+   sur fond clair il est invisible. Ces surcharges, plus spécifiques,
+   restaurent un texte navy/muted lisible (ordre d'import indifférent). */
+.auth-header.learner-header {
+  color: var(--brand-navy, #001030);
+}
+.auth-header.learner-header h1 {
+  color: var(--brand-navy, #001030);
+}
+.auth-header.learner-header p,
+.auth-header.learner-header .learner-kicker {
+  color: var(--color-text-muted, #3d5a73);
+}
+
+/* État verrouillé conduite : gris renforcé pour rester lisible */
+.subscription-locked-state p {
+  color: #3d5a73;
+}
+
+/* CTA vers les sessions sous les listes de notes */
+.mesnotes-cta {
+  margin: 4px 0 14px;
+}

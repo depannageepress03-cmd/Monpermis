@@ -1,19 +1,19 @@
-import { useCallback, useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { Megaphone } from 'lucide-react'
-import { fetchAnnouncements, type Announcement } from '../api/announcements'
-import { AnnouncementCard } from '../components/AnnouncementCard'
-import { ContentReveal } from '../components/ContentReveal'
-import { Reveal } from '../components/Reveal'
-import { EmptyState } from '../components/EmptyState'
-import { PageNavbar } from '../components/PageNavbar'
-import { PageLoader } from '../components/PageLoader'
-import { PageSkeleton } from '../components/PageSkeleton'
-import { useAuth } from '../hooks/useAuth'
-import { AppShell, userInitialsOf, type AppTab } from '../components/layout/AppShell'
-import { SectionTitle } from '../components/ui'
-import '../styles/auth.css'
-import '../styles/learner.css'
+import { useCallback, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Megaphone } from 'lucide-react';
+import { fetchAnnouncements, type Announcement } from '../api/announcements';
+import { AnnouncementCard } from '../components/AnnouncementCard';
+import { ContentReveal } from '../components/ContentReveal';
+import { Reveal } from '../components/Reveal';
+import { EmptyState } from '../components/EmptyState';
+import { PageNavbar } from '../components/PageNavbar';
+import { PageLoader } from '../components/PageLoader';
+import { PageSkeleton } from '../components/PageSkeleton';
+import { useAuth } from '../hooks/useAuth';
+import { AppShell, userInitialsOf, type AppTab } from '../components/layout/AppShell';
+import { SectionTitle } from '../components/ui';
+import '../styles/auth.css';
+import '../styles/learner.css';
 
 const TAB_ROUTES: Record<AppTab, string> = {
   accueil: '/accueil',
@@ -21,31 +21,31 @@ const TAB_ROUTES: Record<AppTab, string> = {
   conduite: '/conduite',
   progres: '/code-de-la-route/mes-notes',
   profil: '/profil',
-}
+};
 
 export function ActualitesPage() {
-  const navigate = useNavigate()
-  const { user, loading } = useAuth()
-  const [items, setItems] = useState<Announcement[]>([])
-  const [fetching, setFetching] = useState(true)
+  const navigate = useNavigate();
+  const { user, loading } = useAuth();
+  const [items, setItems] = useState<Announcement[]>([]);
+  const [fetching, setFetching] = useState(true);
 
   const load = useCallback(async () => {
     try {
-      const list = await fetchAnnouncements(50)
-      setItems(list)
+      const list = await fetchAnnouncements(50);
+      setItems(list);
     } catch {
-      setItems([])
+      setItems([]);
     } finally {
-      setFetching(false)
+      setFetching(false);
     }
-  }, [])
+  }, []);
 
   useEffect(() => {
-    if (!user) return
-    void load()
-  }, [user, load])
+    if (!user) return;
+    void load();
+  }, [user, load]);
 
-  if (loading || !user) return <PageLoader />
+  if (loading || !user) return <PageLoader />;
 
   return (
     <AppShell
@@ -91,5 +91,7 @@ export function ActualitesPage() {
         </div>
       </div>
     </AppShell>
-  )
+  );
 }
+
+export default ActualitesPage;

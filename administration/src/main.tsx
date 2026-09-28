@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import App from './App.tsx'
 import { AdminAuthProvider } from './context/AdminAuthContext.tsx'
+import './theme.css'
 import './styles/admin-base.css'
 import './styles/admin-layout.css'
 import './styles/admin-ui.css'
@@ -16,6 +17,7 @@ import './styles/admin-cockpit.css'
 import './styles/admin-tracking.css'
 import './styles/admin-motion.css'
 import './styles/admin-admins.css'
+import './styles/admin-responsive.css'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

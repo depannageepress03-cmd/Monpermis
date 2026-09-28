@@ -1,0 +1,249 @@
+/* ============================================================
+   Monpermis — responsive pages (Étape 5)
+   Enrichit learner / reservation / auth / modales sans les casser.
+   Importé après responsive.css dans main.tsx.
+   ============================================================ */
+
+/* ---------- Conteneurs généraux ---------- */
+
+/* Pages auth-page (reservation, profil, learner…) : pleine largeur + conteneur */
+.auth-page { min-height: 100dvh; }
+.auth-container { max-width: 100%; }
+
+.home-dashboard {
+  position: relative;
+  isolation: isolate;
+  min-height: 100%;
+}
+
+.home-dashboard::before {
+  content: '';
+  position: absolute;
+  top: -72px;
+  left: -60px;
+  z-index: -1;
+  width: 300px;
+  height: 300px;
+  border-radius: 50%;
+  background: rgba(11, 170, 79, 0.1);
+  filter: blur(60px);
+  pointer-events: none;
+}
+
+.home-dashboard-content {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
+  max-width: 1120px;
+  margin-inline: auto;
+  padding-top: 12px;
+}
+
+.home-dashboard-greeting {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.home-dashboard-greeting span {
+  color: var(--d-muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.home-dashboard-greeting h1 {
+  margin: 0;
+  font-size: clamp(20px, 2vw, 24px);
+  font-weight: 700;
+}
+
+@media (min-width: 768px) {
+  .auth-container { padding: 1.5rem 24px 2.5rem; }
+}
+
+@media (min-width: 1024px) {
+  .auth-container {
+    max-width: var(--container-max);
+    margin-inline: auto;
+    padding: 2rem 32px 3rem;
+  }
+  .learner-container { max-width: var(--container-max); margin-inline: auto; }
+}
+
+@media (min-width: 1440px) {
+  .auth-container { max-width: 1280px; }
+  .learner-container { max-width: 1280px; }
+}
+
+/* Limites de lecture : texte courant <= 70 caractères */
+@media (min-width: 1024px) {
+  .learner-courses-lead { max-width: 60ch; }
+  .learner-courses-detail { max-width: 70ch; }
+  .reservation-intro p { max-width: 70ch; }
+}
+
+/* ---------- Modales : bottom sheet mobile → centrées desktop ---------- */
+
+/* Base mobile : plein écran ancré bas */
+.cancel-modal-backdrop,
+.mm-checkout-backdrop,
+.account-sheet-root {
+  align-items: flex-end;
+  padding: 0;
+}
+
+.cancel-modal,
+.mm-checkout-card {
+  width: 100%;
+  max-width: 100%;
+  border-radius: 18px 18px 0 0;
+  max-height: 92dvh;
+  overflow: auto;
+  padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+}
+
+.account-sheet {
+  width: 100%;
+  max-width: 100%;
+  border-radius: 24px 24px 0 0;
+  max-height: 92dvh;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+@media (min-width: 768px) {
+  .cancel-modal-backdrop,
+  .mm-checkout-backdrop,
+  .account-sheet-root {
+    align-items: center;
+    padding: 24px;
+  }
+
+  .cancel-modal,
+  .mm-checkout-card {
+    width: min(560px, 100%);
+    border-radius: 18px;
+    padding-bottom: 16px;
+  }
+
+  .account-sheet {
+    width: min(560px, 100%);
+    border-radius: 24px;
+  }
+}
+
+/* ---------- Quiz : question à gauche, réponses à droite sur ordinateur ---------- */
+@media (min-width: 1024px) {
+  .learner-quiz {
+    display: grid;
+    grid-template-columns: minmax(0, 5fr) minmax(0, 4fr);
+    align-items: start;
+    gap: 1.25rem 2rem;
+  }
+
+  /* L'ordre DOM reste : progress-row | (images+prompt) | answers | actions.
+     On place : colonne gauche = progress + prompt/images,
+     colonne droite = réponses, bas pleine largeur = actions. */
+  .learner-quiz > .learner-quiz-progress-row { grid-column: 1 / -1; }
+  .learner-quiz > .learner-quiz-prompt,
+  .learner-quiz > .learner-quiz-images,
+  .learner-quiz > .learner-quiz-subtitles { grid-column: 1; }
+  .learner-quiz > .learner-quiz-answers-title,
+  .learner-quiz > .learner-quiz-answers { grid-column: 2; }
+  .learner-quiz > .learner-quiz-audio-status { grid-column: 1; }
+  .learner-quiz > .learner-quiz-actions {
+    grid-column: 1 / -1;
+    justify-content: flex-end;
+  }
+
+  .learner-quiz-answers { gap: 0.7rem; }
+}
+
+/* ---------- Vidéos : 16/9 fluide, aucun débordement ---------- */
+.learner-media { aspect-ratio: 16 / 9; max-width: 100%; }
+.moniteur-profile-video { aspect-ratio: 16 / 9; max-width: 100%; }
+.moniteur-profile-video iframe,
+.moniteur-profile-video video { width: 100%; height: 100%; border: 0; display: block; }
+
+/* ---------- Réservation : liste mobile → grille ordinateur ---------- */
+@media (min-width: 1024px) {
+  .availability-days-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 10px;
+  }
+
+  .availability-day-chip {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  }
+
+  .slots-row { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); display: grid; }
+
+  .slot-btn {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .moniteur-choice-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 12px;
+  }
+
+  .availability-time-row { max-width: 560px; }
+}
+
+/* Cibles tactiles sur les créneaux, même sur mobile */
+.slot-btn,
+.availability-day-chip {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ---------- Formulaires : 2 colonnes dès 768px si champs courts ---------- */
+@media (min-width: 768px) {
+  .learner-notes-block,
+  .reservation-step {
+    max-width: 760px;
+  }
+
+  /* Grilles de formulaires implicites : labels côte à côte si le DOM est plat */
+  .availability-time-row { display: flex; flex-wrap: wrap; gap: 1rem; }
+}
+
+/* ---------- Conduite : top row 2 colonnes dès 768px ---------- */
+@media (min-width: 768px) {
+  .conduite-top-row {
+    display: grid;
+    grid-template-columns: 2fr 3fr;
+    gap: 16px;
+  }
+}
+
+/* ---------- Panneaux : grille de cartes dès 768px ---------- */
+@media (min-width: 768px) {
+  .learner-question-list,
+  .learner-panneaux-grid {
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 14px;
+  }
+}
+
+/* ---------- Notifications / actualités : liste centrée, large ---------- */
+@media (min-width: 1024px) {
+  .home-notif-card { max-width: none; }
+}
+
+/* ---------- Zoom 200% : les grilles fixes repassent en pile ---------- */
+@media (any-pointer: coarse) and (min-width: 1024px) {
+  /* tablets avec clavier : rien à faire, les grilles restent fluides */
+}

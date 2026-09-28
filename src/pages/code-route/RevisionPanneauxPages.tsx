@@ -129,7 +129,7 @@ export function RevisionPanneauxCategoryPage() {
 
   if (loading) {
     return (
-      <div style={{ minHeight: '100dvh', background: '#F5F7FB', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ minHeight: '100dvh', background: '#EAEFF6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <p style={{ color: '#5B6680' }}>Chargement…</p>
       </div>
     );
@@ -137,7 +137,7 @@ export function RevisionPanneauxCategoryPage() {
 
   if (!category) {
     return (
-      <div style={{ minHeight: '100dvh', background: '#F5F7FB', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '56px 20px' }}>
+      <div style={{ minHeight: '100dvh', background: '#EAEFF6', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '56px 20px' }}>
         <div style={{ borderRadius: 26, background: '#FFFFFF', padding: '24px', boxShadow: '0 10px 30px -18px rgba(10,27,61,0.3)', textAlign: 'center' }}>
           <p style={{ color: '#5B6680' }}>Catégorie introuvable.</p>
           <Button variant="outline" onClick={() => navigate('/code-de-la-route/revision-panneaux')} style={{ marginTop: 16 }}>Retour</Button>
@@ -181,7 +181,7 @@ export function RevisionPanneauxCategoryPage() {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
               {category.panneaux.map((panneau, index) => (
                 <Reveal key={panneau} delay={index * 30}>
-                <Card style={{ aspectRatio: '1', borderRadius: 16, overflow: 'hidden', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '16px', background: '#F5F7FB' }}>
+                <Card style={{ aspectRatio: '1', borderRadius: 16, overflow: 'hidden', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '16px', background: '#EAEFF6' }}>
                   <div style={{ width: 80, height: 80, borderRadius: 20, background: '#EAF7EF', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 10 }}>
                     <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#067A37" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="16" rx="4"/><path d="M9 4v16M15 4v16"/></svg>
                   </div>

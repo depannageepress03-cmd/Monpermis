@@ -1,0 +1,82 @@
+.admin-app {
+  --app-bg: var(--surface);
+  min-height: 100dvh;
+  min-width: 0;
+}
+
+.admin-sidebar {
+  height: 100dvh;
+}
+
+.admin-stage,
+.admin-shell-card,
+.admin-content,
+.admin-page,
+.admin-content > * {
+  min-width: 0;
+}
+
+.admin-content {
+  width: 100%;
+  max-width: 1600px;
+  margin-inline: auto;
+}
+
+.admin-data-table-wrap,
+.users-table-wrap {
+  max-width: 100%;
+  overscroll-behavior-inline: contain;
+}
+
+.admin-menu-btn,
+.admin-notif-btn {
+  width: 44px;
+  height: 44px;
+}
+
+.sidebar-close,
+.admin-health-dismiss {
+  width: 44px;
+  height: 44px;
+  flex: none;
+}
+
+@media (max-width: 767px) {
+  .admin-app.is-mobile .admin-global-search {
+    width: min(160px, 36vw);
+    height: 44px;
+  }
+
+  .admin-app.is-mobile .admin-global-search input {
+    font-size: 16px;
+  }
+
+  .admin-app.is-mobile .admin-content {
+    padding-inline: 12px;
+  }
+
+  .admin-app.is-mobile .admin-module-title {
+    font-size: clamp(22px, 7vw, 26px);
+    overflow-wrap: anywhere;
+  }
+
+  .admin-health-strip {
+    margin-inline: 10px;
+  }
+
+  .admin-app input,
+  .admin-app select,
+  .admin-app textarea {
+    font-size: 16px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-sidebar,
+  .admin-sidebar-backdrop,
+  .admin-global-search,
+  .admin-menu-btn,
+  .admin-notif-btn {
+    transition: none;
+  }
+}

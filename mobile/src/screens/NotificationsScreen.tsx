@@ -81,14 +81,18 @@ export function NotificationsScreen() {
   const [items, setItems] = useState<AppNotification[]>([])
   const [fetching, setFetching] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [tab, setTab] = useState<TabKey>('all')
 
   const load = useCallback(async () => {
     try {
       const { notifications } = await fetchNotifications()
       setItems(notifications)
+      setError(null)
     } catch {
       setItems([])
+      // Parité web (NotificationsPage) : état erreur + Réessayer.
+      setError('Impossible de charger les notifications.')
     } finally {
       setFetching(false)
       setRefreshing(false)
@@ -241,7 +245,26 @@ export function NotificationsScreen() {
 
           {fetching ? <SkeletonList count={4} /> : null}
 
-          {!fetching && items.length === 0 ? (
+          {!fetching && error && items.length === 0 ? (
+            <FadeUp delay={60}>
+              <View style={styles.errorBox}>
+                <Text style={styles.errorTitle}>Chargement impossible</Text>
+                <Text style={styles.errorCopy}>{error}</Text>
+                <Pressable
+                  style={({ pressed }) => [styles.retryBtn, pressed && styles.pressed]}
+                  onPress={() => {
+                    setFetching(true)
+                    void load()
+                  }}
+                  accessibilityRole="button"
+                >
+                  <Text style={styles.retryText}>Réessayer</Text>
+                </Pressable>
+              </View>
+            </FadeUp>
+          ) : null}
+
+          {!fetching && !error && items.length === 0 ? (
             <FadeUp delay={60}>
               <View style={styles.empty}>
                 <View style={styles.emptyArt}>
@@ -479,6 +502,42 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingTop: 28,
     paddingBottom: 8,
+  },
+  errorBox: {
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 22,
+    ...shadows.sm,
+  },
+  errorTitle: {
+    fontFamily: fonts.displayBold,
+    fontSize: 17,
+    color: dark.textPrimary,
+    textAlign: 'center',
+  },
+  errorCopy: {
+    fontFamily: fonts.body,
+    fontSize: 14,
+    lineHeight: 20,
+    color: dark.textMuted,
+    textAlign: 'center',
+  },
+  retryBtn: {
+    marginTop: 8,
+    minHeight: 46,
+    paddingHorizontal: 22,
+    paddingVertical: 12,
+    borderRadius: 14,
+    backgroundColor: dark.green,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  retryText: {
+    color: '#FFFFFF',
+    fontFamily: fonts.bodyBold,
+    fontSize: 14,
   },
   emptyArt: {
     width: 140,

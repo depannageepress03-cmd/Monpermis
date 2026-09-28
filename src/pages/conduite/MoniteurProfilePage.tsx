@@ -94,7 +94,7 @@ export function MoniteurProfilePage() {
 
   if (loading) {
     return (
-      <div style={{ minHeight: '100dvh', background: '#F5F7FB' }}>
+      <div style={{ minHeight: '100dvh', background: '#EAEFF6' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>
           <p style={{ color: '#5B6680' }}>Chargement…</p>
         </div>
@@ -110,7 +110,7 @@ export function MoniteurProfilePage() {
   const lightboxPhoto = lightboxIndex != null ? photos[lightboxIndex] : null;
 
   return (
-    <div style={{ minHeight: '100dvh', background: '#F5F7FB', position: 'relative', overflow: 'hidden' }}>
+    <div style={{ minHeight: '100dvh', background: '#EAEFF6', position: 'relative', overflow: 'hidden' }}>
       <div style={{ position: 'absolute', top: -100, right: -100, width: 280, height: 280, borderRadius: '50%', background: 'rgba(255,180,0,0.16)', filter: 'blur(60px)', pointerEvents: 'none' }} />
       <div style={{ position: 'relative', boxSizing: 'border-box', padding: '56px 20px 0', display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 1120, margin: '0 auto' }}>
 
@@ -214,7 +214,7 @@ export function MoniteurProfilePage() {
                 {availabilityDays.length ? (
                   <ul className="mp-grid-desktop" style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 12 }}>
                     {availabilityDays.map((day) => (
-                      <li key={day.date} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: '#F5F7FB', borderRadius: 14 }}>
+                      <li key={day.date} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: '#EAEFF6', borderRadius: 14 }}>
                         <strong style={{ fontSize: 14 }}>{formatDayLabel(day.date)}</strong>
                         <span>
                           <Badge variant="yellow" size="sm">

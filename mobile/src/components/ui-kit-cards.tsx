@@ -3,7 +3,7 @@ import { Platform, Pressable, StyleSheet, Text, View, type StyleProp, type ViewS
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import Svg, { Defs, Path, RadialGradient, Stop } from 'react-native-svg';
-import { colors, componentStyles, textStyles } from '../theme/tokens';
+import { colors, componentStyles, gradients, textStyles } from '../theme/tokens';
 
 /* Motif « route » du logo, en haut à droite des cartes hero (16–18 % d'opacité). */
 export function RouteMotif({ opacity = 0.16 }: { opacity?: number }) {
@@ -44,7 +44,7 @@ export function HeroCard({
   return (
     <View style={[conduite ? componentStyles.heroCardCodeConduite : componentStyles.heroCard, styles.heroClip, style]}>
       <LinearGradient
-        colors={conduite ? ['#1A3A7A', '#0A1B3D', '#06122A'] : ['#1A3A7A', '#0A1B3D', '#06122A']}
+        colors={conduite ? gradients.heroConduite : gradients.hero}
         start={{ x: 0.15, y: 0 }}
         end={{ x: 0.85, y: 1 }}
         style={StyleSheet.absoluteFill}
@@ -261,7 +261,7 @@ export function PlanCard({
   if (selected) {
     return (
       <Pressable onPress={onPress} accessibilityRole="radio" accessibilityState={{ selected: true }} style={style}>
-        <LinearGradient colors={['#1A3A7A', '#0A1B3D', '#06122A']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[componentStyles.planCard, componentStyles.planCardSelected, styles.planRow]}>
+        <LinearGradient colors={gradients.hero} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[componentStyles.planCard, componentStyles.planCardSelected, styles.planRow]}>
           {body}
         </LinearGradient>
       </Pressable>

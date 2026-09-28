@@ -66,8 +66,9 @@ export function CodeRoutePage() {
   const codeModule = modules.find((m) => m.key === 'code');
   const codePrice = codeModule ? computeModuleAmount('code', codeModule.price, 1) : 5000;
   const done = journey?.code.chaptersDone ?? 0;
-  const total = journey?.code.chaptersTotal ?? 8;
-  const chapterName = journey?.code.currentStop?.chapterName || 'Intersections et priorités';
+  const total = journey?.code.chaptersTotal ?? chapters.length;
+  const currentChapterName = journey?.code.currentStop?.chapterName?.trim() || null;
+  const chapterName = currentChapterName ?? 'Commence ton premier chapitre';
   // L'API ne renvoie pas la progression interne au chapitre en cours :
   // on affiche la progression chapitres, qui est réelle (pas de donnée inventée).
   const chaptersPercent = total > 0 ? (done / total) * 100 : 0;
@@ -108,7 +109,7 @@ export function CodeRoutePage() {
           />
           <HeroCard>
             <div style={{ flexGrow: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: '#FFB400', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Reprendre</div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: '#FFB400', letterSpacing: '0.06em', textTransform: 'uppercase' }}>{currentChapterName ? 'Reprendre' : 'Commencer'}</div>
               <div style={{ fontFamily: 'Sora, sans-serif', fontSize: 17, fontWeight: 700, lineHeight: 1.25 }}>{chapterName}</div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <div style={{ flexGrow: 1, height: 8, borderRadius: 4, background: 'rgba(255,255,255,0.16)' }}>
@@ -117,7 +118,7 @@ export function CodeRoutePage() {
                 <div style={{ fontSize: 12, fontWeight: 700 }}>{done}/{total} chapitres</div>
               </div>
             </div>
-            <button type="button" aria-label="Continuer le chapitre" onClick={() => navigate('/code-de-la-route/revision-chapitres')} style={{ width: 56, height: 56, flexShrink: 0, border: 0, borderRadius: 28, background: '#FFB400', color: '#0A1B3D', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 10px 22px -10px rgba(255,180,0,0.8)' }}>
+            <button type="button" aria-label={currentChapterName ? 'Continuer le chapitre' : 'Commencer la révision'} onClick={() => navigate('/code-de-la-route/revision-chapitres')} style={{ width: 56, height: 56, flexShrink: 0, border: 0, borderRadius: 28, background: '#FFB400', color: '#0A1B3D', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 10px 22px -10px rgba(255,180,0,0.8)' }}>
               <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13l10.5-6.5z" /></svg>
             </button>
           </HeroCard>
@@ -158,7 +159,7 @@ export function CodeRoutePage() {
 
         <HeroCard>
           <div style={{ flexGrow: 1, display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0 }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: '#FFB400', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Reprendre</div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: '#FFB400', letterSpacing: '0.06em', textTransform: 'uppercase' }}>{currentChapterName ? 'Reprendre' : 'Commencer'}</div>
             <div style={{ fontFamily: "'Sora', sans-serif", fontSize: 17, fontWeight: 700, lineHeight: 1.25 }}>{chapterName}</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <div style={{ flexGrow: 1, height: 8, borderRadius: 4, background: 'rgba(255,255,255,0.16)' }}>
@@ -167,7 +168,7 @@ export function CodeRoutePage() {
               <div style={{ fontSize: 12, fontWeight: 700 }}>{done}/{total} chapitres</div>
             </div>
           </div>
-          <button type="button" aria-label="Continuer le chapitre" onClick={() => navigate('/code-de-la-route/revision-chapitres')} style={{ width: 56, height: 56, flexShrink: 0, border: 0, borderRadius: 28, background: '#FFB400', color: '#0A1B3D', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 10px 22px -10px rgba(255,180,0,0.8)' }}>
+          <button type="button" aria-label={currentChapterName ? 'Continuer le chapitre' : 'Commencer la révision'} onClick={() => navigate('/code-de-la-route/revision-chapitres')} style={{ width: 56, height: 56, flexShrink: 0, border: 0, borderRadius: 28, background: '#FFB400', color: '#0A1B3D', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 10px 22px -10px rgba(255,180,0,0.8)' }}>
             <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13l10.5-6.5z" /></svg>
           </button>
         </HeroCard>

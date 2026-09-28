@@ -1,15 +1,23 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Award, CheckCircle2, ClipboardList, FileText } from 'lucide-react'
+import { Award, CheckCircle2, ChevronRight, ClipboardList, FileText } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { ContentError, fetchLearnerJourney, type LearnerJourney } from '../../api/content'
 import { useAuth } from '../../hooks/useAuth'
 import { useFocusRefresh } from '../../hooks/useFocusRefresh'
 import { PageNavbar } from '../../components/PageNavbar'
 import { Reveal } from '../../components/Reveal'
-import { AppShell, userInitialsOf } from '../../components/layout/AppShell'
-import { Badge, Card, IconBadge, ProgressBar, SectionTitle, StatCard } from '../../components/ui'
+import { AppShell, userInitialsOf, type AppTab } from '../../components/layout/AppShell'
+import { Badge, Button, Card, IconBadge, ProgressBar, SectionTitle, StatCard } from '../../components/ui'
 import '../../styles/auth.css'
 import '../../styles/learner.css'
+
+const TAB_ROUTES: Record<AppTab, string> = {
+  accueil: '/accueil',
+  code: '/code-de-la-route',
+  conduite: '/conduite',
+  progres: '/code-de-la-route/mes-notes',
+  profil: '/profil',
+}
 
 export function MesNotesPage() {
   const navigate = useNavigate()
@@ -64,6 +72,7 @@ export function MesNotesPage() {
     <AppShell
       activeTab="progres"
       userInitials={userInitialsOf(user?.firstName, user?.lastName)}
+      onNavigate={(tab) => navigate(TAB_ROUTES[tab])}
       onOpenNotifications={() => navigate('/notifications')}
       onOpenProfile={() => navigate('/profil')}
     >
@@ -145,29 +154,59 @@ export function MesNotesPage() {
                 <Card className="mesnotes-empty">
                   <strong>Aucune note pour le moment</strong>
                   <p>Passez un examen blanc pour voir votre note ici en direct.</p>
+                  <Button
+                    variant="outline"
+                    icon={<ClipboardList size={16} />}
+                    onClick={() => navigate('/code-de-la-route/examens-test')}
+                  >
+                    Voir les examens
+                  </Button>
                 </Card>
               ) : (
                 examScores.map((score, scoreIndex) => (
                   <Reveal key={score.id} delay={220 + Math.min(scoreIndex, 6) * 50}>
-                  <Card className="mesnotes-score">
+                  <Card
+                    className="mesnotes-score"
+                    onClick={() => navigate(`/code-de-la-route/examens-test/${score.examNumber}`)}
+                    ariaLabel={`Repasser l'examen ${score.examNumber} — ${score.scoreLabel}`}
+                  >
                     <Badge tone={score.passed ? 'green' : 'orange'}>{score.scoreLabel}</Badge>
                     <span className="mesnotes-score-body">
                       <strong>Examen {score.examNumber}</strong>
-                      <small>Seuil {score.passScore}/20</small>
+                      <small>Seuil {score.passScore}/20 · toucher pour repasser</small>
                     </span>
                     <Badge tone={score.passed ? 'green' : 'orange'}>
                       {score.passed ? 'Réussi' : 'À revoir'}
                     </Badge>
+                    <ChevronRight size={18} className="mp-card-chevron" aria-hidden="true" />
                   </Card>
                   </Reveal>
                 ))
               )}
+              {examScores.length > 0 ? (
+                <div className="mesnotes-cta">
+                  <Button
+                    variant="outline"
+                    icon={<ClipboardList size={16} />}
+                    onClick={() => navigate('/code-de-la-route/examens-test')}
+                  >
+                    Tous les examens
+                  </Button>
+                </div>
+              ) : null}
 
               <SectionTitle>Sujets test · chapitres</SectionTitle>
               {journey.testScores.length === 0 ? (
                 <Card className="mesnotes-empty">
                   <strong>Aucune note de sujet chapitre</strong>
                   <p>Validez un sujet test pour voir votre score ici.</p>
+                  <Button
+                    variant="outline"
+                    icon={<FileText size={16} />}
+                    onClick={() => navigate('/code-de-la-route/revision-chapitres')}
+                  >
+                    Voir les chapitres
+                  </Button>
                 </Card>
               ) : (
                 journey.testScores.map((score, testIndex) => {
@@ -175,14 +214,19 @@ export function MesNotesPage() {
                   const good = ratio >= 0.5
                   return (
                     <Reveal key={score.chapterId} delay={220 + Math.min(testIndex, 6) * 50}>
-                    <Card className="mesnotes-score">
+                    <Card
+                      className="mesnotes-score"
+                      onClick={() => navigate(`/code-de-la-route/revision-chapitres/${score.chapterId}/sujet-test`)}
+                      ariaLabel={`Revoir le sujet test — ${score.chapterName}`}
+                    >
                       <Badge tone={good ? 'green' : 'orange'}>{score.scoreLabel}</Badge>
                       <span className="mesnotes-score-body">
                         <strong>{score.chapterName}</strong>
                         <small>
-                          {score.correct}/{score.total} bonnes réponses
+                          {score.correct}/{score.total} bonnes réponses · toucher pour revoir
                         </small>
                       </span>
+                      <ChevronRight size={18} className="mp-card-chevron" aria-hidden="true" />
                     </Card>
                     </Reveal>
                   )

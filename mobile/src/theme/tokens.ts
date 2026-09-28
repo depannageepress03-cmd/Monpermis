@@ -2,7 +2,7 @@ import type { TextStyle, ViewStyle } from 'react-native';
 
 export const colors = {
   navy: '#0A1B3D',
-  navyLight: '#1A3A7A',
+  navyLight: '#16306A',
   navyDeep: '#06122A',
   navyTint: '#E8EDF6',
   navyInk: '#0A1B3D',
@@ -18,7 +18,7 @@ export const colors = {
   yellowTint: '#FFF4D6',
   yellowInk: '#7A5200',
 
-  bg: '#F5F7FB',
+  bg: '#EAEFF6',
   surface: '#FFFFFF',
   border: '#E1E6EF',
 
@@ -43,14 +43,14 @@ export const gradients = {
   hero: [
     'rgba(11,170,79,0.42)',
     'rgba(11,170,79,0)',
-    '#1A3A7A',
+    '#16306A',
     '#0A1B3D',
     '#06122A',
   ] as const,
   heroConduite: [
     'rgba(255,180,0,0.28)',
     'rgba(255,180,0,0)',
-    '#1A3A7A',
+    '#16306A',
     '#0A1B3D',
     '#06122A',
   ] as const,
@@ -72,7 +72,7 @@ export const gradients = {
   offers: [
     'rgba(11,170,79,0.40)',
     'rgba(11,170,79,0)',
-    '#1A3A7A',
+    '#16306A',
     '#0A1B3D',
     '#06122A',
   ] as const,
@@ -206,7 +206,7 @@ export const typography = {
     tabLabel: 10.5,
     chip: 12,
     chipSm: 11.5,
-    input: 15,
+    input: 16,
     kpiValue: 36,
     kpiUnit: 16,
     sidebarTitle: 17,
@@ -366,6 +366,12 @@ export const layout = {
   tabBarHorizontalInset: 16,
   tabBarBottomInset: 22,
 };
+
+export const breakpoints = {
+  compact: 360,
+  tablet: 600,
+  tabletLarge: 900,
+} as const;
 
 export const fontFamilies = {
   display: {
@@ -1179,7 +1185,7 @@ export const componentStyles = {
     flexDirection: 'row' as const,
     paddingHorizontal: 12,
     paddingVertical: 8,
-    backgroundColor: '#F5F7FB',
+    backgroundColor: '#EAEFF6',
     borderRadius: 14,
     gap: 12,
   },
@@ -1315,33 +1321,33 @@ export type Theme = typeof theme;
  * ===================================================================== */
 
 export const legacyColors = {
-  primary: '#1e40af',
-  primaryDark: '#1e3a8a',
-  primaryLight: '#3b82f6',
-  accent: '#f59e0b',
-  success: '#16a34a',
-  error: '#dc2626',
-  bg: '#f8f9fc',
+  primary: '#0A1B3D',
+  primaryDark: '#06122A',
+  primaryLight: '#16306A',
+  accent: '#FFB400',
+  success: '#0BAA4F',
+  error: '#C2410C',
+  bg: '#EAEFF6',
   surface: '#ffffff',
-  text: '#0f172a',
-  textMuted: '#64748b',
-  border: '#e2e8f0',
-  signinAccent: '#00B050',
+  text: '#0A1B3D',
+  textMuted: '#5B6680',
+  border: '#E1E6EF',
+  signinAccent: '#0BAA4F',
   white: '#ffffff',
-  introBg: '#F4F7FB',
+  introBg: '#EAEFF6',
   overlay: 'rgba(0,16,48,0.4)',
 } as const;
 
 export const legacyFonts = {
-  heading: 'PlayfairDisplay',
-  headingBold: 'PlayfairDisplay_700Bold',
-  body: 'Inter_400Regular',
-  bodyMedium: 'Inter_500Medium',
-  bodySemiBold: 'Inter_600SemiBold',
-  bodyBold: 'Inter_700Bold',
-  display: 'Poppins_600SemiBold',
-  displayBold: 'Poppins_700Bold',
-  displayExtraBold: 'Poppins_800ExtraBold',
+  heading: 'Sora_700Bold',
+  headingBold: 'Sora_700Bold',
+  body: 'PlusJakartaSans_400Regular',
+  bodyMedium: 'PlusJakartaSans_500Medium',
+  bodySemiBold: 'PlusJakartaSans_600SemiBold',
+  bodyBold: 'PlusJakartaSans_700Bold',
+  display: 'Sora_600SemiBold',
+  displayBold: 'Sora_700Bold',
+  displayExtraBold: 'Sora_800ExtraBold',
 } as const;
 
 export const legacyTypography: Record<string, TextStyle> = {
@@ -1359,27 +1365,27 @@ export const legacyTypography: Record<string, TextStyle> = {
 };
 
 export const brand = {
-  green: '#00B050',
-  gold: '#FFC000',
-  navy: '#001030',
-  navyMuted: '#3d5a73',
-  greenLight: '#e8f8ef',
-  goldLight: '#fff8e6',
-  greenPale: '#f0fdf4',
-  navyPale: '#f1f3f6',
+  green: '#0BAA4F',
+  gold: '#FFB400',
+  navy: '#0A1B3D',
+  navyMuted: '#5B6680',
+  greenLight: '#EAF7EF',
+  goldLight: '#FFF4D6',
+  greenPale: '#DDF3E6',
+  navyPale: '#E8EDF6',
 } as const;
 
 export const dark = {
-  bg: '#F6F8FC',
+  bg: '#EAEFF6',
   surface: 'rgba(255,255,255,0.92)',
-  surfaceRaised: '#EEF2F7',
-  border: 'rgba(0,16,48,0.08)',
-  textPrimary: '#001030',
-  textMuted: '#3d5a73',
-  green: '#00B050',
-  greenSoft: 'rgba(0,176,80,0.10)',
-  coral: '#E85D3B',
-  coralSoft: 'rgba(232,93,59,0.10)',
+  surfaceRaised: '#EEF1F6',
+  border: 'rgba(10,27,61,0.12)',
+  textPrimary: '#0A1B3D',
+  textMuted: '#5B6680',
+  green: '#0BAA4F',
+  greenSoft: 'rgba(11,170,79,0.10)',
+  coral: '#C2410C',
+  coralSoft: 'rgba(194,65,12,0.10)',
 } as const;
 
 export const legacyRadii = { xs: 6, sm: 10, md: 14, lg: 20, xl: 28, pill: 999 } as const;
@@ -1395,20 +1401,20 @@ export const legacyShadows = {
 export const legacySpacing = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 32, xxxl: 48 } as const;
 
 export const legacyGradients = {
-  green: ['#00D566', '#00A344'] as const,
-  greenDeep: ['#00B050', '#007A38'] as const,
-  gold: ['#FFD84D', '#FFB300'] as const,
-  navy: ['#16264a', '#0a1530'] as const,
+  green: ['#0BAA4F', '#067A37'] as const,
+  greenDeep: ['#0BAA4F', '#067A37'] as const,
+  gold: ['#FFB400', '#E09E00'] as const,
+  navy: ['#16306A', '#06122A'] as const,
   sky: ['#60C6FF', '#2E93E6'] as const,
   violet: ['#B98BFF', '#8B5CF6'] as const,
-  hero: ['#0f1729', '#1a2d47', '#1e3a5f'] as const,
+  hero: ['#16306A', '#0A1B3D', '#06122A'] as const,
 } as const;
 
 export const play = {
-  streak: '#FF7A1A',
+  streak: '#C2410C',
   streakLight: '#FFF1E6',
-  xp: '#FFC000',
-  xpLight: '#FFF8E6',
+  xp: '#FFB400',
+  xpLight: '#FFF4D6',
   celebrate: '#8B5CF6',
   celebrateLight: '#F3ECFF',
   sky: '#2E93E6',

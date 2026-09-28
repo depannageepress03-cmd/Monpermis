@@ -270,8 +270,8 @@ export function AdminLayout() {
     }
   }, [canManageAdmins, location.pathname, navigate])
 
-  const isMobile = width < 640
-  const isTablet = width >= 640 && width < 1080
+  const isMobile = width < 768
+  const isTablet = width >= 768 && width < 1200
   const closeMobile = () => setMobileOpen(false)
 
   const handleSearch = (e: FormEvent) => {

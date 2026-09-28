@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Monpermis.bj — Aperçu nouveau design</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Sora:wght@700;800&display=swap');
+
+  :root{
+    --navy:#0A1B3D; --navy-2:#1A3A7A; --navy-3:#06122A;
+    --green:#067A37; --green-v:#0BAA4F; --green-tint:#EAF7EF;
+    --yellow:#FFB400; --corail:#C2410C; --corail-v:#E45A35; --corail-tint:#FFF1E6;
+    --bg:#F5F7FB; --card:#FFFFFF; --line:#E1E6EF; --muted:#5B6680; --ink:#0A1B3D;
+    --r-card:24px; --r-tile:20px;
+    --shadow-card:0 10px 30px -18px rgba(10,27,61,.30);
+  }
+  *{box-sizing:border-box; margin:0}
+  body{
+    font-family:'Plus Jakarta Sans',system-ui,sans-serif; color:var(--ink);
+    background:
+      radial-gradient(520px 320px at 88% 8%, rgba(11,170,79,.10), transparent 60%),
+      radial-gradient(420px 300px at 4% 96%, rgba(11,170,79,.08), transparent 60%),
+      var(--bg);
+    min-height:100vh; padding:36px clamp(16px,3vw,44px);
+  }
+  h1,h2,h3,.num,.nav-a,.btn{font-family:Sora,'Plus Jakarta Sans',sans-serif}
+
+  /* points décoratifs flottants */
+  .dot{position:fixed;border-radius:50%;z-index:0}
+  .dot.g{background:var(--green-v)} .dot.n{background:var(--navy)} .dot.w{background:#fff;box-shadow:0 4px 12px rgba(10,27,61,.12)}
+  .d1{width:18px;height:18px;top:9%;left:46%} .d2{width:12px;height:12px;top:16%;right:6%}
+  .d3{width:10px;height:10px;bottom:14%;left:5%} .d4{width:14px;height:14px;bottom:8%;right:12%}
+
+  .app{position:relative;z-index:1;max-width:1280px;margin:0 auto;display:grid;grid-template-columns:264px 1fr;gap:22px;align-items:start}
+
+  /* ---------- Sidebar ---------- */
+  .side{background:linear-gradient(175deg,var(--navy-2) 0%,var(--navy) 58%,var(--navy-3) 100%);border-radius:28px;padding:22px 18px 20px;color:#fff;
+    box-shadow:0 26px 44px -22px rgba(10,27,61,.75);position:sticky;top:28px}
+  .side::after{content:"";display:block;height:56px;margin-top:14px;border-radius:14px;
+    background:radial-gradient(120px 40px at 20% 100%,rgba(0,176,80,.5),transparent 70%),radial-gradient(150px 46px at 70% 100%,rgba(0,176,80,.28),transparent 70%)}
+  .who{display:flex;flex-direction:column;align-items:center;gap:10px;padding:18px 8px 20px;text-align:center}
+  .avatar{width:86px;height:86px;border-radius:24px;background:#fff;display:grid;place-items:center;
+    font:800 34px Sora;color:var(--green);box-shadow:0 6px 18px -8px rgba(10,27,61,.25)}
+  .who b{font:700 17px Sora} .who span{font-size:12px;color:rgba(255,255,255,.6)}
+  .nav{display:grid;gap:6px;margin-top:6px}
+  .nav-a{display:flex;align-items:center;gap:12px;height:46px;padding:0 14px;border-radius:14px;
+    color:rgba(255,255,255,.72);font:700 14px Sora;text-decoration:none;transition:.18s}
+  .nav-a svg{flex:none;opacity:.9}
+  .nav-a.on{background:linear-gradient(100deg,var(--green-v),var(--green));color:#fff;box-shadow:0 12px 24px -12px rgba(11,170,79,.8)}
+  .nav-a:not(.on):hover{background:rgba(255,255,255,.08);color:#fff}
+  .side-note{margin-top:14px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.20);border-radius:16px;padding:12px 14px;font-size:12.5px;color:rgba(255,255,255,.85);backdrop-filter:blur(12px)}
+  .side-note b{color:#3BE08A;font:700 12.5px Sora}
+
+  /* ---------- Colonne principale ---------- */
+  .main{display:grid;gap:22px}
+
+  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+  .stat{border-radius:var(--r-card);padding:18px 20px 16px;color:#fff;min-height:120px;display:flex;flex-direction:column;justify-content:space-between;
+    box-shadow:var(--shadow-card);position:relative;overflow:hidden}
+  .stat::after{content:"";position:absolute;right:-26px;bottom:-30px;width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,.14)}
+  .stat .lbl{font:700 12.5px Sora;letter-spacing:.02em;opacity:.9}
+  .stat .num{font:800 30px/1 Sora;letter-spacing:-.04em}
+  .stat .ico{width:40px;height:40px;border-radius:12px;background:rgba(255,255,255,.2);display:grid;place-items:center}
+  .stat.s-green{background:linear-gradient(135deg,#0BAA4F 0%,#067A37 100%)}
+  .stat.s-navy{background:linear-gradient(135deg,var(--navy-2) 0%,var(--navy-3) 100%)}
+  .stat.s-corail{background:linear-gradient(135deg,var(--corail-v) 0%,var(--corail) 100%)}
+  .stat-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+
+  .card{background:var(--card);border-radius:var(--r-card);box-shadow:var(--shadow-card);padding:22px 24px}
+  .card h2{font:700 18px Sora;letter-spacing:-.02em}
+  .card .sub{color:var(--muted);font-size:13.5px;margin-top:4px}
+  .section-title{font:700 15px Sora;letter-spacing:.06em;color:var(--muted);margin:0 0 14px}
+
+  .duo{display:grid;grid-template-columns:1.6fr 1fr;gap:22px}
+
+  /* Reprendre */
+  .resume{position:relative;overflow:hidden}
+  .resume .car-mark{position:absolute;right:18px;bottom:12px;opacity:.1}
+  .chip{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 12px;border-radius:999px;background:var(--green-tint);color:var(--green);font:700 12px Sora}
+  .lesson{font:700 21px Sora;margin-top:12px;letter-spacing:-.02em}
+  .bar{height:10px;border-radius:999px;background:#DDE3EE;margin:16px 0 8px;overflow:hidden}
+  .bar i{display:block;height:100%;width:60%;border-radius:999px;background:linear-gradient(90deg,var(--green-v),var(--yellow))}
+  .bar-row{display:flex;justify-content:space-between;align-items:center;color:var(--muted);font-size:12.5px}
+  .btn{display:inline-flex;align-items:center;gap:8px;height:48px;padding:0 26px;border:0;border-radius:999px;cursor:pointer;
+    background:linear-gradient(100deg,var(--green-v),var(--green) 60%,var(--green));color:#fff;font:700 15px Sora;
+    box-shadow:0 16px 30px -14px rgba(11,170,79,.60);margin-top:16px;transition:.18s}
+  .btn:hover{transform:translateY(-2px);box-shadow:0 20px 34px -14px rgba(11,170,79,.70)}
+  .btn.ghost{background:#fff;color:var(--navy);border:1.5px solid var(--line);box-shadow:none}
+
+  /* Progression */
+  .ring-card{display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center}
+  .ring{width:120px;height:120px;border-radius:50%;display:grid;place-items:center;position:relative;
+    background:conic-gradient(var(--green-v) 0 35%, #E6ECF5 35% 100%)}
+  .ring::before{content:"";position:absolute;inset:12px;border-radius:50%;background:#fff}
+  .ring b{position:relative;font:800 26px Sora;color:var(--navy)}
+  .streak{display:inline-flex;align-items:center;gap:6px;background:var(--corail-tint);color:var(--corail);height:30px;padding:0 14px;border-radius:999px;font:700 13px Sora}
+
+  /* Parcours */
+  .paths{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+  .path{display:flex;flex-direction:column}
+  .path-head{display:flex;gap:14px;align-items:center}
+  .path-ico{width:56px;height:56px;border-radius:18px;display:grid;place-items:center;flex:none}
+  .path-ico.green{background:var(--green-tint);color:var(--green)} .path-ico.corail{background:var(--corail-tint);color:var(--corail)}
+  .path h3{font:700 17px Sora} .path p{color:var(--muted);font-size:13px;margin-top:2px}
+  .dotted{border:0;border-top:2.5px dotted #D7E0DA;margin:16px 0}
+  .path-foot{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:auto}
+  .pill-info{display:inline-flex;align-items:center;gap:5px;background:#F1F4F9;border-radius:12px;padding:8px 12px;font-size:12.5px;color:var(--muted)}
+  .pill-info svg{flex:none}
+  .pill-info b{color:var(--navy);font:700 12.5px Sora}
+
+  .badge{display:inline-flex;align-items:center;height:26px;padding:0 10px;border-radius:999px;font:700 12px Sora}
+  .badge.g{background:var(--green-tint);color:var(--green)} .badge.c{background:var(--corail-tint);color:var(--corail)}
+
+  @media (max-width:1080px){ .duo{grid-template-columns:1fr} }
+  @media (max-width:920px){
+    .app{grid-template-columns:1fr} .side{position:static}
+    .stats{grid-template-columns:1fr 1fr} .paths{grid-template-columns:1fr}
+  }
+  @media (max-width:560px){ .stats{grid-template-columns:1fr} }
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+  <span class="dot g d1"></span><span class="dot n d2"></span><span class="dot w d3"></span><span class="dot g d4"></span>
+
+  <div class="app">
+    <!-- ======= SIDEBAR ======= -->
+    <aside class="side">
+      <div class="who">
+        <div class="avatar">Z</div>
+        <div><b>Zas</b><br/><span>+229 01 97 00 00 00</span></div>
+      </div>
+      <nav class="nav">
+        <a class="nav-a on" href="#"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg> Accueil</a>
+        <a class="nav-a" href="#"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 5.5v15"/></svg> Code de la route</a>
+        <a class="nav-a" href="#"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 11l1.6-4.2A2 2 0 0 1 8.5 5.5h7a2 2 0 0 1 1.9 1.3L19 11"/><rect x="4" y="11" width="16" height="6" rx="2"/><circle cx="7.5" cy="19.5" r="1.5"/><circle cx="16.5" cy="19.5" r="1.5"/></svg> Conduite</a>
+        <a class="nav-a" href="#"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="6" width="18" height="13" rx="2.5"/><path d="M3 10.5h18"/><path d="M7 15h4"/></svg> Abonnement</a>
+        <a class="nav-a" href="#"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c1.2-3.4 3.9-5 7-5s5.8 1.6 7 5"/></svg> Profil</a>
+      </nav>
+      <div class="side-note">Prochain examen : <b>15 nov</b><br/>Encore 28 leçons pour valider ton code.</div>
+    </aside>
+
+    <!-- ======= MAIN ======= -->
+    <main class="main">
+      <section class="stats">
+        <div class="stat s-green">
+          <div class="stat-top"><span class="lbl">Leçons</span><span class="ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/></svg></span></div>
+          <div class="num">12<span style="font-size:16px;font-weight:700;opacity:.8">/40</span></div>
+        </div>
+        <div class="stat s-navy">
+          <div class="stat-top"><span class="lbl">Score moyen</span><span class="ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.5"/></svg></span></div>
+          <div class="num">68%</div>
+        </div>
+        <div class="stat s-corail">
+          <div class="stat-top"><span class="lbl">Examen</span><span class="ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><rect x="4" y="5" width="16" height="16" rx="2.5"/><path d="M8 3v4M16 3v4M4 10h16"/></svg></span></div>
+          <div class="num">15 nov</div>
+        </div>
+      </section>
+
+      <section class="duo">
+        <div class="card resume">
+          <svg class="car-mark" width="150" height="80" viewBox="0 0 24 24" fill="none" stroke="#001030" stroke-width="1.6" stroke-linecap="round"><path d="M5 11l1.6-4.2A2 2 0 0 1 8.5 5.5h7a2 2 0 0 1 1.9 1.3L19 11"/><rect x="4" y="11" width="16" height="6" rx="2"/><circle cx="7.5" cy="19.5" r="1.5"/><circle cx="16.5" cy="19.5" r="1.5"/></svg>
+          <span class="chip">Reprendre où tu t'es arrêté</span>
+          <div class="lesson">Leçon 3 · Priorités et intersections</div>
+          <div class="sub">Code de la route · Chapitre « Intersection »</div>
+          <div class="bar"><i></i></div>
+          <div class="bar-row"><span>Progression</span><b>3/5</b></div>
+          <button class="btn" type="button" aria-label="Continuer la leçon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="m8 5 11 7-11 7V5Z"/></svg>
+            Continuer
+          </button>
+        </div>
+
+        <div class="card ring-card">
+          <div class="ring"><b>35%</b></div>
+          <span class="streak">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.5 3.5c.7 3.2-1.7 4.4-1.7 6.4 0 1.4 1.1 2.4 2.4 2.4 2.1 0 3.3-2.1 2.7-4.2 2.8 2 4.2 4.3 4.2 7.1 0 4.1-3.2 6.8-7.4 6.8S4 19.5 4 15.6c0-3.5 2-6.4 5.3-8.8-.1 2.1.5 3.2 1.5 3.8-.2-2.4.4-4.5 1.7-7.1Z"/></svg>
+            5 jours de suite
+          </span>
+          <p class="sub">Tu es à 35 % du programme complet. Continue, l'examen approche !</p>
+        </div>
+      </section>
+
+      <section>
+        <h2 class="section-title">CHOISIS TON PARCOURS</h2>
+        <div class="paths">
+          <div class="card path">
+            <div class="path-head">
+              <span class="path-ico green"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 5.5v15"/></svg></span>
+              <div><h3>Code de la route</h3><p>40 leçons · quiz inclus</p></div>
+            </div>
+            <hr class="dotted"/>
+            <div class="path-foot">
+              <span class="pill-info"><b>8/40</b> chapitres terminés</span>
+              <span class="badge c">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+                Débloquer l'accès
+              </span>
+            </div>
+          </div>
+
+          <div class="card path">
+            <div class="path-head">
+              <span class="path-ico corail"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 11l1.6-4.2A2 2 0 0 1 8.5 5.5h7a2 2 0 0 1 1.9 1.3L19 11"/><rect x="4" y="11" width="16" height="6" rx="2"/><circle cx="7.5" cy="19.5" r="1.5"/><circle cx="16.5" cy="19.5" r="1.5"/></svg></span>
+              <div><h3>Conduite</h3><p>Leçons vidéo et réservations</p></div>
+            </div>
+            <hr class="dotted"/>
+            <div class="path-foot">
+              <span class="pill-info">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 10h16"/></svg>
+                <b>Sam 21 sept · 14h00</b>
+              </span>
+              <span class="badge g">3 réservées</span>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+</body>
+</html>

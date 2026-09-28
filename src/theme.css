@@ -5,7 +5,7 @@
 :root {
   /* ===== COULEURS ===== */
   --navy: #0A1B3D;
-  --navy-light: #1A3A7A;
+  --navy-light: #16306A;
   --navy-deep: #06122A;
   --navy-tint: #E8EDF6;
   --navy-ink: #0A1B3D;
@@ -21,7 +21,7 @@
   --yellow-tint: #FFF4D6;
   --yellow-ink: #7A5200;
 
-  --bg: #F5F7FB;
+  --bg: #EAEFF6;
   --surface: #FFFFFF;
   --border: #E1E6EF;
 
@@ -43,18 +43,18 @@
 
   /* ===== DÉGRADÉS ===== */
   --gradient-hero: radial-gradient(110% 80% at 100% 0%, rgba(11, 170, 79, 0.42) 0%, rgba(11, 170, 79, 0) 55%),
-    linear-gradient(160deg, #1A3A7A 0%, #0A1B3D 58%, #06122A 100%);
+    linear-gradient(160deg, #16306A 0%, #0A1B3D 58%, #06122A 100%);
   --gradient-hero-conduite: radial-gradient(110% 80% at 100% 0%, rgba(255, 180, 0, 0.28) 0%, rgba(255, 180, 0, 0) 55%),
-    linear-gradient(160deg, #1A3A7A 0%, #0A1B3D 58%, #06122A 100%);
+    linear-gradient(160deg, #16306A 0%, #0A1B3D 58%, #06122A 100%);
   --gradient-hero-admin: radial-gradient(100% 90% at 100% 0%, rgba(11, 170, 79, 0.42) 0%, rgba(11, 170, 79, 0) 60%),
-    linear-gradient(160deg, #1A3A7A 0%, #0A1B3D 60%, #06122A 100%);
+    linear-gradient(160deg, #16306A 0%, #0A1B3D 60%, #06122A 100%);
   --gradient-progress: linear-gradient(90deg, #0BAA4F, #FFB400);
   --gradient-sidebar: radial-gradient(120% 50% at 0% 100%, rgba(11, 170, 79, 0.28) 0%, rgba(11, 170, 79, 0) 60%),
     linear-gradient(180deg, #0F2554 0%, #0A1B3D 50%, #06122A 100%);
   --gradient-welcome: radial-gradient(120% 90% at 100% 0%, rgba(11, 170, 79, 0.38) 0%, rgba(11, 170, 79, 0) 55%),
     linear-gradient(165deg, #16306A 0%, #0A1B3D 55%, #06122A 100%);
   --gradient-offers: radial-gradient(120% 90% at 100% 0%, rgba(11, 170, 79, 0.40) 0%, rgba(11, 170, 79, 0) 60%),
-    linear-gradient(160deg, #1A3A7A 0%, #0A1B3D 60%, #06122A 100%);
+    linear-gradient(160deg, #16306A 0%, #0A1B3D 60%, #06122A 100%);
 
   /* ===== EFFET VERRE ===== */
   --glass-bg: rgba(255, 255, 255, 0.08);
