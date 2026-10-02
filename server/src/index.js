@@ -172,6 +172,18 @@ app.use(
     },
   }),
 )
+app.use(
+  '/content/code-panneaux',
+  express.static(path.join(__dirname, '../content/code-panneaux'), {
+    maxAge: 0,
+    etag: true,
+    lastModified: true,
+    fallthrough: false,
+    setHeaders(res) {
+      res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate')
+    },
+  }),
+)
 
 app.get('/api/health', (_req, res) => {
   const dbReady = mongoose.connection.readyState === 1

@@ -14,6 +14,7 @@ import {
   ShieldCheck,
   Smartphone,
   Trophy,
+  TriangleAlert,
   Wallet,
 } from 'lucide-react-native'
 import { useCallback, useMemo, useState } from 'react'
@@ -55,10 +56,10 @@ import { brand, dark, fonts, radii, shadows } from '../theme'
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'CodeRoute'>
 
-type Tone = 'pink' | 'orange' | 'green' | 'navy'
+type Tone = 'pink' | 'orange' | 'green' | 'navy' | 'cyan'
 
 type Category = {
-  id: 'RevisionChapitres' | 'ExamensTest' | 'MesNotes' | 'CodeCours'
+  id: 'RevisionChapitres' | 'RevisionPanneaux' | 'ExamensTest' | 'MesNotes' | 'CodeCours'
   label: string
   subtitle: string
   image: number
@@ -71,6 +72,7 @@ const toneShade: Record<Tone, readonly [string, string, string]> = {
   orange: ['rgba(234,88,12,0.05)', 'rgba(234,88,12,0.35)', 'rgba(154,52,18,0.92)'],
   green: ['rgba(0,176,80,0.05)', 'rgba(0,176,80,0.32)', 'rgba(0,100,40,0.92)'],
   navy: ['rgba(0,16,48,0.05)', 'rgba(0,16,48,0.38)', 'rgba(0,16,48,0.92)'],
+  cyan: ['rgba(2,132,199,0.05)', 'rgba(2,132,199,0.35)', 'rgba(3,105,161,0.92)'],
 }
 
 const toneIconBg: Record<Tone, string> = {
@@ -78,6 +80,7 @@ const toneIconBg: Record<Tone, string> = {
   orange: 'rgba(234,88,12,0.92)',
   green: 'rgba(0,176,80,0.95)',
   navy: 'rgba(0,16,48,0.92)',
+  cyan: 'rgba(2,132,199,0.95)',
 }
 
 const toneArrow: Record<Tone, string> = {
@@ -85,6 +88,7 @@ const toneArrow: Record<Tone, string> = {
   orange: '#EA580C',
   green: dark.green,
   navy: dark.textPrimary,
+  cyan: '#0284C7',
 }
 
 export function CodeRouteScreen() {
@@ -154,6 +158,14 @@ export function CodeRouteScreen() {
         image: require('../../assets/code-route/cards/revision.jpg'),
         tone: 'pink',
         Icon: Pencil,
+      },
+      {
+        id: 'RevisionPanneaux',
+        label: 'Révision panneaux',
+        subtitle: 'Apprends tous les panneaux par catégorie.',
+        image: require('../../assets/code-route/cards/panneaux.png'),
+        tone: 'cyan',
+        Icon: TriangleAlert,
       },
       {
         id: 'ExamensTest',
