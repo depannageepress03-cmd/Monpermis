@@ -36,7 +36,6 @@ import {
   type TestProgressEntry,
 } from '../../api/revision'
 import { Bouncy } from '../../components/Bouncy'
-import { DownloadChapterButton } from '../../components/DownloadChapterButton'
 import { EmptyState } from '../../components/EmptyState'
 import { FadeUp } from '../../components/FadeUp'
 import { HomeBottomAnimation } from '../../components/HomeBottomAnimation'
@@ -341,13 +340,6 @@ export function RevisionChapitresScreen() {
                             <Text style={styles.actionLabelSecondary}>Sujet test</Text>
                           </View>
                         </Bouncy>
-
-                        <DownloadChapterButton
-                          chapterId={chapter.id}
-                          chapterName={chapter.name}
-                          chapterOrder={order}
-                          courses={chapter.courses || []}
-                        />
                       </View>
                     </View>
                   </FadeUp>
