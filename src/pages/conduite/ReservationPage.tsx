@@ -299,7 +299,7 @@ export function ReservationPage() {
         />
 
         <div className="auth-card learner-card reservation-card">
-          {error ? <p className="form-error">{error}</p> : null}
+          {error ? <p className="reservation-error">{error}</p> : null}
 
           {step === 'moniteur' ? (
             <div className="reservation-step">
@@ -364,15 +364,36 @@ export function ReservationPage() {
                       {photo ? (
                         <img src={mediaSrc(photo)} alt="" />
                       ) : (
-                        <div className="moniteur-choice-placeholder">Moniteur</div>
+                        <div className="moniteur-choice-placeholder">
+                          {moniteur.fullName.slice(0, 1).toUpperCase()}
+                        </div>
                       )}
                       <span className="moniteur-choice-meta">
                         <strong>{moniteur.fullName}</strong>
-                        <small>
-                          {moniteur.city ? `${moniteur.city} · ` : ''}
-                          {moniteur.vehicleBrand || 'Marque non renseignée'}
-                        </small>
+                        <small>{moniteur.vehicleBrand || 'Marque non renseignée'}</small>
                         <em>{typeLabel}</em>
+                      </span>
+                      <span className="moniteur-choice-stats">
+                        <span>
+                          <b>
+                            {moniteur.defaultPriceFcfa
+                              ? `${moniteur.defaultPriceFcfa.toLocaleString('fr-FR')} F/h`
+                              : '—'}
+                          </b>
+                          Tarif
+                        </span>
+                        <span>
+                          <b>{moniteur.city || '—'}</b>
+                          Ville
+                        </span>
+                        <span>
+                          <b>{typeLabel}</b>
+                          Véhicule
+                        </span>
+                      </span>
+                      <span className="moniteur-choice-cta">
+                        Voir le profil
+                        <span aria-hidden>→</span>
                       </span>
                     </button>
                   )

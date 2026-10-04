@@ -447,6 +447,45 @@
   }
 }
 
+.notes-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 1.15rem;
+}
+
+.notes-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.6rem;
+}
+
+.notes-summary > div {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  padding: 0.85rem 0.4rem;
+  border-radius: 16px;
+  background: #fff;
+  border: 1px solid rgba(0, 16, 48, 0.08);
+}
+
+.notes-summary strong {
+  font-size: 1.25rem;
+  color: #00b050;
+  letter-spacing: -0.03em;
+}
+
+.notes-summary strong.is-gold {
+  color: #c49200;
+}
+
+.notes-summary span {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #3d5a73;
+}
+
 .learner-notes-block {
   display: flex;
   flex-direction: column;
@@ -458,25 +497,118 @@
   font-size: 1.05rem;
 }
 
-.learner-notes-stop {
-  padding: 0.9rem 1rem;
-  border-radius: 14px;
-  background: #ecfdf5;
-  border: 1px solid rgba(0, 176, 80, 0.2);
+.notes-tracks {
+  display: grid;
+  gap: 0.75rem;
 }
 
-.learner-notes-stop strong {
-  display: block;
-  margin-bottom: 0.25rem;
+.learner-notes-stop {
+  padding: 0.95rem 1rem;
+  border-radius: 16px;
+  background: #f4fbf7;
+  border: 1px solid rgba(0, 176, 80, 0.16);
+}
+
+.learner-notes-stop.is-gold {
+  background: #fffaf0;
+  border-color: rgba(255, 192, 0, 0.4);
+}
+
+.notes-track-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+}
+
+.notes-track-head strong {
+  font-size: 0.78rem;
+  letter-spacing: 0.01em;
+  color: #3d5a73;
+}
+
+.notes-track-head em {
+  font-style: normal;
+  font-weight: 800;
+  color: #00b050;
+}
+
+.learner-notes-stop.is-gold .notes-track-head em {
+  color: #c49200;
 }
 
 .learner-notes-stop p {
-  margin: 0 0 0.25rem;
-  font-weight: 600;
+  margin: 0 0 0.55rem;
+  font-weight: 700;
+  color: #001030;
+}
+
+.notes-bar {
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(0, 16, 48, 0.08);
+  overflow: hidden;
+  margin-bottom: 0.45rem;
+}
+
+.notes-bar span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #00b050;
+}
+
+.notes-bar.is-gold span {
+  background: #ffc000;
 }
 
 .learner-notes-stop small {
   color: #64748b;
+}
+
+.notes-empty {
+  padding: 0.95rem 1rem;
+  border-radius: 14px;
+  background: #f8fafc;
+}
+
+.notes-empty strong {
+  display: block;
+  margin-bottom: 0.2rem;
+  color: #001030;
+}
+
+.notes-empty p {
+  margin: 0;
+  color: #3d5a73;
+  font-size: 0.92rem;
+}
+
+.notes-score-list .learner-item.is-done .learner-item-icon,
+.notes-score-list .learner-item.is-miss .learner-item-icon {
+  border-color: transparent;
+}
+
+.notes-score-list .learner-item.is-done .learner-item-icon {
+  background: rgba(0, 176, 80, 0.12);
+  color: #00b050;
+}
+
+.notes-score-list .learner-item.is-miss .learner-item-icon {
+  background: rgba(232, 93, 59, 0.12);
+  color: #e85d3b;
+}
+
+@media (min-width: 860px) {
+  .notes-tracks {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .notes-score-list {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
 }
 
 .learner-chapter-action-icon {
@@ -1584,15 +1716,14 @@
 }
 
 .practice-progress-banner {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
   gap: 12px;
   align-items: center;
-  justify-content: space-between;
-  padding: 14px;
-  border-radius: 14px;
-  background: #ecfdf5;
-  border: 1px solid rgba(0, 176, 80, 0.22);
+  padding: 16px;
+  border-radius: 18px;
+  background: #fff;
+  border: 1px solid rgba(0, 16, 48, 0.08);
   margin-bottom: 16px;
 }
 
@@ -1603,7 +1734,8 @@
 }
 
 .practice-progress-banner strong {
-  font-size: 1.15rem;
+  font-size: 1.45rem;
+  letter-spacing: -0.03em;
   color: #001030;
 }
 
@@ -1619,25 +1751,47 @@
 }
 
 .practice-exam-card {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
   align-items: center;
-  justify-content: space-between;
   gap: 12px;
-  flex-wrap: wrap;
-  padding: 14px;
-  border-radius: 14px;
+  padding: 12px;
+  border-radius: 18px;
   border: 1px solid rgba(0, 16, 48, 0.1);
   background: #fff;
 }
 
+.practice-exam-index {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  background: #eef1f5;
+  font-weight: 800;
+  color: #001030;
+}
+
+.practice-exam-copy {
+  min-width: 0;
+}
+
 .practice-exam-card.is-completed {
-  background: #ecfdf5;
-  border-color: rgba(0, 176, 80, 0.25);
+  border-color: rgba(0, 176, 80, 0.35);
+}
+
+.practice-exam-card.is-completed .practice-exam-index {
+  background: rgba(0, 176, 80, 0.12);
+  color: #00b050;
 }
 
 .practice-exam-card.is-in_progress {
-  background: #fff8e1;
-  border-color: rgba(255, 192, 0, 0.4);
+  border-color: rgba(249, 115, 22, 0.45);
+}
+
+.practice-exam-card.is-in_progress .practice-exam-index {
+  background: #fff4e8;
+  color: #c2410c;
 }
 
 .practice-exam-card strong {
@@ -1647,6 +1801,36 @@
 
 .practice-exam-card small {
   color: rgba(0, 16, 48, 0.65);
+}
+
+.practice-exam-action {
+  min-width: 7.5rem;
+}
+
+@media (max-width: 640px) {
+  .practice-progress-banner {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .practice-progress-banner .btn-primary {
+    grid-column: 1 / -1;
+  }
+
+  .practice-exam-card {
+    grid-template-columns: auto 1fr;
+  }
+
+  .practice-exam-action {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+}
+
+@media (min-width: 960px) {
+  .practice-exam-list {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
 }
 
 /* ─── Responsive tablette / desktop ─────────────────────────── */

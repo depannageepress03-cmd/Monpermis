@@ -120,10 +120,10 @@ export function ExamensTestPage() {
                       <strong>
                         {data.passedCount}/{data.examTotal}
                       </strong>
-                      <span>réussis (≥ {data.passScore}/20)</span>
+                      <span>réussis · seuil {data.passScore}/20</span>
                     </div>
-                    <Link to="/code-de-la-route/mes-notes" className="btn-outline">
-                      Voir mes notes
+                    <Link to="/code-de-la-route/mes-notes" className="btn-primary btn-primary-inline">
+                      Mes notes
                     </Link>
                   </div>
 
@@ -132,7 +132,10 @@ export function ExamensTestPage() {
                   <div className="practice-exam-list">
                     {data.exams.map((exam) => (
                       <article key={exam.id} className={`practice-exam-card is-${exam.status}`}>
-                        <div>
+                        <span className="practice-exam-index" aria-hidden>
+                          {String(exam.examNumber).padStart(2, '0')}
+                        </span>
+                        <div className="practice-exam-copy">
                           <strong>Sujet {exam.examNumber}</strong>
                           <small>
                             {exam.questionCount} questions
@@ -145,7 +148,11 @@ export function ExamensTestPage() {
                         </div>
                         <button
                           type="button"
-                          className="btn-primary btn-primary-inline"
+                          className={
+                            exam.status === 'completed'
+                              ? 'btn-outline practice-exam-action'
+                              : 'btn-primary btn-primary-inline practice-exam-action'
+                          }
                           disabled={starting === exam.examNumber || data.examCount === 0}
                           onClick={() => void handleStart(exam.examNumber)}
                         >

@@ -2,7 +2,22 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigation, useRoute } from '@react-navigation/native'
 import type { RouteProp } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
-import { ClipboardCheck } from 'lucide-react-native'
+import { LinearGradient } from 'expo-linear-gradient'
+import {
+  ArrowRight,
+  CheckCircle2,
+  ClipboardCheck,
+  Clock3,
+  FileText,
+  Lock,
+  PlayCircle,
+  RefreshCw,
+  RotateCcw,
+  Sparkles,
+  Target,
+  WifiOff,
+  Zap,
+} from 'lucide-react-native'
 import {
   ActivityIndicator,
   Pressable,
@@ -20,14 +35,19 @@ import {
   startPracticeExam,
   type PracticeExamAttempt,
   type PracticeExamsOverview,
+  type PracticeExamSummary,
 } from '../../api/revision'
+import { Bouncy } from '../../components/Bouncy'
 import { DarkScreen } from '../../components/DarkScreen'
 import { AnimatedCheckmark } from '../../components/AnimatedCheckmark'
 import { ConfettiBurst } from '../../components/ConfettiBurst'
+import { FadeUp } from '../../components/FadeUp'
 import { PageNavbar } from '../../components/PageNavbar'
+import { ProgressRing } from '../../components/ProgressRing'
 import { QuestionAudioSequence } from '../../components/QuestionAudioSequence'
 import { QuestionPromptHtml } from '../../components/QuestionPromptHtml'
 import { ScreenLoader } from '../../components/ScreenLoader'
+import { SkeletonCard } from '../../components/Skeleton'
 import {
   enrichAnswersFromTranscript,
   resolveQuestionTranscript,
@@ -36,7 +56,7 @@ import { useFocusRefresh } from '../../hooks/useFocusRefresh'
 import { useLeaveGuard } from '../../hooks/useLeaveGuard'
 import { useRequireAuth } from '../../hooks/useRequireAuth'
 import type { RootStackParamList } from '../../navigation/types'
-import { dark, fonts } from '../../theme'
+import { dark, fonts, shadows } from '../../theme'
 import { stopAllQuizAudio } from '../../utils/quizSounds'
 import { tracker } from '../../tracking/tracker'
 
@@ -90,133 +110,328 @@ export function ExamensTestScreen() {
 
   if (authLoading || !user) return <ScreenLoader />
 
+  const inProgress = data?.exams.find((exam) => exam.status === 'in_progress') ?? null
+  const nextAvailable = data?.exams.find((exam) => exam.status === 'available') ?? null
+  const resumeTarget = inProgress ?? nextAvailable
+  const examTotal = data?.examTotal ?? 24
+  const passedRatio = data && examTotal ? data.passedCount / examTotal : 0
+
+  const actionLabel = (status: PracticeExamSummary['status']) =>
+    status === 'completed' ? 'Repasser' : status === 'in_progress' ? 'Continuer' : 'Commencer'
+
   return (
     <DarkScreen>
-        <PageNavbar
-          title="Examens test"
-          icon={ClipboardCheck}
-          onBack={() => navigation.navigate('CodeRoute')}
-        />
+      <PageNavbar
+        title="Examens test"
+        icon={ClipboardCheck}
+        onBack={() => navigation.navigate('CodeRoute')}
+      />
 
-        <ScrollView
-          contentContainerStyle={styles.scroll}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={() => {
-                setRefreshing(true)
-                void load(true)
-              }}
-              tintColor={dark.green}
-            />
-          }
-        >
-          <Text style={styles.kicker}>Auto-évaluation</Text>
-          <Text style={styles.title}>Examens test</Text>
-          <Text style={styles.subtitle}>
-            {data?.examTotal ?? 24} sujets · mélange de tous les chapitres ·{' '}
-            {data?.requiredSize ?? 20} questions · note /20 · moyenne {data?.passScore ?? 14}/20
-          </Text>
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => {
+              setRefreshing(true)
+              void load(true)
+            }}
+            tintColor={dark.green}
+          />
+        }
+      >
+        {loading ? (
+          <View>
+            <SkeletonCard style={styles.skeletonHero} />
+            <View style={styles.grid}>
+              {Array.from({ length: 4 }).map((_, index) => (
+                <SkeletonCard key={index} style={styles.skeletonTile} />
+              ))}
+            </View>
+          </View>
+        ) : null}
 
-          {loading ? <ActivityIndicator color={dark.green} /> : null}
-          {error ? <Text style={styles.error}>{error}</Text> : null}
+        {error && !loading ? (
+          <View style={styles.errorCard}>
+            <View style={styles.errorIcon}>
+              <WifiOff size={20} color={dark.coral} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.errorTitle}>Examens indisponibles</Text>
+              <Text style={styles.errorText}>{error}</Text>
+            </View>
+            <Pressable style={styles.retryBtn} onPress={() => void load()} hitSlop={8}>
+              <RefreshCw size={16} color={dark.textPrimary} />
+            </Pressable>
+          </View>
+        ) : null}
 
-          {data ? (
-            <>
-              {data.unlocked === false ? (
-                <View style={styles.lockedBox}>
-                  <Text style={styles.lockedTitle}>Examens test verrouillés</Text>
-                  <Text style={styles.empty}>
-                    {data.message ||
-                      'Terminez tous les cours de chaque chapitre pour débloquer les examens test. Vous pouvez encore répondre aux questions et passer le sujet test de chaque chapitre.'}
-                  </Text>
-                  <Pressable
-                    style={styles.revisionBtn}
-                    onPress={() => navigation.navigate('RevisionChapitres')}
-                  >
-                    <Text style={styles.revisionBtnText}>Continuer la révision</Text>
-                  </Pressable>
+        {data && !loading ? (
+          data.unlocked === false ? (
+            <FadeUp delay={40}>
+              <LinearGradient
+                colors={['#F3F6FA', '#FFFFFF']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 0, y: 1 }}
+                style={styles.lockedBox}
+              >
+                <View style={styles.lockedIcon}>
+                  <Lock size={26} color={dark.textPrimary} />
                 </View>
-              ) : (
-                <>
-                  <View style={styles.banner}>
-                    <View style={styles.bannerItem}>
-                      <Text style={styles.bannerValue}>
-                        {data.completedCount}/{data.examTotal}
-                      </Text>
-                      <Text style={styles.bannerLabel}>passés</Text>
-                    </View>
-                    <View style={styles.bannerItem}>
-                      <Text style={styles.bannerValue}>
-                        {data.passedCount}/{data.examTotal}
-                      </Text>
-                      <Text style={styles.bannerLabel}>réussis</Text>
-                    </View>
-                    <Pressable
-                      style={styles.notesLink}
-                      onPress={() => navigation.navigate('MesNotes')}
-                    >
-                      <Text style={styles.notesLinkText}>Mes notes</Text>
-                    </Pressable>
+                <Text style={styles.lockedTitle}>Examens test verrouillés</Text>
+                <Text style={styles.lockedText}>
+                  {data.message ||
+                    'Termine tous les cours de chaque chapitre pour débloquer les examens test. Tu peux déjà répondre aux questions et passer le sujet test de chaque chapitre.'}
+                </Text>
+                <Bouncy scaleTo={0.97} onPress={() => navigation.navigate('RevisionChapitres')}>
+                  <View style={styles.revisionBtn}>
+                    <Text style={styles.revisionBtnText}>Continuer la révision</Text>
+                    <ArrowRight size={16} color="#FFFFFF" />
                   </View>
-
-                  {data.exams.length === 0 ? (
-                    <View style={styles.emptyBox}>
-                      <Text style={styles.emptyTitle}>Examens en préparation</Text>
-                      <Text style={styles.empty}>
-                        {data.message ||
-                          'Les examens test seront disponibles dès que ton auto-école aura publié les questions. Reviens bientôt !'}
-                      </Text>
+                </Bouncy>
+              </LinearGradient>
+            </FadeUp>
+          ) : (
+            <>
+              <FadeUp delay={40}>
+                <LinearGradient
+                  colors={['#E8F8EF', '#F3FBF6', '#FFFFFF']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.hero}
+                >
+                  <View style={styles.heroCopy}>
+                    <View style={styles.heroKickerRow}>
+                      <Sparkles size={13} color={dark.green} />
+                      <Text style={styles.heroKicker}>Auto-évaluation</Text>
                     </View>
-                  ) : null}
+                    <Text style={styles.heroTitle}>Examens blancs</Text>
+                    <Text style={styles.heroText}>
+                      {examTotal} sujets · {data.requiredSize} questions · tous les chapitres
+                    </Text>
+                    <View style={styles.heroChips}>
+                      <View style={styles.heroChip}>
+                        <Target size={12} color={dark.green} />
+                        <Text style={styles.heroChipText}>Seuil {data.passScore}/20</Text>
+                      </View>
+                      <View style={styles.heroChip}>
+                        <Clock3 size={12} color={dark.green} />
+                        <Text style={styles.heroChipText}>Audio ×2</Text>
+                      </View>
+                    </View>
+                  </View>
+                  <ProgressRing progress={passedRatio} size={100} stroke={10} delay={200}>
+                    <Text style={styles.ringValue}>{data.passedCount}</Text>
+                    <Text style={styles.ringLabel}>/{examTotal} réussis</Text>
+                  </ProgressRing>
+                </LinearGradient>
+              </FadeUp>
 
-                  {data.message && data.exams.length > 0 ? (
-                    <Text style={styles.empty}>{data.message}</Text>
-                  ) : null}
+              <FadeUp delay={90}>
+                <View style={styles.statsRow}>
+                  <View style={styles.statTile}>
+                    <Text style={styles.statValue}>
+                      {data.completedCount}
+                      <Text style={styles.statTotal}>/{examTotal}</Text>
+                    </Text>
+                    <Text style={styles.statLabel}>passés</Text>
+                  </View>
+                  <View style={styles.statTile}>
+                    <Text style={[styles.statValue, { color: dark.green }]}>{data.passedCount}</Text>
+                    <Text style={styles.statLabel}>réussis</Text>
+                  </View>
+                  <View style={styles.statTile}>
+                    <Text style={[styles.statValue, { color: dark.coral }]}>
+                      {Math.max(0, data.completedCount - data.passedCount)}
+                    </Text>
+                    <Text style={styles.statLabel}>à retravailler</Text>
+                  </View>
+                  <Bouncy scaleTo={0.96} onPress={() => navigation.navigate('MesNotes')}>
+                    <View style={styles.notesTile}>
+                      <FileText size={18} color="#FFFFFF" />
+                      <Text style={styles.notesTileText}>Mes notes</Text>
+                    </View>
+                  </Bouncy>
+                </View>
+              </FadeUp>
 
-                  {data.exams.map((exam) => (
-                    <View
-                      key={exam.id}
-                      style={[
-                        styles.examCard,
-                        exam.status === 'completed' && styles.status_completed,
-                        exam.status === 'in_progress' && styles.status_in_progress,
-                      ]}
+              {resumeTarget ? (
+                <FadeUp delay={120}>
+                  <Bouncy
+                    scaleTo={0.98}
+                    disabled={starting !== null || data.examCount === 0}
+                    onPress={() => void handleStart(resumeTarget.examNumber)}
+                  >
+                    <LinearGradient
+                      colors={inProgress ? ['#FF8A3D', '#F97316'] : ['#00D566', '#00A344']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={styles.resumeCard}
                     >
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.examTitle}>Sujet {exam.examNumber}</Text>
-                        <Text style={styles.examMeta}>
-                          {exam.questionCount} questions
-                          {exam.score
-                            ? ` · ${exam.score.scoreLabel}${exam.score.passed ? ' · Réussi' : ''}`
-                            : exam.status === 'in_progress'
-                              ? ' · En cours'
-                              : ''}
+                      <View style={styles.resumeIcon}>
+                        {inProgress ? (
+                          <PlayCircle size={24} color="#FFFFFF" />
+                        ) : (
+                          <Zap size={24} color="#FFFFFF" />
+                        )}
+                      </View>
+                      <View style={{ flex: 1, minWidth: 0 }}>
+                        <Text style={styles.resumeKicker}>
+                          {inProgress ? 'Reprendre où tu en étais' : 'Prochain sujet'}
+                        </Text>
+                        <Text style={styles.resumeTitle}>Sujet {resumeTarget.examNumber}</Text>
+                        <Text style={styles.resumeMeta}>
+                          {resumeTarget.questionCount} questions
+                          {inProgress ? ' · en cours' : ' · disponible'}
                         </Text>
                       </View>
-                      <Pressable
-                        style={styles.startBtn}
-                        disabled={starting === exam.examNumber || data.examCount === 0}
+                      <View style={styles.resumeArrow}>
+                        {starting === resumeTarget.examNumber ? (
+                          <ActivityIndicator color={inProgress ? '#F97316' : dark.green} />
+                        ) : (
+                          <ArrowRight size={18} color={inProgress ? '#F97316' : dark.green} />
+                        )}
+                      </View>
+                    </LinearGradient>
+                  </Bouncy>
+                </FadeUp>
+              ) : null}
+
+              {data.exams.length === 0 ? (
+                <FadeUp delay={140}>
+                  <View style={styles.emptyBox}>
+                    <View style={styles.emptyIcon}>
+                      <ClipboardCheck size={22} color={dark.green} />
+                    </View>
+                    <Text style={styles.emptyTitle}>Examens en préparation</Text>
+                    <Text style={styles.emptyText}>
+                      {data.message ||
+                        'Les examens test seront disponibles dès que ton auto-école aura publié les questions. Reviens bientôt !'}
+                    </Text>
+                  </View>
+                </FadeUp>
+              ) : (
+                <FadeUp delay={150}>
+                  <View style={styles.sectionHead}>
+                    <Text style={styles.sectionTitle}>Tous les sujets</Text>
+                    <View style={styles.legendRow}>
+                      <LegendDot color={dark.green} label="Réussi" />
+                      <LegendDot color="#F97316" label="En cours" />
+                      <LegendDot color={dark.coral} label="À revoir" />
+                    </View>
+                  </View>
+                  {data.message ? <Text style={styles.notice}>{data.message}</Text> : null}
+                </FadeUp>
+              )}
+
+              <View style={styles.grid}>
+                {data.exams.map((exam, index) => {
+                  const failed = exam.status === 'completed' && exam.score && !exam.score.passed
+                  const passed = exam.status === 'completed' && exam.score?.passed
+                  const live = exam.status === 'in_progress'
+                  const accent = passed
+                    ? dark.green
+                    : failed
+                      ? dark.coral
+                      : live
+                        ? '#F97316'
+                        : dark.textPrimary
+                  const accentSoft = passed
+                    ? dark.greenSoft
+                    : failed
+                      ? dark.coralSoft
+                      : live
+                        ? '#FFF1E6'
+                        : dark.surfaceRaised
+                  const busy = starting === exam.examNumber
+                  return (
+                    <FadeUp key={exam.id} delay={160 + Math.min(index, 8) * 30} style={styles.tileWrap}>
+                      <Bouncy
+                        scaleTo={0.97}
+                        disabled={busy || data.examCount === 0}
                         onPress={() => void handleStart(exam.examNumber)}
                       >
-                        <Text style={styles.startBtnText}>
-                          {starting === exam.examNumber
-                            ? '…'
-                            : exam.status === 'completed'
-                              ? 'Repasser'
-                              : exam.status === 'in_progress'
-                                ? 'Continuer'
-                                : 'Go'}
-                        </Text>
-                      </Pressable>
-                    </View>
-                  ))}
-                </>
-              )}
+                        <View
+                          style={[
+                            styles.tile,
+                            passed && styles.tilePass,
+                            failed && styles.tileFail,
+                            live && styles.tileLive,
+                          ]}
+                        >
+                          <View style={styles.tileTop}>
+                            <View style={[styles.tileIndex, { backgroundColor: accentSoft }]}>
+                              <Text style={[styles.tileIndexText, { color: accent }]}>
+                                {String(exam.examNumber).padStart(2, '0')}
+                              </Text>
+                            </View>
+                            {passed ? (
+                              <CheckCircle2 size={18} color={dark.green} />
+                            ) : live ? (
+                              <View style={styles.liveDotWrap}>
+                                <View style={styles.liveDot} />
+                                <Text style={styles.liveText}>En cours</Text>
+                              </View>
+                            ) : failed ? (
+                              <RotateCcw size={16} color={dark.coral} />
+                            ) : null}
+                          </View>
+
+                          <Text style={styles.tileTitle}>Sujet {exam.examNumber}</Text>
+                          <Text style={styles.tileMeta} numberOfLines={1}>
+                            {exam.score
+                              ? `${exam.score.scoreLabel} · ${exam.score.passed ? 'Réussi' : 'À revoir'}`
+                              : `${exam.questionCount} questions`}
+                          </Text>
+
+                          <View
+                            style={[
+                              styles.tileBtn,
+                              passed && styles.tileBtnGhost,
+                              failed && styles.tileBtnFail,
+                              live && styles.tileBtnLive,
+                            ]}
+                          >
+                            {busy ? (
+                              <ActivityIndicator
+                                color={passed ? dark.textPrimary : '#FFFFFF'}
+                                size="small"
+                              />
+                            ) : (
+                              <>
+                                <Text
+                                  style={[styles.tileBtnText, passed && styles.tileBtnTextGhost]}
+                                >
+                                  {actionLabel(exam.status)}
+                                </Text>
+                                <ArrowRight
+                                  size={14}
+                                  color={passed ? dark.textPrimary : '#FFFFFF'}
+                                />
+                              </>
+                            )}
+                          </View>
+                        </View>
+                      </Bouncy>
+                    </FadeUp>
+                  )
+                })}
+              </View>
             </>
-          ) : null}
-        </ScrollView>
-      </DarkScreen>
+          )
+        ) : null}
+      </ScrollView>
+    </DarkScreen>
+  )
+}
+
+function LegendDot({ color, label }: { color: string; label: string }) {
+  return (
+    <View style={styles.legend}>
+      <View style={[styles.legendDot, { backgroundColor: color }]} />
+      <Text style={styles.legendText}>{label}</Text>
+    </View>
   )
 }
 
@@ -647,120 +862,385 @@ const styles = StyleSheet.create({
     color: dark.textMuted,
     marginBottom: 16,
   },
-  banner: {
+  skeletonHero: { minHeight: 150, borderRadius: 26 },
+  skeletonTile: { width: '48%', minHeight: 150, borderRadius: 20 },
+
+  hero: {
+    borderRadius: 26,
+    padding: 20,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    backgroundColor: dark.greenSoft,
-    borderRadius: 14,
-    padding: 14,
-    marginBottom: 14,
-    borderWidth: 1,
-    borderColor: dark.border,
+    gap: 14,
+    marginBottom: 12,
+    overflow: 'hidden',
+    ...shadows.sm,
   },
-  bannerItem: { flex: 1 },
-  bannerValue: {
-    fontFamily: fonts.displayBold,
-    fontSize: 18,
-    color: dark.textPrimary,
-  },
-  bannerLabel: { fontFamily: fonts.body, fontSize: 12, color: dark.textMuted },
-  notesLink: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: dark.border,
-    backgroundColor: dark.surface,
-  },
-  notesLinkText: {
+  heroCopy: { flex: 1, minWidth: 0, gap: 6 },
+  heroKickerRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  heroKicker: {
     fontFamily: fonts.bodyBold,
-    color: dark.textPrimary,
-    fontSize: 13,
+    fontSize: 11,
+    letterSpacing: 1.1,
+    textTransform: 'uppercase',
+    color: dark.green,
   },
-  emptyBox: {
-    marginTop: 8,
-    marginBottom: 4,
-    padding: 20,
+  heroTitle: {
+    fontFamily: fonts.displayExtraBold,
+    fontSize: 24,
+    lineHeight: 29,
+    letterSpacing: -0.4,
+    color: dark.textPrimary,
+  },
+  heroText: {
+    fontFamily: fonts.body,
+    fontSize: 13,
+    lineHeight: 19,
+    color: dark.textMuted,
+  },
+  heroChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 },
+  heroChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+    borderRadius: 999,
+    backgroundColor: '#FFFFFF',
+  },
+  heroChipText: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 11.5,
+    color: dark.textPrimary,
+  },
+  ringValue: {
+    fontFamily: fonts.displayExtraBold,
+    fontSize: 26,
+    color: dark.textPrimary,
+    letterSpacing: -0.6,
+  },
+  ringLabel: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 10,
+    color: dark.textMuted,
+    marginTop: -2,
+  },
+
+  statsRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
+  statTile: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
     borderRadius: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    alignItems: 'center',
     borderWidth: 1,
     borderColor: dark.border,
-    backgroundColor: dark.surface,
-    gap: 8,
-    alignItems: 'center',
   },
-  emptyTitle: {
+  statValue: {
+    fontFamily: fonts.displayExtraBold,
+    fontSize: 20,
+    letterSpacing: -0.4,
+    color: dark.textPrimary,
+  },
+  statTotal: {
+    fontFamily: fonts.displayBold,
+    fontSize: 12,
+    color: dark.textMuted,
+  },
+  statLabel: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: 10.5,
+    color: dark.textMuted,
+    marginTop: 1,
+  },
+  notesTile: {
+    height: '100%',
+    minHeight: 64,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+    backgroundColor: dark.textPrimary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+  },
+  notesTileText: {
+    fontFamily: fonts.bodyBold,
+    fontSize: 11,
+    color: '#FFFFFF',
+  },
+
+  resumeCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    borderRadius: 22,
+    padding: 16,
+    marginBottom: 16,
+    ...shadows.md,
+  },
+  resumeIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.22)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  resumeKicker: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 11,
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+    color: 'rgba(255,255,255,0.85)',
+  },
+  resumeTitle: {
+    fontFamily: fonts.displayExtraBold,
+    fontSize: 20,
+    color: '#FFFFFF',
+    letterSpacing: -0.3,
+    marginTop: 1,
+  },
+  resumeMeta: {
+    fontFamily: fonts.body,
+    fontSize: 12.5,
+    color: 'rgba(255,255,255,0.9)',
+    marginTop: 1,
+  },
+  resumeArrow: {
+    width: 40,
+    height: 40,
+    borderRadius: 999,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  sectionHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+    marginBottom: 10,
+    flexWrap: 'wrap',
+  },
+  sectionTitle: {
     fontFamily: fonts.displayBold,
     fontSize: 17,
     color: dark.textPrimary,
-    textAlign: 'center',
   },
-  lockedBox: {
-    marginTop: 8,
-    padding: 18,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: dark.border,
-    backgroundColor: dark.surface,
-    gap: 12,
-  },
-  lockedTitle: {
-    fontFamily: fonts.displayBold,
-    fontSize: 18,
-    color: dark.textPrimary,
-  },
-  revisionBtn: {
-    alignSelf: 'flex-start',
-    marginTop: 4,
-    backgroundColor: dark.green,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  revisionBtnText: {
-    color: '#0B0F1A',
-    fontFamily: fonts.bodyBold,
-    fontSize: 14,
-  },
-  examCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: dark.border,
-    backgroundColor: dark.surface,
-    padding: 14,
+  legendRow: { flexDirection: 'row', gap: 10 },
+  legend: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  legendDot: { width: 7, height: 7, borderRadius: 999 },
+  legendText: { fontFamily: fonts.bodyMedium, fontSize: 11, color: dark.textMuted },
+  notice: {
+    fontFamily: fonts.body,
+    fontSize: 13,
+    lineHeight: 19,
+    color: dark.textMuted,
     marginBottom: 10,
   },
-  status_available: {},
-  status_in_progress: {
-    backgroundColor: dark.coralSoft,
-    borderColor: 'rgba(255,107,74,0.35)',
+
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    rowGap: 12,
   },
-  status_completed: {
-    backgroundColor: dark.greenSoft,
-    borderColor: 'rgba(34,214,115,0.35)',
+  tileWrap: { width: '48.4%' },
+  tile: {
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: dark.border,
+    padding: 14,
+    gap: 4,
+    minHeight: 158,
+    ...shadows.sm,
   },
-  examTitle: {
+  tilePass: { borderColor: 'rgba(0,176,80,0.35)' },
+  tileFail: { borderColor: 'rgba(232,93,59,0.35)' },
+  tileLive: { borderColor: 'rgba(249,115,22,0.5)', backgroundColor: '#FFFBF7' },
+  tileTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  tileIndex: {
+    width: 40,
+    height: 40,
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tileIndexText: {
+    fontFamily: fonts.displayExtraBold,
+    fontSize: 15,
+    letterSpacing: -0.2,
+  },
+  liveDotWrap: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  liveDot: { width: 7, height: 7, borderRadius: 999, backgroundColor: '#F97316' },
+  liveText: { fontFamily: fonts.bodyBold, fontSize: 10.5, color: '#C2410C' },
+  tileTitle: {
     fontFamily: fonts.displayBold,
     fontSize: 16,
     color: dark.textPrimary,
   },
-  examMeta: {
+  tileMeta: {
+    fontFamily: fonts.body,
+    fontSize: 12,
+    color: dark.textMuted,
+    marginBottom: 10,
+  },
+  tileBtn: {
+    marginTop: 'auto',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    minHeight: 38,
+    borderRadius: 12,
+    backgroundColor: dark.green,
+  },
+  tileBtnGhost: {
+    backgroundColor: dark.surface,
+    borderWidth: 1,
+    borderColor: dark.border,
+  },
+  tileBtnFail: { backgroundColor: dark.coral },
+  tileBtnLive: { backgroundColor: '#F97316' },
+  tileBtnText: {
+    fontFamily: fonts.displayBold,
+    fontSize: 13,
+    color: '#FFFFFF',
+  },
+  tileBtnTextGhost: { color: dark.textPrimary },
+
+  emptyBox: {
+    marginTop: 4,
+    marginBottom: 12,
+    padding: 20,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: dark.border,
+    backgroundColor: '#FFFFFF',
+    gap: 6,
+    alignItems: 'center',
+  },
+  emptyIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    backgroundColor: dark.greenSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+  },
+  emptyTitle: {
+    fontFamily: fonts.displayBold,
+    fontSize: 16,
+    color: dark.textPrimary,
+    textAlign: 'center',
+  },
+  emptyText: {
     fontFamily: fonts.body,
     fontSize: 13,
+    lineHeight: 19,
+    color: dark.textMuted,
+    textAlign: 'center',
+  },
+
+  lockedBox: {
+    marginTop: 4,
+    padding: 22,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: dark.border,
+    gap: 10,
+    alignItems: 'center',
+  },
+  lockedIcon: {
+    width: 60,
+    height: 60,
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+    ...shadows.sm,
+  },
+  lockedTitle: {
+    fontFamily: fonts.displayBold,
+    fontSize: 19,
+    color: dark.textPrimary,
+    textAlign: 'center',
+  },
+  lockedText: {
+    fontFamily: fonts.body,
+    fontSize: 14,
+    lineHeight: 21,
+    color: dark.textMuted,
+    textAlign: 'center',
+    marginBottom: 6,
+  },
+  revisionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: dark.green,
+    borderRadius: 14,
+    paddingHorizontal: 18,
+    paddingVertical: 13,
+  },
+  revisionBtnText: {
+    color: '#FFFFFF',
+    fontFamily: fonts.displayBold,
+    fontSize: 14,
+  },
+
+  errorCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 14,
+    borderRadius: 18,
+    backgroundColor: dark.coralSoft,
+    marginBottom: 14,
+  },
+  errorIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 13,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  errorTitle: { fontFamily: fonts.bodyBold, fontSize: 14, color: dark.textPrimary },
+  errorText: {
+    fontFamily: fonts.body,
+    fontSize: 12.5,
+    lineHeight: 18,
     color: dark.textMuted,
     marginTop: 2,
   },
+  retryBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
   startBtn: {
     backgroundColor: dark.green,
     borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 10,
+    alignItems: 'center',
   },
   startBtnText: {
-    color: '#0B0F1A',
+    color: '#FFFFFF',
     fontFamily: fonts.displayBold,
     fontSize: 13,
   },
