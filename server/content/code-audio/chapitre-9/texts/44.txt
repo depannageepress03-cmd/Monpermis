@@ -1,6 +1,5 @@
 Pour le calcul du nombre de personnes transportées, un enfant compte pour une demi-personne s'il est âgé de :
-
-A. Moins de 10 ans
-B. Moins de 12 ans
-C. Moins de 14 ans
+A. Moins de dix ans
+B. Moins de douze ans
+C. Moins de quatorze ans
 D. Rien de tout ce qui précède

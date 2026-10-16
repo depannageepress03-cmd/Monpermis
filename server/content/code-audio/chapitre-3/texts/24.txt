@@ -1,1 +1,5 @@
-Lorsque l'arrêt est interdit : A. Le stationnement est interdit. B. Le stationnement n'est pas interdit. C. Le stationnement temporaire est interdit. D. Seul le stationnement temporaire est autorisé.
+Lorsque l'arrêt est interdit :
+A. Le stationnement est interdit
+B. Le stationnement n'est pas interdit
+C. Le stationnement temporaire est interdit
+D. Seul le stationnement temporaire est autorisé

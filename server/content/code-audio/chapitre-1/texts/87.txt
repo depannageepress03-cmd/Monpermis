@@ -1,1 +1,4 @@
-À une intersection munie de feux tricolores où seul le feu jaune clignote : A : je m'arrête. B : je ralentis et je passe. C : j'applique la règle de priorité à droite.
+À une intersection munie de feux tricolores où seul le feu jaune clignote.
+A. Je m'arrête
+B. Je ralentis et je passe
+C. J'applique la règle de priorité à droite

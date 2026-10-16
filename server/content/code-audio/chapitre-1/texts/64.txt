@@ -1,1 +1,5 @@
-Le panneau B14 pour les camions concerne : A : tout véhicule de transport. B : tout véhicule de tourisme. C : les véhicules de transport de marchandises. D : les véhicules de transport en commun de personnes.
+Le panneau B14 pour les camions concerne :
+A. Tout véhicule de transport
+B. Tout véhicule de tourisme
+C. Les véhicules de transport de marchandises
+D. Les véhicules de transport en commun de personnes

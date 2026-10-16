@@ -1,1 +1,5 @@
-Que signifie le panneau B45 ? A : accès interdit aux véhicules de transport en commun de personnes. B : stationnement interdit aux véhicules de transport en commun de personnes. C : arrêt interdit aux véhicules de transport en commun de personnes. D : fin de voie réservée aux véhicules de transport en commun de personnes.
+Que signifie le panneau B45 ?
+A. Accès interdit aux véhicules de transport en commun de personnes
+B. Stationnement interdit aux véhicules de transport en commun de personnes
+C. Arrêt interdit aux véhicules de transport en commun de personnes
+D. Fin de voie réservée aux véhicules de transport en commun de personnes

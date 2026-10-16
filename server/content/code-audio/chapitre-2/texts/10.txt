@@ -1,4 +1,4 @@
 À l'intersection munie de feux tricolores dont le rouge est allumé, que dois-je faire ?
-A. Je passe si je veux tourner à droite.
-B. Je ralentis et je passe si la voie est libre.
-C. Je m'arrête.
+A. Je passe si je veux tourner à droite
+B. Je ralentis et je passe si la voie est libre
+C. Je m'arrête

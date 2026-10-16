@@ -1,1 +1,4 @@
-Un, pour tourner à droite, je dois à ralentir, B, accélérer, C, mettre le clignotant à droite.
+Pour tourner à droite, je dois :
+A. Ralentir
+B. Accélérer
+C. Mettre le clignotant à droite

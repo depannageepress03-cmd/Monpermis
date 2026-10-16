@@ -1,4 +1,4 @@
-À cette intersection I12, quel doit être l'ordre de passage des véhicules ?
-A. Le véhicule bleu, le véhicule rouge et le véhicule vert.
-B. Le véhicule rouge avance en suivant le véhicule bleu qui tourne, puis le véhicule vert tourne après.
-C. Le véhicule vert démarre, fait un quart de tour et s'arrête. Le véhicule bleu tourne, le véhicule rouge passe et le vert continue.
+À cette intersection I douze, quel doit être l'ordre de passage des véhicules ?
+A. Le véhicule bleu, le véhicule rouge et le véhicule vert
+B. Le véhicule rouge avance en suivant le véhicule bleu qui tourne, puis le véhicule vert tourne après
+C. Le véhicule vert démarre, fait un quart de tour et s'arrête. Le véhicule bleu tourne, le véhicule rouge passe et le vert continue

@@ -1,1 +1,4 @@
-6. Avec le permis de conduit catégorie B, je peux conduit un véhicule à poilot, B, poil et G, C, autobus.
+Avec le permis de conduire catégorie B, je peux conduire un véhicule :
+A. Poids lourd
+B. Poids léger
+C. Autobus

@@ -1,4 +1,4 @@
 Au carrefour à sens giratoire en agglomération :
-A. La priorité est toujours à droite.
-B. La priorité peut être donnée à droite et à gauche.
-C. Rien de tout ce qui précède.
+A. La priorité est toujours à droite
+B. La priorité peut être donnée à droite et à gauche
+C. Rien de tout ce qui précède

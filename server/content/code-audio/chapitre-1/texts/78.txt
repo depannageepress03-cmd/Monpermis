@@ -1,1 +1,4 @@
-Que m'indique le panneau B31 ? A : la fin de toutes les intersections sauf le panneau stop. B : la fin de tous les panneaux. C : la fin de toutes les interdictions précédemment signalées, sauf le stationnement et l'arrêt interdits.
+Comme indique le panneau B31.
+A. La fin de toutes les intersections, sauf le panneau stop
+B. La fin de tous les panneaux
+C. La fin de toutes les interdictions précédemment signalées, sauf le stationnement et l'arrêt interdit

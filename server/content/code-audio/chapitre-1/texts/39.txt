@@ -1,1 +1,4 @@
-Le panneau BF-1 1, m'oblige à A, tournait à droite à la prochaine intersection B, tournait à droite après le panneau, c'est tournait à droite avant le panneau.
+Le panneau B1 m'oblige à :
+A. Tourner à droite à la prochaine intersection
+B. Tourner à droite après le panneau
+C. Tourner à droite avant le panneau

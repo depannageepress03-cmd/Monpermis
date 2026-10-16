@@ -1,7 +1,6 @@
 L'autobus est un véhicule de transport en commun de personnes destiné au :
-
 A. Transport urbain
 B. Transport sur une longue distance
 C. Transport de passagers assis uniquement
 D. Transport de passagers debout ou assis
-E. Transport de passagers assis sur une longue distance
+E. Transport de passagers assis sur une longue

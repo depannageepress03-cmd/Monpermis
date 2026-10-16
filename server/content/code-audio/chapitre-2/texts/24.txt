@@ -1,5 +1,5 @@
 À cette intersection I9, qui passera définitivement en premier ?
-A. La moto.
-B. Le véhicule vert.
-C. Le véhicule rouge.
-D. Le véhicule jaune.
+A. La moto
+B. Le véhicule vert
+C. Le véhicule rouge
+D. Le véhicule jaune

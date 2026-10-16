@@ -1,6 +1,5 @@
 Un chargement dépassant de plus d'un mètre à l'arrière doit être signalé par :
-
 A. Un chiffon flottant
 B. Une lanterne rouge
 C. Un dispositif réfléchissant rouge
-D. Un feu rouge visible à 150 mètres en cas de visibilité insuffisante
+D. Un feu rouge visible à cent cinquante mètres en cas de visibilité insuffisante

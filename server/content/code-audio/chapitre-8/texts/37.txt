@@ -1,1 +1,5 @@
-En appel transport exceptionnel, les véhicules chargés dont les dimensions ou le poids du chargement dépassent les limites fixés par A, la préfecture, B, la direction générale des transports terrestres, C, le ministère des transports, D, le code de la route.
+On appelle transport exceptionnel les véhicules chargés dont les dimensions ou le poids du chargement dépassent les limites fixées par :
+A. La préfecture
+B. La Direction générale des transports terrestres
+C. Le ministère des Transports
+D. Le Code de la route

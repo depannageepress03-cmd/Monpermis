@@ -1,3 +1,3 @@
 À cette intersection I11, quel sera l'ordre de passage ?
-A. 1) Le véhicule jaune. 2) Le véhicule rouge ensuite. 3) La moto après.
-B. 1) La moto. 2) Le véhicule jaune ensuite. 3) Le véhicule rouge après.
+A. Un : le véhicule jaune, deux : le véhicule rouge ensuite, trois : la moto après
+B. Un : la moto, deux : le véhicule jaune ensuite, trois : le véhicule rouge après

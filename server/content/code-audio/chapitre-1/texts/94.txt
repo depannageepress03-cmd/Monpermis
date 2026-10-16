@@ -1,1 +1,4 @@
-Quand l'agent de sécurité réglementant la circulation lève le bras, que faire ? A : je ralentis et je passe si je le vois en face. B : je passe si je suis engagé dans l'intersection. C : je ralentis et je m'arrête si je le vois de face.
+Quand l'agent de sécurité réglementant la circulation lève le bras, que faire ?
+A. Je ralentis et je passe si je le vois en face
+B. Je passe si je suis engagé dans l'intersection
+C. Je ralentis et je m'arrête si je le vois de face

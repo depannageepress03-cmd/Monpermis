@@ -185,6 +185,7 @@ router.post('/practice-exams/:examNumber/start', ...withCodeAccess, async (req, 
         responses: [],
         status: 'in_progress',
         total: PRACTICE_EXAM_SIZE,
+        hcIdsV2: true,
       })
     }
 

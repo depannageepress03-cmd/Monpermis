@@ -1,1 +1,5 @@
-Quels sont les renseignements qu'on peut le trouver sur la plaque de taire ? A, le poids avide, B, le poids total autorisé en charge, C, le poids total, roulant autorisé, D, la surface.
+Quels sont les renseignements qu'on peut retrouver sur la plaque de tare ?
+A. Le poids à vide
+B. Le poids total autorisé en charge
+C. Le poids total roulant autorisé
+D. La surface

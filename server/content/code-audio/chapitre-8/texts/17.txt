@@ -1,1 +1,4 @@
-Pour tourner à droite sur une chaussée à double sens, je dois A, serrer ma gauche, B, serrer ma droite, c'est me déporter au milieu.
+Pour tourner à droite sur une chaussée à double sens, je dois :
+A. Serrer ma gauche
+B. Serrer ma droite
+C. Me déporter au milieu

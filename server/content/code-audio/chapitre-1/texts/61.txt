@@ -1,1 +1,4 @@
-Le panneau B29 : A : ne concerne pas les motocyclettes roulant à moins de soixante kilomètres à l'heure. B : concerne seulement les véhicules automobiles roulant à moins de soixante kilomètres à l'heure. C : concerne tout véhicule à moteur roulant à moins de soixante kilomètres à l'heure.
+Le panneau B29 :
+A. Ne concerne pas les motocyclettes roulant à moins de 60 kilomètres à l'heure
+B. Concerne seulement les véhicules automobiles roulant à moins de 60 kilomètres à l'heure
+C. Concerne tout véhicule à moteur roulant à moins de 60 kilomètres à l'heure

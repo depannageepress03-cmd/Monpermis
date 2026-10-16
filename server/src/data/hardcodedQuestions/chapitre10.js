@@ -88,7 +88,7 @@ export const CHAPITRE_10_QUESTIONS = [
   question(34, ['A', 'B', 'C', 'D'], ['A', 'C', 'D']),
   question(35, ['A', 'B', 'C', 'D'], ['C', 'D']),
   question(36, ['A', 'B', 'C', 'D'], ['A', 'B', 'D']),
-  question(37, ['A', 'B', 'C'], ['A']),
+  question(37, ['A', 'B', 'C'], ['B', 'C']),
   question(38, ['A', 'B', 'C'], ['B']),
   question(39, ['A', 'B'], ['A']),
   question(40, ['A', 'B', 'C'], ['A', 'B']),

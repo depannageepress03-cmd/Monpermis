@@ -50,6 +50,7 @@ import { completePastConfirmedReservations } from './utils/reservationLifecycle.
 import { runAnnouncementJobs } from './services/announcements.js'
 import { ensureSuperAdminBootstrap } from './utils/bootstrapSuperAdmin.js'
 import { ensureStandardRevisionChaptersSafe } from './services/standardRevisionChapters.js'
+import { migrateShiftedHardcodedIds } from './services/migrateShiftedHardcodedIds.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const app = express()
@@ -147,6 +148,19 @@ app.use(express.json())
 // Disque local d’abord, puis MongoDB (Render n’a pas de disque persistant).
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')))
 app.get('/uploads/:kind/:filename', sendMediaAsset)
+// /content ne sert que des médias : les .txt (corrigés, transcripts), .md et .json
+// rangés à côté restent internes au dépôt.
+const PUBLIC_CONTENT_MEDIA = /\.(mp3|png|jpe?g|webp|gif|svg)$/i
+app.use('/content', (req, res, next) => {
+  let pathname = req.path
+  try {
+    pathname = decodeURIComponent(pathname)
+  } catch {
+    return res.status(404).end()
+  }
+  if (!PUBLIC_CONTENT_MEDIA.test(pathname)) return res.status(404).end()
+  next()
+})
 // Audios / images questions en dur (chapitre 17, …)
 app.use(
   '/content/code-audio',
@@ -386,6 +400,14 @@ async function connectMongo() {
       logger.info(`Tarifs modules d'accès initialisés (${pricingSeed.created})`)
     }
     await ensureStandardRevisionChaptersSafe()
+    try {
+      const idMigration = await migrateShiftedHardcodedIds()
+      if (idMigration.migrated > 0) {
+        logger.info(`Tentatives d'examen : ids ch.15→19 réalignés (${idMigration.migrated})`)
+      }
+    } catch (e) {
+      logger.error('Migration ids ch.15→19', { error: e.message })
+    }
     await expireDueAccessRequests()
     await warnExpiringAccessRequests(Number(process.env.SUBSCRIPTION_EXPIRY_WARN_DAYS) || 3)
     await expireStalePendingReservations()

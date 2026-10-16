@@ -1,1 +1,4 @@
-La ligne jaune brisée en bordure de la chaussée, A, indique une zone d'arrêt de bus, B, autorise le dépassement, C, interdit le dépassement.
+La ligne jaune brisée en bordure de la chaussée :
+A. Indique une zone d'arrêt de bus
+B. Autorise le dépassement
+C. Interdit le dépassement

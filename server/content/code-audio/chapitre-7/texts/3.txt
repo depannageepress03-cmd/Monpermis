@@ -1,1 +1,3 @@
-Le PTAC de ma remorque est de 800 kg, le poids à vide de ma voiture est 7,5 kg, à pour traiter ma remorque je doit détenir le permis C, B pour traiter ma remorque je doit détenir le permis E.
+Le PTAC de ma remorque est de huit cents kilogrammes. Le poids à vide de ma voiture est de sept cents kilogrammes.
+A. Pour tracter ma remorque, je dois détenir le permis C
+B. Pour tracter ma remorque, je dois détenir le permis E

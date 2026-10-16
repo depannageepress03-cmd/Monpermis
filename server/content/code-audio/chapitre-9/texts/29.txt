@@ -1,5 +1,4 @@
 Que signifie le panneau B10a ?
-
-A. Accès interdit uniquement aux véhicules de transport en commun de personnes dont la longueur dépasse 10 m
-B. Accès interdit uniquement aux véhicules de transport de marchandises dont la longueur dépasse 10 m
-C. Accès interdit aux véhicules ou ensembles de véhicules dont la longueur dépasse 10 m
+A. Accès interdit uniquement aux véhicules le transport en commun de personnes dont la longueur dépasse dix mètres
+B. Accès interdit uniquement aux véhicules de transport de marchandises dont la longueur dépasse dix mètres
+C. Accès interdit aux véhicules ou ensemble de véhicules dont la longueur dépasse dix mètres

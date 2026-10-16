@@ -1,1 +1,4 @@
-A, je peux stationner dans la première rue à droite après le panneau, B, je peux stationner dans la rue où se trouve le panneau, mais à gauche, C, je ne peux stationner nulle part dans la rue où se trouve le panneau
+À la vue du panneau B6B1.
+A. Je peux stationner dans la première rue à droite après le panneau
+B. Je peux stationner dans la rue où se trouve le panneau, mais à gauche
+C. Je ne peux stationner nulle part dans la rue où se trouve le panneau

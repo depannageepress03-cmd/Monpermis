@@ -1,1 +1,4 @@
-La ligne zone discontinue sur la bordure du trottoir a indiqu'une zone d'arrêt de bus Bé autorise l'arrêt. C'est interdit le stationnement.
+La ligne jaune discontinue sur la bordure du trottoir.
+A. Indique une zone d'arrêt de bus
+B. Autorise l'arrêt
+C. Interdit le stationnement

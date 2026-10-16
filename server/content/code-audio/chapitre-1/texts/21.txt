@@ -1,1 +1,5 @@
-qu'indique le panneau triangulaire pour tant une flèche barrée. A, arrière obligatoire, B, priorité de passage, C, priorité à gauche, D, priorité à droite.
+Qu'indique le panneau triangulaire portant une flèche barrée ?
+A. Arrêt obligatoire
+B. Priorité de passage
+C. Priorité à gauche
+D. Priorité à droite

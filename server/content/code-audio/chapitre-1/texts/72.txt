@@ -1,1 +1,5 @@
-À la vue du panneau B3 : A : un véhicule peut dépasser un autre véhicule. B : une voiture peut dépasser un camion. C : un camion peut dépasser un autre camion. D : aucun dépassement n'est autorisé.
+À la vue du panneau B3.
+A. Un véhicule peut dépasser un autre véhicule
+B. Une voiture peut dépasser un camion
+C. Un camion peut dépasser un autre camion
+D. Aucun dépassement n'est autorisé

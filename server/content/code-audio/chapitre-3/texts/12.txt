@@ -1,1 +1,4 @@
-Plus je roule vite et plus j'augmente : A. La distance de freinage. B. La distance d'arrêt. C. Le temps de réaction.
+Plus je roule vite et plus j'augmente :
+A. La distance de freinage
+B. La distance d'arrêt
+C. Le temps de réaction

@@ -1,1 +1,4 @@
-Le panneau B8 interdit l'accès : A : à tout véhicule de transport. B : aux véhicules de transport de marchandises dont le P.T.A.C. est supérieur à trois virgule cinq tonnes. C : à tout véhicule de transport de marchandises.
+Le panneau B8 interdit l'accès :
+A. À tout véhicule de transport
+B. Aux véhicules de transport de marchandises dont le PTAC assez supérieur à 3,5 tonnes
+C. À tout véhicule de transport de marchandises

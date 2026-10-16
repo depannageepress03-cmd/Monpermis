@@ -1,1 +1,4 @@
-Avec mon permis de conduit catégorie A1, je peux conduit de motocicletre dans la cylindrie A-75 cm cube B-75 cm cube C est égal à 100 cm cube
+Avec mon permis de conduire catégorie A1, je peux conduire des motocyclettes dont la cylindrée :
+A. Excède 75 centimètres cubes
+B. N'excède pas 75 centimètres cubes
+C. Est égal à 100 centimètres cubes

@@ -1,1 +1,4 @@
-En cas de panne de ma moto-cyclette, ah, je peux là garer sur le trottoir et attendre un des panneurs. B, je ne peux pas traîner ma moto sur le trottoir, le moteur arrêté. C, je peux traîner ma moto sur le trottoir, le moteur arrêté.
+En cas de panne de ma motocyclette :
+A. Je peux la garer sur le trottoir et attendre un dépanneur
+B. Je ne peux pas traîner ma moto sur le trottoir, le moteur arrêté
+C. Je peux traîner ma moto sur le trottoir, le moteur arrêté

@@ -1,1 +1,4 @@
-Le feu jaune annonce : A : le feu vert. B : le feu orange. C : le feu rouge.
+Le feu jaune annonce :
+A. Le feu vert
+B. Le feu orange
+C. Le feu rouge

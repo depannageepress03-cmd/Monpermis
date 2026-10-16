@@ -1,1 +1,4 @@
-l'intervalle entre deux traits d'une ligne discontinue blanche central et deux a 5 m, b 10 m, c 15 m.
+L'intervalle entre deux traits d'une ligne discontinue blanche centrale est de :
+A. Cinq mètres
+B. Dix mètres
+C. Quinze mètres

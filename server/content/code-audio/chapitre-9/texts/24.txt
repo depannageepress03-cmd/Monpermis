@@ -1,5 +1,4 @@
-Quel intervalle minimal deux véhicules poids lourds de plus de 7 m doivent-ils respecter entre eux lorsqu'ils roulent à la même vitesse ?
-
-A. 20 mètres
-B. 30 mètres
-C. 50 mètres
+Quel intervalle minimal deux véhicules poids lourds de plus de sept mètres doivent-ils respecter entre eux lorsqu'ils roulent à la même vitesse ?
+A. Vingt mètres
+B. Trente mètres
+C. Cinquante mètres

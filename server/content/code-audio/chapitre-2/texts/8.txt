@@ -1,5 +1,5 @@
 Les indications des agents de sécurité prévalent sur :
-A. Toute signalisation.
-B. Les règles de circulation.
-C. Les feux de signalisation.
-D. Uniquement les feux tricolores.
+A. Toute signalisation
+B. Les règles de circulation
+C. Les feux de signalisation
+D. Uniquement les feux tricolores

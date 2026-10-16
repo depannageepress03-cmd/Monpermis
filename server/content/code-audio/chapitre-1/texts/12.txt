@@ -1,1 +1,5 @@
-la circulation sur la bande d'arrêt d'urgence de l'autoroute est autorisée. A, aux ambulances, affections à un transport aux gens de blessée. B, au véhicule, priorité d'air en mission. C, aux services d'entretien, se rendant sur un lieu d'intervention. D, à tous les véhicules, en cas d'embouteillage.
+La circulation sur les bandes d'arrêt d'urgence de l'autoroute est autorisée.
+A. Aux ambulances effectuant un transport urgent de blessés
+B. Aux véhicules prioritaires en mission
+C. Aux services d'entretien se rendant sur un lieu d'intervention
+D. À tous les véhicules en cas d'embouteillage

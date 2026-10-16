@@ -1,1 +1,5 @@
-En train double, elle t'a composée. A d'un tracteur est d'une remorque. B d'un tracteur est d'une semi-romorque. C'est d'un véhicule articulé et d'une remorque. D d'un tracteur routier est de deux semi-romorques.
+Un train double est un composé :
+A. D'un tracteur et d'une remorque
+B. D'un tracteur et d'une semi-remorque
+C. D'un véhicule articulé et d'une remorque
+D. D'un tracteur routier et de deux semi-remorques

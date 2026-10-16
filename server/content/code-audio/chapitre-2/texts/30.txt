@@ -1,4 +1,4 @@
 À cette intersection I22, quel sera l'ordre de passage ?
-A. Pendant que les véhicules jaune et bleu passent simultanément, le véhicule rouge tourne à droite.
-B. Le véhicule rouge tourne immédiatement à droite et les véhicules jaune et bleu passent après.
-C. Les véhicules jaune et bleu passent simultanément et le véhicule rouge laisse passer les piétons et tourne à droite.
+A. Pendant que les véhicules jaunes et bleus passent simultanément, le véhicule rouge tourne à droite
+B. Le véhicule rouge tourne immédiatement à droite et les véhicules jaunes et bleus passent après
+C. Les véhicules jaunes et bleus passent simultanément et le véhicule rouge laisse passer les piétons et tourne à droite

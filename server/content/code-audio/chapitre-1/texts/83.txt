@@ -1,1 +1,4 @@
-Au feu vert : A : je passe sans ralentir. B : je ralentis et je m'arrête. C : je ralentis et je passe.
+Au feu vert :
+A. Je passe sans ralentir
+B. Je ralentis et je m'arrête
+C. Je ralentis et je passe

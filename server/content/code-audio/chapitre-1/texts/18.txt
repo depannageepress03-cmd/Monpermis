@@ -1,1 +1,5 @@
-Commandique le panneau à 19. A, présence de pierre-tours sur la chaussée. B, risque de chute de pierre sur la chaussée. C, chute de grêle. D, chute de neige.
+Que m'indique le panneau A19 ?
+A. Présence de pierres tombent sur la chaussée
+B. Risque de chute de pierres sur la chaussée
+C. Chute de grêle
+D. Chute de neige

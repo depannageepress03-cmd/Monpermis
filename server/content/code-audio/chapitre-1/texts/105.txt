@@ -1,1 +1,5 @@
-À la vue du panneau B6a : A : je peux stationner avant ou après le panneau. B : je peux stationner avant le panneau. C : je peux stationner après le panneau. D : je ne peux stationner ni avant, ni après.
+À la vue du panneau B6a.
+A. Je peux stationner avant ou après le panneau
+B. Je peux stationner avant le panneau
+C. Je peux stationner après le panneau
+D. Je ne peux stationner ni avant ni après

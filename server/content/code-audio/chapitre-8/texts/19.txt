@@ -1,1 +1,4 @@
-Avec mon permis de conduire de la catégorie C1, Ah, je peux conduire un quart de 50 places, B, je peux conduire un véhicule de 36 tonnes, chargement compris, C, je peux conduire un véhicule de 7 tonnes, chargement compris.
+Avec mon permis de conduire de la catégorie C1 :
+A. Je peux conduire un car de cinquante places
+B. Je peux conduire un véhicule de trente-six tonnes, chargement compris
+C. Je peux conduire un véhicule de sept tonnes, chargement compris

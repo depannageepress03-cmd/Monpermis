@@ -1,1 +1,5 @@
-Sur les lignes, assurer à peu les ébrares. Ah, je peux stationner, bé, je peux circuler, c'est, je peux m'arrêter, bé, je ne peux ni stationner ni circuler, ni m'arrêter.
+Sur les lignes hachurées appelées zébra.
+A. Je peux stationner
+B. Je peux circuler
+C. Je peux m'arrêter
+D. Je ne peux ni stationner, ni circuler, ni m'arrêter

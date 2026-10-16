@@ -219,9 +219,9 @@ const QUESTIONS_DATA = [
   {
     prompt: 'Sur route, lorsque l\'accotement de droite n\'est pas praticable, je peux stationner :',
     answers: [
-      { label: 'A', text: 'Sur la voie de droite.', correct: false },
+      { label: 'A', text: 'Sur la voie de droite.', correct: true },
       { label: 'B', text: 'Sur l\'accotement de gauche en agglomération.', correct: false },
-      { label: 'C', text: 'Sur l\'accotement de gauche.', correct: true },
+      { label: 'C', text: 'Sur l\'accotement de gauche.', correct: false },
     ],
   },
   {
@@ -302,7 +302,6 @@ const QUESTIONS_DATA = [
     answers: [
       { label: 'A', text: 'La sécurité.', correct: true },
       { label: 'B', text: 'La fluidité de la circulation.', correct: true },
-      { label: 'C', text: 'A et B.', correct: true },
     ],
   },
   {

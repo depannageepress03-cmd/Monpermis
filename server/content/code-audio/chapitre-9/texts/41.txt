@@ -1,6 +1,5 @@
 J'utilise les feux de détresse d'un véhicule de transport en commun d'enfants :
-
-A. Pour signaler la présence à bord des enfants en fait
+A. Pour signaler la présence à bord des enfants
 B. Pour le transport d'enfants en excursion
 C. Lors de l'arrêt du véhicule
 D. Lors de la montée et de la descente des enfants

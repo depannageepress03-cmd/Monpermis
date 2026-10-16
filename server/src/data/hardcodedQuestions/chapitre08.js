@@ -62,7 +62,7 @@ function question(order, letterOptions, correctLetters) {
  * 41 questions — doublons / fragments OCR retirés.
  */
 export const CHAPITRE_08_QUESTIONS = [
-  question(1, ['A', 'B', 'C', 'D'], ['B']),
+  question(1, ['A', 'B', 'C', 'D'], ['D']),
   question(2, ['A', 'B', 'C'], ['B']),
   question(3, ['A', 'B', 'C', 'D'], ['D']),
   question(4, ['A', 'B', 'C', 'D'], ['C']),
@@ -79,8 +79,8 @@ export const CHAPITRE_08_QUESTIONS = [
   question(15, ['A', 'B', 'C'], ['A']),
   question(16, ['A', 'B', 'C'], ['A']),
   question(17, ['A', 'B', 'C'], ['B']),
-  question(18, ['A', 'B', 'C'], ['B', 'C']),
-  question(19, ['A', 'B', 'C'], ['C']),
+  question(18, ['A', 'B', 'C'], ['B']),
+  question(19, ['A', 'B', 'C'], ['B']),
   question(20, ['A', 'B', 'C'], ['B', 'C']),
   question(21, ['A', 'B', 'C', 'D'], ['B']),
   question(22, ['A', 'B', 'C'], ['C']),

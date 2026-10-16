@@ -1,5 +1,5 @@
 Le panneau A25 signifie :
-A. Carrefour à sens giratoire.
-B. Terre-plein à contourner par la droite.
-C. Céder le passage aux usagers venant de gauche.
-D. Céder le passage aux usagers venant de droite.
+A. Carrefour à sens giratoire
+B. Terre-plein à contourner par la droite
+C. Cédez le passage aux usagers venant de gauche
+D. Cédez le passage aux usagers venant de droite

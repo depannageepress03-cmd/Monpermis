@@ -1,6 +1,5 @@
-Agents à contacter en rase campagne :
-
-A. Sapeurs-pompiers
-B. Policiers
-C. Douaniers
-D. Gendarmes
+Agent à contacter en rase campagne :
+A. Sapeur-pompier
+B. Policier
+C. Douanier
+D. Gendarme

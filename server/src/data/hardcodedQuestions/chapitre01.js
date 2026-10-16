@@ -25,7 +25,7 @@ function imageUrl(n) {
 }
 
 /** Images disponibles (N.png = question N). */
-const QUESTIONS_WITH_IMAGES = new Set([3, 4, 6, 7, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 22, 33, 36, 44, 45, 46, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 63, 64, 66, 68, 70, 71, 72, 73, 74, 76, 77, 78, 80, 81, 96, 97, 98, 99, 100, 101, 102, 104, 106])
+const QUESTIONS_WITH_IMAGES = new Set([3, 4, 6, 7, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 22, 25, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 40, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 96, 97, 98, 99, 100, 101, 102, 104, 106])
 
 function answers(questionIndex, letters, correctLetters) {
   const correct = new Set(correctLetters.map((l) => l.toUpperCase()))
@@ -93,8 +93,8 @@ export const CHAPITRE_01_QUESTIONS = [
   question(28, ['A', 'B', 'C'], ['B']),
   question(29, ['A', 'B', 'C', 'D'], ['D']),
   question(30, ['A', 'B', 'C'], ['C']),
-  question(31, ['A', 'B', 'C'], ['B']),
-  question(32, ['A', 'B', 'C'], ['A']),
+  question(31, ['A', 'B', 'C'], ['C']),
+  question(32, ['A', 'B', 'C'], ['C']),
   question(33, ['A', 'B', 'C'], ['A']),
   question(34, ['A', 'B', 'C'], ['B']),
   question(35, ['A', 'B', 'C'], ['C']),
@@ -108,12 +108,12 @@ export const CHAPITRE_01_QUESTIONS = [
   question(43, ['A', 'B', 'C', 'D'], ['D']),
   question(44, ['A', 'B', 'C', 'D'], ['A']),
   question(45, ['A', 'B', 'C'], ['C']),
-  question(46, ['A', 'B', 'C'], ['B']),
+  question(46, ['A', 'B', 'C'], ['C']),
   question(47, ['A', 'B', 'C'], ['C']),
   question(48, ['A', 'B', 'C'], ['C']),
   question(49, ['A', 'B', 'C'], ['B']),
   question(50, ['A', 'B', 'C'], ['A']),
-  question(51, ['A', 'B', 'C'], ['A']),
+  question(51, ['A', 'B', 'C'], ['C']),
   question(52, ['A', 'B', 'C'], ['C']),
   question(53, ['A', 'B', 'C'], ['B']),
   question(54, ['A', 'B', 'C', 'D'], ['A']),
@@ -156,7 +156,7 @@ export const CHAPITRE_01_QUESTIONS = [
   question(91, ['A', 'B', 'C', 'D'], ['C']),
   question(92, ['A', 'B', 'C', 'D'], ['B']),
   question(93, ['A', 'B', 'C', 'D'], ['D']),
-  question(94, ['A', 'B', 'C'], ['C']),
+  question(94, ['A', 'B', 'C'], ['B', 'C']),
   question(95, ['A', 'B', 'C', 'D'], ['C']),
   question(96, ['A', 'B', 'C'], ['A']),
   question(97, ['A', 'B', 'C'], ['C']),

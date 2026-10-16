@@ -1,1 +1,4 @@
-La signalisation horizontale est A, l'ensemble des règles applicables en agglomération, B, l'ensemble des signes des agents de sécurité, C, l'ensemble des marques peintes sur la chaussée.
+La signalisation horizontale est :
+A. L'ensemble des règles applicables en agglomération
+B. L'ensemble des signes des agents de sécurité
+C. L'ensemble des marques peintes sur la chaussée

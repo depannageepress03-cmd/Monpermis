@@ -1,6 +1,5 @@
 La portée minimale des feux doit être de :
-
-A. 30 mètres pour les feux de croisement
-B. 45 mètres pour les feux de croisement
-C. 100 mètres pour les feux de route
-D. 150 mètres pour les feux de route
+A. Trente mètres pour les feux de croisement
+B. Quarante-cinq mètres pour les feux de croisement
+C. Cent mètres pour les feux de route
+D. Cent cinquante mètres pour les feux de route

@@ -1,1 +1,4 @@
-Quelle longueur maximale peut atteindre le portafot arrière d'un véhicule, poids lourds ou de transports en commun, A, 2 m, B, 3 m 50, C, 5 m.
+Quelle longueur maximale peut atteindre le porte-à-faux arrière d'un véhicule poids lourd ou de transport en commun ?
+A. Deux mètres
+B. Trois mètres cinquante
+C. Cinq mètres

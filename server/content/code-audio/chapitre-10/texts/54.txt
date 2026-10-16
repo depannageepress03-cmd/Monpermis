@@ -1,4 +1,3 @@
 Pour que le moteur entraîne les roues alors qu'une vitesse est enclenchée, il faut :
-
 A. Débrayer
 B. Embrayer

@@ -1,4 +1,4 @@
 La ligne discontinue blanche centrale :
-A. Interdit la circulation à droite.
-B. Est réservée pour les bus.
-C. Autorise le dépassement.
+A. Interdit la circulation à droite
+B. Est réservée pour l'arrêt des bus
+C. Autorise le dépassement

@@ -1,1 +1,5 @@
-Le port de casque est obligatoire, a, seulement un race campagne ou la grande vitesse est possible, b, seulement en ville à cause du grand nombre de véhicules, c, seulement sur les voies pavées ou bitumées, des, rien de tout ce qui précède.
+Le port de casque est obligatoire.
+A. Seulement en rase campagne où la grande vitesse est possible
+B. Seulement en ville à cause du grand nombre de véhicules
+C. Seulement sur les voies pavées ou bitumées
+D. Rien de tout ce qui précède

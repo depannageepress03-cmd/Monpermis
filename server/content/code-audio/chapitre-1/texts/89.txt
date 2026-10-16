@@ -1,1 +1,4 @@
-Au feu tricolore fonctionnant normalement et muni de panneaux : A : je me conforme au panneau. B : je passe librement. C : je me conforme au feu.
+Aux feux tricolores fonctionnant normalement et munis de panneaux.
+A. Je me conforme au panneau
+B. Je passe librement
+C. Je me conforme au feu

@@ -1,3 +1,3 @@
 À cette intersection I8, quel doit être l'ordre de passage des véhicules ?
-A. 1) Les véhicules jaunes et bleus passent. 2) Le véhicule rouge passe. 3) La moto passe après.
-B. 1) Les véhicules jaunes, bleus et la moto passent simultanément. 2) Le véhicule rouge passe après.
+A. Un, les véhicules jaunes et bleus passent; deux, le véhicule rouge passe; trois, la moto passe après
+B. Un, les véhicules jaunes, bleus et la moto passant simultanément; deux, le véhicule rouge passe après

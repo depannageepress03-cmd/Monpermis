@@ -42,6 +42,9 @@ const practiceExamAttemptSchema = new mongoose.Schema(
     total: { type: Number, default: PRACTICE_EXAM_SIZE },
     passed: { type: Boolean, default: false },
     completedAt: { type: Date, default: null },
+    /** Ids hc-ch15→19 alignés sur le vrai chapitre (voir migrateShiftedHardcodedIds). */
+    // Pas de default : Mongoose l’appliquerait aux anciens documents chargés.
+    hcIdsV2: { type: Boolean },
   },
   { timestamps: true },
 )

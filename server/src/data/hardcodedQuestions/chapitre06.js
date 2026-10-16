@@ -73,7 +73,7 @@ export const CHAPITRE_06_QUESTIONS = [
   question(11, ['A', 'B', 'C', 'D'], ['A', 'B', 'C', 'D']),
   question(12, ['A', 'B', 'C', 'D'], ['A', 'C', 'D']),
   question(13, ['A', 'B', 'C', 'D'], ['A', 'C']),
-  question(14, ['A', 'B', 'C', 'D'], ['A', 'B', 'C', 'D']),
+  question(14, ['A', 'B', 'C', 'D'], ['A', 'C', 'D']),
   question(15, ['A', 'B', 'C'], ['B']),
   question(16, ['A', 'B', 'C'], ['C']),
   question(17, ['A', 'B'], ['B']),

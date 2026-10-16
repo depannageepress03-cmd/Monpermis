@@ -126,6 +126,22 @@ import img15_2 from '../../assets/code-images/chapitre-15/2.png?url'
 import img15_3 from '../../assets/code-images/chapitre-15/3.png?url'
 import img15_8 from '../../assets/code-images/chapitre-15/8.png?url'
 import img17_1 from '../../assets/code-images/chapitre-17/1.png?url'
+import img1_25 from '../../assets/code-images/chapitre-1/25.png?url'
+import img1_29 from '../../assets/code-images/chapitre-1/29.png?url'
+import img1_30 from '../../assets/code-images/chapitre-1/30.png?url'
+import img1_31 from '../../assets/code-images/chapitre-1/31.png?url'
+import img1_32 from '../../assets/code-images/chapitre-1/32.png?url'
+import img1_34 from '../../assets/code-images/chapitre-1/34.png?url'
+import img1_35 from '../../assets/code-images/chapitre-1/35.png?url'
+import img1_37 from '../../assets/code-images/chapitre-1/37.png?url'
+import img1_38 from '../../assets/code-images/chapitre-1/38.png?url'
+import img1_40 from '../../assets/code-images/chapitre-1/40.png?url'
+import img1_47 from '../../assets/code-images/chapitre-1/47.png?url'
+import img1_62 from '../../assets/code-images/chapitre-1/62.png?url'
+import img1_67 from '../../assets/code-images/chapitre-1/67.png?url'
+import img1_69 from '../../assets/code-images/chapitre-1/69.png?url'
+import img1_75 from '../../assets/code-images/chapitre-1/75.png?url'
+import img1_79 from '../../assets/code-images/chapitre-1/79.png?url'
 
 const MAP: Record<number, Record<number, string>> = {
   1: {
@@ -187,6 +203,22 @@ const MAP: Record<number, Record<number, string>> = {
     102: img1_102,
     104: img1_104,
     106: img1_106,
+    25: img1_25,
+    29: img1_29,
+    30: img1_30,
+    31: img1_31,
+    32: img1_32,
+    34: img1_34,
+    35: img1_35,
+    37: img1_37,
+    38: img1_38,
+    40: img1_40,
+    47: img1_47,
+    62: img1_62,
+    67: img1_67,
+    69: img1_69,
+    75: img1_75,
+    79: img1_79,
   },
   2: {
     13: img2_13,

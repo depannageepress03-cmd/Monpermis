@@ -1,1 +1,4 @@
-Le port de casque protège contre, A, le soleil est la plu, B, la poussière, C, le traumatisme cragné.
+Le port de casque protège contre :
+A. Le soleil et la pluie
+B. La poussière
+C. Le traumatisme crânien

@@ -1,5 +1,4 @@
 Quelle est la profondeur minimale des rainures principales d'un pneumatique de poids lourd ?
-
-A. 0,5 mm
-B. 1 mm
-C. 1,5 mm
+A. Zéro virgule cinq millimètre
+B. Un millimètre
+C. Un virgule cinq millimètre

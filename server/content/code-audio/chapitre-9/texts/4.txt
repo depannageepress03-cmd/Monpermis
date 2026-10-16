@@ -1,6 +1,5 @@
 Les feux d'encombrement :
-
 A. Sont toujours de couleur jaune
 B. Sont de couleur blanche à l'avant
 C. Sont de couleur rouge à l'arrière
-D. Éclairent à 40 mètres
+D. Éclairent à quarante mètres

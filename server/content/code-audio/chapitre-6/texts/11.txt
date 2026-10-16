@@ -1,1 +1,5 @@
-En langageant les véhicules en stationnement, à quoi doit-on faire attention ? A, au véhicule qui pourrait surgir, B, au pied temps qui pourrait surgir, C, au portière qui pourrait s'ouvrir, D, au véhicule qui pourrait quitter leur stationnement.
+En longeant les véhicules en stationnement, à quoi doit-on faire attention ?
+A. Aux véhicules qui pourraient surgir
+B. Aux piétons qui pourraient surgir
+C. Aux portières qui pourraient s'ouvrir
+D. Aux véhicules qui pourraient quitter leur stationnement

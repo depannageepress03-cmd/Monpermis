@@ -1,4 +1,4 @@
 Quel est l'âge minimal du candidat au permis de conduire catégorie C ?
-A. 17 ans.
-B. 18 ans.
-C. 21 ans.
+A. 17 ans
+B. 18 ans
+C. 21 ans
