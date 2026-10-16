@@ -15,7 +15,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { FormEvent, useCallback, useEffect, useState } from 'react'
+import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
 import {
   BookOpen,
   ChevronDown,
@@ -26,6 +26,7 @@ import {
   Image,
   Pencil,
   Plus,
+  Search,
   Trash2,
   Type,
 } from 'lucide-react'
@@ -48,12 +49,12 @@ import {
   uploadConduiteImage,
   uploadConduiteVideo,
 } from '../../api/conduite'
-import { AdminSectionHeader } from '../../components/AdminSectionHeader'
+import { ConduiteSection } from '../../components/model/ConduiteSection'
 import { MediaPreview } from '../../components/MediaPreview'
 import { PublishSwitch } from '../../components/PublishSwitch'
 import { RichTextEditor } from '../../components/RichTextEditor'
 import { getAdminToken, isAuthError } from '../../context/AdminAuthContext'
-import { CmsWorkspace, EmptyState, SkeletonBlock } from '../../ui'
+import { EmptyState, SkeletonBlock } from '../../ui'
 import type { Chapter, ContentModule, Course, MediaType } from '../../types/revision'
 import { describeModuleSize } from '../../utils/moduleSize'
 import { stripHtml } from '../../utils/richText'
@@ -74,7 +75,7 @@ function DragHandle({ attributes, listeners }: DragHandleProps) {
   return (
     <button
       type="button"
-      className="drag-handle"
+      className="cx-drag"
       aria-label="Réordonner"
       {...attributes}
       {...listeners}
@@ -602,48 +603,46 @@ function CoursePanel({ chapterId, course, onUpdated }: CoursePanelProps) {
   }
 
   return (
-    <div ref={setNodeRef} style={style} className={`revision-course${isDragging ? ' is-dragging' : ''}`}>
-      <div className="revision-course-header">
+    <div ref={setNodeRef} style={style} className={`cx-notion${isDragging ? ' cx-dragging' : ''}`}>
+      <div className="cx-notion-head">
         <DragHandle attributes={attributes} listeners={listeners} />
-        <button
-          type="button"
-          className="revision-course-toggle"
-          onClick={() => setExpanded((v) => !v)}
-        >
-          {expanded ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
-          <BookOpen size={18} />
-          <span>{course.title}</span>
-            <span className="revision-count">
+        <button type="button" className="cx-notion-toggle" onClick={() => setExpanded((v) => !v)}>
+          <span className="cx-n-ico">
+            <BookOpen aria-hidden />
+          </span>
+          <span>
+            <span className="cx-notion-title">{course.title}</span>
+            <span className="cx-chap-meta">
               {modules.length} contenu{modules.length !== 1 ? 's' : ''}
             </span>
+          </span>
+          {expanded ? <ChevronDown aria-hidden /> : <ChevronRight aria-hidden />}
         </button>
-        <div className="revision-item-actions">
+        <div className="cx-notion-actions">
+          <span className={`cx-chip ${course.published ? 'cx-green' : 'cx-amber'}`}>
+            {course.published ? 'Publié' : 'Brouillon'}
+          </span>
           <PublishSwitch checked={course.published} onChange={handlePublishToggle} disabled={busy} />
           <button
             type="button"
-            className="btn-text-danger"
+            className="cx-btn cx-btn-icon cx-btn-danger"
             onClick={handleDeleteCourse}
             aria-label={`Supprimer le cours ${course.title}`}
             title="Supprimer le cours"
           >
-            <Trash2 size={16} />
-            Supprimer
+            <Trash2 aria-hidden />
           </button>
         </div>
       </div>
 
       {expanded ? (
-        <div className="revision-course-body">
+        <div className="cx-notion-body">
           {modules.length === 0 ? (
-            <p className="revision-empty">Aucun contenu. Ajoutez une vidéo, une image ou du texte.</p>
+            <p className="cx-empty">Aucun contenu. Ajoutez une vidéo, une image ou du texte.</p>
           ) : (
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragEnd={handleModuleDragEnd}
-            >
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleModuleDragEnd}>
               <SortableContext items={modules.map((item) => item.id)} strategy={verticalListSortingStrategy}>
-                <div className="revision-modules-list">
+                <div className="cx-notions">
                   {modules.map((module) => (
                     <ModuleEditor
                       key={module.id}
@@ -659,14 +658,14 @@ function CoursePanel({ chapterId, course, onUpdated }: CoursePanelProps) {
             </DndContext>
           )}
 
-          <div className="revision-actions revision-actions-footer">
-            <button type="button" className="btn-outline-sm" onClick={handleAddModule}>
-              <Plus size={16} />
+          <div>
+            <button type="button" className="cx-btn" onClick={handleAddModule}>
+              <Plus aria-hidden />
               Ajouter un contenu
             </button>
           </div>
 
-          {error ? <p className="form-error">{error}</p> : null}
+          {error ? <p className="cx-note cx-note-err">{error}</p> : null}
         </div>
       ) : null}
     </div>
@@ -798,94 +797,77 @@ function ChapterPanel({
   }
 
   return (
-    <div className="revision-chapter selected revision-chapter-workspace">
-      <div className="revision-chapter-header">
-        <div className="revision-chapter-heading">
-          <p className="revision-chapter-kicker">Chapitre sélectionné</p>
-          <div className="revision-chapter-title">
-            {chapter.name}
-            <span className="revision-count">{courses.length} cours</span>
-            {!chapter.published ? <span className="revision-tag">Brouillon</span> : null}
-          </div>
+    <section className="cx-panel">
+      <div className="cx-detail-head">
+        <span className="cx-chap-num">{chapter.order ?? '·'}</span>
+        <div className="cx-detail-title">
+          <small>Chapitre sélectionné</small>
+          <h2>{chapter.name}</h2>
         </div>
-        <div className="revision-item-actions">
+        <span className="cx-chip cx-blue">
+          {courses.length} cours
+        </span>
+        <div className="cx-pub">
+          <span className={`cx-chip ${chapter.published ? 'cx-green' : 'cx-amber'}`}>
+            {chapter.published ? 'Publié' : 'Brouillon'}
+          </span>
           <PublishSwitch checked={chapter.published} onChange={handlePublishToggle} disabled={busy} />
           <button
             type="button"
-            className="btn-icon-muted"
+            className="cx-btn cx-btn-icon"
             onClick={handleDuplicate}
             disabled={busy}
             aria-label="Dupliquer le chapitre"
             title="Dupliquer"
           >
-            <Copy size={16} />
+            <Copy aria-hidden />
           </button>
           <button
             type="button"
-            className="btn-icon-danger"
+            className="cx-btn cx-btn-icon cx-btn-danger"
             onClick={handleDeleteChapter}
             aria-label="Supprimer le chapitre"
+            title="Supprimer"
           >
-            <Trash2 size={16} />
+            <Trash2 aria-hidden />
           </button>
         </div>
       </div>
 
-      <div className="revision-chapter-body">
-        {success ? (
-          <p className="form-success" role="status">
-            {success}
-          </p>
-        ) : null}
+      {success ? <p className="cx-note cx-note-ok" role="status" style={{ marginTop: '1rem' }}>{success}</p> : null}
 
-        <div className="revision-courses-stack">
-          {courses.length === 0 ? (
-            <p className="revision-empty">Aucun cours dans ce chapitre.</p>
-          ) : (
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragEnd={handleCourseDragEnd}
-            >
-              <SortableContext
-                items={courses.map((item) => item.id)}
-                strategy={verticalListSortingStrategy}
-              >
-                {courses.map((course) => (
-                  <CoursePanel
-                    key={course.id}
-                    chapterId={chapter.id}
-                    course={course}
-                    onUpdated={onUpdated}
-                  />
-                ))}
-              </SortableContext>
-            </DndContext>
-          )}
+      <form onSubmit={handleAddCourse} className="cx-field-row" style={{ margin: '1.1rem 0' }}>
+        <input
+          className="cx-input"
+          type="text"
+          value={courseTitle}
+          onChange={(e) => setCourseTitle(e.target.value)}
+          placeholder={`Titre du nouveau cours dans ${chapter.name}`}
+          required
+          minLength={2}
+        />
+        <button type="submit" className="cx-btn cx-btn-fill" disabled={addingCourse}>
+          <Plus aria-hidden />
+          {addingCourse ? 'Ajout…' : 'Ajouter un cours'}
+        </button>
+      </form>
+
+      {courses.length === 0 ? (
+        <EmptyState title="Aucun cours dans ce chapitre" description="Ajoutez un premier cours, puis ses contenus." />
+      ) : (
+        <div className="cx-notions">
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleCourseDragEnd}>
+            <SortableContext items={courses.map((item) => item.id)} strategy={verticalListSortingStrategy}>
+              {courses.map((course) => (
+                <CoursePanel key={course.id} chapterId={chapter.id} course={course} onUpdated={onUpdated} />
+              ))}
+            </SortableContext>
+          </DndContext>
         </div>
+      )}
 
-        <form onSubmit={handleAddCourse} className="revision-inline-form revision-add-course">
-          <input
-            type="text"
-            value={courseTitle}
-            onChange={(e) => setCourseTitle(e.target.value)}
-            placeholder="Titre du nouveau cours"
-            required
-            minLength={2}
-          />
-          <button
-            type="submit"
-            className="btn-primary btn-primary-inline"
-            disabled={addingCourse}
-          >
-            <Plus size={16} />
-            {addingCourse ? 'Ajout…' : 'Ajouter un cours'}
-          </button>
-        </form>
-
-        {error ? <p className="form-error">{error}</p> : null}
-      </div>
-    </div>
+      {error ? <p className="cx-note cx-note-err" style={{ marginTop: '1rem' }}>{error}</p> : null}
+    </section>
   )
 }
 
@@ -912,16 +894,28 @@ function ChapterRailItem({
     <div
       ref={setNodeRef}
       style={style}
-      className={`revision-rail-item${active ? ' active' : ''}${isDragging ? ' is-dragging' : ''}`}
+      className={`cx-chap${active ? ' cx-sel' : ''}${isDragging ? ' cx-dragging' : ''}`}
+      onClick={onSelect}
+      role="button"
+      tabIndex={0}
+      aria-current={active ? 'true' : undefined}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          onSelect()
+        }
+      }}
     >
       <DragHandle attributes={attributes} listeners={listeners} />
-      <button type="button" className="revision-rail-button" onClick={onSelect}>
-        <span className="revision-rail-name">{chapter.name}</span>
-        <span className="revision-rail-meta">
+      <span className="cx-chap-num">{chapter.order ?? '·'}</span>
+      <span>
+        <span className="cx-chap-name">{chapter.name}</span>
+        <span className="cx-chap-meta">
           {chapter.courses.length} cours
           {!chapter.published ? ' · Brouillon' : ''}
         </span>
-      </button>
+      </span>
+      <span className={`cx-chap-dot${chapter.published ? ' cx-pub' : ''}`} aria-hidden />
     </div>
   )
 }
@@ -1018,95 +1012,93 @@ export function LeconsConduitePage() {
     }
   }
 
+  const [query, setQuery] = useState('')
+  const shown = useMemo(() => {
+    const needle = query.trim().toLowerCase()
+    return needle ? chapters.filter((chapter) => chapter.name.toLowerCase().includes(needle)) : chapters
+  }, [chapters, query])
+  const publishedCount = chapters.filter((chapter) => chapter.published).length
+
   return (
-    <div className="revision-shell">
-      <header className="revision-page-header">
-        <AdminSectionHeader
-          backTo="/conduite"
-          backLabel="Conduite"
-          kicker="Formation"
-          title="Leçons de conduite"
-          subtitle="Chapitre à gauche, cours et contenus à droite."
-        />
-      </header>
+    <ConduiteSection
+      kicker="Formation"
+      title="Leçons de conduite"
+      subtitle={`${chapters.length} chapitre${chapters.length > 1 ? 's' : ''} · ${publishedCount} publié${publishedCount > 1 ? 's' : ''}. Choisissez un chapitre, puis éditez ses cours et contenus.`}
+    >
+      {error ? <p className="cx-note cx-note-err" role="alert">{error}</p> : null}
 
-      <form onSubmit={handleAddChapter} className="revision-inline-form revision-add-chapter">
-        <input
-          type="text"
-          value={chapterName}
-          onChange={(e) => setChapterName(e.target.value)}
-          placeholder="Nom du nouveau chapitre de conduite"
-          required
-          minLength={2}
-        />
-        <button type="submit" className="btn-primary btn-primary-inline" disabled={addingChapter}>
-          <Plus size={16} />
-          {addingChapter ? 'Création…' : 'Ajouter un chapitre'}
-        </button>
-      </form>
+      <section className="cx-panel">
+        <form onSubmit={handleAddChapter} className="cx-field-row">
+          <input
+            className="cx-input"
+            type="text"
+            value={chapterName}
+            onChange={(e) => setChapterName(e.target.value)}
+            placeholder="Nom du nouveau chapitre de conduite"
+            required
+            minLength={2}
+          />
+          <button type="submit" className="cx-btn cx-btn-fill" disabled={addingChapter}>
+            <Plus aria-hidden />
+            {addingChapter ? 'Création…' : 'Ajouter un chapitre'}
+          </button>
+        </form>
+      </section>
 
-      {loading ? (
-        <div style={{ padding: 8 }}>
-          <SkeletonBlock rows={5} />
-        </div>
-      ) : null}
-      {error ? <p className="form-error" role="alert">{error}</p> : null}
+      {loading ? <SkeletonBlock rows={5} /> : null}
 
       {!loading && chapters.length === 0 ? (
-        <EmptyState
-          title="Aucun chapitre"
-          description="Commencez par ajouter votre premier chapitre de conduite."
-        />
+        <EmptyState title="Aucun chapitre" description="Commencez par ajouter votre premier chapitre de conduite." />
       ) : null}
 
       {!loading && chapters.length > 0 ? (
-        <CmsWorkspace
-          tree={
-            <>
-              <div className="revision-rail-header">
-                <h3>Chapitres</h3>
-                <span>{chapters.length}</span>
+        <div className="cx-split">
+          <aside className="cx-panel cx-sticky" aria-label="Chapitres">
+            <div className="cx-panel-head cx-ph cx-ph-plain">
+              <div className="cx-ph-txt">
+                <h2 className="cx-panel-title">Chapitres</h2>
+                <p className="cx-muted">Glissez pour réordonner</p>
               </div>
-              <DndContext
-                sensors={sensors}
-                collisionDetection={closestCenter}
-                onDragEnd={handleChapterDragEnd}
-              >
-                <SortableContext
-                  items={chapters.map((item) => item.id)}
-                  strategy={verticalListSortingStrategy}
-                >
-                  <div className="revision-rail-list">
-                    {chapters.map((chapter) => (
-                      <ChapterRailItem
-                        key={chapter.id}
-                        chapter={chapter}
-                        active={chapter.id === selectedChapterId}
-                        onSelect={() => handleSelectChapter(chapter.id)}
-                      />
-                    ))}
-                  </div>
-                </SortableContext>
-              </DndContext>
-            </>
-          }
-          editor={
-            selectedChapter ? (
-              <ChapterPanel
-                key={selectedChapter.id}
-                chapter={selectedChapter}
-                onUpdated={() => refresh(selectedChapterId)}
-                onDuplicated={(chapterId) => refresh(chapterId)}
+            </div>
+            <label className="cx-search" style={{ margin: '0 0 .8rem' }}>
+              <Search aria-hidden />
+              <input
+                type="search"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Rechercher un chapitre…"
+                aria-label="Rechercher un chapitre"
               />
-            ) : (
-              <EmptyState
-                title="Aucun chapitre sélectionné"
-                description="Sélectionnez un chapitre dans l’arbre pour éditer son contenu."
-              />
-            )
-          }
-        />
+            </label>
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleChapterDragEnd}>
+              <SortableContext items={shown.map((item) => item.id)} strategy={verticalListSortingStrategy}>
+                <div className="cx-chap-list">
+                  {shown.map((chapter) => (
+                    <ChapterRailItem
+                      key={chapter.id}
+                      chapter={chapter}
+                      active={chapter.id === selectedChapterId}
+                      onSelect={() => handleSelectChapter(chapter.id)}
+                    />
+                  ))}
+                  {shown.length === 0 ? <p className="cx-empty">Aucun chapitre ne correspond.</p> : null}
+                </div>
+              </SortableContext>
+            </DndContext>
+          </aside>
+
+          {selectedChapter ? (
+            <ChapterPanel
+              key={selectedChapter.id}
+              chapter={selectedChapter}
+              onUpdated={() => refresh(selectedChapterId)}
+              onDuplicated={(chapterId) => refresh(chapterId)}
+            />
+          ) : (
+            <EmptyState title="Aucun chapitre sélectionné" description="Sélectionnez un chapitre pour éditer son contenu." />
+          )}
+        </div>
       ) : null}
-    </div>
+    </ConduiteSection>
   )
 }

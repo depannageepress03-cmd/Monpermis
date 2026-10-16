@@ -1,6 +1,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { CalendarDays, Clock, Eye, Filter, Radar, RefreshCw, Search, Timer } from 'lucide-react'
+import {
+  Activity,
+  CalendarDays,
+  Clock,
+  Eye,
+  Filter,
+  Radar,
+  RefreshCw,
+  Search,
+  Timer,
+  Trophy,
+  Users,
+} from 'lucide-react'
 import {
   fetchTrackAttemptTimeline,
   fetchTrackEvents,
@@ -12,9 +24,10 @@ import {
   type TrackExamSession,
   type TrackLearner,
 } from '../../api/tracking'
-import { StatusBadge } from '../../components/StatusBadge'
+import { PageSection } from '../../components/model/PageSection'
+import { nf } from '../../components/model/ModelCharts'
 import { getAdminToken, isAuthError } from '../../context/AdminAuthContext'
-import { Button, Drawer, EmptyState, SkeletonBlock } from '../../ui'
+import { Drawer, EmptyState, SkeletonBlock } from '../../ui'
 
 const EVENT_LABELS: Record<string, string> = {
   app_open: 'Ouverture de l’app',
@@ -271,373 +284,297 @@ export function LearnerTrackingPage() {
   }, [timeline])
 
   const examStats = stats?.today?.exams
+  const passRate =
+    examStats?.passRate !== null && examStats?.passRate !== undefined ? `${examStats.passRate}%` : '—'
+
+  const outcomeChip = (e: TrackExamSession) =>
+    e.completed ? (
+      <span className={`cx-chip ${e.passed ? 'cx-green' : 'cx-red'}`}>{e.passed ? 'Réussi' : 'Raté'}</span>
+    ) : (
+      <span className="cx-chip cx-amber">En cours</span>
+    )
 
   return (
-    <div className="tracking-page">
-      <header className="admin-module-header">
-        <div>
-          <p className="admin-module-kicker">Traçage APK</p>
-          <h1>Activité des apprenants</h1>
-          <p className="admin-module-sub">
-            Faits et gestes sur l’application mobile, avec un focus sur les examens blancs et
-            examens blancs.
-          </p>
-        </div>
-        <Button variant="primary" onClick={() => void loadData()}>
-          <RefreshCw size={15} /> Actualiser
-        </Button>
-      </header>
-
+    <PageSection
+      kicker="Traçage APK"
+      title="Activité des apprenants"
+      subtitle="Faits et gestes sur l’application mobile, avec un focus sur les examens blancs. Mise à jour automatique toutes les 8 secondes."
+      actions={
+        <button type="button" className="cx-refresh" onClick={() => void loadData()}>
+          <RefreshCw aria-hidden />
+          Actualiser
+        </button>
+      }
+    >
       {statsLoading ? (
-        <SkeletonBlock rows={1} />
+        <SkeletonBlock rows={2} />
       ) : stats ? (
-        <div className="users-kpi-row">
-          <div className="users-kpi is-navy">
-            <span className="users-kpi-dot" />
-            <div>
-              <p className="users-kpi-label">Apprenants actifs aujourd’hui</p>
-              <p className="users-kpi-value">{stats.today.activeLearners}</p>
+        <div className="cx-kc-grid">
+          <div className="cx-kc">
+            <span className="cx-kc-ico cx-kc-blue">
+              <Users aria-hidden />
+            </span>
+            <div className="cx-kc-body">
+              <span className="cx-kc-label">Apprenants actifs</span>
+              <span className="cx-kc-value">{nf(stats.today.activeLearners)}</span>
+              <span className="cx-kc-sub">aujourd’hui</span>
             </div>
           </div>
-          <div className="users-kpi is-muted">
-            <span className="users-kpi-dot" />
-            <div>
-              <p className="users-kpi-label">Actions enregistrées aujourd’hui</p>
-              <p className="users-kpi-value">{stats.today.events}</p>
+          <div className="cx-kc">
+            <span className="cx-kc-ico cx-kc-green">
+              <Activity aria-hidden />
+            </span>
+            <div className="cx-kc-body">
+              <span className="cx-kc-label">Actions enregistrées</span>
+              <span className="cx-kc-value">{nf(stats.today.events)}</span>
+              <span className="cx-kc-sub">aujourd’hui</span>
             </div>
           </div>
-          <div className="users-kpi is-success">
-            <span className="users-kpi-dot" />
-            <div>
-              <p className="users-kpi-label">Examens démarrés / terminés</p>
-              <p className="users-kpi-value">
-                {examStats?.started ?? 0}
-                <span className="users-kpi-sub"> / {examStats?.completed ?? 0}</span>
-              </p>
+          <div className="cx-kc">
+            <span className="cx-kc-ico cx-kc-sky">
+              <Eye aria-hidden />
+            </span>
+            <div className="cx-kc-body">
+              <span className="cx-kc-label">Examens démarrés</span>
+              <span className="cx-kc-value">
+                {nf(examStats?.started ?? 0)} <small>/ {nf(examStats?.completed ?? 0)} terminés</small>
+              </span>
+              <span className="cx-kc-sub">durée moyenne {formatDuration(examStats?.avgDurationSeconds)}</span>
             </div>
           </div>
-          <div className="users-kpi is-muted">
-            <span className="users-kpi-dot" />
-            <div>
-              <p className="users-kpi-label">Réussite aujourd’hui</p>
-              <p className="users-kpi-value">
-                {examStats?.passRate !== null && examStats?.passRate !== undefined
-                  ? `${examStats.passRate}%`
-                  : '—'}
-              </p>
-            </div>
-          </div>
-          <div className="users-kpi is-muted">
-            <span className="users-kpi-dot" />
-            <div>
-              <p className="users-kpi-label">Durée moyenne d’examen</p>
-              <p className="users-kpi-value">{formatDuration(examStats?.avgDurationSeconds)}</p>
+          <div className="cx-kc">
+            <span className="cx-kc-ico cx-kc-gold">
+              <Trophy aria-hidden />
+            </span>
+            <div className="cx-kc-body">
+              <span className="cx-kc-label">Réussite</span>
+              <span className="cx-kc-value">{passRate}</span>
+              <span className="cx-kc-sub">examens du jour</span>
             </div>
           </div>
         </div>
       ) : null}
 
-      <div className="tracking-tabs" role="tablist">
-        <button
-          type="button"
-          role="tab"
-          aria-selected={tab === 'exams'}
-          className={`tracking-tab${tab === 'exams' ? ' is-active' : ''}`}
-          onClick={() => setTab('exams')}
-        >
-          <Eye size={15} /> Sessions d’examens
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={tab === 'events'}
-          className={`tracking-tab${tab === 'events' ? ' is-active' : ''}`}
-          onClick={() => setTab('events')}
-        >
-          <Radar size={15} /> Fil des événements
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={tab === 'learners'}
-          className={`tracking-tab${tab === 'learners' ? ' is-active' : ''}`}
-          onClick={() => setTab('learners')}
-        >
-          <Search size={15} /> Apprenants
-        </button>
-      </div>
+      <section className="cx-panel">
+        <div className="cx-toolbar" style={{ marginBottom: '1rem' }}>
+          <div className="cx-tabs" role="tablist">
+            <button type="button" role="tab" aria-selected={tab === 'exams'} className={tab === 'exams' ? 'cx-active' : ''} onClick={() => setTab('exams')}>
+              <Eye aria-hidden /> Sessions d’examens
+            </button>
+            <button type="button" role="tab" aria-selected={tab === 'events'} className={tab === 'events' ? 'cx-active' : ''} onClick={() => setTab('events')}>
+              <Radar aria-hidden /> Fil des événements
+            </button>
+            <button type="button" role="tab" aria-selected={tab === 'learners'} className={tab === 'learners' ? 'cx-active' : ''} onClick={() => setTab('learners')}>
+              <Search aria-hidden /> Apprenants
+            </button>
+          </div>
+        </div>
 
-      {tab !== 'learners' ? (
-        <div className="tracking-filters">
-          <label className="tracking-filter">
-            <span>Apprenant</span>
-            <select value={learnerFilter} onChange={(e) => setLearnerFilter(e.target.value)}>
-              <option value="">Tous les apprenants</option>
-              {learners.map((l) => (
-                <option key={l.userId} value={l.userId}>
-                  {learnerName(l)} {l.phone ? `· ${l.phone}` : ''}
-                </option>
-              ))}
-            </select>
-          </label>
-          {tab === 'exams' ? (
-            <label className="tracking-filter">
-              <span>N° de sujet</span>
-              <input
-                type="number"
-                min={1}
-                placeholder="Tous"
-                value={examNumberFilter}
-                onChange={(e) => setExamNumberFilter(e.target.value)}
-              />
-            </label>
-          ) : (
-            <label className="tracking-filter">
-              <span>Événement</span>
-              <select value={eventFilter} onChange={(e) => setEventFilter(e.target.value)}>
-                <option value="">Tous les événements</option>
-                {Object.entries(EVENT_LABELS).map(([key, label]) => (
-                  <option key={key} value={key}>
-                    {label}
+        {tab !== 'learners' ? (
+          <div className="cx-filter-bar" style={{ marginBottom: '1rem' }}>
+            <label>
+              Apprenant
+              <select className="cx-select" value={learnerFilter} onChange={(e) => setLearnerFilter(e.target.value)}>
+                <option value="">Tous les apprenants</option>
+                {learners.map((l) => (
+                  <option key={l.userId} value={l.userId}>
+                    {learnerName(l)} {l.phone ? `· ${l.phone}` : ''}
                   </option>
                 ))}
               </select>
             </label>
-          )}
-          <label className="tracking-filter">
-            <span>Du</span>
-            <input
-              type="date"
-              value={dateFrom}
-              onChange={(e) => setDateFrom(e.target.value)}
-            />
-          </label>
-          <label className="tracking-filter">
-            <span>Au</span>
-            <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
-          </label>
-          <Button variant="primary" onClick={applyFilters} className="tracking-apply">
-            <Filter size={14} /> Filtrer
-          </Button>
-        </div>
-      ) : (
-        <div className="tracking-filters">
-          <label className="tracking-filter tracking-filter-grow">
-            <span>Rechercher un apprenant</span>
-            <input
-              type="search"
-              placeholder="Nom, téléphone, email…"
-              value={learnerSearch}
-              onChange={(e) => setLearnerSearch(e.target.value)}
-            />
-          </label>
-          <Button variant="primary" onClick={applyFilters} className="tracking-apply">
-            <Search size={14} /> Rechercher
-          </Button>
-        </div>
-      )}
+            {tab === 'exams' ? (
+              <label>
+                N° de sujet
+                <input className="cx-input" type="number" min={1} placeholder="Tous" value={examNumberFilter} onChange={(e) => setExamNumberFilter(e.target.value)} />
+              </label>
+            ) : (
+              <label>
+                Événement
+                <select className="cx-select" value={eventFilter} onChange={(e) => setEventFilter(e.target.value)}>
+                  <option value="">Tous les événements</option>
+                  {Object.entries(EVENT_LABELS).map(([key, label]) => (
+                    <option key={key} value={key}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+            <label>
+              Du
+              <input className="cx-input" type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
+            </label>
+            <label>
+              Au
+              <input className="cx-input" type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
+            </label>
+            <button type="button" className="cx-btn cx-btn-fill" onClick={applyFilters}>
+              <Filter aria-hidden /> Filtrer
+            </button>
+          </div>
+        ) : (
+          <div className="cx-filter-bar" style={{ marginBottom: '1rem' }}>
+            <label className="cx-grow">
+              Rechercher un apprenant
+              <input className="cx-input" type="search" placeholder="Nom, téléphone, email…" value={learnerSearch} onChange={(e) => setLearnerSearch(e.target.value)} />
+            </label>
+            <button type="button" className="cx-btn cx-btn-fill" onClick={applyFilters}>
+              <Search aria-hidden /> Rechercher
+            </button>
+          </div>
+        )}
 
-      {error ? <div className="form-error">{error}</div> : null}
+        {error ? <p className="cx-note cx-note-err" role="alert">{error}</p> : null}
 
-      {loading ? (
-        <SkeletonBlock rows={5} />
-      ) : tab === 'exams' ? (
-        <div className="admin-data-table-wrap">
-          {exams.length === 0 ? (
-            <EmptyState
-              title="Aucune session d’examen"
-              description="Les sessions apparaîtront ici dès que des apprenants passeront des examens blancs sur l’APK (version récente)."
-            />
-          ) : (
-            <table className="admin-data-table">
-              <thead>
-                <tr>
-                  <th>Apprenant</th>
-                  <th>Type</th>
-                  <th>Sujet</th>
-                  <th>Début</th>
-                  <th>Durée</th>
-                  <th>Réponses</th>
-                  <th>Zappées</th>
-                  <th>Quitté</th>
-                  <th>Résultat</th>
-                  <th>Statut</th>
-                </tr>
-              </thead>
-              <tbody>
-                {exams.map((e) => (
-                  <tr
-                    key={e.attemptId}
-                    className="tracking-row"
-                    onClick={() => void openTimeline(e)}
-                    title="Voir la chronologie détaillée"
-                  >
-                    <td>
-                      <strong>{learnerName(e)}</strong>
-                      {e.phone ? <span className="muted"> · {e.phone}</span> : null}
-                    </td>
-                    <td className="muted">
-                      {e.examType === 'ecodepermis' ? 'Ancien examen' : 'Blanc'}
-                    </td>
-                    <td>{e.examNumber ?? '—'}</td>
-                    <td className="muted">{formatDateTime(e.startAt)}</td>
-                    <td className="muted">
-                      <Timer size={12} /> {formatDuration(e.durationSeconds)}
-                    </td>
-                    <td>{e.answers}</td>
-                    <td>{e.skips > 0 ? <span className="tracking-warn">{e.skips}</span> : e.skips}</td>
-                    <td>
-                      {e.quits > 0 ? (
-                        <StatusBadge tone="danger">Quitté</StatusBadge>
-                      ) : (
-                        <span className="muted">—</span>
-                      )}
-                    </td>
-                    <td>
-                      {e.completed && e.correct !== null ? (
-                        <strong>
-                          {e.correct}/{e.total ?? 20}
-                        </strong>
-                      ) : (
-                        <span className="muted">—</span>
-                      )}
-                    </td>
-                    <td>
-                      {e.completed ? (
-                        <StatusBadge tone={e.passed ? 'success' : 'danger'}>
-                          {e.passed ? 'Réussi' : 'Raté'}
-                        </StatusBadge>
-                      ) : (
-                        <StatusBadge tone="warning">En cours</StatusBadge>
-                      )}
-                    </td>
+        {loading ? (
+          <SkeletonBlock rows={5} />
+        ) : tab === 'exams' ? (
+          <div className="cx-table-wrap">
+            {exams.length === 0 ? (
+              <EmptyState
+                title="Aucune session d’examen"
+                description="Les sessions apparaîtront ici dès que des apprenants passeront des examens blancs sur l’APK (version récente)."
+              />
+            ) : (
+              <table className="cx-data">
+                <thead>
+                  <tr>
+                    <th>Apprenant</th>
+                    <th>Type</th>
+                    <th>Sujet</th>
+                    <th>Début</th>
+                    <th>Durée</th>
+                    <th>Réponses</th>
+                    <th>Zappées</th>
+                    <th>Quitté</th>
+                    <th>Résultat</th>
+                    <th>Statut</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-          {examsPagination && examsPagination.pages > 1 ? (
-            <PaginationBar pagination={examsPagination} onPage={setPage} />
-          ) : null}
-        </div>
-      ) : tab === 'events' ? (
-        <div className="admin-data-table-wrap">
-          {events.length === 0 ? (
-            <EmptyState
-              title="Aucun événement"
-              description="Aucune action enregistrée avec ces filtres."
-            />
-          ) : (
-            <table className="admin-data-table">
-              <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>Événement</th>
-                  <th>Contexte</th>
-                  <th>Détail</th>
-                  <th>App</th>
-                </tr>
-              </thead>
-              <tbody>
-                {events.map((ev) => (
-                  <tr key={ev.id}>
-                    <td className="muted">{formatDateTime(ev.createdAt)}</td>
-                    <td>
-                      <span
-                        className={`tracking-event tracking-event-${EXAM_GROUP_EVENTS.has(ev.event) ? 'exam' : 'other'}`}
-                      >
-                        {eventLabel(ev.event)}
-                      </span>
-                    </td>
-                    <td className="muted">
-                      <EventContext event={ev} />
-                    </td>
-                    <td className="muted">
-                      <EventDetail event={ev} />
-                    </td>
-                    <td className="muted">
-                      {ev.appVersion}
-                      {ev.platform ? ` · ${ev.platform}` : ''}
-                    </td>
+                </thead>
+                <tbody>
+                  {exams.map((e) => (
+                    <tr key={e.attemptId} className="cx-click" onClick={() => void openTimeline(e)} title="Voir la chronologie détaillée">
+                      <td>
+                        <strong>{learnerName(e)}</strong>
+                        {e.phone ? <span className="cx-dim"> · {e.phone}</span> : null}
+                      </td>
+                      <td className="cx-dim">{e.examType === 'ecodepermis' ? 'Ancien examen' : 'Blanc'}</td>
+                      <td>{e.examNumber ?? '—'}</td>
+                      <td className="cx-dim">{formatDateTime(e.startAt)}</td>
+                      <td className="cx-dim">
+                        <Timer className="cx-ico-inline" aria-hidden /> {formatDuration(e.durationSeconds)}
+                      </td>
+                      <td>{e.answers}</td>
+                      <td>{e.skips > 0 ? <span className="cx-warn-n">{e.skips}</span> : e.skips}</td>
+                      <td>{e.quits > 0 ? <span className="cx-chip cx-red">Quitté</span> : <span className="cx-dim">—</span>}</td>
+                      <td>
+                        {e.completed && e.correct !== null ? (
+                          <strong>
+                            {e.correct}/{e.total ?? 20}
+                          </strong>
+                        ) : (
+                          <span className="cx-dim">—</span>
+                        )}
+                      </td>
+                      <td>{outcomeChip(e)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+            {examsPagination && examsPagination.pages > 1 ? <PaginationBar pagination={examsPagination} onPage={setPage} /> : null}
+          </div>
+        ) : tab === 'events' ? (
+          <div className="cx-table-wrap">
+            {events.length === 0 ? (
+              <EmptyState title="Aucun événement" description="Aucune action enregistrée avec ces filtres." />
+            ) : (
+              <table className="cx-data">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Événement</th>
+                    <th>Contexte</th>
+                    <th>Détail</th>
+                    <th>App</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-          {eventsPagination && eventsPagination.pages > 1 ? (
-            <PaginationBar pagination={eventsPagination} onPage={setPage} />
-          ) : null}
-        </div>
-      ) : (
-        <div className="admin-data-table-wrap">
-          {learners.length === 0 ? (
-            <EmptyState
-              title="Aucun apprenant actif"
-              description="Aucune action enregistrée sur l’APK pour le moment."
-            />
-          ) : (
-            <table className="admin-data-table">
-              <thead>
-                <tr>
-                  <th>Apprenant</th>
-                  <th>Dernière activité</th>
-                  <th>Actions enregistrées</th>
-                </tr>
-              </thead>
-              <tbody>
-                {learners.map((l) => (
-                  <tr key={l.userId}>
-                    <td>
-                      <strong>{learnerName(l)}</strong>
-                      {l.email ? <span className="muted"> · {l.email}</span> : null}
-                    </td>
-                    <td className="muted">
-                      <Clock size={12} /> {formatDateTime(l.lastActivity)}
-                    </td>
-                    <td>{l.events}</td>
+                </thead>
+                <tbody>
+                  {events.map((ev) => (
+                    <tr key={ev.id}>
+                      <td className="cx-dim">{formatDateTime(ev.createdAt)}</td>
+                      <td>
+                        <span className={`cx-evt${EXAM_GROUP_EVENTS.has(ev.event) ? ' cx-exam' : ''}`}>{eventLabel(ev.event)}</span>
+                      </td>
+                      <td className="cx-dim">
+                        <EventContext event={ev} />
+                      </td>
+                      <td className="cx-dim">
+                        <EventDetail event={ev} />
+                      </td>
+                      <td className="cx-dim">
+                        {ev.appVersion}
+                        {ev.platform ? ` · ${ev.platform}` : ''}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+            {eventsPagination && eventsPagination.pages > 1 ? <PaginationBar pagination={eventsPagination} onPage={setPage} /> : null}
+          </div>
+        ) : (
+          <div className="cx-table-wrap">
+            {learners.length === 0 ? (
+              <EmptyState title="Aucun apprenant actif" description="Aucune action enregistrée sur l’APK pour le moment." />
+            ) : (
+              <table className="cx-data">
+                <thead>
+                  <tr>
+                    <th>Apprenant</th>
+                    <th>Dernière activité</th>
+                    <th>Actions enregistrées</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-          {learnersPage && learnersPage.pages > 1 ? (
-            <PaginationBar pagination={learnersPage} onPage={setPage} />
-          ) : null}
-        </div>
-      )}
+                </thead>
+                <tbody>
+                  {learners.map((l) => (
+                    <tr key={l.userId}>
+                      <td>
+                        <strong>{learnerName(l)}</strong>
+                        {l.email ? <span className="cx-dim"> · {l.email}</span> : null}
+                      </td>
+                      <td className="cx-dim">
+                        <Clock className="cx-ico-inline" aria-hidden /> {formatDateTime(l.lastActivity)}
+                      </td>
+                      <td>{l.events}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+            {learnersPage && learnersPage.pages > 1 ? <PaginationBar pagination={learnersPage} onPage={setPage} /> : null}
+          </div>
+        )}
+      </section>
 
       <Drawer
         open={Boolean(selectedAttempt)}
         onClose={() => setSelectedAttempt(null)}
-        title={
-          selectedAttempt
-            ? `Sujet ${selectedAttempt.examNumber ?? '?'} — ${learnerName(selectedAttempt)}`
-            : ''
-        }
+        title={selectedAttempt ? `Sujet ${selectedAttempt.examNumber ?? '?'} — ${learnerName(selectedAttempt)}` : ''}
       >
         {selectedAttempt ? (
-          <div className="tracking-timeline">
-            <div className="tracking-timeline-meta">
-              <span>
-                {selectedAttempt.examType === 'ecodepermis' ? 'Ancien examen' : 'Examen blanc'}
-              </span>
-              <span>
-                Début : {formatDateTime(selectedAttempt.startAt)}
-              </span>
-              <span>
-                Durée : {formatDuration(selectedAttempt.durationSeconds)}
-              </span>
-              <span>Réponses : {selectedAttempt.answers}</span>
-              <span>Zappées : {selectedAttempt.skips}</span>
-              {selectedAttempt.quits > 0 ? (
-                <span className="tracking-warn">
-                  Quitté {selectedAttempt.quits} fois
-                </span>
-              ) : null}
+          <div>
+            <div className="cx-tl-meta">
+              <span className="cx-chip cx-blue">{selectedAttempt.examType === 'ecodepermis' ? 'Ancien examen' : 'Examen blanc'}</span>
+              <span className="cx-chip">Début : {formatDateTime(selectedAttempt.startAt)}</span>
+              <span className="cx-chip">Durée : {formatDuration(selectedAttempt.durationSeconds)}</span>
+              <span className="cx-chip">Réponses : {selectedAttempt.answers}</span>
+              <span className="cx-chip">Zappées : {selectedAttempt.skips}</span>
+              {selectedAttempt.quits > 0 ? <span className="cx-chip cx-red">Quitté {selectedAttempt.quits} fois</span> : null}
               {selectedAttempt.completed ? (
-                <span>
-                  Note : {selectedAttempt.correct}/{selectedAttempt.total ?? 20}{' '}
-                  {selectedAttempt.passed ? '(Réussi)' : '(Raté)'}
+                <span className={`cx-chip ${selectedAttempt.passed ? 'cx-green' : 'cx-red'}`}>
+                  Note : {selectedAttempt.correct}/{selectedAttempt.total ?? 20} {selectedAttempt.passed ? '(Réussi)' : '(Raté)'}
                 </span>
               ) : null}
             </div>
@@ -645,51 +582,42 @@ export function LearnerTrackingPage() {
             {timelineLoading ? (
               <SkeletonBlock rows={4} />
             ) : timelineError ? (
-              <div className="form-error">{timelineError}</div>
+              <p className="cx-note cx-note-err">{timelineError}</p>
             ) : timeline && timeline.length > 0 ? (
-              <ol className="tracking-timeline-list">
+              <ol className="cx-tl">
                 {timeline.map((ev, i) => {
                   const delta = timelineDeltas[i - 1] ?? 0
                   const longPause = delta > 120_000
                   return (
-                    <li key={ev.id} className="tracking-timeline-item">
-                      <span className="tracking-timeline-time">{formatTime(ev.createdAt)}</span>
-                      <span className="tracking-timeline-dot" />
-                      <div className="tracking-timeline-body">
-                        <span
-                          className={`tracking-event tracking-event-${EXAM_GROUP_EVENTS.has(ev.event) ? 'exam' : 'other'}`}
-                        >
+                    <li key={ev.id}>
+                      <span className="cx-tl-time">{formatTime(ev.createdAt)}</span>
+                      <span className="cx-tl-dot" />
+                      <div className="cx-tl-body">
+                        <span className={`cx-evt${EXAM_GROUP_EVENTS.has(ev.event) ? ' cx-exam' : ''}`} style={{ alignSelf: 'flex-start' }}>
                           {eventLabel(ev.event)}
                         </span>
-                        <span className="muted">
+                        <span>
                           <EventDetail event={ev} />
                           {i > 0 ? (
                             <>
                               {' '}
-                              · <CalendarDays size={11} /> après {formatDelta(delta)}
+                              · <CalendarDays className="cx-ico-inline" aria-hidden /> après {formatDelta(delta)}
                             </>
                           ) : null}
                         </span>
-                        {longPause ? (
-                          <span className="tracking-long-pause">
-                            Pause de plus de 2 minutes
-                          </span>
-                        ) : null}
+                        {longPause ? <span className="cx-tl-pause">Pause de plus de 2 minutes</span> : null}
                       </div>
                     </li>
                   )
                 })}
               </ol>
             ) : (
-              <EmptyState
-                title="Chronologie vide"
-                description="Aucun événement détaillé pour cette tentative."
-              />
+              <EmptyState title="Chronologie vide" description="Aucun événement détaillé pour cette tentative." />
             )}
           </div>
         ) : null}
       </Drawer>
-    </div>
+    </PageSection>
   )
 }
 
@@ -703,7 +631,7 @@ function EventContext({ event }: { event: TrackEvent }) {
   if (ctx.subjectNumber !== undefined && ctx.subjectNumber !== null) parts.push(`Sujet ${ctx.subjectNumber}`)
   if (ctx.mode) parts.push(ctx.mode === 'test' ? 'Test chapitre' : 'Entraînement')
   if (ctx.questionId) parts.push(`Q ${String(ctx.questionId).slice(-8)}`)
-  return parts.length ? parts.join(' · ') : <span className="tracking-dim">—</span>
+  return parts.length ? parts.join(' · ') : <span>—</span>
 }
 
 function EventDetail({ event }: { event: TrackEvent }) {
@@ -731,17 +659,17 @@ function PaginationBar({
 }) {
   const { page, pages, total } = pagination
   return (
-    <div className="users-pagination">
+    <div className="cx-pager">
       <span>
         {total} élément{total > 1 ? 's' : ''} · page {page}/{pages}
       </span>
       <div>
-        <Button disabled={page <= 1} onClick={() => onPage(page - 1)}>
+        <button type="button" className="cx-btn cx-btn-sm" disabled={page <= 1} onClick={() => onPage(page - 1)}>
           Précédent
-        </Button>
-        <Button disabled={page >= pages} onClick={() => onPage(page + 1)}>
+        </button>
+        <button type="button" className="cx-btn cx-btn-sm" disabled={page >= pages} onClick={() => onPage(page + 1)}>
           Suivant
-        </Button>
+        </button>
       </div>
     </div>
   )

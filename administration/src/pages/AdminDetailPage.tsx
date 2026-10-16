@@ -1,9 +1,9 @@
 import { FormEvent, useCallback, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { KeyRound, RefreshCw, ScrollText } from 'lucide-react'
+import { ArrowLeft, KeyRound, RefreshCw, ScrollText, ShieldCheck, ToggleLeft } from 'lucide-react'
 import { fetchAdminDetail, updateAdmin, type AdminAccount, type AuditLogEntry } from '../api/admins'
-import { AdminSectionHeader } from '../components/AdminSectionHeader'
-import { StatusBadge } from '../components/StatusBadge'
+import { DirectionSection } from '../components/model/DirectionSection'
+import { EmptyState, SkeletonBlock } from '../ui'
 import { getAdminToken, isAuthError } from '../context/AdminAuthContext'
 import { actionLabel, formatAuditDate, resourceLabel, summarizeMetadata } from '../utils/auditLabels'
 import { roleLabel } from '../utils/roles'
@@ -109,124 +109,112 @@ export function AdminDetailPage() {
   }
 
   return (
-    <div className="admin-page">
-      <AdminSectionHeader
-        backTo="/administrateurs"
-        backLabel="Tous les administrateurs"
-        kicker="Gestion"
-        title={admin?.fullName || 'Administrateur'}
-        subtitle="Modifier le rôle, activer le compte, réinitialiser le mot de passe, et consulter l’activité."
-      />
-
-      {admin ? (
-        <div className="users-toolbar-figma" style={{ marginBottom: 16, gap: 12, flexWrap: 'wrap' }}>
-          <StatusBadge tone={admin.isActive ? 'success' : 'danger'}>
-            {admin.isActive ? 'Actif' : 'Inactif'}
-          </StatusBadge>
-          <StatusBadge tone={admin.role === 'superadmin' ? 'warning' : 'neutral'} withIcon={false}>
-            {roleLabel(admin.role)}
-          </StatusBadge>
-          <span className="muted">{admin.phone}</span>
-          <span className="muted">Créé le {formatAuditDate(admin.createdAt)}</span>
-          <span className="muted">Dernière connexion : {formatAuditDate(admin.lastLoginAt)}</span>
-          <button type="button" className="dash-filter-btn" onClick={() => void load()} disabled={loading}>
-            <RefreshCw size={12} />
+    <DirectionSection
+      kicker="Gestion"
+      title={admin?.fullName || 'Administrateur'}
+      subtitle="Modifier le rôle, activer le compte, réinitialiser le mot de passe, et consulter l’activité."
+      actions={
+        <>
+          <Link to="/administrateurs" className="cx-refresh">
+            <ArrowLeft aria-hidden />
+            Tous les administrateurs
+          </Link>
+          {admin ? (
+            <Link to={`/journal-audit?adminId=${admin.id}`} className="cx-refresh">
+              <ScrollText aria-hidden />
+              Voir dans le journal
+            </Link>
+          ) : null}
+          <button type="button" className="cx-refresh" onClick={() => void load()} disabled={loading}>
+            <RefreshCw aria-hidden />
             Actualiser
           </button>
-          <Link
-            to={`/journal-audit?adminId=${admin.id}`}
-            className="dash-filter-btn"
-            style={{ textDecoration: 'none' }}
-          >
-            <ScrollText size={12} />
-            Voir dans le journal
-          </Link>
-        </div>
-      ) : null}
-
-      {error ? (
-        <p className="form-error" role="alert">
-          {error}
-        </p>
-      ) : null}
-      {success ? (
-        <p className="form-success" role="status">
-          {success}
-        </p>
-      ) : null}
+        </>
+      }
+    >
+      {error ? <p className="cx-note cx-note-err" role="alert">{error}</p> : null}
+      {success ? <p className="cx-note cx-note-ok" role="status">{success}</p> : null}
+      {loading && !admin ? <SkeletonBlock rows={5} /> : null}
 
       {admin ? (
-        <div
-          style={{
-            display: 'grid',
-            gap: 16,
-            gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-            marginBottom: 20,
-          }}
-        >
-          <section className="admin-section">
-            <div className="admin-section-head">
-              <h3 className="admin-section-label">Statut du compte</h3>
-            </div>
-            <div className="admin-section-body">
-              <p className="muted" style={{ marginBottom: 12 }}>
-                Un compte inactif ne peut plus se connecter.
-              </p>
-              <button
-                type="button"
-                className={admin.isActive ? 'dash-filter-btn' : 'btn-primary btn-primary-inline'}
-                disabled={saving}
-                onClick={handleToggleActive}
-              >
-                {admin.isActive ? 'Désactiver' : 'Activer'}
-              </button>
+        <>
+          <section className="cx-panel">
+            <div className="cx-toolbar">
+              <span className={`cx-chip ${admin.isActive ? 'cx-green' : 'cx-red'}`}>{admin.isActive ? 'Actif' : 'Inactif'}</span>
+              <span className={`cx-chip ${admin.role === 'superadmin' ? 'cx-amber' : ''}`.trim()}>{roleLabel(admin.role)}</span>
+              <span className="cx-dim">{admin.phone}</span>
+              <span className="cx-dim">Créé le {formatAuditDate(admin.createdAt)}</span>
+              <span className="cx-dim">Dernière connexion : {formatAuditDate(admin.lastLoginAt)}</span>
             </div>
           </section>
 
-          <section className="admin-section">
-            <div className="admin-section-head">
-              <h3 className="admin-section-label">Rôle</h3>
-            </div>
-            <div className="admin-section-body">
-              <form onSubmit={handleRoleSave}>
-                <label htmlFor="admin-role" className="muted" style={{ display: 'block', marginBottom: 8 }}>
-                  Superadmin : gestion des admins, audit, finances.
-                  <br />
-                  Admin : opérations courantes uniquement.
-                </label>
+          <div className="cx-grid-3">
+            <section className="cx-panel">
+              <div className="cx-panel-head cx-ph cx-ph-plain">
+                <span className="cx-phi cx-phi-tile">
+                  <ToggleLeft aria-hidden />
+                </span>
+                <div className="cx-ph-txt">
+                  <h2 className="cx-panel-title">Statut du compte</h2>
+                  <p className="cx-muted">Un compte inactif ne peut plus se connecter.</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                className={`cx-btn${admin.isActive ? '' : ' cx-btn-fill'}`}
+                disabled={saving}
+                onClick={handleToggleActive}
+              >
+                {admin.isActive ? 'Désactiver le compte' : 'Activer le compte'}
+              </button>
+            </section>
+
+            <section className="cx-panel">
+              <div className="cx-panel-head cx-ph cx-ph-plain">
+                <span className="cx-phi cx-phi-tile">
+                  <ShieldCheck aria-hidden />
+                </span>
+                <div className="cx-ph-txt">
+                  <h2 className="cx-panel-title">Rôle</h2>
+                  <p className="cx-muted">Superadmin : admins, audit, finances. Admin : opérations courantes.</p>
+                </div>
+              </div>
+              <form onSubmit={handleRoleSave} className="cx-form">
                 <select
                   id="admin-role"
+                  className="cx-select"
                   value={role}
                   onChange={(e) => setRole(e.target.value as 'admin' | 'superadmin')}
-                  style={{ display: 'block', width: '100%', marginBottom: 12, padding: '8px 10px' }}
+                  aria-label="Rôle"
                 >
                   <option value="admin">Admin</option>
                   <option value="superadmin">Superadmin</option>
                 </select>
-                <button
-                  type="submit"
-                  className="btn-primary btn-primary-inline"
-                  disabled={saving || role === admin.role}
-                >
+                <button type="submit" className="cx-btn cx-btn-fill" disabled={saving || role === admin.role}>
                   Enregistrer le rôle
                 </button>
               </form>
-            </div>
-          </section>
+            </section>
 
-          <section className="admin-section">
-            <div className="admin-section-head">
-              <h3 className="admin-section-label">Mot de passe</h3>
-            </div>
-            <div className="admin-section-body">
-              <form onSubmit={handlePasswordSave} className="create-admin-form">
-                <div className="create-admin-field" style={{ marginBottom: 10 }}>
+            <section className="cx-panel">
+              <div className="cx-panel-head cx-ph cx-ph-plain">
+                <span className="cx-phi cx-phi-tile">
+                  <KeyRound aria-hidden />
+                </span>
+                <div className="cx-ph-txt">
+                  <h2 className="cx-panel-title">Mot de passe</h2>
+                  <p className="cx-muted">Définir un nouveau mot de passe pour ce compte.</p>
+                </div>
+              </div>
+              <form onSubmit={handlePasswordSave} className="cx-form">
+                <div className="cx-fld">
                   <label htmlFor="new-password">
-                    <KeyRound size={14} />
+                    <KeyRound aria-hidden />
                     Nouveau mot de passe
                   </label>
                   <input
                     id="new-password"
+                    className="cx-input"
                     type="password"
                     autoComplete="new-password"
                     minLength={8}
@@ -236,13 +224,14 @@ export function AdminDetailPage() {
                     required
                   />
                 </div>
-                <div className="create-admin-field" style={{ marginBottom: 12 }}>
+                <div className="cx-fld">
                   <label htmlFor="confirm-new-password">
-                    <KeyRound size={14} />
+                    <KeyRound aria-hidden />
                     Confirmer
                   </label>
                   <input
                     id="confirm-new-password"
+                    className="cx-input"
                     type="password"
                     autoComplete="new-password"
                     minLength={8}
@@ -252,22 +241,32 @@ export function AdminDetailPage() {
                     required
                   />
                 </div>
-                <button type="submit" className="btn-primary btn-primary-inline" disabled={saving}>
+                <button type="submit" className="cx-btn cx-btn-fill" disabled={saving}>
                   Définir le mot de passe
                 </button>
               </form>
-            </div>
-          </section>
-        </div>
+            </section>
+          </div>
+        </>
       ) : null}
 
-      <section className="admin-section">
-        <div className="admin-section-head">
-          <h3 className="admin-section-label">Actions récentes ({actions.length})</h3>
+      <section className="cx-panel">
+        <div className="cx-panel-head cx-ph cx-ph-plain">
+          <span className="cx-phi cx-phi-tile">
+            <ScrollText aria-hidden />
+          </span>
+          <div className="cx-ph-txt">
+            <h2 className="cx-panel-title">Actions récentes ({actions.length})</h2>
+            <p className="cx-muted">Dernières opérations effectuées par ce compte</p>
+          </div>
         </div>
-        <div className="admin-section-body" style={{ padding: 0 }}>
-          <div className="admin-data-table-wrap">
-            <table className="admin-data-table" style={{ minWidth: 720 }}>
+        {loading && actions.length === 0 ? (
+          <SkeletonBlock rows={4} />
+        ) : actions.length === 0 ? (
+          <EmptyState title="Aucune action" description="Aucune action enregistrée pour cet administrateur." />
+        ) : (
+          <div className="cx-table-wrap">
+            <table className="cx-data" style={{ minWidth: 720 }}>
               <thead>
                 <tr>
                   <th>Date</th>
@@ -279,39 +278,23 @@ export function AdminDetailPage() {
                 </tr>
               </thead>
               <tbody>
-                {loading && actions.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="muted">
-                      Chargement…
-                    </td>
-                  </tr>
-                ) : null}
-                {!loading && actions.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="muted">
-                      Aucune action enregistrée pour cet administrateur
-                    </td>
-                  </tr>
-                ) : null}
                 {actions.map((entry) => (
                   <tr key={entry.id}>
-                    <td>{formatAuditDate(entry.createdAt)}</td>
+                    <td className="cx-dim">{formatAuditDate(entry.createdAt)}</td>
                     <td>
-                      <StatusBadge tone="neutral" withIcon={false}>
-                        {actionLabel(entry.action)}
-                      </StatusBadge>
+                      <span className="cx-evt">{actionLabel(entry.action)}</span>
                     </td>
                     <td>{resourceLabel(entry.resource)}</td>
-                    <td className="muted">{entry.resourceId || '—'}</td>
-                    <td style={{ maxWidth: 280, fontSize: 13 }}>{summarizeMetadata(entry.metadata)}</td>
-                    <td className="muted">{entry.ip || '—'}</td>
+                    <td className="cx-dim">{entry.resourceId || '—'}</td>
+                    <td style={{ maxWidth: 280, whiteSpace: 'normal', fontSize: '.84rem' }}>{summarizeMetadata(entry.metadata)}</td>
+                    <td className="cx-dim">{entry.ip || '—'}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-        </div>
+        )}
       </section>
-    </div>
+    </DirectionSection>
   )
 }

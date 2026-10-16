@@ -36,14 +36,12 @@
   filter: none;
 }
 
-.module-grid > .admin-reveal,
-.cockpit-kpi-grid > .admin-reveal {
+.module-grid > .admin-reveal{
   min-width: 0;
   height: 100%;
 }
 
-.module-grid > .admin-reveal > .module-card,
-.cockpit-kpi-grid > .admin-reveal > .cockpit-kpi {
+.module-grid > .admin-reveal > .module-card{
   height: 100%;
 }
 
@@ -276,13 +274,11 @@
 
 /* ── Cards / stats / panels ─────────────────────────── */
 .ui-stat-card,
-.cockpit-kpi,
 .dash-stat-card,
 .dash-hero-card,
 .dash-live-card,
 .module-card,
-.ui-panel,
-.cockpit-panel {
+.ui-panel{
   transition:
     transform 420ms var(--admin-ease-spring),
     box-shadow 420ms var(--admin-ease-spring),
@@ -290,7 +286,6 @@
 }
 
 .ui-stat-card.is-link:hover,
-.cockpit-kpi:hover,
 .dash-stat-card:hover,
 .module-card:hover {
   transform: translateY(-3px);
@@ -330,29 +325,7 @@
 }
 
 /* Cockpit feed items */
-.cockpit-feed-item {
-  transition:
-    transform 320ms var(--admin-ease-spring),
-    background 200ms ease,
-    border-color 200ms ease;
-}
 
-.cockpit-feed-item:hover {
-  transform: translateX(3px);
-  background: #fff;
-}
-
-.cockpit-admin-row {
-  transition:
-    transform 280ms var(--admin-ease-spring),
-    background 180ms ease;
-}
-
-.cockpit-admin-row:hover {
-  transform: translateX(2px);
-}
-
-.cockpit-live-pill.is-on,
 .dash-live-pill.is-live {
   animation: admin-live-pulse 2.4s ease-in-out infinite;
 }
@@ -397,19 +370,6 @@
   }
 }
 
-.cockpit-shortcut {
-  transition:
-    transform 320ms var(--admin-ease-spring),
-    border-color 200ms ease,
-    color 200ms ease,
-    box-shadow 320ms var(--admin-ease-spring);
-}
-
-.cockpit-shortcut:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 18px -12px rgba(0, 16, 48, 0.35);
-}
-
 /* Tables rows */
 .admin-data-table tbody tr {
   transition: background 180ms ease, transform 240ms var(--admin-ease-spring);
@@ -450,8 +410,7 @@
 
 /* Page enter */
 .admin-page,
-.dash-overview,
-.cockpit-page {
+.dash-overview{
   animation: admin-page-in 520ms var(--admin-ease-out) both;
 }
 
@@ -490,9 +449,7 @@
   .admin-role-chip,
   .admin-page,
   .dash-overview,
-  .cockpit-page,
   .login-aside::after,
-  .cockpit-live-pill.is-on,
   .ui-drawer-panel,
   .ui-drawer-backdrop {
     animation: none !important;

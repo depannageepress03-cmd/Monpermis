@@ -5,24 +5,24 @@ import {
 import { Chapter } from '../models/Chapter.js'
 import { RevisionCourse } from '../models/RevisionCourse.js'
 import { logger } from '../utils/logger.js'
+import { memoizeAsync } from '../utils/memoizeAsync.js'
 
-/**
- * Garantit les chapitres standards (ordre 1…N, noms « Chapitre N »).
- * Supprime les chapitres hors catalogue (ex. ancien chapitre 20).
- */
-export async function ensureStandardRevisionChapters() {
+/** Supprime aussi les chapitres hors catalogue (ex. ancien chapitre 20). */
+async function syncStandardRevisionChapters() {
   const catalog = listStandardRevisionChapters()
   let created = 0
   let updated = 0
   let removed = 0
 
+  // Une seule lecture, le rapprochement se fait en mémoire (Atlas ≈ 120 ms par aller-retour).
+  const all = await Chapter.find({})
+
   for (const item of catalog) {
-    const existing = await Chapter.findOne({
-      $or: [
-        { order: item.order },
-        { name: new RegExp(`^chapitre\\s*#?\\s*${item.order}\\b`, 'i') },
-        { name: new RegExp(`^${item.order}([\\s.\\-–:]|$)`) },
-      ],
+    const byName = new RegExp(`^chapitre\\s*#?\\s*${item.order}\\b`, 'i')
+    const byNumber = new RegExp(`^${item.order}([\\s.\\-–:]|$)`)
+    const existing = all.find((chapter) => {
+      const name = String(chapter.name || '')
+      return chapter.order === item.order || byName.test(name) || byNumber.test(name)
     })
 
     if (!existing) {
@@ -56,9 +56,7 @@ export async function ensureStandardRevisionChapters() {
     }
   }
 
-  const extras = await Chapter.find({
-    order: { $gt: STANDARD_REVISION_CHAPTER_COUNT },
-  })
+  const extras = all.filter((chapter) => chapter.order > STANDARD_REVISION_CHAPTER_COUNT)
   for (const extra of extras) {
     await RevisionCourse.updateMany(
       { chapter: extra._id },
@@ -70,6 +68,9 @@ export async function ensureStandardRevisionChapters() {
 
   return { created, updated, removed, total: catalog.length }
 }
+
+/** Garantit les chapitres standards (ordre 1…N, noms « Chapitre N »), au plus une fois par minute. */
+export const ensureStandardRevisionChapters = memoizeAsync(syncStandardRevisionChapters, 60_000)
 
 export async function ensureStandardRevisionChaptersSafe() {
   try {

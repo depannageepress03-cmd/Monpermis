@@ -1,10 +1,8 @@
 import {
-  Activity,
   Bell,
   BookOpen,
   CalendarDays,
   Car,
-  ChevronRight,
   Gift,
   Landmark,
   LayoutDashboard,
@@ -27,7 +25,6 @@ import { fetchDashboardSummary } from '../api/dashboard'
 import { useAdminAuth } from '../context/AdminAuthContext'
 import { getApiOrigin } from '../utils/mediaUrl'
 import { SITE_NAME } from '../theme/brand'
-import { BrandName } from './BrandName'
 
 const ADMIN_TOKEN_KEY = 'monpermis_admin_token'
 
@@ -59,13 +56,6 @@ const navGroups: NavGroup[] = [
     id: 'control',
     label: 'Contrôle',
     items: [
-      {
-        to: '/cockpit',
-        label: 'Cockpit',
-        icon: Activity,
-        superadminOnly: true,
-        match: (pathname) => pathname.startsWith('/cockpit'),
-      },
       {
         to: '/administrateurs',
         label: 'Admins',
@@ -142,32 +132,6 @@ const navGroups: NavGroup[] = [
   },
 ]
 
-function pageLabel(pathname: string) {
-  if (pathname.startsWith('/cockpit')) return 'Cockpit'
-  if (pathname === '/') return 'Tableau de bord'
-  if (pathname.startsWith('/utilisateurs')) return 'Apprenants'
-  if (pathname.startsWith('/activite-apprenants')) return 'Activité apprenants'
-  if (pathname.startsWith('/abonnements') || pathname.startsWith('/demandes-acces')) {
-    return 'Abonnés'
-  }
-  if (pathname.startsWith('/codes-promo')) return 'Codes promo'
-  if (pathname.startsWith('/administrateurs')) return 'Admins'
-  if (pathname.startsWith('/journal-audit')) return 'Journal d’audit'
-  if (pathname.startsWith('/creer-admin')) return 'Créer un admin'
-  if (pathname.startsWith('/finances')) return 'Comptabilité'
-  if (pathname.includes('/questions')) return 'Questions'
-  if (pathname.startsWith('/code/revision-chapitres')) return 'Révision par chapitres'
-  if (pathname.startsWith('/code/examens-test')) return 'Examens test'
-  if (pathname.startsWith('/code/suivi-apprenants')) return 'Suivi apprenants'
-  if (pathname.startsWith('/code/mes-notes')) return 'Suivi apprenants'
-  if (pathname.startsWith('/code')) return 'Code de la route'
-  if (pathname.startsWith('/conduite/lecons')) return 'Leçons de conduite'
-  if (pathname.startsWith('/conduite/reservations')) return 'Réservations'
-  if (pathname.startsWith('/conduite/moniteurs')) return 'Moniteurs'
-  if (pathname.startsWith('/conduite')) return 'Conduite'
-  return 'Administration'
-}
-
 function adminInitials(fullName?: string) {
   if (!fullName?.trim()) return 'AD'
   const parts = fullName.trim().split(/\s+/).filter(Boolean)
@@ -193,7 +157,6 @@ export function AdminLayout() {
   const navigate = useNavigate()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
-  const [searchFocused, setSearchFocused] = useState(false)
   const [badges, setBadges] = useState<OpsBadges>({ reservations: 0, access: 0, refunds: 0 })
   const [health, setHealth] = useState<HealthSnapshot | null>(null)
   const [healthDismissed, setHealthDismissed] = useState(false)
@@ -262,17 +225,17 @@ export function AdminLayout() {
     }
   }, [canManageAdmins, healthDismissed])
 
-  // Superadmin : atterrir sur le cockpit par défaut
-  useEffect(() => {
-    if (!canManageAdmins) return
-    if (location.pathname === '/' && !sessionStorage.getItem('mp_ops_home')) {
-      navigate('/cockpit', { replace: true })
-    }
-  }, [canManageAdmins, location.pathname, navigate])
-
-  const isMobile = width < 640
-  const isTablet = width >= 640 && width < 1080
+  const isMobile = width < 981
   const closeMobile = () => setMobileOpen(false)
+  const [dashDate, setDashDate] = useState('')
+  const [userMenuOpen, setUserMenuOpen] = useState(false)
+
+  useEffect(() => {
+    if (!userMenuOpen) return
+    const close = () => setUserMenuOpen(false)
+    document.addEventListener('click', close)
+    return () => document.removeEventListener('click', close)
+  }, [userMenuOpen])
 
   const handleSearch = (e: FormEvent) => {
     e.preventDefault()
@@ -282,6 +245,7 @@ export function AdminLayout() {
   }
 
   const initials = adminInitials(admin?.fullName)
+  const roleLabel = admin?.role === 'superadmin' ? 'Direction' : 'Équipe'
   const visibleGroups = navGroups
     .map((group) => ({
       ...group,
@@ -310,209 +274,207 @@ export function AdminLayout() {
     health.fedapayWebhookSecret === 'configured'
   const showHealthStrip = Boolean(canManageAdmins && health && !healthDismissed && !healthOk)
 
-  return (
-    <div
-      className={`admin-app${mobileOpen ? ' is-sidebar-open' : ''}${isTablet ? ' is-tablet' : ''}${isMobile ? ' is-mobile' : ''}`}
-    >
-      {isMobile && mobileOpen ? (
-        <div className="admin-sidebar-backdrop" onClick={closeMobile} aria-hidden />
-      ) : null}
+  const todayIso = new Date().toLocaleDateString('en-CA')
+  const shownDate = dashDate || todayIso
+  const dateLong = new Date(`${shownDate}T12:00:00`).toLocaleDateString('fr-FR', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  })
+  const onDashboard = location.pathname === '/'
 
-      <aside
-        className={`admin-sidebar${isMobile && !mobileOpen ? ' is-closed' : ''}`}
-        aria-label="Navigation"
-        inert={isMobile && !mobileOpen ? true : undefined}
-      >
-          <div className="sidebar-brand">
-            <img src={logoUrl} alt={SITE_NAME} className="sidebar-logo" />
-            <div className="sidebar-brand-text">
-              <p className="sidebar-brand-name">
-                <BrandName onDark />
-              </p>
-              <p className="sidebar-brand-kicker">Espace admin</p>
-            </div>
-          {isMobile ? (
-            <button
-              type="button"
-              className="sidebar-close"
-              onClick={closeMobile}
-              aria-label="Fermer le menu"
-            >
-              <X size={16} />
-            </button>
-          ) : null}
+  return (
+    <div className={`cx-root cx-app-shell cx-shell2${mobileOpen ? ' cx-nav-open' : ''}`}>
+      <aside className="cx-sidebar" aria-label="Navigation" inert={isMobile && !mobileOpen ? true : undefined}>
+        <div className="cx-sb-brand">
+          <img src={logoUrl} alt={SITE_NAME} width={52} height={52} />
+          <span>
+            <strong>MONPERMIS</strong>
+            <small>Admin</small>
+          </span>
         </div>
 
-        <nav className="sidebar-nav">
-          {visibleGroups.map((group) => (
-            <div key={group.id} className="sidebar-group">
-              <p className="sidebar-group-label">{group.label}</p>
-              <ul className="sidebar-list">
-                {group.items.map((item) => {
-                  const Icon = item.icon
-                  const badgeCount =
-                    item.badgeKey === 'reservations'
-                      ? badges.reservations
-                      : item.badgeKey === 'access'
-                        ? badges.access
-                        : item.badgeKey === 'refunds'
-                          ? refundBadge
-                          : 0
-                  const badgeLabel = formatBadge(badgeCount)
-                  return (
-                    <li key={item.to}>
-                      <NavLink
-                        to={
-                          item.badgeKey === 'refunds' && badgeCount > 0
-                            ? '/finances?tab=refunds'
-                            : item.to
-                        }
-                        end={item.end}
-                        onClick={() => {
-                          if (item.to === '/') sessionStorage.setItem('mp_ops_home', '1')
-                          closeMobile()
-                        }}
-                        title={item.label}
-                        className={({ isActive }) => {
-                          const active = item.match ? item.match(location.pathname) : isActive
-                          return `sidebar-link${active ? ' active' : ''}${badgeLabel ? ' has-badge' : ''}`
-                        }}
-                        data-count={badgeLabel}
-                      >
-                        <Icon size={16} strokeWidth={2} />
-                        <span className="sidebar-link-label">{item.label}</span>
-                        {badgeLabel ? (
-                          <span
-                            className="sidebar-link-badge"
-                            aria-label={`${badgeCount} en attente`}
-                          >
-                            {badgeLabel}
-                          </span>
-                        ) : null}
-                      </NavLink>
-                    </li>
-                  )
-                })}
-              </ul>
+        <nav className="cx-side-nav" id="nav">
+          {visibleGroups.map((group, n) => (
+            <div key={group.id} style={{ display: 'contents' }}>
+              {n ? <div className="cx-side-nav-divider" /> : null}
+              <p className="cx-side-nav-group">{group.label}</p>
+              {group.items.map((item) => {
+                const Icon = item.icon
+                const badgeCount =
+                  item.badgeKey === 'reservations'
+                    ? badges.reservations
+                    : item.badgeKey === 'access'
+                      ? badges.access
+                      : item.badgeKey === 'refunds'
+                        ? refundBadge
+                        : 0
+                const badgeLabel = formatBadge(badgeCount)
+                return (
+                  <NavLink
+                    key={item.to}
+                    to={
+                      item.badgeKey === 'refunds' && badgeCount > 0 ? '/finances?tab=refunds' : item.to
+                    }
+                    end={item.end}
+                    onClick={closeMobile}
+                    title={item.label}
+                    className={({ isActive }) => {
+                      const active = item.match ? item.match(location.pathname) : isActive
+                      return `cx-side-nav-link${active ? ' cx-is-active' : ''}`
+                    }}
+                  >
+                    <Icon className="cx-side-nav-ico" />
+                    <span>{item.label}</span>
+                    {badgeLabel ? (
+                      <span className="cx-nav-badge" aria-label={`${badgeCount} en attente`}>
+                        {badgeLabel}
+                      </span>
+                    ) : null}
+                  </NavLink>
+                )
+              })}
             </div>
           ))}
         </nav>
 
-        <div className="sidebar-profile">
-          <div className="sidebar-profile-avatar" aria-hidden>
-            {initials}
+        <div className="cx-sidebar-footer">
+          <div className="cx-user-chip">
+            <span className="cx-user-avatar" aria-hidden="true">
+              {initials}
+            </span>
+            <span className="cx-user-meta">
+              <span className="cx-user-name">{admin?.fullName || 'Administrateur'}</span>
+              <span className="cx-user-role">
+                {roleLabel}
+                {admin?.phone ? ` · ${admin.phone}` : ''}
+              </span>
+            </span>
+            <button type="button" className="cx-btn-logout" onClick={signOut}>
+              Se déconnecter
+            </button>
           </div>
-          <div className="sidebar-profile-meta">
-            <p className="sidebar-profile-name">{admin?.fullName || 'Administrateur'}</p>
-            <p className="sidebar-profile-email">
-              {admin?.role === 'superadmin' ? 'Direction' : 'Équipe'}
-              {admin?.phone ? ` · ${admin.phone}` : ''}
-            </p>
-          </div>
-          <button
-            type="button"
-            className="sidebar-logout-icon"
-            onClick={signOut}
-            title="Déconnexion"
-            aria-label="Déconnexion"
-          >
-            <LogOut size={15} strokeWidth={1.8} />
-          </button>
         </div>
       </aside>
+      <button
+        type="button"
+        className="cx-sidebar-backdrop"
+        aria-label="Fermer le menu"
+        onClick={closeMobile}
+      />
 
-      <div className="admin-stage">
-        {showHealthStrip && health ? (
-          <div className="admin-health-strip" role="status">
-            <span>
-              Santé API · DB {health.db === 'connected' ? 'OK' : health.db} · FedaPay{' '}
-              {health.fedapay === 'configured' ? health.fedapayEnvironment : 'manquant'} · Webhook{' '}
-              {health.fedapayWebhookSecret === 'configured' ? 'OK' : 'manquant'}
-            </span>
-            <button
-              type="button"
-              className="admin-health-dismiss"
-              onClick={() => setHealthDismissed(true)}
-              aria-label="Fermer l’alerte santé"
-            >
-              <X size={12} />
-            </button>
-          </div>
-        ) : null}
-
-        <header className="admin-global-topbar">
-          {isMobile ? (
-            <button
-              type="button"
-              className="admin-menu-btn"
-              onClick={() => setMobileOpen(true)}
-              aria-label="Ouvrir le menu"
-            >
-              <Menu size={18} />
-            </button>
-          ) : null}
-
-          {!isMobile ? (
-            <div className="admin-breadcrumb">
-              <span>Admin</span>
-              <ChevronRight size={12} />
-              <strong>{pageLabel(location.pathname)}</strong>
-            </div>
-          ) : (
-            <div className="admin-breadcrumb-spacer" />
-          )}
-
-          <form
-            className={`admin-global-search${searchFocused ? ' is-focused' : ''}`}
-            onSubmit={handleSearch}
-            role="search"
-          >
-            <Search size={14} strokeWidth={2} aria-hidden />
+      <div className="cx-main cx-main2">
+        <div className="cx-topbar2">
+          <form className="cx-tb2-search" onSubmit={handleSearch} role="search">
+            <Search aria-hidden />
             <input
               type="search"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              onFocus={() => setSearchFocused(true)}
-              onBlur={() => setSearchFocused(false)}
-              placeholder={isMobile ? 'Apprenant…' : 'Rechercher un apprenant…'}
-              aria-label="Recherche apprenant"
+              placeholder="Rechercher un apprenant, un numéro, un e-mail…"
+              autoComplete="off"
+              aria-label="Rechercher un apprenant"
             />
           </form>
-          {canManageAdmins ? (
-            <span className="admin-role-chip" title="Accès Direction">
-              Direction
-            </span>
-          ) : null}
-
           <button
             type="button"
-            className={`admin-notif-btn${notifCount > 0 ? ' has-badge' : ''}`}
-            aria-label={
-              notifCount > 0
-                ? `${notifCount} éléments en attente`
-                : 'Aucun élément en attente'
-            }
-            data-count={formatBadge(notifCount)}
+            className="cx-tb2-bell"
             onClick={openOpsQueue}
-            title={[
-              badges.reservations > 0 ? `${badges.reservations} réservation(s)` : null,
-              badges.access > 0 ? `${badges.access} abonnement(s)` : null,
-              refundBadge > 0 ? `${refundBadge} remboursement(s)` : null,
-            ]
-              .filter(Boolean)
-              .join(' · ') || 'File opérationnelle'}
+            aria-label={
+              notifCount > 0 ? `${notifCount} éléments en attente` : 'Aucun élément en attente'
+            }
+            title={
+              [
+                badges.reservations > 0 ? `${badges.reservations} réservation(s)` : null,
+                badges.access > 0 ? `${badges.access} abonnement(s)` : null,
+                refundBadge > 0 ? `${refundBadge} remboursement(s)` : null,
+              ]
+                .filter(Boolean)
+                .join(' · ') || 'File opérationnelle'
+            }
           >
-            <Bell size={16} strokeWidth={1.8} />
+            <Bell aria-hidden />
+            {notifCount > 0 ? <i className="cx-bell-dot" /> : null}
           </button>
+          <label className="cx-tb2-date" title="Date affichée sur le tableau de bord">
+            <CalendarDays aria-hidden />
+            <span>{dateLong}</span>
+            {onDashboard ? (
+              <input
+                type="date"
+                value={shownDate}
+                max={todayIso}
+                onChange={(e) => e.target.value && setDashDate(e.target.value)}
+                aria-label="Date du tableau de bord"
+              />
+            ) : null}
+          </label>
+          <button
+            type="button"
+            className="cx-tb2-user"
+            aria-haspopup="true"
+            aria-expanded={userMenuOpen}
+            onClick={(e) => {
+              e.stopPropagation()
+              setUserMenuOpen((open) => !open)
+            }}
+          >
+            <span className="cx-user-avatar" aria-hidden="true">
+              {initials}
+            </span>
+            <span className="cx-tb2-meta">
+              <strong>{admin?.fullName || 'Administrateur'}</strong>
+              <small>{roleLabel}</small>
+            </span>
+            <i className="cx-tb2-chev" />
+          </button>
+          {userMenuOpen ? (
+            <div className="cx-pop cx-pop-user" onClick={(e) => e.stopPropagation()}>
+              <button type="button" onClick={signOut}>
+                <LogOut aria-hidden />
+                Se déconnecter
+              </button>
+            </div>
+          ) : null}
+        </div>
 
-          <div className="admin-topbar-avatar" title={admin?.fullName || 'Administrateur'}>
-            {initials}
-          </div>
-        </header>
+        <div className="cx-mobile-bar">
+          <button
+            type="button"
+            className="cx-nav-toggle"
+            onClick={() => setMobileOpen(true)}
+            aria-label="Ouvrir le menu"
+          >
+            <Menu aria-hidden />
+          </button>
+          <span className="cx-mobile-bar-brand">
+            <img src={logoUrl} alt="" />
+            MONPERMIS
+          </span>
+          <span className="cx-user-avatar">{initials}</span>
+        </div>
 
-        <div className="admin-shell-card">
-          <div className="admin-content">
-            <Outlet context={{ admin }} />
+        <div className="cx-content">
+          {showHealthStrip && health ? (
+            <div className="admin-health-strip" role="status">
+              <span>
+                Santé API · DB {health.db === 'connected' ? 'OK' : health.db} · FedaPay{' '}
+                {health.fedapay === 'configured' ? health.fedapayEnvironment : 'manquant'} · Webhook{' '}
+                {health.fedapayWebhookSecret === 'configured' ? 'OK' : 'manquant'}
+              </span>
+              <button
+                type="button"
+                className="admin-health-dismiss"
+                onClick={() => setHealthDismissed(true)}
+                aria-label="Fermer l’alerte santé"
+              >
+                <X size={12} />
+              </button>
+            </div>
+          ) : null}
+          <div className="cx-view admin-content cx-legacy">
+            <Outlet context={{ admin, dashDate, setDashDate }} />
           </div>
         </div>
       </div>

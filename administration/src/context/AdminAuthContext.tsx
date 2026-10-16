@@ -97,9 +97,8 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
       setCapabilities(resolved)
     }
 
-    const path =
-      homePath ||
-      (resolved.manageAdmins || isSuperAdminRole(loggedIn.role) ? '/cockpit' : '/')
+    // Le tableau de bord est la page d'arrivée pour tous les rôles.
+    const path = homePath || '/'
 
     return { homePath: path, admin: loggedIn }
   }, [])

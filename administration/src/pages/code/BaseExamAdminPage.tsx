@@ -1,8 +1,20 @@
 import { useCallback, useEffect, useState } from 'react'
-import { ChevronDown, ChevronRight, HelpCircle, RefreshCw, Shuffle, X } from 'lucide-react'
-import { AdminSectionHeader } from '../../components/AdminSectionHeader'
+import {
+  Check,
+  ChevronDown,
+  ChevronRight,
+  ClipboardCheck,
+  HelpCircle,
+  Layers,
+  RefreshCw,
+  Shuffle,
+  Trophy,
+  X,
+} from 'lucide-react'
+import { CodeSection } from '../../components/model/CodeSection'
 import { PublishSwitch } from '../../components/PublishSwitch'
 import { getAdminToken, isAuthError } from '../../context/AdminAuthContext'
+import { SkeletonBlock } from '../../ui'
 import { resolveMediaUrl } from '../../utils/mediaUrl'
 
 interface ExamItem {
@@ -159,191 +171,279 @@ export function BaseExamAdminPage(config: BaseExamConfig) {
     }
   }
 
-  return (
-    <section className="admin-panel questions-page">
-      <AdminSectionHeader
-        backTo={config.backTo}
-        backLabel={config.backLabel}
-        kicker={config.kicker}
-        title={config.title}
-      />
+  const generationHint = data
+    ? data.ready
+      ? `Les ${data.examTotal} ${config.itemsLabel} sont prêt(e)s (mélange équilibré sur tous les chapitres publiés). Régénérez pour re-mélanger.`
+      : data.stale
+        ? `La banque de questions a changé : régénérez pour mettre à jour les ${data.examTotal} ${config.itemsLabel}.`
+        : `Il faut au moins ${data.requiredSize} questions publiées (chapitres publiés) pour générer les ${config.itemsLabel}.`
+    : ''
 
-      {success ? (
-        <p className="form-success" role="status">{success}</p>
-      ) : null}
-      {error ? <p className="form-error">{error}</p> : null}
-      {loading ? <p className="subtitle">Chargement…</p> : null}
+  const bankFill = data && data.requiredSize > 0 ? Math.min(100, (data.bankCount / data.requiredSize) * 100) : 0
+  const maxChapter = Math.max(1, ...(data?.chapterBank ?? []).map((c) => c.questionCount))
+
+  return (
+    <CodeSection
+      kicker={config.kicker}
+      title={config.title}
+      subtitle="Sujets mélangés sur tous les chapitres publiés, générés à partir de la banque de questions."
+      actions={
+        <button type="button" className="cx-refresh" onClick={() => void load()}>
+          <RefreshCw aria-hidden />
+          Actualiser
+        </button>
+      }
+    >
+      {success ? <p className="cx-note cx-note-ok" role="status">{success}</p> : null}
+      {error ? <p className="cx-note cx-note-err" role="alert">{error}</p> : null}
+      {loading ? <SkeletonBlock rows={5} /> : null}
 
       {data ? (
         <>
-          <div className="practice-admin-stats">
-            <article>
-              <strong>{data.bankCount}</strong>
-              <span>Questions publiées</span>
-            </article>
-            <article>
-              <strong>{data.chapterCount ?? data.chapterBank?.length ?? 0}</strong>
-              <span>Chapitres dans le mix</span>
-            </article>
-            <article>
-              <strong>{data.examCount}/{data.examTotal}</strong>
-              <span>{config.itemsLabel} formé(e)s</span>
-            </article>
-            <article>
-              <strong>{data.passScore}/20</strong>
-              <span>Seuil de réussite</span>
-            </article>
-          </div>
-
-          <div className="questions-toolbar">
-            <p className="questions-toolbar-meta">
-              {data.ready
-                ? `Les ${data.examTotal} ${config.itemsLabel} sont prêt(e)s (mélange équilibré sur tous les chapitres publiés). Régénérez pour re-mélanger.`
-                : data.stale
-                  ? `La banque de questions a changé : régénérez pour mettre à jour les ${data.examTotal} ${config.itemsLabel}.`
-                  : `Il faut au moins ${data.requiredSize} questions publiées (chapitres publiés) pour générer les ${config.itemsLabel}.`}
-            </p>
-            <div className="practice-admin-actions">
-              <button type="button" className="btn-outline" onClick={() => void load()}>
-                <RefreshCw size={16} />
-                Actualiser
-              </button>
-              <button
-                type="button"
-                className="btn-primary btn-primary-inline"
-                onClick={() => void handleGenerate()}
-                disabled={generating || data.bankCount < data.requiredSize}
-              >
-                <Shuffle size={16} />
-                {generating ? 'Mélange…' : `Mélanger & générer ${data.examTotal} ${config.itemsLabel}`}
-              </button>
+          <div className="cx-kc-grid">
+            <div className="cx-kc">
+              <span className="cx-kc-ico cx-kc-blue">
+                <HelpCircle aria-hidden />
+              </span>
+              <div className="cx-kc-body">
+                <span className="cx-kc-label">Questions publiées</span>
+                <span className="cx-kc-value">
+                  {data.bankCount} <small>/ {data.requiredSize} requises</small>
+                </span>
+                <span className="cx-kc-bar">
+                  <i style={{ width: `${bankFill}%` }} />
+                </span>
+              </div>
+            </div>
+            <div className="cx-kc">
+              <span className="cx-kc-ico cx-kc-green">
+                <Layers aria-hidden />
+              </span>
+              <div className="cx-kc-body">
+                <span className="cx-kc-label">Chapitres dans le mix</span>
+                <span className="cx-kc-value">{data.chapterCount ?? data.chapterBank?.length ?? 0}</span>
+                <span className="cx-kc-sub">chapitres publiés</span>
+              </div>
+            </div>
+            <div className="cx-kc">
+              <span className="cx-kc-ico cx-kc-sky">
+                <ClipboardCheck aria-hidden />
+              </span>
+              <div className="cx-kc-body">
+                <span className="cx-kc-label">{config.itemsLabel} formés</span>
+                <span className="cx-kc-value">
+                  {data.examCount} <small>/ {data.examTotal}</small>
+                </span>
+                <span className="cx-kc-bar">
+                  <i style={{ width: `${data.examTotal ? (data.examCount / data.examTotal) * 100 : 0}%` }} />
+                </span>
+              </div>
+            </div>
+            <div className="cx-kc">
+              <span className="cx-kc-ico cx-kc-gold">
+                <Trophy aria-hidden />
+              </span>
+              <div className="cx-kc-body">
+                <span className="cx-kc-label">Seuil de réussite</span>
+                <span className="cx-kc-value">
+                  {data.passScore} <small>/ 20</small>
+                </span>
+                <span className="cx-kc-sub">note minimale</span>
+              </div>
             </div>
           </div>
 
-          {data.chapterBank && data.chapterBank.length > 0 ? (
-            <section className="practice-results-block">
-              <h3>Banque par chapitre (source du mélange)</h3>
-              <div className="practice-results-list">
-                {data.chapterBank.map((chapter) => (
-                  <article key={chapter.chapterId}>
-                    <div>
-                      <strong>{chapter.chapterName}</strong>
-                      <small>Chapitre publié</small>
+          <section className="cx-panel">
+            <div className="cx-toolbar">
+              <p className="cx-toolbar-meta">{generationHint}</p>
+              <button
+                type="button"
+                className="cx-btn cx-btn-fill"
+                onClick={() => void handleGenerate()}
+                disabled={generating || data.bankCount < data.requiredSize}
+              >
+                <Shuffle aria-hidden />
+                {generating ? 'Mélange…' : `Mélanger & générer ${data.examTotal} ${config.itemsLabel}`}
+              </button>
+            </div>
+          </section>
+
+          <div className="cx-split" style={{ gridTemplateColumns: 'minmax(0,1.5fr) minmax(0,1fr)' }}>
+            <section className="cx-panel">
+              <div className="cx-panel-head cx-ph cx-ph-plain">
+                <span className="cx-phi cx-phi-tile">
+                  <ClipboardCheck aria-hidden />
+                </span>
+                <div className="cx-ph-txt">
+                  <h2 className="cx-panel-title">{config.itemsLabel.charAt(0).toUpperCase() + config.itemsLabel.slice(1)}</h2>
+                  <p className="cx-muted">Cliquez sur un {config.itemLabel.toLowerCase()} pour voir ses questions</p>
+                </div>
+              </div>
+              {data.exams.length === 0 ? (
+                <p className="cx-empty">Aucun(e) {config.itemLabel.toLowerCase()} généré(e) pour le moment.</p>
+              ) : (
+                <div className="cx-exam-grid">
+                  {data.exams.map((exam) => (
+                    <button
+                      key={exam.id}
+                      type="button"
+                      className={`cx-exam${exam.published ? '' : ' cx-draft'}`}
+                      onClick={() => void handleViewDetail(exam.id)}
+                      title={`Voir les questions de ${config.itemLabel} ${exam.examNumber}`}
+                    >
+                      <b>
+                        {config.itemLabel} {exam.examNumber}
+                      </b>
+                      <span>{exam.questionCount} questions</span>
+                      {!exam.published ? <span className="cx-chip cx-amber">Brouillon</span> : null}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </section>
+
+            <section className="cx-panel">
+              <div className="cx-panel-head cx-ph cx-ph-plain">
+                <span className="cx-phi cx-phi-tile">
+                  <Trophy aria-hidden />
+                </span>
+                <div className="cx-ph-txt">
+                  <h2 className="cx-panel-title">Notes des apprenants</h2>
+                  <p className="cx-muted">Résultats récents, en temps réel</p>
+                </div>
+              </div>
+              {data.recentResults.length === 0 ? (
+                <p className="cx-empty">Aucune note pour le moment.</p>
+              ) : (
+                <div className="cx-rows">
+                  {data.recentResults.map((result) => (
+                    <div key={result.id} className={`cx-row ${result.passed ? 'cx-pass' : 'cx-fail'}`}>
+                      <div className="cx-row-main">
+                        <strong>{result.learnerName}</strong>
+                        <small>
+                          {config.itemLabel} {result.examNumber}
+                          {result.learnerEmail ? ` · ${result.learnerEmail}` : ''}
+                        </small>
+                      </div>
+                      <span className="cx-score">{result.scoreLabel}</span>
                     </div>
-                    <span className="practice-score-pill">
-                      {chapter.questionCount} Q
-                    </span>
-                  </article>
+                  ))}
+                </div>
+              )}
+            </section>
+          </div>
+
+          {data.chapterBank && data.chapterBank.length > 0 ? (
+            <section className="cx-panel">
+              <div className="cx-panel-head cx-ph cx-ph-plain">
+                <span className="cx-phi cx-phi-tile">
+                  <Layers aria-hidden />
+                </span>
+                <div className="cx-ph-txt">
+                  <h2 className="cx-panel-title">Banque par chapitre</h2>
+                  <p className="cx-muted">Source du mélange : questions publiées de chaque chapitre</p>
+                </div>
+              </div>
+              <div className="cx-ct">
+                {data.chapterBank.map((chapter) => (
+                  <div className="cx-ct-row" key={chapter.chapterId}>
+                    <div className="cx-ct-mid">
+                      <div className="cx-ct-top">
+                        <span>{chapter.chapterName}</span>
+                        <em>{chapter.questionCount} Q</em>
+                      </div>
+                      <span className="cx-ct-bar">
+                        <i
+                          style={{
+                            width: `${Math.max(3, (chapter.questionCount / maxChapter) * 100)}%`,
+                            background: '#00b050',
+                          }}
+                        />
+                      </span>
+                    </div>
+                  </div>
                 ))}
               </div>
             </section>
           ) : null}
-
-          <div className="practice-exam-grid">
-            {data.exams.length === 0 ? (
-              <p className="revision-empty">Aucun(e) {config.itemLabel} généré(e) pour le moment.</p>
-            ) : (
-              data.exams.map((exam) => (
-                <button
-                  key={exam.id}
-                  type="button"
-                  className="practice-exam-chip"
-                  onClick={() => void handleViewDetail(exam.id)}
-                  title={`Voir les questions de ${config.itemLabel} ${exam.examNumber}`}
-                >
-                  <strong>{config.itemLabel} {exam.examNumber}</strong>
-                  <span>{exam.questionCount} questions</span>
-                  {!exam.published ? <span className="revision-tag">Brouillon</span> : null}
-                </button>
-              ))
-            )}
-          </div>
-
-          <section className="practice-results-block">
-            <h3>Notes apprenants (temps réel)</h3>
-            {data.recentResults.length === 0 ? (
-              <p className="subtitle">Aucune note pour le moment.</p>
-            ) : (
-              <div className="practice-results-list">
-                {data.recentResults.map((result) => (
-                  <article key={result.id} className={result.passed ? 'is-pass' : 'is-fail'}>
-                    <div>
-                      <strong>{result.learnerName}</strong>
-                      <small>
-                        {config.itemLabel} {result.examNumber}
-                        {result.learnerEmail ? ` · ${result.learnerEmail}` : ''}
-                      </small>
-                    </div>
-                    <span className="practice-score-pill">{result.scoreLabel}</span>
-                  </article>
-                ))}
-              </div>
-            )}
-          </section>
         </>
       ) : null}
 
       {detailExam ? (
-        <div className="modal-backdrop" onClick={() => setDetailExam(null)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2>{config.itemLabel} {detailExam.examNumber}</h2>
-              <div className="modal-header-actions">
-                <PublishSwitch
-                  checked={detailExam.published}
-                  onChange={(published) => void handlePublishToggle(detailExam.id, published)}
-                />
-                <button type="button" className="btn-text-danger" onClick={() => setDetailExam(null)} aria-label="Fermer">
-                  <X size={20} />
-                </button>
-              </div>
+        <div className="cx-modal-bg" onClick={() => setDetailExam(null)}>
+          <div className="cx-modal" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
+            <div className="cx-modal-head">
+              <h2>
+                {config.itemLabel} {detailExam.examNumber}
+              </h2>
+              <span className="cx-chip cx-blue">{detailExam.questionCount} questions</span>
+              <PublishSwitch
+                checked={detailExam.published}
+                onChange={(published) => void handlePublishToggle(detailExam.id, published)}
+              />
+              <button
+                type="button"
+                className="cx-btn cx-btn-icon"
+                onClick={() => setDetailExam(null)}
+                aria-label="Fermer"
+              >
+                <X aria-hidden />
+              </button>
             </div>
-            <p className="subtitle">{detailExam.questionCount} questions</p>
-            {detailLoading ? (
-              <p className="subtitle">Chargement des questions…</p>
-            ) : (
-              <div className="revision-courses-stack">
-                {(detailExam.questions || []).map((question, index) => {
+            <div className="cx-modal-body">
+              {detailLoading ? (
+                <p className="cx-empty">Chargement des questions…</p>
+              ) : (
+                (detailExam.questions || []).map((question, index) => {
                   const expanded = expandedQuestionId === question.id
                   return (
-                    <div key={question.id} className="revision-course">
-                      <div className="revision-course-header">
-                        <button
-                          type="button"
-                          className="revision-course-toggle"
-                          onClick={() =>
-                            setExpandedQuestionId((current) => (current === question.id ? null : question.id))
-                          }
-                        >
-                          {expanded ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
-                          <HelpCircle size={18} />
-                          <span>Q{index + 1}</span>
-                          <span className="revision-count">
+                    <div key={question.id} className={`cx-qb-row${expanded ? ' cx-open' : ''}`}>
+                      <button
+                        type="button"
+                        className="cx-qb-main"
+                        style={{ gridTemplateColumns: '3.2rem minmax(0,1fr) auto 1.6rem' }}
+                        onClick={() =>
+                          setExpandedQuestionId((current) => (current === question.id ? null : question.id))
+                        }
+                        aria-expanded={expanded}
+                      >
+                        <span className="cx-qb-idx">Q{index + 1}</span>
+                        <span className="cx-qb-prompt">
+                          <strong>{question.prompt.text || 'Énoncé audio'}</strong>
+                        </span>
+                        <span className="cx-qb-media">
+                          <span className="cx-chip">
                             {question.answers.length} réponse{question.answers.length !== 1 ? 's' : ''}
                           </span>
-                          {!question.published ? <span className="revision-tag">Brouillon</span> : null}
-                        </button>
-                      </div>
+                          {!question.published ? <span className="cx-chip cx-amber">Brouillon</span> : null}
+                        </span>
+                        <span className={`cx-chev${expanded ? ' cx-open' : ''}`}>
+                          {expanded ? <ChevronDown aria-hidden /> : <ChevronRight aria-hidden />}
+                        </span>
+                      </button>
                       {expanded ? (
-                        <div className="revision-course-body">
-                          {question.prompt.text ? <p>{question.prompt.text}</p> : null}
+                        <div className="cx-qb-detail" style={{ paddingLeft: '1rem' }}>
                           {question.prompt.audioUrl ? (
-                            <audio controls src={resolveMediaUrl(question.prompt.audioUrl)} />
+                            <div className="cx-qb-audio">
+                              <audio controls src={resolveMediaUrl(question.prompt.audioUrl)} />
+                            </div>
                           ) : null}
                           {question.prompt.imageUrls.length > 0 ? (
-                            <div className="question-images">
+                            <div className="cx-qb-imgs">
                               {question.prompt.imageUrls.map((url) => (
-                                <img key={url} src={resolveMediaUrl(url)} alt="" className="question-preview-image" />
+                                <img key={url} src={resolveMediaUrl(url)} alt="" />
                               ))}
                             </div>
                           ) : null}
-                          <ul className="question-answers-preview">
+                          <ul className="cx-ans-list">
                             {question.answers.map((answer) => (
-                              <li key={`${question.id}-${answer.label}`}>
-                                <span className={answer.isCorrect ? 'is-correct' : undefined}>
-                                  {answer.label.toUpperCase()}
-                                  {answer.isCorrect ? ' ✓' : ''}
-                                </span>
+                              <li
+                                key={`${question.id}-${answer.label}`}
+                                className={answer.isCorrect ? 'cx-correct' : undefined}
+                              >
+                                <strong>{answer.label.toUpperCase()}</strong>
+                                {answer.text ? <span>{answer.text}</span> : null}
+                                {answer.isCorrect ? <Check aria-label="Bonne réponse" /> : null}
                               </li>
                             ))}
                           </ul>
@@ -351,58 +451,12 @@ export function BaseExamAdminPage(config: BaseExamConfig) {
                       ) : null}
                     </div>
                   )
-                })}
-              </div>
-            )}
+                })
+              )}
+            </div>
           </div>
         </div>
       ) : null}
-
-      <style>{`
-        .modal-backdrop {
-          position: fixed;
-          inset: 0;
-          background: rgba(0,0,0,0.5);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          z-index: 1000;
-          padding: 1rem;
-        }
-        .modal-content {
-          background: #fff;
-          border-radius: 12px;
-          max-width: 720px;
-          width: 100%;
-          max-height: 85vh;
-          overflow-y: auto;
-          padding: 1.5rem;
-        }
-        .modal-header {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          margin-bottom: 0.5rem;
-        }
-        .modal-header h2 {
-          margin: 0;
-        }
-        .modal-header-actions {
-          display: flex;
-          align-items: center;
-          gap: 0.75rem;
-        }
-        .practice-exam-chip {
-          cursor: pointer;
-          transition: box-shadow 0.15s;
-          border: 1px solid #e0e0e0;
-          background: #fff;
-          text-align: left;
-        }
-        .practice-exam-chip:hover {
-          box-shadow: 0 2px 8px rgba(0,0,0,0.12);
-        }
-      `}</style>
-    </section>
+    </CodeSection>
   )
 }

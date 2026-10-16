@@ -1,13 +1,13 @@
 import { FormEvent, useCallback, useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { Filter, RefreshCw, Shield } from 'lucide-react'
+import { Filter, RefreshCw, RotateCcw, ScrollText } from 'lucide-react'
 import {
   fetchAdmins,
   fetchAuditLogs,
   type AdminAccount,
   type AuditLogEntry,
 } from '../api/admins'
-import { StatusBadge } from '../components/StatusBadge'
+import { DirectionSection } from '../components/model/DirectionSection'
 import { getAdminToken, isAuthError } from '../context/AdminAuthContext'
 import { EmptyState, SkeletonBlock } from '../ui'
 import { actionLabel, formatAuditDate, resourceLabel, summarizeMetadata } from '../utils/auditLabels'
@@ -100,123 +100,117 @@ export function AuditLogPage() {
   }
 
   return (
-    <div className="admin-page">
-      <div className="admin-page-intro">
-        <p className="admin-page-intro-label">Sécurité</p>
-        <h2 className="admin-page-intro-title">Journal d’audit</h2>
-        <p className="admin-page-intro-text">
-          Traçabilité des opérations administrateur (filtres par compte, action et date).
-        </p>
-      </div>
-
-      <div className="users-toolbar-figma" style={{ marginBottom: 16, gap: 10, flexWrap: 'wrap' }}>
-        <Link to="/administrateurs" className="dash-filter-btn" style={{ textDecoration: 'none' }}>
-          <Shield size={12} />
-          Liste des admins
-        </Link>
-        <button type="button" className="dash-filter-btn" onClick={() => void load(page)} disabled={loading}>
-          <RefreshCw size={12} />
+    <DirectionSection
+      kicker="Sécurité"
+      title="Journal d’audit"
+      subtitle="Traçabilité des opérations administrateur : filtres par compte, action et date."
+      actions={
+        <button type="button" className="cx-refresh" onClick={() => void load(page)} disabled={loading}>
+          <RefreshCw aria-hidden />
           {loading ? 'Chargement…' : 'Actualiser'}
         </button>
-        <span className="muted" style={{ alignSelf: 'center' }}>
-          {total} entrée{total > 1 ? 's' : ''}
-        </span>
-      </div>
+      }
+    >
+      {error ? <p className="cx-note cx-note-err" role="alert">{error}</p> : null}
 
-      <section className="admin-section" style={{ marginBottom: 16 }}>
-        <div className="admin-section-head">
-          <h3 className="admin-section-label">
-            <Filter size={14} style={{ display: 'inline', marginRight: 6 }} />
-            Filtres
-          </h3>
+      <section className="cx-panel">
+        <div className="cx-panel-head cx-ph cx-ph-plain">
+          <span className="cx-phi cx-phi-tile">
+            <Filter aria-hidden />
+          </span>
+          <div className="cx-ph-txt">
+            <h2 className="cx-panel-title">Filtres</h2>
+            <p className="cx-muted">
+              {total} entrée{total > 1 ? 's' : ''} correspondante{total > 1 ? 's' : ''}
+            </p>
+          </div>
         </div>
-        <div className="admin-section-body">
-          <form
-            onSubmit={applyFilters}
-            className="create-admin-grid"
-            style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 12 }}
-          >
-            <div className="create-admin-field">
-              <label htmlFor="audit-admin">Administrateur</label>
-              <select id="audit-admin" value={adminId} onChange={(e) => setAdminId(e.target.value)}>
-                <option value="">Tous</option>
-                {admins.map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {a.fullName}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="create-admin-field">
-              <label htmlFor="audit-action">Action</label>
-              <select id="audit-action" value={action} onChange={(e) => setAction(e.target.value)}>
-                <option value="">Toutes</option>
-                {actions.map((item) => (
-                  <option key={item} value={item}>
-                    {actionLabel(item)}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="create-admin-field">
-              <label htmlFor="audit-resource">Ressource</label>
-              <select id="audit-resource" value={resource} onChange={(e) => setResource(e.target.value)}>
-                <option value="">Toutes</option>
-                {resources.map((item) => (
-                  <option key={item} value={item}>
-                    {resourceLabel(item)}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="create-admin-field">
-              <label htmlFor="audit-from">Du</label>
-              <input id="audit-from" type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
-            </div>
-            <div className="create-admin-field">
-              <label htmlFor="audit-to">Au</label>
-              <input id="audit-to" type="date" value={to} onChange={(e) => setTo(e.target.value)} />
-            </div>
-            <div className="create-admin-field">
-              <label htmlFor="audit-q">Recherche</label>
-              <input
-                id="audit-q"
-                type="search"
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                placeholder="Nom, action, id…"
-              />
-            </div>
-            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8 }}>
-              <button type="submit" className="btn-primary btn-primary-inline">
-                Filtrer
-              </button>
-              <button type="button" className="dash-filter-btn" onClick={resetFilters}>
-                Réinitialiser
-              </button>
-            </div>
-          </form>
-        </div>
+        <form onSubmit={applyFilters} className="cx-filter-bar">
+          <label>
+            Administrateur
+            <select id="audit-admin" className="cx-select" value={adminId} onChange={(e) => setAdminId(e.target.value)}>
+              <option value="">Tous</option>
+              {admins.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.fullName}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Action
+            <select id="audit-action" className="cx-select" value={action} onChange={(e) => setAction(e.target.value)}>
+              <option value="">Toutes</option>
+              {actions.map((item) => (
+                <option key={item} value={item}>
+                  {actionLabel(item)}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Ressource
+            <select id="audit-resource" className="cx-select" value={resource} onChange={(e) => setResource(e.target.value)}>
+              <option value="">Toutes</option>
+              {resources.map((item) => (
+                <option key={item} value={item}>
+                  {resourceLabel(item)}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Du
+            <input id="audit-from" className="cx-input" type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
+          </label>
+          <label>
+            Au
+            <input id="audit-to" className="cx-input" type="date" value={to} onChange={(e) => setTo(e.target.value)} />
+          </label>
+          <label>
+            Recherche
+            <input
+              id="audit-q"
+              className="cx-input"
+              type="search"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Nom, action, id…"
+            />
+          </label>
+          <div className="cx-toolbar">
+            <button type="submit" className="cx-btn cx-btn-fill">
+              <Filter aria-hidden />
+              Filtrer
+            </button>
+            <button type="button" className="cx-btn" onClick={resetFilters}>
+              <RotateCcw aria-hidden />
+              Réinitialiser
+            </button>
+          </div>
+        </form>
       </section>
 
-      {error ? (
-        <p className="form-error" role="alert">
-          {error}
-        </p>
-      ) : null}
+      <section className="cx-panel">
+        <div className="cx-panel-head cx-ph cx-ph-plain">
+          <span className="cx-phi cx-phi-tile">
+            <ScrollText aria-hidden />
+          </span>
+          <div className="cx-ph-txt">
+            <h2 className="cx-panel-title">Opérations</h2>
+            <p className="cx-muted">
+              Page {page} sur {pages}
+            </p>
+          </div>
+        </div>
 
-      <section className="admin-section">
-        <div className="admin-section-body" style={{ padding: loading && logs.length === 0 ? 16 : 0 }}>
-          {loading && logs.length === 0 ? (
-            <SkeletonBlock rows={6} />
-          ) : !loading && logs.length === 0 ? (
-            <EmptyState
-              title="Aucune entrée"
-              description="Aucune entrée ne correspond à ces filtres."
-            />
-          ) : (
-          <div className="admin-data-table-wrap">
-            <table className="admin-data-table" style={{ minWidth: 860 }}>
+        {loading && logs.length === 0 ? (
+          <SkeletonBlock rows={6} />
+        ) : !loading && logs.length === 0 ? (
+          <EmptyState title="Aucune entrée" description="Aucune entrée ne correspond à ces filtres." />
+        ) : (
+          <div className="cx-table-wrap">
+            <table className="cx-data" style={{ minWidth: 860 }}>
               <thead>
                 <tr>
                   <th>Date</th>
@@ -231,55 +225,48 @@ export function AuditLogPage() {
               <tbody>
                 {logs.map((entry) => (
                   <tr key={entry.id}>
-                    <td>{formatAuditDate(entry.createdAt)}</td>
+                    <td className="cx-dim">{formatAuditDate(entry.createdAt)}</td>
                     <td>
                       {entry.adminId ? (
-                        <Link to={`/administrateurs/${entry.adminId}`}>{entry.adminName}</Link>
+                        <Link to={`/administrateurs/${entry.adminId}`} className="cx-link-all" style={{ margin: 0 }}>
+                          {entry.adminName}
+                        </Link>
                       ) : (
                         entry.adminName
                       )}
                     </td>
                     <td>
-                      <StatusBadge tone="neutral" withIcon={false}>
-                        {actionLabel(entry.action)}
-                      </StatusBadge>
+                      <span className="cx-evt">{actionLabel(entry.action)}</span>
                     </td>
                     <td>{resourceLabel(entry.resource)}</td>
-                    <td className="muted">{entry.resourceId || '—'}</td>
-                    <td style={{ maxWidth: 280, fontSize: 13 }}>{summarizeMetadata(entry.metadata)}</td>
-                    <td className="muted">{entry.ip || '—'}</td>
+                    <td className="cx-dim">{entry.resourceId || '—'}</td>
+                    <td style={{ maxWidth: 280, whiteSpace: 'normal', fontSize: '.84rem' }}>
+                      {summarizeMetadata(entry.metadata)}
+                    </td>
+                    <td className="cx-dim">{entry.ip || '—'}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-          )}
-        </div>
-      </section>
+        )}
 
-      {pages > 1 ? (
-        <div style={{ display: 'flex', gap: 8, marginTop: 12, alignItems: 'center' }}>
-          <button
-            type="button"
-            className="dash-filter-btn"
-            disabled={page <= 1 || loading}
-            onClick={() => void load(page - 1)}
-          >
-            Précédent
-          </button>
-          <span className="muted">
-            Page {page} / {pages}
-          </span>
-          <button
-            type="button"
-            className="dash-filter-btn"
-            disabled={page >= pages || loading}
-            onClick={() => void load(page + 1)}
-          >
-            Suivant
-          </button>
-        </div>
-      ) : null}
-    </div>
+        {pages > 1 ? (
+          <div className="cx-pager">
+            <span>
+              Page {page} / {pages}
+            </span>
+            <div>
+              <button type="button" className="cx-btn cx-btn-sm" disabled={page <= 1 || loading} onClick={() => void load(page - 1)}>
+                Précédent
+              </button>
+              <button type="button" className="cx-btn cx-btn-sm" disabled={page >= pages || loading} onClick={() => void load(page + 1)}>
+                Suivant
+              </button>
+            </div>
+          </div>
+        ) : null}
+      </section>
+    </DirectionSection>
   )
 }

@@ -1,5 +1,5 @@
 import { FormEvent, useCallback, useEffect, useState } from 'react'
-import { RefreshCw } from 'lucide-react'
+import { CheckCircle2, CalendarCheck, RefreshCw, Wallet } from 'lucide-react'
 import {
   createMoniteurPayout,
   fetchMoniteurFinanceDetail,
@@ -8,6 +8,7 @@ import {
   type MoniteurPayoutItem,
 } from '../api/finances'
 import { getAdminToken, isAuthError } from '../context/AdminAuthContext'
+import { EmptyState, SkeletonBlock } from '../ui'
 
 function formatMoney(value: number) {
   return new Intl.NumberFormat('fr-FR', {
@@ -115,130 +116,157 @@ export function MoniteurFinancesPanel() {
   }
 
   return (
-    <div className="moniteur-finances-panel">
-      <div className="ar-row-actions" style={{ marginBottom: 16 }}>
-        <button type="button" className="admin-btn admin-btn-secondary" onClick={() => void load()} disabled={loading}>
-          <RefreshCw size={14} />
+    <div className="cx-form">
+      <div className="cx-toolbar">
+        <p className="cx-toolbar-meta">Gains = prix des séances terminées, déduction faite des versements déjà enregistrés.</p>
+        <button type="button" className="cx-btn" onClick={() => void load()} disabled={loading}>
+          <RefreshCw aria-hidden />
           Actualiser
         </button>
       </div>
 
-      {error ? <p className="form-error">{error}</p> : null}
-      {success ? <p className="form-success">{success}</p> : null}
+      {error ? <p className="cx-note cx-note-err" role="alert">{error}</p> : null}
+      {success ? <p className="cx-note cx-note-ok" role="status">{success}</p> : null}
 
-      <div className="admin-stat-grid" style={{ marginBottom: 20 }}>
-        <div className="admin-stat-card">
-          <strong>{totals.completedSessions}</strong>
-          <span>Séances terminées</span>
+      <div className="cx-kc-grid">
+        <div className="cx-kc">
+          <span className="cx-kc-ico cx-kc-blue">
+            <CalendarCheck aria-hidden />
+          </span>
+          <div className="cx-kc-body">
+            <span className="cx-kc-label">Séances terminées</span>
+            <span className="cx-kc-value">{totals.completedSessions}</span>
+          </div>
         </div>
-        <div className="admin-stat-card">
-          <strong>{formatMoney(totals.totalEarned)}</strong>
-          <span>Gains cumulés</span>
+        <div className="cx-kc">
+          <span className="cx-kc-ico cx-kc-green">
+            <Wallet aria-hidden />
+          </span>
+          <div className="cx-kc-body">
+            <span className="cx-kc-label">Gains cumulés</span>
+            <span className="cx-kc-value" style={{ fontSize: '1.15rem' }}>{formatMoney(totals.totalEarned)}</span>
+          </div>
         </div>
-        <div className="admin-stat-card">
-          <strong>{formatMoney(totals.totalPaid)}</strong>
-          <span>Déjà versé</span>
+        <div className="cx-kc">
+          <span className="cx-kc-ico cx-kc-sky">
+            <CheckCircle2 aria-hidden />
+          </span>
+          <div className="cx-kc-body">
+            <span className="cx-kc-label">Déjà versé</span>
+            <span className="cx-kc-value" style={{ fontSize: '1.15rem' }}>{formatMoney(totals.totalPaid)}</span>
+          </div>
         </div>
-        <div className="admin-stat-card">
-          <strong>{formatMoney(totals.outstanding)}</strong>
-          <span>Reste à payer</span>
+        <div className="cx-kc">
+          <span className="cx-kc-ico cx-kc-gold">
+            <Wallet aria-hidden />
+          </span>
+          <div className="cx-kc-body">
+            <span className="cx-kc-label">Reste à payer</span>
+            <span className="cx-kc-value" style={{ fontSize: '1.15rem' }}>{formatMoney(totals.outstanding)}</span>
+          </div>
         </div>
       </div>
 
-      <table className="admin-data-table finances-table">
-        <thead>
-          <tr>
-            <th>Moniteur</th>
-            <th>Séances</th>
-            <th>Gains</th>
-            <th>Versé</th>
-            <th>Reste dû</th>
-            <th>Ce mois</th>
-          </tr>
-        </thead>
-        <tbody>
-          {loading && rows.length === 0 ? (
-            <tr>
-              <td colSpan={6}>Chargement…</td>
-            </tr>
-          ) : rows.length === 0 ? (
-            <tr>
-              <td colSpan={6}>Aucun moniteur</td>
-            </tr>
-          ) : (
-            rows.map((row) => (
-              <tr
-                key={row.moniteur.id}
-                className="finances-row-clickable"
-                onClick={() => setSelectedId(row.moniteur.id)}
-              >
-                <td>
-                  <strong>{row.moniteur.fullName}</strong>
-                  <div className="admin-muted">{row.moniteur.email || '—'}</div>
-                </td>
-                <td>{row.completedSessions}</td>
-                <td>{formatMoney(row.totalEarned)}</td>
-                <td>{formatMoney(row.totalPaid)}</td>
-                <td>
-                  <strong>{formatMoney(row.outstanding)}</strong>
-                </td>
-                <td>{formatMoney(row.monthEarned)}</td>
+      {loading && rows.length === 0 ? (
+        <SkeletonBlock rows={4} />
+      ) : rows.length === 0 ? (
+        <EmptyState title="Aucun moniteur" description="Aucun moniteur à rémunérer pour le moment." />
+      ) : (
+        <div className="cx-table-wrap">
+          <table className="cx-data">
+            <thead>
+              <tr>
+                <th>Moniteur</th>
+                <th>Séances</th>
+                <th>Gains</th>
+                <th>Versé</th>
+                <th>Reste dû</th>
+                <th>Ce mois</th>
               </tr>
-            ))
-          )}
-        </tbody>
-      </table>
+            </thead>
+            <tbody>
+              {rows.map((row) => (
+                <tr
+                  key={row.moniteur.id}
+                  className="cx-click"
+                  onClick={() => setSelectedId(row.moniteur.id)}
+                  style={row.moniteur.id === selectedId ? { background: '#f0faf4' } : undefined}
+                >
+                  <td>
+                    <div className="cx-person">
+                      <span className="cx-avatar">
+                        {row.moniteur.fullName
+                          .split(/\s+/)
+                          .slice(0, 2)
+                          .map((part) => part[0])
+                          .join('')
+                          .toUpperCase()}
+                      </span>
+                      <div>
+                        <strong>{row.moniteur.fullName}</strong>
+                        <small>{row.moniteur.email || '—'}</small>
+                      </div>
+                    </div>
+                  </td>
+                  <td>{row.completedSessions}</td>
+                  <td>{formatMoney(row.totalEarned)}</td>
+                  <td>{formatMoney(row.totalPaid)}</td>
+                  <td>
+                    <strong>{formatMoney(row.outstanding)}</strong>
+                  </td>
+                  <td>{formatMoney(row.monthEarned)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {selected ? (
-        <section className="admin-section" style={{ marginTop: 24 }}>
-          <div className="admin-section-head">
-            <h3 className="admin-section-label">Versement — {selected.moniteur.fullName}</h3>
-            <p className="admin-section-hint">
-              Reste dû : {formatMoney(selected.outstanding)}. Gain = prix des séances terminées.
-            </p>
-          </div>
-          <div className="admin-section-body">
-            <form onSubmit={handlePayout} className="reserv-create-grid">
-              <input
-                type="number"
-                min={1}
-                step={500}
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                placeholder="Montant FCFA"
-                required
-              />
-              <input
-                value={periodLabel}
-                onChange={(e) => setPeriodLabel(e.target.value)}
-                placeholder="Période (ex. Août 2026)"
-              />
-              <input
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                placeholder="Note (optionnel)"
-              />
-              <button type="submit" className="btn-primary" disabled={saving || selected.outstanding < 1}>
-                {saving ? 'Enregistrement…' : 'Enregistrer le versement'}
-              </button>
-            </form>
+        <div className="cx-block">
+          <h3>Versement — {selected.moniteur.fullName}</h3>
+          <p>Reste dû : {formatMoney(selected.outstanding)}. Gain = prix des séances terminées.</p>
+          <form onSubmit={handlePayout} className="cx-field-row">
+            <input
+              className="cx-input"
+              type="number"
+              min={1}
+              step={500}
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              placeholder="Montant FCFA"
+              required
+            />
+            <input
+              className="cx-input"
+              value={periodLabel}
+              onChange={(e) => setPeriodLabel(e.target.value)}
+              placeholder="Période (ex. Août 2026)"
+            />
+            <input className="cx-input" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Note (optionnel)" />
+            <button type="submit" className="cx-btn cx-btn-fill" disabled={saving || selected.outstanding < 1}>
+              {saving ? 'Enregistrement…' : 'Enregistrer le versement'}
+            </button>
+          </form>
 
-            <h4 style={{ marginTop: 20 }}>Historique des versements</h4>
-            {payouts.length === 0 ? (
-              <p className="admin-muted">Aucun versement</p>
-            ) : (
-              <ul className="finances-linked-list">
-                {payouts.map((item) => (
-                  <li key={item.id}>
-                    <strong>{formatMoney(item.amountFcfa)}</strong> — {formatDate(item.paidAt)}
+          <h3 style={{ marginTop: '.8rem' }}>Historique des versements</h3>
+          {payouts.length === 0 ? (
+            <p className="cx-empty">Aucun versement</p>
+          ) : (
+            <ul className="cx-scores">
+              {payouts.map((item) => (
+                <li key={item.id}>
+                  <span>
+                    {formatDate(item.paidAt)}
                     {item.periodLabel ? ` · ${item.periodLabel}` : ''}
                     {item.note ? ` · ${item.note}` : ''}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        </section>
+                  </span>
+                  <strong>{formatMoney(item.amountFcfa)}</strong>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       ) : null}
     </div>
   )

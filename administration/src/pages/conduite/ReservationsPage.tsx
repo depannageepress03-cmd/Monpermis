@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { RefreshCw, Trash2 } from 'lucide-react'
+import { CalendarClock, CheckCircle2, Clock3, RefreshCw, Trash2, Wallet } from 'lucide-react'
 import { useSearchParams } from 'react-router-dom'
 import {
   deleteAdminReservation,
   fetchAdminReservations,
   fetchMoniteurs,
 } from '../../api/reservations'
-import { AdminSectionHeader } from '../../components/AdminSectionHeader'
+import { ConduiteSection } from '../../components/model/ConduiteSection'
+import { fcfa, nf } from '../../components/model/ModelCharts'
+import { EmptyState, SkeletonBlock } from '../../ui'
 import { getAdminToken, isAuthError } from '../../context/AdminAuthContext'
 import type { Moniteur, ReservationAdmin } from '../../types/reservations'
 import { resolveMediaUrl } from '../../utils/mediaUrl'
@@ -28,6 +30,37 @@ function paymentBadge(reservation: ReservationAdmin) {
       return { label: 'Remboursé', tone: '' }
     default:
       return { label: 'Non payé', tone: 'is-danger' }
+  }
+}
+
+const TONE_CHIP: Record<string, string> = {
+  'is-success': 'cx-green',
+  'is-warning': 'cx-amber',
+  'is-danger': 'cx-red',
+  '': 'cx-slate',
+}
+
+function statusChip(status: string) {
+  switch (String(status || '').toLowerCase()) {
+    case 'confirmed':
+    case 'confirmee':
+    case 'confirmée':
+      return 'cx-green'
+    case 'pending':
+    case 'en_attente':
+      return 'cx-amber'
+    case 'cancelled':
+    case 'canceled':
+    case 'annulee':
+    case 'annulée':
+    case 'no_show':
+      return 'cx-red'
+    case 'completed':
+    case 'terminee':
+    case 'terminée':
+      return 'cx-blue'
+    default:
+      return 'cx-slate'
   }
 }
 
@@ -165,157 +198,208 @@ export function ReservationsPage() {
     }
   }
 
+  const stats = useMemo(() => {
+    let confirmed = 0
+    let pending = 0
+    let revenue = 0
+    for (const reservation of reservations) {
+      const key = String(reservation.status || '').toLowerCase()
+      if (['confirmed', 'confirmee', 'confirmée', 'completed', 'terminee', 'terminée'].includes(key)) confirmed += 1
+      if (['pending', 'en_attente'].includes(key) || reservation.paymentStatus === 'pending_validation') pending += 1
+      if (reservation.paymentStatus === 'paid') revenue += reservation.priceFcfa || 0
+    }
+    return { total: reservations.length, confirmed, pending, revenue }
+  }, [reservations])
+
   return (
-    <div className="admin-page reserv-page">
-      <AdminSectionHeader
-        backTo="/conduite"
-        backLabel="Conduite"
-        kicker="Gestion"
-        title="Réservations"
-        subtitle="Suivez les séances élèves et leur statut de paiement."
-      />
+    <ConduiteSection
+      kicker="Gestion"
+      title="Réservations"
+      subtitle="Suivez les séances des élèves et leur statut de paiement."
+      actions={
+        <button type="button" className="cx-refresh" onClick={() => void load()} disabled={loading}>
+          <RefreshCw aria-hidden />
+          {loading ? 'Actualisation…' : 'Actualiser'}
+        </button>
+      }
+    >
+      {error ? <p className="cx-note cx-note-err" role="alert">{error}</p> : null}
+      {success ? <p className="cx-note cx-note-ok" role="status">{success}</p> : null}
 
-      {error ? <p className="form-error">{error}</p> : null}
-      {success ? <p className="form-success">{success}</p> : null}
-
-      <section className="admin-section">
-        <div className="admin-section-head">
-          <h3 className="admin-section-label">Séances élèves</h3>
-          <button
-            type="button"
-            className="btn-outline-sm"
-            onClick={() => void load()}
-            disabled={loading}
-          >
-            <RefreshCw size={14} />
-            {loading ? 'Actualisation…' : 'Actualiser'}
-          </button>
+      <div className="cx-kc-grid">
+        <div className="cx-kc">
+          <span className="cx-kc-ico cx-kc-blue">
+            <CalendarClock aria-hidden />
+          </span>
+          <div className="cx-kc-body">
+            <span className="cx-kc-label">Réservations</span>
+            <span className="cx-kc-value">{nf(stats.total)}</span>
+            <span className="cx-kc-sub">au total</span>
+          </div>
         </div>
-        <div className="admin-section-body">
-          <div className="reserv-filters">
-            <label>
-              Moniteur
-              <select
-                value={filterMoniteur}
-                onChange={(e) => setFilterMoniteur(e.target.value)}
-              >
-                <option value="">Tous</option>
-                {moniteurs.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.fullName}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              Statut
-              <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
-                <option value="">Tous</option>
-                <option value="confirmed">Confirmée</option>
-                <option value="pending">En attente</option>
-                <option value="cancelled">Annulée</option>
-                <option value="completed">Terminée</option>
-              </select>
-            </label>
-            <label>
-              Paiement
-              <select value={filterPayment} onChange={(e) => setFilterPayment(e.target.value)}>
-                <option value="">Tous</option>
-                <option value="paid">Payé</option>
-                <option value="pending">En attente</option>
-                <option value="unpaid">Non payé</option>
-              </select>
-            </label>
+        <div className="cx-kc">
+          <span className="cx-kc-ico cx-kc-green">
+            <CheckCircle2 aria-hidden />
+          </span>
+          <div className="cx-kc-body">
+            <span className="cx-kc-label">Confirmées</span>
+            <span className="cx-kc-value">{nf(stats.confirmed)}</span>
+            <span className="cx-kc-sub">confirmées ou terminées</span>
           </div>
+        </div>
+        <div className="cx-kc">
+          <span className="cx-kc-ico cx-kc-gold">
+            <Clock3 aria-hidden />
+          </span>
+          <div className="cx-kc-body">
+            <span className="cx-kc-label">En attente</span>
+            <span className="cx-kc-value">{nf(stats.pending)}</span>
+            <span className="cx-kc-sub">à valider ou à payer</span>
+          </div>
+        </div>
+        <div className="cx-kc">
+          <span className="cx-kc-ico cx-kc-sky">
+            <Wallet aria-hidden />
+          </span>
+          <div className="cx-kc-body">
+            <span className="cx-kc-label">Encaissé</span>
+            <span className="cx-kc-value">{nf(stats.revenue)}</span>
+            <span className="cx-kc-sub">FCFA payés en Mobile Money</span>
+          </div>
+        </div>
+      </div>
 
-          {queryFilter ? (
-            <p className="admin-muted" style={{ marginBottom: '0.75rem' }}>
-              Filtre recherche : « {searchParams.get('q')} »
+      <section className="cx-panel">
+        <div className="cx-panel-head cx-ph cx-ph-plain">
+          <span className="cx-phi cx-phi-tile">
+            <CalendarClock aria-hidden />
+          </span>
+          <div className="cx-ph-txt">
+            <h2 className="cx-panel-title">Séances des élèves</h2>
+            <p className="cx-muted">
+              {filteredReservations.length} sur {reservations.length} affichée
+              {filteredReservations.length > 1 ? 's' : ''} · mise à jour automatique
             </p>
-          ) : null}
+          </div>
+        </div>
 
-          {loading && reservations.length === 0 ? <p className="admin-empty">Chargement…</p> : null}
-          {!loading && filteredReservations.length === 0 ? (
-            <p className="admin-empty">
-              {reservations.length === 0
-                ? 'Aucune réservation pour le moment. Dès qu’un élève confirme une séance, elle apparaît ici.'
-                : 'Aucune réservation ne correspond aux filtres.'}
-            </p>
-          ) : null}
+        <div className="cx-filters" style={{ marginBottom: '1rem' }}>
+          <label>
+            Moniteur
+            <select className="cx-select" value={filterMoniteur} onChange={(e) => setFilterMoniteur(e.target.value)}>
+              <option value="">Tous</option>
+              {moniteurs.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.fullName}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Statut
+            <select className="cx-select" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
+              <option value="">Tous</option>
+              <option value="confirmed">Confirmée</option>
+              <option value="pending">En attente</option>
+              <option value="cancelled">Annulée</option>
+              <option value="completed">Terminée</option>
+            </select>
+          </label>
+          <label>
+            Paiement
+            <select className="cx-select" value={filterPayment} onChange={(e) => setFilterPayment(e.target.value)}>
+              <option value="">Tous</option>
+              <option value="paid">Payé</option>
+              <option value="pending">En attente</option>
+              <option value="unpaid">Non payé</option>
+            </select>
+          </label>
+        </div>
 
-          <div className="reserv-card-list">
-            {filteredReservations.map((reservation) => {
-              const badge = paymentBadge(reservation)
-              const learner = learnerName(reservation)
-              const when = reservation.creneau
-                ? `${reservation.creneau.date} · ${reservation.creneau.startTime}${
-                    reservation.creneau.endTime ? `–${reservation.creneau.endTime}` : ''
-                  }`
-                : 'Créneau —'
-              const priceLine =
-                reservation.heuresDebitees > 0
-                  ? `${reservation.heuresDebitees} h débitée${reservation.heuresDebitees > 1 ? 's' : ''}`
-                  : `${(reservation.priceFcfa || 0).toLocaleString('fr-FR')} FCFA`
+        {queryFilter ? (
+          <p className="cx-note cx-note-info" style={{ marginBottom: '.8rem' }}>
+            Filtre de recherche : « {searchParams.get('q')} »
+          </p>
+        ) : null}
 
-              return (
-                <article key={String(reservation.id)} className="reserv-card">
-                  <div className="reserv-card-main">
-                    {reservation.moniteur?.vehiclePhotoUrl ? (
-                      <img
-                        className="reserv-card-thumb"
-                        src={mediaSrc(reservation.moniteur.vehiclePhotoUrl)}
-                        alt=""
-                      />
-                    ) : (
-                      <div className="reserv-card-thumb is-empty">Séance</div>
-                    )}
-                    <div className="reserv-card-text">
-                      <strong>{learner}</strong>
-                      <span className="reserv-card-line">{when}</span>
-                      <span className="reserv-card-line">
-                        {reservation.moniteur?.fullName || 'Moniteur'}
-                        {reservation.moniteur?.vehicleBrand
-                          ? ` · ${reservation.moniteur.vehicleBrand}`
+        {loading && reservations.length === 0 ? <SkeletonBlock rows={4} /> : null}
+        {!loading && filteredReservations.length === 0 ? (
+          <EmptyState
+            title={reservations.length === 0 ? 'Aucune réservation' : 'Aucun résultat'}
+            description={
+              reservations.length === 0
+                ? 'Dès qu’un élève confirme une séance, elle apparaît ici.'
+                : 'Aucune réservation ne correspond aux filtres.'
+            }
+          />
+        ) : null}
+
+        <div className="cx-resv-list">
+          {filteredReservations.map((reservation) => {
+            const badge = paymentBadge(reservation)
+            const learner = learnerName(reservation)
+            const when = reservation.creneau
+              ? `${reservation.creneau.date} · ${reservation.creneau.startTime}${
+                  reservation.creneau.endTime ? `–${reservation.creneau.endTime}` : ''
+                }`
+              : 'Créneau —'
+            const priceLine =
+              reservation.heuresDebitees > 0
+                ? `${reservation.heuresDebitees} h débitée${reservation.heuresDebitees > 1 ? 's' : ''}`
+                : fcfa(reservation.priceFcfa || 0)
+
+            return (
+              <article key={String(reservation.id)} className="cx-resv">
+                {reservation.moniteur?.vehiclePhotoUrl ? (
+                  <img className="cx-resv-thumb" src={mediaSrc(reservation.moniteur.vehiclePhotoUrl)} alt="" />
+                ) : (
+                  <div className="cx-resv-thumb cx-empty-thumb">Séance</div>
+                )}
+                <div className="cx-resv-main">
+                  <strong>{learner}</strong>
+                  <span className="cx-resv-line">
+                    <b>{when}</b>
+                  </span>
+                  <span className="cx-resv-line">
+                    {reservation.moniteur?.fullName || 'Moniteur'}
+                    {reservation.moniteur?.vehicleBrand ? ` · ${reservation.moniteur.vehicleBrand}` : ''}
+                    {reservation.vehicleType ? ` · ${reservation.vehicleType}` : ''}
+                  </span>
+                  <span className="cx-resv-line">{priceLine}</span>
+                  {reservation.paymentRef ? (
+                    <span className="cx-resv-line">Réf. {reservation.paymentRef}</span>
+                  ) : null}
+                  {reservation.cancellationReason ? (
+                    <span className="cx-resv-line">
+                      Motif d’annulation
+                      {reservation.cancelledBy === 'learner'
+                        ? ' (élève)'
+                        : reservation.cancelledBy === 'admin'
+                          ? ' (admin)'
                           : ''}
-                        {reservation.vehicleType ? ` · ${reservation.vehicleType}` : ''}
-                      </span>
-                      <span className="reserv-card-line">{priceLine}</span>
-                      {reservation.paymentRef ? (
-                        <span className="admin-muted">Réf. {reservation.paymentRef}</span>
-                      ) : null}
-                      {reservation.cancellationReason ? (
-                        <span className="admin-muted">
-                          Motif d’annulation
-                          {reservation.cancelledBy === 'learner'
-                            ? ' (élève)'
-                            : reservation.cancelledBy === 'admin'
-                              ? ' (admin)'
-                              : ''}
-                          : {reservation.cancellationReason}
-                        </span>
-                      ) : null}
-                    </div>
-                  </div>
-                  <div className="reserv-card-aside">
-                    <span className="admin-chip">{statusLabel(reservation.status)}</span>
-                    <span className={`admin-chip ${badge.tone}`.trim()}>{badge.label}</span>
-                    <button
-                      type="button"
-                      className="btn-outline-sm btn-danger-sm"
-                      disabled={deletingReservationId === reservation.id}
-                      onClick={() => void handleDeleteReservation(reservation)}
-                      title="Supprimer la réservation"
-                    >
-                      <Trash2 size={15} />
-                      {deletingReservationId === reservation.id ? '…' : 'Supprimer'}
-                    </button>
-                  </div>
-                </article>
-              )
-            })}
-          </div>
+                      : {reservation.cancellationReason}
+                    </span>
+                  ) : null}
+                </div>
+                <div className="cx-resv-aside">
+                  <span className={`cx-chip ${statusChip(reservation.status)}`}>{statusLabel(reservation.status)}</span>
+                  <span className={`cx-chip ${TONE_CHIP[badge.tone] ?? 'cx-slate'}`}>{badge.label}</span>
+                  <button
+                    type="button"
+                    className="cx-btn cx-btn-sm cx-btn-danger"
+                    disabled={deletingReservationId === reservation.id}
+                    onClick={() => void handleDeleteReservation(reservation)}
+                    title="Supprimer la réservation"
+                  >
+                    <Trash2 aria-hidden />
+                    {deletingReservationId === reservation.id ? '…' : 'Supprimer'}
+                  </button>
+                </div>
+              </article>
+            )
+          })}
         </div>
       </section>
-    </div>
+    </ConduiteSection>
   )
 }

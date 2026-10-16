@@ -26,9 +26,12 @@ import {
   Image,
   Pencil,
   Plus,
+  RefreshCw,
+  Search,
   Trash2,
   Type,
 } from 'lucide-react'
+import { useSearchParams } from 'react-router-dom'
 import {
   createStandaloneCourse,
   createStandaloneModule,
@@ -42,8 +45,7 @@ import {
   updateStandaloneModule,
 } from '../../api/courses'
 import { uploadRevisionImage } from '../../api/revision'
-import { AdminSectionHeader } from '../../components/AdminSectionHeader'
-import { CmsWorkspace } from '../../ui'
+import { CodeSection } from '../../components/model/CodeSection'
 import { MediaPreview } from '../../components/MediaPreview'
 import { PublishSwitch } from '../../components/PublishSwitch'
 import { RichTextEditor } from '../../components/RichTextEditor'
@@ -69,7 +71,7 @@ function DragHandle({ attributes, listeners }: DragHandleProps) {
   return (
     <button
       type="button"
-      className="drag-handle"
+      className="cx-drag"
       aria-label="Réordonner"
       {...attributes}
       {...listeners}
@@ -578,40 +580,42 @@ function CoursePanel({ course, chapters, onUpdated }: CoursePanelProps) {
   }
 
   return (
-    <div ref={setNodeRef} style={style} className={`revision-course${isDragging ? ' is-dragging' : ''}`}>
-      <div className="revision-course-header">
+    <div ref={setNodeRef} style={style} className={`cx-notion${isDragging ? ' cx-dragging' : ''}`}>
+      <div className="cx-notion-head">
         <DragHandle attributes={attributes} listeners={listeners} />
-        <button
-          type="button"
-          className="revision-course-toggle"
-          onClick={() => setExpanded((v) => !v)}
-        >
-          {expanded ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
-          <BookOpen size={18} />
-          <span>{course.title}</span>
-            <span className="revision-count">
+        <button type="button" className="cx-notion-toggle" onClick={() => setExpanded((v) => !v)}>
+          <span className="cx-n-ico">
+            <BookOpen aria-hidden />
+          </span>
+          <span>
+            <span className="cx-notion-title">{course.title}</span>
+            <span className="cx-chap-meta">
               {modules.length} contenu{modules.length !== 1 ? 's' : ''}
             </span>
+          </span>
+          {expanded ? <ChevronDown aria-hidden /> : <ChevronRight aria-hidden />}
         </button>
-        <div className="revision-item-actions">
+        <div className="cx-notion-actions">
+          <span className={`cx-chip ${course.published ? 'cx-green' : 'cx-amber'}`}>
+            {course.published ? 'Publiée' : 'Brouillon'}
+          </span>
           <PublishSwitch checked={course.published} onChange={handlePublishToggle} disabled={busy} />
           <button
             type="button"
-            className="btn-text-danger"
+            className="cx-btn cx-btn-icon cx-btn-danger"
             onClick={handleDeleteCourse}
             aria-label={`Supprimer la notion ${course.title}`}
             title="Supprimer la notion"
           >
-            <Trash2 size={16} />
-            Supprimer
+            <Trash2 aria-hidden />
           </button>
         </div>
       </div>
 
       {expanded ? (
-        <div className="revision-course-body">
+        <div className="cx-notion-body">
           {chapters.length > 1 ? (
-            <label className="revision-move-chapter">
+            <label className="cx-move">
               <span>Chapitre</span>
               <select
                 value={course.chapterId}
@@ -628,15 +632,11 @@ function CoursePanel({ course, chapters, onUpdated }: CoursePanelProps) {
           ) : null}
 
           {modules.length === 0 ? (
-            <p className="revision-empty">Aucun contenu. Ajoutez une vidéo, une image ou du texte.</p>
+            <p className="cx-empty">Aucun contenu. Ajoutez une vidéo, une image ou du texte.</p>
           ) : (
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragEnd={handleModuleDragEnd}
-            >
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleModuleDragEnd}>
               <SortableContext items={modules.map((item) => item.id)} strategy={verticalListSortingStrategy}>
-                <div className="revision-modules-list">
+                <div className="cx-notions">
                   {modules.map((module) => (
                     <ModuleEditor
                       key={module.id}
@@ -651,46 +651,23 @@ function CoursePanel({ course, chapters, onUpdated }: CoursePanelProps) {
             </DndContext>
           )}
 
-          <div className="revision-actions revision-actions-footer">
-            <button type="button" className="btn-outline-sm" onClick={handleAddModule}>
-              <Plus size={16} />
+          <div>
+            <button type="button" className="cx-btn" onClick={handleAddModule}>
+              <Plus aria-hidden />
               Ajouter un contenu
             </button>
           </div>
 
-          {error ? <p className="form-error">{error}</p> : null}
+          {error ? <p className="cx-note cx-note-err">{error}</p> : null}
         </div>
       ) : null}
     </div>
   )
 }
 
-
-function ChapterRailItem({
-  chapter,
-  count,
-  active,
-  onSelect,
-}: {
-  chapter: ChapterRef
-  count: number
-  active: boolean
-  onSelect: () => void
-}) {
-  return (
-    <div className={`revision-rail-item${active ? ' active' : ''}`}>
-      <button type="button" className="revision-rail-button" onClick={onSelect}>
-        <span className="revision-rail-name">{chapter.name}</span>
-        <span className="revision-rail-meta">
-          {count} notion{count !== 1 ? 's' : ''}
-        </span>
-      </button>
-    </div>
-  )
-}
-
 export function CoursesPage() {
   const sensors = useAdminSensors()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [courses, setCourses] = useState<Course[]>([])
   const [chapters, setChapters] = useState<ChapterRef[]>([])
   const [selectedChapterId, setSelectedChapterId] = useState<string | null>(null)
@@ -710,6 +687,8 @@ export function CoursesPage() {
       setCourses(data)
       setChapters(chapterList)
       setSelectedChapterId((current) => {
+        const fromUrl = searchParams.get('chapter')
+        if (fromUrl && chapterList.some((chapter) => chapter.id === fromUrl)) return fromUrl
         if (current && chapterList.some((chapter) => chapter.id === current)) return current
         // Par défaut : premier chapitre qui contient déjà des notions, sinon le premier.
         const firstFilled = chapterList.find((chapter) =>
@@ -799,130 +778,142 @@ export function CoursesPage() {
     }
   }
 
-  return (
-    <div className="revision-shell">
-      <header className="revision-page-header">
-        <AdminSectionHeader
-          backTo="/code"
-          backLabel="Code de la route"
-          kicker="Formation"
-          title="Cours"
-          subtitle="Les cours sont classés par chapitre : choisissez un chapitre, puis créez ses notions. Vidéos via lien YouTube / Vimeo."
-        />
-      </header>
+  const [chapterQuery, setChapterQuery] = useState('')
+  const shownChapters = useMemo(() => {
+    const needle = chapterQuery.trim().toLowerCase()
+    if (!needle) return chapters
+    return chapters.filter((chapter) => chapter.name.toLowerCase().includes(needle))
+  }, [chapters, chapterQuery])
 
-      {loading ? (
-        <div style={{ padding: 8 }}>
-          <SkeletonBlock rows={5} />
-        </div>
-      ) : null}
-      {error ? <p className="form-error" role="alert">{error}</p> : null}
-      {success ? (
-        <p className="form-success" role="status">
-          {success}
-        </p>
-      ) : null}
+  const totalNotions = courses.length
+  const publishedNotions = courses.filter((course) => course.published).length
+
+  const pickChapter = (id: string) => {
+    setSelectedChapterId(id)
+    setSearchParams({}, { replace: true })
+  }
+
+  return (
+    <CodeSection
+      title="Cours"
+      subtitle={`Les cours sont classés par chapitre : choisissez un chapitre, puis créez ses notions. ${publishedNotions}/${totalNotions} notions publiées.`}
+      actions={
+        <button type="button" className="cx-refresh" onClick={() => void loadCourses(true)}>
+          <RefreshCw aria-hidden />
+          Actualiser
+        </button>
+      }
+    >
+      {error ? <p className="cx-note cx-note-err" role="alert">{error}</p> : null}
+      {success ? <p className="cx-note cx-note-ok" role="status">{success}</p> : null}
+      {loading ? <SkeletonBlock rows={5} /> : null}
 
       {!loading && chapters.length === 0 ? (
         <EmptyState
           title="Chapitres en cours de synchronisation"
-          description="Les 19 chapitres standards seront créés automatiquement au prochain chargement."
+          description="Les 20 chapitres standards seront créés automatiquement au prochain chargement."
         />
       ) : null}
 
       {!loading && chapters.length > 0 ? (
-        <CmsWorkspace
-          tree={
-            <>
-              <div className="revision-rail-header">
-                <h3>Chapitres</h3>
-                <span>{chapters.length}</span>
+        <div className="cx-split">
+          <aside className="cx-panel cx-sticky" aria-label="Chapitres">
+            <div className="cx-panel-head cx-ph cx-ph-plain">
+              <div className="cx-ph-txt">
+                <h2 className="cx-panel-title">Chapitres</h2>
+                <p className="cx-muted">{chapters.length} au total</p>
               </div>
-              <div className="revision-rail-list">
-                {chapters.map((chapter) => (
-                  <ChapterRailItem
-                    key={chapter.id}
-                    chapter={chapter}
-                    count={countByChapter.get(chapter.id) ?? 0}
-                    active={chapter.id === selectedChapterId}
-                    onSelect={() => setSelectedChapterId(chapter.id)}
-                  />
-                ))}
-              </div>
-            </>
-          }
-          editor={
-            selectedChapter ? (
-              <div className="revision-chapter selected revision-chapter-workspace">
-                <div className="revision-chapter-header">
-                  <div className="revision-chapter-heading">
-                    <p className="revision-chapter-kicker">Chapitre sélectionné</p>
-                    <div className="revision-chapter-title">{selectedChapter.name}</div>
-                  </div>
-                </div>
-
-                <div className="revision-chapter-body">
-                  <form
-                    onSubmit={handleAddCourse}
-                    className="revision-inline-form revision-add-course"
-                  >
-                    <input
-                      type="text"
-                      value={courseTitle}
-                      onChange={(e) => setCourseTitle(e.target.value)}
-                      placeholder={`Titre de la notion à ajouter dans ${selectedChapter.name}`}
-                      required
-                      minLength={2}
-                    />
-                    <button
-                      type="submit"
-                      className="btn-primary btn-primary-inline"
-                      disabled={addingCourse}
-                    >
-                      <Plus size={16} />
-                      {addingCourse ? 'Ajout…' : 'Ajouter une notion'}
-                    </button>
-                  </form>
-
-                  {chapterCourses.length === 0 ? (
-                    <EmptyState
-                      title="Aucune notion dans ce chapitre"
-                      description="Ajoutez une première notion, puis ses contenus (texte, image, vidéo)."
-                    />
-                  ) : (
-                    <div className="revision-courses-stack">
-                      <DndContext
-                        sensors={sensors}
-                        collisionDetection={closestCenter}
-                        onDragEnd={handleCourseDragEnd}
-                      >
-                        <SortableContext
-                          items={chapterCourses.map((item) => item.id)}
-                          strategy={verticalListSortingStrategy}
-                        >
-                          {chapterCourses.map((course) => (
-                            <CoursePanel
-                              key={course.id}
-                              course={course}
-                              chapters={chapters}
-                              onUpdated={refresh}
-                            />
-                          ))}
-                        </SortableContext>
-                      </DndContext>
-                    </div>
-                  )}
-                </div>
-              </div>
-            ) : (
-              <EmptyState
-                title="Aucun chapitre sélectionné"
-                description="Sélectionnez un chapitre pour gérer ses notions."
+            </div>
+            <label className="cx-search" style={{ margin: '0 0 .8rem' }}>
+              <Search aria-hidden />
+              <input
+                type="search"
+                value={chapterQuery}
+                onChange={(e) => setChapterQuery(e.target.value)}
+                placeholder="Rechercher un chapitre…"
+                aria-label="Rechercher un chapitre"
               />
-            )
-          }
-        />
+            </label>
+            <div className="cx-chap-list">
+              {shownChapters.map((chapter) => {
+                const count = countByChapter.get(chapter.id) ?? 0
+                return (
+                  <button
+                    key={chapter.id}
+                    type="button"
+                    className={`cx-chap${chapter.id === selectedChapterId ? ' cx-sel' : ''}`}
+                    onClick={() => pickChapter(chapter.id)}
+                    aria-current={chapter.id === selectedChapterId ? 'true' : undefined}
+                  >
+                    <span className="cx-chap-num">{chapter.order >= 1 ? chapter.order : '·'}</span>
+                    <span>
+                      <span className="cx-chap-name">{chapter.name}</span>
+                      <span className="cx-chap-meta">
+                        {count} notion{count !== 1 ? 's' : ''}
+                      </span>
+                    </span>
+                    <span className={`cx-chap-dot${count > 0 ? ' cx-pub' : ''}`} aria-hidden />
+                  </button>
+                )
+              })}
+              {shownChapters.length === 0 ? <p className="cx-empty">Aucun chapitre ne correspond.</p> : null}
+            </div>
+          </aside>
+
+          {selectedChapter ? (
+            <section className="cx-panel">
+              <div className="cx-detail-head">
+                <span className="cx-chap-num">{selectedChapter.order >= 1 ? selectedChapter.order : '·'}</span>
+                <div className="cx-detail-title">
+                  <small>Chapitre sélectionné</small>
+                  <h2>{selectedChapter.name}</h2>
+                </div>
+                <span className="cx-chip cx-blue">
+                  {chapterCourses.length} notion{chapterCourses.length !== 1 ? 's' : ''}
+                </span>
+              </div>
+
+              <form onSubmit={handleAddCourse} className="cx-field-row" style={{ margin: '1.1rem 0' }}>
+                <input
+                  className="cx-input"
+                  type="text"
+                  value={courseTitle}
+                  onChange={(e) => setCourseTitle(e.target.value)}
+                  placeholder={`Titre de la notion à ajouter dans ${selectedChapter.name}`}
+                  required
+                  minLength={2}
+                />
+                <button type="submit" className="cx-btn cx-btn-fill" disabled={addingCourse}>
+                  <Plus aria-hidden />
+                  {addingCourse ? 'Ajout…' : 'Ajouter une notion'}
+                </button>
+              </form>
+
+              {chapterCourses.length === 0 ? (
+                <EmptyState
+                  title="Aucune notion dans ce chapitre"
+                  description="Ajoutez une première notion, puis ses contenus (texte, image, vidéo)."
+                />
+              ) : (
+                <div className="cx-notions">
+                  <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleCourseDragEnd}>
+                    <SortableContext
+                      items={chapterCourses.map((item) => item.id)}
+                      strategy={verticalListSortingStrategy}
+                    >
+                      {chapterCourses.map((course) => (
+                        <CoursePanel key={course.id} course={course} chapters={chapters} onUpdated={refresh} />
+                      ))}
+                    </SortableContext>
+                  </DndContext>
+                </div>
+              )}
+            </section>
+          ) : (
+            <EmptyState title="Aucun chapitre sélectionné" description="Sélectionnez un chapitre pour gérer ses notions." />
+          )}
+        </div>
       ) : null}
-    </div>
+    </CodeSection>
   )
 }

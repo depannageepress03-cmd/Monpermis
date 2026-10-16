@@ -11,7 +11,6 @@ import {
   Search,
   Users,
   Video,
-  Wallet,
   Wifi,
   X,
 } from 'lucide-react'
@@ -33,9 +32,10 @@ import {
   type Subscriber,
 } from '../api/accessRequests'
 import { fetchUsers, type AppUser } from '../api/users'
-import { StatusBadge } from '../components/StatusBadge'
+import { PageSection } from '../components/model/PageSection'
+import { nf } from '../components/model/ModelCharts'
 import { getAdminToken, isAuthError } from '../context/AdminAuthContext'
-import { SkeletonBlock } from '../ui'
+import { EmptyState, SkeletonBlock } from '../ui'
 
 type Tab = 'subscribers' | 'payments' | 'refunds' | 'pricing'
 
@@ -68,10 +68,17 @@ const moduleIcons: Record<AccessModuleKey, typeof BookOpen> = {
   aiChat: Bot,
 }
 
+const MODULE_TONE: Record<string, string> = {
+  code: 'cx-m-code',
+  conduite_heures: 'cx-m-cond',
+  conduite_videos: 'cx-m-vid',
+  aiChat: 'cx-m-ai',
+}
+
 function ModuleChip({ module }: { module: AccessModuleKey }) {
   const Icon = moduleIcons[module] || BookOpen
   return (
-    <span className="ar-module-chip">
+    <span className={`cx-mod ${MODULE_TONE[module] ?? ''}`.trim()}>
       <Icon size={14} />
       {moduleLabel(module)}
     </span>
@@ -367,120 +374,124 @@ export function AbonnementsPage() {
     }
   }
 
+  const person = (learner: { firstName?: string; lastName?: string; phone?: string; email?: string } | null | undefined) => (
+    <div className="cx-person">
+      <span className="cx-avatar">{initials(learner)}</span>
+      <div>
+        <strong>{learnerName(learner)}</strong>
+        <small>{learner?.phone || learner?.email || '—'}</small>
+      </div>
+    </div>
+  )
+
+  const paymentModules = (payment: AccessPayment) =>
+    payment.modules && payment.modules.length > 0 ? payment.modules : payment.module ? [payment.module] : []
+
+  const tabs: { key: Tab; label: string }[] = [
+    { key: 'subscribers', label: 'Abonnés' },
+    { key: 'payments', label: 'Paiements réussis' },
+    { key: 'refunds', label: `À rembourser${refundPayments.length > 0 ? ` (${refundPayments.length})` : ''}` },
+    { key: 'pricing', label: 'Tarifs' },
+  ]
+
   return (
-    <div className="admin-page access-requests-page">
-      <header className="admin-module-header">
-        <p className="admin-module-kicker">Abonnements</p>
-        <h1 className="admin-module-title">Abonnés</h1>
-        <p className="admin-module-subtitle">
-          Liste des abonnements actifs, attribution exceptionnelle et flux des paiements réussis.
-        </p>
-      </header>
-
-      <div className="ar-stats-row">
-        <div className="ar-stat-card">
-          <div className="ar-stat-head">
-            <p className="ar-stat-label">Abonnements actifs</p>
-            <div className="ar-stat-icon">
-              <Users size={17} />
-            </div>
-          </div>
-          <p className="ar-stat-value">{loading ? '…' : activeCount}</p>
-        </div>
-        <div className="ar-stat-card">
-          <div className="ar-stat-head">
-            <p className="ar-stat-label">Paiements réussis</p>
-            <div className="ar-stat-icon is-gold">
-              <CheckCircle2 size={17} />
-            </div>
-          </div>
-          <p className="ar-stat-value">{loading ? '…' : payments.length}</p>
-          <p className="ar-stat-meta">{formatMoney(approvedRevenue)}</p>
-        </div>
-        <div className="ar-stat-card">
-          <div className="ar-stat-head">
-            <p className="ar-stat-label">À rembourser</p>
-            <div className="ar-stat-icon" style={{ background: 'rgba(220, 38, 38, 0.1)', color: '#b91c1c' }}>
-              <AlertTriangle size={17} />
-            </div>
-          </div>
-          <p className="ar-stat-value">{loading ? '…' : refundPayments.length}</p>
-        </div>
-        <div className="ar-stat-card ar-stat-card-muted">
-          <div className="ar-stat-head">
-            <p className="ar-stat-label">Suivi live</p>
-            <div className="ar-stat-icon is-navy">
-              <Wifi size={17} />
-            </div>
-          </div>
-          <p className="ar-live-status">
-            <span className={`subscriptions-live-dot${liveConnected ? ' is-live' : ''}`} />
-            {liveConnected ? 'Connecté' : 'Reconnexion…'}
-          </p>
-        </div>
-      </div>
-
-      {error ? <p className="form-error">{error}</p> : null}
-      {success ? <p className="form-success">{success}</p> : null}
-
-      <div className="subscriptions-tabs" role="tablist" aria-label="Abonnements">
-        <button
-          type="button"
-          className={tab === 'subscribers' ? 'active' : ''}
-          onClick={() => setActiveTab('subscribers')}
-        >
-          Abonnés
-        </button>
-        <button
-          type="button"
-          className={tab === 'payments' ? 'active' : ''}
-          onClick={() => setActiveTab('payments')}
-        >
-          Paiements réussis
-        </button>
-        <button
-          type="button"
-          className={tab === 'refunds' ? 'active' : ''}
-          onClick={() => setActiveTab('refunds')}
-        >
-          À rembourser{refundPayments.length > 0 ? ` (${refundPayments.length})` : ''}
-        </button>
-        <button
-          type="button"
-          className={tab === 'pricing' ? 'active' : ''}
-          onClick={() => setActiveTab('pricing')}
-        >
-          Tarifs
-        </button>
-        <button type="button" className="subscriptions-refresh" onClick={() => void refresh()}>
-          <RefreshCw size={14} />
-          Actualiser
-        </button>
-      </div>
-
-      {tab === 'subscribers' ? (
+    <PageSection
+      kicker="Abonnements"
+      title="Abonnés"
+      subtitle="Liste des abonnements actifs, attribution exceptionnelle et flux des paiements réussis."
+      actions={
         <>
-          <div className="ar-toolbar">
-            <form onSubmit={handleSearch} className="ar-filters">
-              <label className="admin-field" style={{ minWidth: 240 }}>
-                <span>Rechercher un apprenant</span>
-                <span className="ar-search-field">
-                  <Search size={15} />
-                  <input
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    placeholder="Nom, e-mail, téléphone…"
-                  />
-                  <button type="submit" className="admin-btn admin-btn-secondary" aria-label="Rechercher">
-                    <Search size={14} />
-                  </button>
-                </span>
-              </label>
-              <label className="admin-field">
-                <span>Type d’abonnement</span>
+          <span className={`cx-live${liveConnected ? ' is-live' : ''}`}>
+            <i aria-hidden="true" />
+            {liveConnected ? 'Suivi en direct' : 'Reconnexion…'}
+          </span>
+          <button type="button" className="cx-refresh" onClick={() => void refresh()}>
+            <RefreshCw aria-hidden />
+            Actualiser
+          </button>
+        </>
+      }
+    >
+      <div className="cx-kc-grid">
+        <div className="cx-kc">
+          <span className="cx-kc-ico cx-kc-blue">
+            <Users aria-hidden />
+          </span>
+          <div className="cx-kc-body">
+            <span className="cx-kc-label">Abonnements actifs</span>
+            <span className="cx-kc-value">{loading ? '…' : nf(activeCount)}</span>
+            <span className="cx-kc-sub">pour le filtre en cours</span>
+          </div>
+        </div>
+        <div className="cx-kc">
+          <span className="cx-kc-ico cx-kc-green">
+            <CheckCircle2 aria-hidden />
+          </span>
+          <div className="cx-kc-body">
+            <span className="cx-kc-label">Paiements réussis</span>
+            <span className="cx-kc-value">{loading ? '…' : nf(payments.length)}</span>
+            <span className="cx-kc-sub">{formatMoney(approvedRevenue)}</span>
+          </div>
+        </div>
+        <div className={`cx-kc${refundPayments.length > 0 ? ' cx-kc-alert' : ''}`}>
+          <span className={`cx-kc-ico ${refundPayments.length > 0 ? 'cx-kc-red' : 'cx-kc-gold'}`}>
+            <AlertTriangle aria-hidden />
+          </span>
+          <div className="cx-kc-body">
+            <span className="cx-kc-label">À rembourser</span>
+            <span className="cx-kc-value">{loading ? '…' : nf(refundPayments.length)}</span>
+            <span className="cx-kc-sub">{refundPayments.length > 0 ? 'à traiter' : 'rien en attente'}</span>
+          </div>
+        </div>
+        <div className="cx-kc">
+          <span className="cx-kc-ico cx-kc-sky">
+            <Wifi aria-hidden />
+          </span>
+          <div className="cx-kc-body">
+            <span className="cx-kc-label">Suivi live</span>
+            <span className="cx-kc-value" style={{ fontSize: '1.15rem' }}>
+              {liveConnected ? 'Connecté' : 'Reconnexion…'}
+            </span>
+            <span className="cx-kc-sub">paiements en temps réel</span>
+          </div>
+        </div>
+      </div>
+
+      {error ? <p className="cx-note cx-note-err" role="alert">{error}</p> : null}
+      {success ? <p className="cx-note cx-note-ok" role="status">{success}</p> : null}
+
+      <section className="cx-panel">
+        <div className="cx-toolbar" style={{ marginBottom: '1rem' }}>
+          <div className="cx-tabs" role="tablist" aria-label="Abonnements">
+            {tabs.map((item) => (
+              <button
+                key={item.key}
+                type="button"
+                role="tab"
+                aria-selected={tab === item.key}
+                className={tab === item.key ? 'cx-active' : ''}
+                onClick={() => setActiveTab(item.key)}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {tab === 'subscribers' ? (
+          <>
+            <div className="cx-toolbar" style={{ marginBottom: '1rem' }}>
+              <form onSubmit={handleSearch} className="cx-toolbar" style={{ flex: 1 }}>
+                <label className="cx-search">
+                  <Search aria-hidden />
+                  <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Nom, e-mail, téléphone…" aria-label="Rechercher un apprenant" />
+                </label>
                 <select
+                  className="cx-select"
+                  style={{ width: 'auto', minWidth: '12rem' }}
                   value={moduleFilter}
                   onChange={(e) => setModuleFilter(e.target.value as AccessModuleKey | '')}
+                  aria-label="Type d’abonnement"
                 >
                   {moduleOptions.map((option) => (
                     <option key={option.value || 'all'} value={option.value}>
@@ -488,444 +499,294 @@ export function AbonnementsPage() {
                     </option>
                   ))}
                 </select>
-              </label>
-            </form>
-            <button type="button" className="admin-btn admin-btn-primary" onClick={() => setGrantOpen(true)}>
-              <Gift size={15} />
-              Attribuer un abonnement
-            </button>
-          </div>
-
-          {grantOpen ? (
-            <form className="ar-grant-panel" onSubmit={(e) => void handleGrant(e)}>
-              <div className="ar-grant-panel-head">
-                <h3 className="ar-grant-panel-title">
-                  <Gift size={18} />
-                  Attribution exceptionnelle
-                </h3>
-                <button
-                  type="button"
-                  className="admin-btn admin-btn-secondary"
-                  onClick={() => setGrantOpen(false)}
-                  aria-label="Fermer"
-                >
-                  <X size={15} />
+                <button type="submit" className="cx-btn">
+                  <Search aria-hidden />
+                  Rechercher
                 </button>
-              </div>
-              <p className="ar-grant-panel-hint">
-                Active immédiatement un abonnement sans paiement. À utiliser uniquement au cas par cas.
-              </p>
-              <div className="ar-grant-grid">
-                <label className="admin-field">
-                  <span>Apprenant</span>
-                  <input
-                    value={userQuery}
-                    onChange={(e) => setUserQuery(e.target.value)}
-                    placeholder="Filtrer la liste…"
-                  />
-                  <select value={grantUserId} onChange={(e) => setGrantUserId(e.target.value)} required>
-                    <option value="">Choisir…</option>
-                    {filteredUsers.map((user) => (
-                      <option key={user.id} value={user.id}>
-                        {user.firstName} {user.lastName} — {user.email || user.phone}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="admin-field">
-                  <span>Type d’abonnement</span>
-                  <select
-                    value={grantModule}
-                    onChange={(e) => setGrantModule(e.target.value as AccessModuleKey)}
-                  >
-                    {grantModules.map((key) => (
-                      <option key={key} value={key}>
-                        {moduleLabel(key)}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="admin-field">
-                  <span>
-                    {grantModule === 'conduite_heures'
-                      ? 'Nombre d’heures'
-                      : grantModule === 'conduite_videos' || grantModule === 'code'
-                        ? 'Nombre de mois'
-                        : 'Quantité'}
-                  </span>
-                  <input
-                    type="number"
-                    min={1}
-                    value={grantQuantity}
-                    onChange={(e) => setGrantQuantity(e.target.value)}
-                    required
-                  />
-                </label>
-              </div>
-              <label className="admin-field">
-                <span>Note (optionnel)</span>
-                <textarea
-                  value={grantNote}
-                  onChange={(e) => setGrantNote(e.target.value)}
-                  rows={2}
-                  placeholder="Motif de l’attribution…"
-                />
-              </label>
-              <div className="ar-grant-actions">
-                <button type="submit" className="admin-btn admin-btn-primary" disabled={granting}>
-                  {granting ? 'Attribution…' : 'Confirmer'}
-                </button>
-                <button
-                  type="button"
-                  className="admin-btn admin-btn-secondary"
-                  onClick={() => setGrantOpen(false)}
-                >
-                  Annuler
-                </button>
-              </div>
-            </form>
-          ) : null}
+              </form>
+              <button type="button" className="cx-btn cx-btn-fill" onClick={() => setGrantOpen(true)}>
+                <Gift aria-hidden />
+                Attribuer un abonnement
+              </button>
+            </div>
 
-          <div className="admin-data-table-wrap">
-            <table className="admin-data-table">
-              <thead>
-                <tr>
-                  <th>Apprenant</th>
-                  <th>Abonnement</th>
-                  <th>Durée</th>
-                  <th>Temps restant</th>
-                  <th>Source</th>
-                  <th>Fin</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loading && subscribers.length === 0 ? (
-                  <tr>
-                    <td colSpan={6}>
-                      <SkeletonBlock rows={4} />
-                    </td>
-                  </tr>
-                ) : subscribers.length === 0 ? (
-                  <tr>
-                    <td colSpan={6}>
-                      <div className="ar-empty-row">
-                        <Users size={26} />
-                        Aucun abonnement actif pour ce filtre.
-                      </div>
-                    </td>
-                  </tr>
-                ) : (
-                  subscribers.map((row) => (
-                    <tr key={row.id}>
-                      <td>
-                        <div className="ar-learner">
-                          <span className="ar-avatar">{initials(row.learner)}</span>
-                          <div className="ar-learner-body">
-                            <div className="ar-learner-name">{learnerName(row.learner)}</div>
-                            <div className="ar-learner-meta">
-                              {row.learner?.phone || row.learner?.email || '—'}
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-                      <td>
-                        <ModuleChip module={row.module} />
-                      </td>
-                      <td>{row.durationLabel}</td>
-                      <td>
-                        <StatusBadge tone="success">{row.remainingLabel}</StatusBadge>
-                      </td>
-                      <td>
-                        <StatusBadge tone={row.source === 'admin' ? 'warning' : 'success'}>
-                          {row.source === 'admin' ? 'Attribué' : 'Payé'}
-                        </StatusBadge>
-                      </td>
-                      <td className="muted">{formatDateTime(row.endAt)}</td>
+            {grantOpen ? (
+              <form className="cx-block" style={{ marginBottom: '1rem' }} onSubmit={(e) => void handleGrant(e)}>
+                <div className="cx-toolbar">
+                  <h3 style={{ margin: 0, flex: 1, display: 'flex', alignItems: 'center', gap: '.5rem' }}>
+                    <Gift size={16} aria-hidden /> Attribution exceptionnelle
+                  </h3>
+                  <button type="button" className="cx-btn cx-btn-icon" onClick={() => setGrantOpen(false)} aria-label="Fermer">
+                    <X aria-hidden />
+                  </button>
+                </div>
+                <p>Active immédiatement un abonnement sans paiement. À utiliser uniquement au cas par cas.</p>
+                <div className="cx-form-grid">
+                  <div className="cx-fld">
+                    <label htmlFor="grant-user">Apprenant</label>
+                    <input className="cx-input" value={userQuery} onChange={(e) => setUserQuery(e.target.value)} placeholder="Filtrer la liste…" />
+                    <select id="grant-user" className="cx-select" value={grantUserId} onChange={(e) => setGrantUserId(e.target.value)} required>
+                      <option value="">Choisir…</option>
+                      {filteredUsers.map((user) => (
+                        <option key={user.id} value={user.id}>
+                          {user.firstName} {user.lastName} — {user.email || user.phone}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="cx-fld">
+                    <label htmlFor="grant-module">Type d’abonnement</label>
+                    <select id="grant-module" className="cx-select" value={grantModule} onChange={(e) => setGrantModule(e.target.value as AccessModuleKey)}>
+                      {grantModules.map((key) => (
+                        <option key={key} value={key}>
+                          {moduleLabel(key)}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="cx-fld">
+                    <label htmlFor="grant-qty">
+                      {grantModule === 'conduite_heures' ? 'Nombre d’heures' : grantModule === 'conduite_videos' || grantModule === 'code' ? 'Nombre de mois' : 'Quantité'}
+                    </label>
+                    <input id="grant-qty" className="cx-input" type="number" min={1} value={grantQuantity} onChange={(e) => setGrantQuantity(e.target.value)} required />
+                  </div>
+                </div>
+                <div className="cx-fld">
+                  <label htmlFor="grant-note">Note (optionnel)</label>
+                  <textarea id="grant-note" className="cx-textarea" value={grantNote} onChange={(e) => setGrantNote(e.target.value)} rows={2} placeholder="Motif de l’attribution…" />
+                </div>
+                <div className="cx-actions">
+                  <button type="button" className="cx-btn" onClick={() => setGrantOpen(false)}>
+                    Annuler
+                  </button>
+                  <button type="submit" className="cx-btn cx-btn-fill" disabled={granting}>
+                    {granting ? 'Attribution…' : 'Confirmer'}
+                  </button>
+                </div>
+              </form>
+            ) : null}
+
+            {loading && subscribers.length === 0 ? (
+              <SkeletonBlock rows={4} />
+            ) : subscribers.length === 0 ? (
+              <EmptyState title="Aucun abonnement" description="Aucun abonnement actif pour ce filtre." />
+            ) : (
+              <div className="cx-table-wrap">
+                <table className="cx-data">
+                  <thead>
+                    <tr>
+                      <th>Apprenant</th>
+                      <th>Abonnement</th>
+                      <th>Durée</th>
+                      <th>Temps restant</th>
+                      <th>Source</th>
+                      <th>Fin</th>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </>
-      ) : null}
-
-      {tab === 'payments' ? (
-        <div className="admin-data-table-wrap">
-          <table className="admin-data-table">
-            <thead>
-              <tr>
-                <th>Apprenant</th>
-                <th>Montant</th>
-                <th>Abonnement(s)</th>
-                <th>Canal</th>
-                <th>Référence</th>
-                <th>Payé le</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading && payments.length === 0 ? (
-                <tr>
-                  <td colSpan={6}>
-                    <SkeletonBlock rows={4} />
-                  </td>
-                </tr>
-              ) : payments.length === 0 ? (
-                <tr>
-                  <td colSpan={6}>
-                    <div className="ar-empty-row">
-                      <CheckCircle2 size={26} />
-                      Aucun paiement réussi pour le moment.
-                    </div>
-                  </td>
-                </tr>
-              ) : (
-                payments.map((payment) => {
-                  const modules =
-                    payment.modules && payment.modules.length > 0
-                      ? payment.modules
-                      : payment.module
-                        ? [payment.module]
-                        : []
-                  return (
-                    <tr key={payment.id}>
-                      <td>
-                        <div className="ar-learner">
-                          <span className="ar-avatar">{initials(payment.learner)}</span>
-                          <div className="ar-learner-body">
-                            <div className="ar-learner-name">{learnerName(payment.learner)}</div>
-                            <div className="ar-learner-meta">
-                              {payment.learner?.phone || payment.learner?.email || '—'}
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-                      <td>
-                        <strong>{formatMoney(payment.amount, payment.currency)}</strong>
-                      </td>
-                      <td>
-                        {modules.length ? (
-                          <div className="ar-row-actions">
-                            {modules.map((key) => (
-                              <ModuleChip key={key} module={key} />
-                            ))}
-                          </div>
-                        ) : (
-                          '—'
-                        )}
-                      </td>
-                      <td>{paymentChannelLabel(payment)}</td>
-                      <td className="muted">{payment.fedapayReference || '—'}</td>
-                      <td className="muted">
-                        {formatDateTime(payment.activatedAt || payment.createdAt)}
-                      </td>
-                    </tr>
-                  )
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
-      ) : null}
-
-      {tab === 'refunds' ? (
-        <div className="admin-data-table-wrap">
-          <p className="admin-module-subtitle" style={{ marginBottom: 12 }}>
-            Paiements encaissés sans livraison d’accès (orphelins / conflit). Rembourse côté
-            FedaPay / opérateur, puis marque comme résolu avec une note. Vue complète dans{' '}
-            <Link to="/finances?tab=refunds">Finances → À rembourser</Link>.
-          </p>
-          <table className="admin-data-table">
-            <thead>
-              <tr>
-                <th>Apprenant</th>
-                <th>Montant</th>
-                <th>Type</th>
-                <th>Référence</th>
-                <th>Note / résolution</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading && refundPayments.length === 0 ? (
-                <tr>
-                  <td colSpan={5}>
-                    <div className="ar-empty-row">Chargement…</div>
-                  </td>
-                </tr>
-              ) : refundPayments.length === 0 ? (
-                <tr>
-                  <td colSpan={5}>
-                    <div className="ar-empty-row">
-                      <CheckCircle2 size={26} />
-                      Aucun paiement à rembourser.
-                    </div>
-                  </td>
-                </tr>
-              ) : (
-                refundPayments.map((payment) => {
-                  const modules =
-                    payment.modules && payment.modules.length > 0
-                      ? payment.modules
-                      : payment.module
-                        ? [payment.module]
-                        : []
-                  const kindLabel =
-                    payment.kind === 'reservation'
-                      ? 'Réservation'
-                      : payment.kind === 'abonnement'
-                        ? 'Abonnement'
-                        : 'Autre'
-                  return (
-                    <tr key={payment.id}>
-                      <td>
-                        <div className="ar-learner">
-                          <span className="ar-avatar">{initials(payment.learner)}</span>
-                          <div className="ar-learner-body">
-                            <div className="ar-learner-name">{learnerName(payment.learner)}</div>
-                            <div className="ar-learner-meta">
-                              {payment.learner?.phone || payment.learner?.email || '—'}
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-                      <td>
-                        <strong>{formatMoney(payment.amount, payment.currency)}</strong>
-                        <div className="ar-learner-meta">{paymentChannelLabel(payment)}</div>
-                      </td>
-                      <td>
-                        <StatusBadge tone="warning">{kindLabel}</StatusBadge>
-                        {modules.length ? (
-                          <div className="ar-row-actions" style={{ marginTop: 6 }}>
-                            {modules.map((key) => (
-                              <ModuleChip key={key} module={key} />
-                            ))}
-                          </div>
-                        ) : null}
-                        <div className="ar-learner-meta" style={{ marginTop: 4 }}>
-                          {formatDateTime(payment.activatedAt || payment.createdAt)}
-                        </div>
-                      </td>
-                      <td className="muted">
-                        {payment.fedapayReference || payment.declaredReference || '—'}
-                        {payment.adminNote ? (
-                          <div className="ar-learner-meta" style={{ marginTop: 4, whiteSpace: 'pre-wrap' }}>
-                            {payment.adminNote}
-                          </div>
-                        ) : null}
-                      </td>
-                      <td>
-                        <div className="ar-row-actions" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
-                          <input
-                            value={refundNotes[payment.id] ?? ''}
-                            onChange={(e) =>
-                              setRefundNotes((current) => ({ ...current, [payment.id]: e.target.value }))
-                            }
-                            placeholder="Ex. remboursé MTN le 29/07"
-                            disabled={refundBusy === payment.id}
-                          />
-                          <button
-                            type="button"
-                            className="admin-btn admin-btn-secondary"
-                            disabled={refundBusy === payment.id}
-                            onClick={() => void handleResolveRefund(payment.id)}
-                          >
-                            {refundBusy === payment.id ? '…' : 'Marquer résolu'}
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
-      ) : null}
-
-      {tab === 'pricing' ? (
-        <div className="admin-data-table-wrap">
-          <table className="admin-data-table">
-            <thead>
-              <tr>
-                <th>Module</th>
-                <th>Unité</th>
-                <th>Prix</th>
-                <th>Statut</th>
-                <th />
-              </tr>
-            </thead>
-            <tbody>
-              {pricing.length === 0 ? (
-                <tr>
-                  <td colSpan={5}>
-                    <div className="ar-empty-row">
-                      <Wallet size={26} />
-                      Aucun tarif configuré.
-                    </div>
-                  </td>
-                </tr>
-              ) : (
-                pricing.map((module) => {
-                  const Icon = moduleIcons[module.key] || BookOpen
-                  return (
-                    <tr key={module.key}>
-                      <td>
-                        <div className="ar-pricing-module">
-                          <span className="ar-pricing-icon">
-                            <Icon size={17} />
+                  </thead>
+                  <tbody>
+                    {subscribers.map((row) => (
+                      <tr key={row.id}>
+                        <td>{person(row.learner)}</td>
+                        <td>
+                          <ModuleChip module={row.module} />
+                        </td>
+                        <td>{row.durationLabel}</td>
+                        <td>
+                          <span className="cx-chip cx-green">{row.remainingLabel}</span>
+                        </td>
+                        <td>
+                          <span className={`cx-chip ${row.source === 'admin' ? 'cx-amber' : 'cx-green'}`}>
+                            {row.source === 'admin' ? 'Attribué' : 'Payé'}
                           </span>
-                          <div>
-                            <div className="ar-learner-name">{module.label}</div>
-                            <div className="ar-learner-meta">{moduleLabel(module.key)}</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td>{unitLabel(module.unit)}</td>
-                      <td>
-                        <span className="ar-price-field">
-                          <input
-                            value={pricingDrafts[module.key] ?? ''}
-                            onChange={(e) =>
-                              setPricingDrafts((current) => ({ ...current, [module.key]: e.target.value }))
-                            }
-                          />
-                          <span>FCFA</span>
-                        </span>
-                      </td>
-                      <td>
-                        <StatusBadge tone={module.active ? 'success' : 'danger'}>
-                          {module.active ? 'Actif' : 'Inactif'}
-                        </StatusBadge>
-                      </td>
-                      <td>
-                        <div className="ar-row-actions">
-                          <button
-                            type="button"
-                            className="admin-btn admin-btn-secondary"
-                            disabled={pricingBusy === module.key}
-                            onClick={() => void handlePricingSave(module.key)}
-                          >
-                            Enregistrer
-                          </button>
-                          <button
-                            type="button"
-                            className="admin-btn admin-btn-secondary"
-                            disabled={pricingBusy === module.key}
-                            onClick={() => void handlePricingToggleActive(module)}
-                          >
-                            {module.active ? 'Désactiver' : 'Activer'}
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
+                        </td>
+                        <td className="cx-dim">{formatDateTime(row.endAt)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </>
+        ) : null}
+
+        {tab === 'payments' ? (
+          loading && payments.length === 0 ? (
+            <SkeletonBlock rows={4} />
+          ) : payments.length === 0 ? (
+            <EmptyState title="Aucun paiement" description="Aucun paiement réussi pour le moment." />
+          ) : (
+            <div className="cx-table-wrap">
+              <table className="cx-data">
+                <thead>
+                  <tr>
+                    <th>Apprenant</th>
+                    <th>Montant</th>
+                    <th>Abonnement(s)</th>
+                    <th>Canal</th>
+                    <th>Référence</th>
+                    <th>Payé le</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {payments.map((payment) => {
+                    const modules = paymentModules(payment)
+                    return (
+                      <tr key={payment.id}>
+                        <td>{person(payment.learner)}</td>
+                        <td>
+                          <strong>{formatMoney(payment.amount, payment.currency)}</strong>
+                        </td>
+                        <td>
+                          {modules.length ? (
+                            <div className="cx-row-actions" style={{ flexWrap: 'wrap' }}>
+                              {modules.map((key) => (
+                                <ModuleChip key={key} module={key} />
+                              ))}
+                            </div>
+                          ) : (
+                            '—'
+                          )}
+                        </td>
+                        <td>{paymentChannelLabel(payment)}</td>
+                        <td className="cx-dim">{payment.fedapayReference || '—'}</td>
+                        <td className="cx-dim">{formatDateTime(payment.activatedAt || payment.createdAt)}</td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )
+        ) : null}
+
+        {tab === 'refunds' ? (
+          <>
+            <p className="cx-note cx-note-info" style={{ marginBottom: '1rem' }}>
+              Paiements encaissés sans livraison d’accès (orphelins / conflit). Rembourse côté FedaPay / opérateur,
+              puis marque comme résolu avec une note. Vue complète dans{' '}
+              <Link to="/finances?tab=refunds">Finances → À rembourser</Link>.
+            </p>
+            {loading && refundPayments.length === 0 ? (
+              <SkeletonBlock rows={3} />
+            ) : refundPayments.length === 0 ? (
+              <EmptyState title="Rien à rembourser" description="Aucun paiement à rembourser." />
+            ) : (
+              <div className="cx-rows">
+                {refundPayments.map((payment) => {
+                  const modules = paymentModules(payment)
+                  const kindLabel =
+                    payment.kind === 'reservation' ? 'Réservation' : payment.kind === 'abonnement' ? 'Abonnement' : 'Autre'
+                  return (
+                    <div key={payment.id} className="cx-pay-row">
+                      <div className="cx-row-main" style={{ flex: '1 1 16rem' }}>
+                        {person(payment.learner)}
+                        <small style={{ display: 'block', marginTop: '.4rem', color: 'var(--ink-soft)' }}>
+                          {payment.fedapayReference || payment.declaredReference || '—'} · {formatDateTime(payment.activatedAt || payment.createdAt)}
+                        </small>
+                        {payment.adminNote ? (
+                          <small style={{ display: 'block', whiteSpace: 'pre-wrap', color: 'var(--ink-soft)' }}>{payment.adminNote}</small>
+                        ) : null}
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '.35rem', alignItems: 'flex-start' }}>
+                        <span className="cx-amount">{formatMoney(payment.amount, payment.currency)}</span>
+                        <small style={{ color: 'var(--ink-soft)' }}>{paymentChannelLabel(payment)}</small>
+                        <span className="cx-chip cx-amber">{kindLabel}</span>
+                        {modules.map((key) => (
+                          <ModuleChip key={key} module={key} />
+                        ))}
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '.45rem', flex: '1 1 15rem' }}>
+                        <input
+                          className="cx-input"
+                          value={refundNotes[payment.id] ?? ''}
+                          onChange={(e) => setRefundNotes((current) => ({ ...current, [payment.id]: e.target.value }))}
+                          placeholder="Ex. remboursé MTN le 29/07"
+                          disabled={refundBusy === payment.id}
+                        />
+                        <button
+                          type="button"
+                          className="cx-btn cx-btn-fill"
+                          disabled={refundBusy === payment.id}
+                          onClick={() => void handleResolveRefund(payment.id)}
+                        >
+                          {refundBusy === payment.id ? '…' : 'Marquer résolu'}
+                        </button>
+                      </div>
+                    </div>
                   )
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
-      ) : null}
-    </div>
+                })}
+              </div>
+            )}
+          </>
+        ) : null}
+
+        {tab === 'pricing' ? (
+          pricing.length === 0 ? (
+            <EmptyState title="Aucun tarif" description="Aucun tarif configuré." />
+          ) : (
+            <div className="cx-table-wrap">
+              <table className="cx-data">
+                <thead>
+                  <tr>
+                    <th>Module</th>
+                    <th>Unité</th>
+                    <th>Prix</th>
+                    <th>Statut</th>
+                    <th />
+                  </tr>
+                </thead>
+                <tbody>
+                  {pricing.map((module) => {
+                    const Icon = moduleIcons[module.key] || BookOpen
+                    return (
+                      <tr key={module.key}>
+                        <td>
+                          <div className="cx-person">
+                            <span className="cx-avatar">
+                              <Icon size={17} aria-hidden />
+                            </span>
+                            <div>
+                              <strong>{module.label}</strong>
+                              <small>{moduleLabel(module.key)}</small>
+                            </div>
+                          </div>
+                        </td>
+                        <td>{unitLabel(module.unit)}</td>
+                        <td>
+                          <span className="cx-toolbar" style={{ flexWrap: 'nowrap', gap: '.4rem' }}>
+                            <input
+                              className="cx-input"
+                              style={{ minWidth: 0, width: '7.5rem' }}
+                              value={pricingDrafts[module.key] ?? ''}
+                              onChange={(e) => setPricingDrafts((current) => ({ ...current, [module.key]: e.target.value }))}
+                              aria-label={`Prix ${module.label}`}
+                            />
+                            <span className="cx-dim">FCFA</span>
+                          </span>
+                        </td>
+                        <td>
+                          <span className={`cx-chip ${module.active ? 'cx-green' : 'cx-red'}`}>{module.active ? 'Actif' : 'Inactif'}</span>
+                        </td>
+                        <td>
+                          <div className="cx-row-actions">
+                            <button type="button" className="cx-btn cx-btn-sm cx-btn-fill" disabled={pricingBusy === module.key} onClick={() => void handlePricingSave(module.key)}>
+                              Enregistrer
+                            </button>
+                            <button type="button" className="cx-btn cx-btn-sm" disabled={pricingBusy === module.key} onClick={() => void handlePricingToggleActive(module)}>
+                              {module.active ? 'Désactiver' : 'Activer'}
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )
+        ) : null}
+      </section>
+    </PageSection>
   )
 }
 

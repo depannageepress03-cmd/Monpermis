@@ -1,5 +1,5 @@
-import { FormEvent, useCallback, useEffect, useState } from 'react'
-import { ImagePlus, Pencil, Plus, Trash2, X } from 'lucide-react'
+import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
+import { CheckCircle2, ImagePlus, KeyRound, Pencil, Plus, Trash2, UserCog, Users, X } from 'lucide-react'
 import {
   createMoniteur,
   deleteMoniteur,
@@ -7,7 +7,9 @@ import {
   updateMoniteur,
   uploadVehiclePhoto,
 } from '../../api/reservations'
-import { AdminSectionHeader } from '../../components/AdminSectionHeader'
+import { ConduiteSection } from '../../components/model/ConduiteSection'
+import { nf } from '../../components/model/ModelCharts'
+import { EmptyState, SkeletonBlock } from '../../ui'
 import { getAdminToken, isAuthError } from '../../context/AdminAuthContext'
 import type { Moniteur, WeeklyAvailabilitySlot } from '../../types/reservations'
 import { resolveMediaUrl } from '../../utils/mediaUrl'
@@ -402,424 +404,399 @@ export function MoniteursPage() {
     )
   }
 
-  return (
-    <div className="admin-page reserv-page">
-      <AdminSectionHeader
-        backTo="/conduite"
-        backLabel="Conduite"
-        kicker="Gestion"
-        title="Moniteurs"
-        subtitle="Créez uniquement le compte (nom + mot de passe). Le moniteur complète ensuite son profil sur le portail."
-      />
+  const stats = useMemo(
+    () => ({
+      total: moniteurs.length,
+      active: moniteurs.filter((item) => item.active !== false).length,
+      login: moniteurs.filter((item) => item.activeLogin).length,
+      scheduled: moniteurs.filter((item) => (item.weeklyAvailability || []).length > 0).length,
+    }),
+    [moniteurs],
+  )
 
-      {error ? <p className="form-error">{error}</p> : null}
-      {success ? <p className="form-success">{success}</p> : null}
+  return (
+    <ConduiteSection
+      kicker="Gestion"
+      title="Moniteurs"
+      subtitle="Créez uniquement le compte (nom + mot de passe). Le moniteur complète ensuite son profil sur le portail."
+    >
+      {error ? <p className="cx-note cx-note-err" role="alert">{error}</p> : null}
+      {success ? <p className="cx-note cx-note-ok" role="status">{success}</p> : null}
       {createdLoginEmail ? (
-        <p className="form-success" role="status">
+        <p className="cx-note cx-note-info" role="status">
           Identifiant de connexion à remettre : <strong>{createdLoginEmail}</strong>
         </p>
       ) : null}
 
-      <section className="admin-section">
-        <div className="admin-section-head">
-          <h3 className="admin-section-label">Créer un compte moniteur</h3>
+      <div className="cx-kc-grid">
+        <div className="cx-kc">
+          <span className="cx-kc-ico cx-kc-blue">
+            <Users aria-hidden />
+          </span>
+          <div className="cx-kc-body">
+            <span className="cx-kc-label">Moniteurs</span>
+            <span className="cx-kc-value">{nf(stats.total)}</span>
+            <span className="cx-kc-sub">comptes créés</span>
+          </div>
         </div>
-        <form onSubmit={handleCreateMoniteur} className="admin-section-body">
-          <div className="reserv-create-grid">
-            <input
-              value={moniteurName}
-              onChange={(e) => setMoniteurName(e.target.value)}
-              placeholder="Nom complet"
-              required
-              minLength={2}
-            />
-            <input
-              type="password"
-              value={createPassword}
-              onChange={(e) => setCreatePassword(e.target.value)}
-              placeholder="Mot de passe (min. 8)"
-              autoComplete="new-password"
-              required
-              minLength={8}
-            />
+        <div className="cx-kc">
+          <span className="cx-kc-ico cx-kc-green">
+            <CheckCircle2 aria-hidden />
+          </span>
+          <div className="cx-kc-body">
+            <span className="cx-kc-label">Actifs</span>
+            <span className="cx-kc-value">{nf(stats.active)}</span>
+            <span className="cx-kc-sub">visibles côté élèves</span>
           </div>
-          <p className="admin-muted" style={{ marginTop: 8 }}>
-            Un identifiant de connexion est généré automatiquement. Photos, véhicule, ville et bio
-            sont saisis par le moniteur sur son portail.
-          </p>
-          <div className="reserv-create-actions">
-            <button type="submit" className="btn-primary btn-primary-inline" disabled={savingMoniteur}>
-              <Plus size={16} />
-              {savingMoniteur ? 'Création…' : 'Créer le compte'}
-            </button>
+        </div>
+        <div className="cx-kc">
+          <span className="cx-kc-ico cx-kc-sky">
+            <KeyRound aria-hidden />
+          </span>
+          <div className="cx-kc-body">
+            <span className="cx-kc-label">Portail activé</span>
+            <span className="cx-kc-value">{nf(stats.login)}</span>
+            <span className="cx-kc-sub">peuvent se connecter</span>
           </div>
+        </div>
+        <div className="cx-kc">
+          <span className="cx-kc-ico cx-kc-gold">
+            <UserCog aria-hidden />
+          </span>
+          <div className="cx-kc-body">
+            <span className="cx-kc-label">Disponibilités</span>
+            <span className="cx-kc-value">
+              {nf(stats.scheduled)} <small>/ {nf(stats.total)}</small>
+            </span>
+            <span className="cx-kc-sub">ont défini leurs horaires</span>
+          </div>
+        </div>
+      </div>
+
+      <section className="cx-panel">
+        <div className="cx-panel-head cx-ph cx-ph-plain">
+          <span className="cx-phi cx-phi-tile">
+            <Plus aria-hidden />
+          </span>
+          <div className="cx-ph-txt">
+            <h2 className="cx-panel-title">Créer un compte moniteur</h2>
+            <p className="cx-muted">
+              Un identifiant de connexion est généré automatiquement. Photos, véhicule, ville et bio sont saisis par le
+              moniteur sur son portail.
+            </p>
+          </div>
+        </div>
+        <form onSubmit={handleCreateMoniteur} className="cx-field-row">
+          <input
+            className="cx-input"
+            value={moniteurName}
+            onChange={(e) => setMoniteurName(e.target.value)}
+            placeholder="Nom complet"
+            required
+            minLength={2}
+          />
+          <input
+            className="cx-input"
+            type="password"
+            value={createPassword}
+            onChange={(e) => setCreatePassword(e.target.value)}
+            placeholder="Mot de passe (min. 8)"
+            autoComplete="new-password"
+            required
+            minLength={8}
+          />
+          <button type="submit" className="cx-btn cx-btn-fill" disabled={savingMoniteur}>
+            <Plus aria-hidden />
+            {savingMoniteur ? 'Création…' : 'Créer le compte'}
+          </button>
         </form>
       </section>
 
-      <section className="admin-section">
-        <div className="admin-section-head">
-          <h3 className="admin-section-label">Équipe & disponibilité</h3>
-          <p className="admin-section-hint">
-            Vue support : profils et plages. Le moniteur gère le contenu public et ses horaires au
-            quotidien.
-          </p>
-        </div>
-        <div className="admin-section-body">
-          {loading && moniteurs.length === 0 ? (
-            <p className="admin-empty">Chargement…</p>
-          ) : moniteurs.length === 0 ? (
-            <p className="admin-empty">Créez d’abord un moniteur ci-dessus.</p>
-          ) : (
-            <div className="moniteur-pick-grid">
-              {moniteurs.map((item) => {
-                const active = editingMoniteur?.id === item.id
-                const hasSchedule = (item.weeklyAvailability || []).length > 0
-                return (
-                  <div
-                    key={item.id}
-                    className={`moniteur-pick-card${active ? ' is-active' : ''}`}
-                  >
-                    <div className="moniteur-pick-top">
-                      <button
-                        type="button"
-                        className="moniteur-pick-main"
-                        onClick={() => openEdit(item)}
-                      >
-                        {item.vehiclePhotoUrl ? (
-                          <img src={mediaSrc(item.vehiclePhotoUrl)} alt="" />
-                        ) : (
-                          <div className="moniteur-vehicle-placeholder">Véhicule</div>
-                        )}
-                        <div className="moniteur-pick-meta">
-                          <strong>{item.fullName}</strong>
-                          <span>{item.vehicleBrand || 'Marque non renseignée'}</span>
-                          <span className="moniteur-pick-type">
-                            {item.vehicleTypes?.[0] || 'Véhicule'}
-                            {item.city ? ` · ${item.city}` : ''}
-                            {hasSchedule ? ' · Dispo OK' : ' · Dispo à définir'}
-                          </span>
-                        </div>
-                      </button>
-                      <button
-                        type="button"
-                        className="btn-icon moniteur-pick-edit"
-                        title="Modifier profil et disponibilité"
-                        onClick={() => openEdit(item)}
-                      >
-                        <Pencil size={15} />
-                      </button>
-                      <button
-                        type="button"
-                        className="btn-icon-danger moniteur-pick-delete"
-                        title="Supprimer le moniteur"
-                        disabled={deletingId === item.id}
-                        onClick={() => void handleDeleteMoniteur(item)}
-                      >
-                        <Trash2 size={15} />
-                      </button>
-                    </div>
-                  </div>
-                )
-              })}
+      <div className="cx-mon-grid">
+        <aside className="cx-panel cx-sticky" aria-label="Équipe">
+          <div className="cx-panel-head cx-ph cx-ph-plain">
+            <div className="cx-ph-txt">
+              <h2 className="cx-panel-title">Équipe</h2>
+              <p className="cx-muted">Vue support : profils et plages horaires</p>
             </div>
-          )}
+          </div>
+          {loading && moniteurs.length === 0 ? <SkeletonBlock rows={4} /> : null}
+          {!loading && moniteurs.length === 0 ? (
+            <EmptyState title="Aucun moniteur" description="Créez d’abord un compte ci-dessus." />
+          ) : null}
+          <div className="cx-mon-list">
+            {moniteurs.map((item) => {
+              const active = editingMoniteur?.id === item.id
+              const hasSchedule = (item.weeklyAvailability || []).length > 0
+              return (
+                <div key={item.id} className={`cx-mon${active ? ' cx-sel' : ''}`}>
+                  <button type="button" className="cx-mon-pick" onClick={() => openEdit(item)}>
+                    {item.vehiclePhotoUrl ? (
+                      <img src={mediaSrc(item.vehiclePhotoUrl)} alt="" />
+                    ) : (
+                      <span className="cx-mon-ph">Véhicule</span>
+                    )}
+                    <span className="cx-mon-meta">
+                      <strong>{item.fullName}</strong>
+                      <span>{item.vehicleBrand || 'Marque non renseignée'}</span>
+                      <span>
+                        {item.city ? `${item.city} · ` : ''}
+                        {hasSchedule ? 'Dispo OK' : 'Dispo à définir'}
+                      </span>
+                    </span>
+                  </button>
+                  <div className="cx-mon-act">
+                    <button
+                      type="button"
+                      className="cx-btn cx-btn-icon"
+                      title="Modifier profil et disponibilité"
+                      onClick={() => openEdit(item)}
+                    >
+                      <Pencil aria-hidden />
+                    </button>
+                    <button
+                      type="button"
+                      className="cx-btn cx-btn-icon cx-btn-danger"
+                      title="Supprimer le moniteur"
+                      disabled={deletingId === item.id}
+                      onClick={() => void handleDeleteMoniteur(item)}
+                    >
+                      <Trash2 aria-hidden />
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </aside>
 
-          {editingMoniteur ? (
-            <div className="moniteur-edit-panel">
-              <div className="moniteur-edit-head">
-                <h4>Modifier {editingMoniteur.fullName}</h4>
-                <button type="button" className="btn-icon" title="Fermer" onClick={closeEdit}>
-                  <X size={16} />
-                </button>
+        {editingMoniteur ? (
+          <section className="cx-panel" key={editingMoniteur.id}>
+            <div className="cx-detail-head">
+              <span className="cx-chap-num">
+                {editingMoniteur.fullName
+                  .split(/\s+/)
+                  .slice(0, 2)
+                  .map((part) => part[0])
+                  .join('')
+                  .toUpperCase()}
+              </span>
+              <div className="cx-detail-title">
+                <small>Modifier le moniteur</small>
+                <h2>{editingMoniteur.fullName}</h2>
               </div>
+              <button type="button" className="cx-btn cx-btn-icon" title="Fermer" onClick={closeEdit}>
+                <X aria-hidden />
+              </button>
+            </div>
 
-              <div className="moniteur-edit-layout">
-                <div className="moniteur-edit-col">
-                  <div className="reserv-create-grid">
+            <div className="cx-edit-cols" style={{ marginTop: '1.1rem' }}>
+              <div className="cx-edit-col">
+                <div className="cx-block">
+                  <h3>Coordonnées & accès</h3>
+                  <div className="cx-form-grid">
+                    <input className="cx-input" value={editPhone} onChange={(e) => setEditPhone(e.target.value)} placeholder="Téléphone" />
+                    <input className="cx-input" type="email" value={editEmail} onChange={(e) => setEditEmail(e.target.value)} placeholder="Email (portail moniteur)" />
                     <input
-                      value={editPhone}
-                      onChange={(e) => setEditPhone(e.target.value)}
-                      placeholder="Téléphone"
-                    />
-                    <input
-                      type="email"
-                      value={editEmail}
-                      onChange={(e) => setEditEmail(e.target.value)}
-                      placeholder="Email (portail moniteur)"
-                    />
-                    <input
+                      className="cx-input"
                       type="password"
                       value={editPassword}
                       onChange={(e) => setEditPassword(e.target.value)}
-                      placeholder={
-                        editingMoniteur.hasPassword
-                          ? 'Nouveau mot de passe (optionnel)'
-                          : 'Mot de passe portail (min. 8)'
-                      }
+                      placeholder={editingMoniteur.hasPassword ? 'Nouveau mot de passe (optionnel)' : 'Mot de passe portail (min. 8)'}
                       autoComplete="new-password"
                     />
-                    <label className="moniteur-hours-day" style={{ alignSelf: 'center' }}>
-                      <input
-                        type="checkbox"
-                        checked={editActiveLogin}
-                        onChange={(e) => setEditActiveLogin(e.target.checked)}
-                      />
+                    <label className="cx-check" style={{ alignSelf: 'center' }}>
+                      <input type="checkbox" checked={editActiveLogin} onChange={(e) => setEditActiveLogin(e.target.checked)} />
                       <span>Activer la connexion portail</span>
                     </label>
-                    <input
-                      value={editSpecialties}
-                      onChange={(e) => setEditSpecialties(e.target.value)}
-                      placeholder="Spécialités (séparées par des virgules)"
-                    />
-                    <input
-                      value={editVehicleBrand}
-                      onChange={(e) => setEditVehicleBrand(e.target.value)}
-                      placeholder="Marque du véhicule"
-                    />
-                    <input
-                      value={editCity}
-                      onChange={(e) => setEditCity(e.target.value)}
-                      placeholder="Ville / zone"
-                    />
+                    <input className="cx-input" value={editSpecialties} onChange={(e) => setEditSpecialties(e.target.value)} placeholder="Spécialités (séparées par des virgules)" />
+                    <input className="cx-input" value={editVehicleBrand} onChange={(e) => setEditVehicleBrand(e.target.value)} placeholder="Marque du véhicule" />
+                    <input className="cx-input" value={editCity} onChange={(e) => setEditCity(e.target.value)} placeholder="Ville / zone" />
                   </div>
+                </div>
 
-                  <label className="moniteur-edit-label">
-                    Présentation
-                    <textarea
-                      value={editBio}
-                      onChange={(e) => setEditBio(e.target.value.slice(0, MONITEUR_BIO_MAX))}
-                      placeholder="Présentez ce moniteur aux élèves (expérience, pédagogie…)"
-                      rows={3}
-                      maxLength={MONITEUR_BIO_MAX}
-                    />
-                    <span className="admin-muted" style={{ fontSize: 12 }}>
-                      {editBio.length}/{MONITEUR_BIO_MAX}
-                    </span>
-                  </label>
+                <div className="cx-block">
+                  <h3>Présentation</h3>
+                  <textarea
+                    className="cx-textarea"
+                    value={editBio}
+                    onChange={(e) => setEditBio(e.target.value.slice(0, MONITEUR_BIO_MAX))}
+                    placeholder="Présentez ce moniteur aux élèves (expérience, pédagogie…)"
+                    rows={4}
+                    maxLength={MONITEUR_BIO_MAX}
+                  />
+                  <span className="cx-counter">
+                    {editBio.length}/{MONITEUR_BIO_MAX}
+                  </span>
+                </div>
 
-                  <div className="moniteur-edit-label">
-                    Disponibilité (jours & horaires)
-                    <p className="admin-muted" style={{ margin: '0.35rem 0 0.6rem' }}>
-                      Cochez les jours libres. Jusqu’à 2 plages par jour (matin et après-midi).
-                    </p>
-                    <div className="moniteur-hours-grid">
-                      {editDayHours.map((day) => {
-                        const label =
-                          WEEK_DAYS.find((item) => item.dayOfWeek === day.dayOfWeek)?.label ||
-                          'Jour'
-                        return (
-                          <div key={day.dayOfWeek} className="moniteur-hours-day-block">
-                            <label className="moniteur-hours-day">
+                <div className="cx-block">
+                  <h3>Disponibilité (jours & horaires)</h3>
+                  <p>Cochez les jours libres. Jusqu’à 2 plages par jour (matin et après-midi).</p>
+                  <div className="cx-hours">
+                    {editDayHours.map((day) => {
+                      const label = WEEK_DAYS.find((item) => item.dayOfWeek === day.dayOfWeek)?.label || 'Jour'
+                      return (
+                        <div key={day.dayOfWeek} className={`cx-day${day.enabled ? '' : ' cx-off'}`}>
+                          <label className="cx-check">
+                            <input
+                              type="checkbox"
+                              checked={day.enabled}
+                              onChange={(e) =>
+                                updateEditDay(day.dayOfWeek, {
+                                  enabled: e.target.checked,
+                                  ...(e.target.checked ? {} : { afternoonEnabled: false }),
+                                })
+                              }
+                            />
+                            <span>{label}</span>
+                          </label>
+                          <div className="cx-day-rows">
+                            <div className="cx-day-row">
+                              <span className="cx-slot">Matin</span>
                               <input
-                                type="checkbox"
-                                checked={day.enabled}
-                                onChange={(e) =>
-                                  updateEditDay(day.dayOfWeek, {
-                                    enabled: e.target.checked,
-                                    ...(e.target.checked ? {} : { afternoonEnabled: false }),
-                                  })
-                                }
+                                type="time"
+                                value={day.morning.start}
+                                disabled={!day.enabled}
+                                onChange={(e) => updateEditInterval(day.dayOfWeek, 'morning', { start: e.target.value })}
+                                aria-label={`${label} matin début`}
                               />
-                              <span>{label}</span>
-                            </label>
-                            <div className="moniteur-hours-intervals">
-                              <div className="moniteur-hours-row">
-                                <span className="moniteur-hours-slot-label">Matin</span>
+                              <span>à</span>
+                              <input
+                                type="time"
+                                value={day.morning.end}
+                                disabled={!day.enabled}
+                                onChange={(e) => updateEditInterval(day.dayOfWeek, 'morning', { end: e.target.value })}
+                                aria-label={`${label} matin fin`}
+                              />
+                            </div>
+                            <div className="cx-day-row">
+                              <label className="cx-check cx-slot">
                                 <input
-                                  type="time"
-                                  value={day.morning.start}
+                                  type="checkbox"
+                                  checked={day.afternoonEnabled}
                                   disabled={!day.enabled}
-                                  onChange={(e) =>
-                                    updateEditInterval(day.dayOfWeek, 'morning', {
-                                      start: e.target.value,
-                                    })
-                                  }
-                                  aria-label={`${label} matin début`}
+                                  onChange={(e) => updateEditDay(day.dayOfWeek, { afternoonEnabled: e.target.checked })}
                                 />
-                                <span className="admin-muted">à</span>
-                                <input
-                                  type="time"
-                                  value={day.morning.end}
-                                  disabled={!day.enabled}
-                                  onChange={(e) =>
-                                    updateEditInterval(day.dayOfWeek, 'morning', {
-                                      end: e.target.value,
-                                    })
-                                  }
-                                  aria-label={`${label} matin fin`}
-                                />
-                              </div>
-                              <div className="moniteur-hours-row">
-                                <label className="moniteur-hours-slot-toggle">
-                                  <input
-                                    type="checkbox"
-                                    checked={day.afternoonEnabled}
-                                    disabled={!day.enabled}
-                                    onChange={(e) =>
-                                      updateEditDay(day.dayOfWeek, {
-                                        afternoonEnabled: e.target.checked,
-                                      })
-                                    }
-                                  />
-                                  <span>A-midi</span>
-                                </label>
-                                <input
-                                  type="time"
-                                  value={day.afternoon.start}
-                                  disabled={!day.enabled || !day.afternoonEnabled}
-                                  onChange={(e) =>
-                                    updateEditInterval(day.dayOfWeek, 'afternoon', {
-                                      start: e.target.value,
-                                    })
-                                  }
-                                  aria-label={`${label} après-midi début`}
-                                />
-                                <span className="admin-muted">à</span>
-                                <input
-                                  type="time"
-                                  value={day.afternoon.end}
-                                  disabled={!day.enabled || !day.afternoonEnabled}
-                                  onChange={(e) =>
-                                    updateEditInterval(day.dayOfWeek, 'afternoon', {
-                                      end: e.target.value,
-                                    })
-                                  }
-                                  aria-label={`${label} après-midi fin`}
-                                />
-                              </div>
+                                <span>Après-midi</span>
+                              </label>
+                              <input
+                                type="time"
+                                value={day.afternoon.start}
+                                disabled={!day.enabled || !day.afternoonEnabled}
+                                onChange={(e) => updateEditInterval(day.dayOfWeek, 'afternoon', { start: e.target.value })}
+                                aria-label={`${label} après-midi début`}
+                              />
+                              <span>à</span>
+                              <input
+                                type="time"
+                                value={day.afternoon.end}
+                                disabled={!day.enabled || !day.afternoonEnabled}
+                                onChange={(e) => updateEditInterval(day.dayOfWeek, 'afternoon', { end: e.target.value })}
+                                aria-label={`${label} après-midi fin`}
+                              />
                             </div>
                           </div>
-                        )
-                      })}
-                    </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              <div className="cx-edit-col">
+                <div className="cx-block">
+                  <h3>Photo du moniteur</h3>
+                  <div className="cx-photo-box">
+                    {editPhotoUrl ? <img src={mediaSrc(editPhotoUrl)} alt="Moniteur" /> : <span className="cx-photo-ph">Moniteur</span>}
+                    <label className="cx-filebtn">
+                      <ImagePlus aria-hidden />
+                      {uploadingEditMoniteurPhoto ? 'Import…' : 'Changer'}
+                      <input type="file" accept="image/*" hidden onChange={(e) => void handleEditMoniteurPhotoUpload(e.target.files?.[0] ?? null)} />
+                    </label>
                   </div>
                 </div>
 
-                <div className="moniteur-edit-col">
-                  <div className="moniteur-edit-label">
-                    Photo du moniteur
-                    <div className="moniteur-vehicle-preview">
-                      {editPhotoUrl ? (
-                        <img src={mediaSrc(editPhotoUrl)} alt="Moniteur" />
-                      ) : (
-                        <div className="moniteur-vehicle-placeholder">Moniteur</div>
-                      )}
-                      <label className="btn-outline btn-file">
-                        <ImagePlus size={15} />
-                        {uploadingEditMoniteurPhoto ? 'Import…' : 'Changer'}
-                        <input
-                          type="file"
-                          accept="image/*"
-                          hidden
-                          onChange={(e) =>
-                            void handleEditMoniteurPhotoUpload(e.target.files?.[0] ?? null)
-                          }
-                        />
-                      </label>
-                    </div>
+                <div className="cx-block">
+                  <h3>Photo du véhicule</h3>
+                  <div className="cx-photo-box">
+                    {editVehiclePhotoUrl ? <img src={mediaSrc(editVehiclePhotoUrl)} alt="Véhicule" /> : <span className="cx-photo-ph">Véhicule</span>}
+                    <label className="cx-filebtn">
+                      <ImagePlus aria-hidden />
+                      {uploadingEditVehiclePhoto ? 'Import…' : 'Changer'}
+                      <input type="file" accept="image/*" hidden onChange={(e) => void handleEditVehiclePhotoUpload(e.target.files?.[0] ?? null)} />
+                    </label>
                   </div>
+                </div>
 
-                  <div className="moniteur-edit-label">
-                    Photo du véhicule
-                    <div className="moniteur-vehicle-preview">
-                      {editVehiclePhotoUrl ? (
-                        <img src={mediaSrc(editVehiclePhotoUrl)} alt="Véhicule" />
-                      ) : (
-                        <div className="moniteur-vehicle-placeholder">Véhicule</div>
-                      )}
-                      <label className="btn-outline btn-file">
-                        <ImagePlus size={15} />
-                        {uploadingEditVehiclePhoto ? 'Import…' : 'Changer'}
-                        <input
-                          type="file"
-                          accept="image/*"
-                          hidden
-                          onChange={(e) =>
-                            void handleEditVehiclePhotoUpload(e.target.files?.[0] ?? null)
-                          }
-                        />
-                      </label>
-                    </div>
-                  </div>
-
-                  <div className="moniteur-edit-label">
-                    Galerie de photos
-                    <div className="moniteur-photo-gallery">
-                      {editPhotos.map((url) => (
-                        <div key={url} className="moniteur-photo-item">
-                          <img src={mediaSrc(url)} alt="" />
-                          <button
-                            type="button"
-                            onClick={() => removeEditPhoto(url)}
-                            title="Retirer"
-                          >
-                            <X size={13} />
-                          </button>
-                        </div>
-                      ))}
-                      <label className="btn-outline btn-file moniteur-photo-add">
-                        <ImagePlus size={15} />
-                        {uploadingEditPhoto ? 'Import…' : 'Ajouter'}
-                        <input
-                          type="file"
-                          accept="image/*"
-                          hidden
-                          onChange={(e) =>
-                            void handleEditGalleryUpload(e.target.files?.[0] ?? null)
-                          }
-                        />
-                      </label>
-                    </div>
-                  </div>
-
-                  <div className="moniteur-edit-label">
-                    Vidéos de présentation (YouTube ou Vimeo)
-                    <div className="moniteur-video-list">
-                      {editVideos.map((url) => (
-                        <div key={url} className="moniteur-video-item">
-                          <span>{url}</span>
-                          <button
-                            type="button"
-                            onClick={() => removeEditVideo(url)}
-                            title="Retirer"
-                          >
-                            <X size={13} />
-                          </button>
-                        </div>
-                      ))}
-                      <div className="moniteur-video-add">
-                        <input
-                          value={editNewVideoUrl}
-                          onChange={(e) => setEditNewVideoUrl(e.target.value)}
-                          placeholder="https://www.youtube.com/watch?v=…"
-                        />
-                        <button type="button" className="btn-outline-sm" onClick={addEditVideo}>
-                          <Plus size={14} />
-                          Ajouter
+                <div className="cx-block">
+                  <h3>Galerie de photos</h3>
+                  <div className="cx-gallery">
+                    {editPhotos.map((url) => (
+                      <div key={url} className="cx-gallery-item">
+                        <img src={mediaSrc(url)} alt="" />
+                        <button type="button" onClick={() => removeEditPhoto(url)} title="Retirer">
+                          <X aria-hidden />
                         </button>
                       </div>
-                    </div>
+                    ))}
+                  </div>
+                  <div>
+                    <label className="cx-filebtn">
+                      <ImagePlus aria-hidden />
+                      {uploadingEditPhoto ? 'Import…' : 'Ajouter une photo'}
+                      <input type="file" accept="image/*" hidden onChange={(e) => void handleEditGalleryUpload(e.target.files?.[0] ?? null)} />
+                    </label>
+                  </div>
+                </div>
+
+                <div className="cx-block">
+                  <h3>Vidéos de présentation</h3>
+                  <p>Liens YouTube ou Vimeo uniquement.</p>
+                  <div className="cx-videos">
+                    {editVideos.map((url) => (
+                      <div key={url} className="cx-video">
+                        <span>{url}</span>
+                        <button type="button" onClick={() => removeEditVideo(url)} title="Retirer">
+                          <X aria-hidden />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="cx-field-row">
+                    <input
+                      className="cx-input"
+                      value={editNewVideoUrl}
+                      onChange={(e) => setEditNewVideoUrl(e.target.value)}
+                      placeholder="https://www.youtube.com/watch?v=…"
+                    />
+                    <button type="button" className="cx-btn" onClick={addEditVideo}>
+                      <Plus aria-hidden />
+                      Ajouter
+                    </button>
                   </div>
                 </div>
               </div>
-
-              <div className="moniteur-edit-actions">
-                <button type="button" className="btn-outline" onClick={closeEdit}>
-                  Annuler
-                </button>
-                <button
-                  type="button"
-                  className="btn-primary"
-                  disabled={savingEdit}
-                  onClick={() => void handleSaveEdit()}
-                >
-                  {savingEdit ? 'Enregistrement…' : 'Enregistrer'}
-                </button>
-              </div>
             </div>
-          ) : null}
-        </div>
-      </section>
-    </div>
+
+            <div className="cx-actions" style={{ marginTop: '1.1rem' }}>
+              <button type="button" className="cx-btn" onClick={closeEdit}>
+                Annuler
+              </button>
+              <button type="button" className="cx-btn cx-btn-fill" disabled={savingEdit} onClick={() => void handleSaveEdit()}>
+                {savingEdit ? 'Enregistrement…' : 'Enregistrer'}
+              </button>
+            </div>
+          </section>
+        ) : (
+          <section className="cx-panel">
+            <EmptyState
+              title="Aucun moniteur sélectionné"
+              description="Choisissez un moniteur dans la liste pour modifier son profil et sa disponibilité."
+            />
+          </section>
+        )}
+      </div>
+    </ConduiteSection>
   )
 }

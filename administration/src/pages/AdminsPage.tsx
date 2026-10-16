@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom'
 import {
   CalendarDays,
   Clock3,
-  FileText,
   Phone,
   Plus,
   RefreshCw,
@@ -13,10 +12,10 @@ import {
   UserCheck,
 } from 'lucide-react'
 import { fetchAdmins, type AdminAccount } from '../api/admins'
-import { StatusBadge } from '../components/StatusBadge'
+import { DirectionSection } from '../components/model/DirectionSection'
 import { getAdminToken, isAuthError } from '../context/AdminAuthContext'
 import { roleLabel } from '../utils/roles'
-import { Reveal, StatCard } from '../ui'
+import { EmptyState, SkeletonBlock } from '../ui'
 
 function formatDateParts(value?: string | null) {
   if (!value) return null
@@ -39,14 +38,14 @@ function initials(name: string) {
 
 function DateCell({ value, icon }: { value?: string | null; icon: 'created' | 'login' }) {
   const parts = formatDateParts(value)
-  if (!parts) return <span className="muted">—</span>
+  if (!parts) return <span className="cx-dim">—</span>
   const Icon = icon === 'created' ? CalendarDays : Clock3
   return (
-    <span className="admins-date-cell">
-      <Icon size={13} strokeWidth={2} className="admins-date-icon" aria-hidden />
-      <span className="admins-date-lines">
-        <span className="admins-date-day">{parts.date}</span>
-        <span className="admins-date-time">{parts.time}</span>
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '.5rem' }}>
+      <Icon className="cx-ico-inline" aria-hidden />
+      <span style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.2 }}>
+        <span>{parts.date}</span>
+        <small style={{ color: 'var(--ink-soft)' }}>{parts.time}</small>
       </span>
     </span>
   )
@@ -98,93 +97,93 @@ export function AdminsPage() {
   }, [admins])
 
   return (
-    <div className="admin-page admins-page">
-      <Reveal variant="blur" className="admins-hero">
-        <span className="admins-hero-icon" aria-hidden>
-          <ShieldCheck size={26} strokeWidth={2} />
-        </span>
-        <div className="admin-page-intro">
-          <p className="admin-page-intro-label">Sécurité</p>
-          <h2 className="admin-page-intro-title">Administrateurs</h2>
-          <p className="admin-page-intro-text">
-            Gestion des comptes : rôles, activation et journal d’activité. Réservé aux
-            super-administrateurs.
-          </p>
-        </div>
-        <svg
-          className="admins-hero-art"
-          viewBox="0 0 200 160"
-          aria-hidden
-          focusable="false"
-        >
-          <circle cx="140" cy="80" r="72" fill="none" stroke="currentColor" strokeWidth="1.5" strokeDasharray="4 6" />
-          <path
-            d="M140 42c14 5 24 7 24 7v22c0 20-11 34-24 40-13-6-24-20-24-40V49s10-2 24-7Z"
-            fill="currentColor"
-            opacity="0.14"
-          />
-          <path
-            d="M140 42c14 5 24 7 24 7v22c0 20-11 34-24 40-13-6-24-20-24-40V49s10-2 24-7Z"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.5"
-          />
-          <path
-            d="M129 92l7 7 15-17"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="3"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-          <circle cx="52" cy="52" r="13" fill="currentColor" opacity="0.18" />
-          <circle cx="52" cy="52" r="13" fill="none" stroke="currentColor" strokeWidth="2" />
-          <circle cx="34" cy="104" r="10" fill="currentColor" opacity="0.14" />
-          <circle cx="34" cy="104" r="10" fill="none" stroke="currentColor" strokeWidth="2" />
-        </svg>
-      </Reveal>
+    <DirectionSection
+      kicker="Sécurité"
+      title="Administrateurs"
+      subtitle="Gestion des comptes : rôles, activation et journal d’activité. Réservé aux super-administrateurs."
+      actions={
+        <>
+          <button type="button" className="cx-refresh" onClick={() => void load()} disabled={loading}>
+            <RefreshCw aria-hidden />
+            {loading ? 'Chargement…' : 'Actualiser'}
+          </button>
+          <Link to="/creer-admin" className="cx-btn cx-btn-fill">
+            <Plus aria-hidden />
+            Créer un admin
+          </Link>
+        </>
+      }
+    >
+      {error ? <p className="cx-note cx-note-err" role="alert">{error}</p> : null}
 
-      <div className="admins-toolbar">
-        <button
-          type="button"
-          className="ui-btn ui-btn-ghost"
-          onClick={() => void load()}
-          disabled={loading}
-        >
-          <RefreshCw size={15} strokeWidth={2} />
-          {loading ? 'Chargement…' : 'Actualiser'}
-        </button>
-        <Link to="/journal-audit" className="ui-btn ui-btn-ghost">
-          <FileText size={15} strokeWidth={2} />
-          Journal d’audit
-        </Link>
-        <Link to="/creer-admin" className="ui-btn ui-btn-primary admins-cta">
-          <Plus size={17} strokeWidth={2.2} />
-          Créer un admin
-        </Link>
+      <div className="cx-kc-grid">
+        <div className="cx-kc">
+          <span className="cx-kc-ico cx-kc-blue">
+            <Users aria-hidden />
+          </span>
+          <div className="cx-kc-body">
+            <span className="cx-kc-label">Administrateurs</span>
+            <span className="cx-kc-value">{admins.length}</span>
+            <span className="cx-kc-sub">
+              {superCount} superadmin{superCount > 1 ? 's' : ''}
+            </span>
+          </div>
+        </div>
+        <div className="cx-kc">
+          <span className="cx-kc-ico cx-kc-green">
+            <UserCheck aria-hidden />
+          </span>
+          <div className="cx-kc-body">
+            <span className="cx-kc-label">Actifs</span>
+            <span className="cx-kc-value">{activeCount}</span>
+            <span className="cx-kc-sub">comptes activés</span>
+          </div>
+        </div>
+        <div className="cx-kc">
+          <span className="cx-kc-ico cx-kc-sky">
+            <ShieldCheck aria-hidden />
+          </span>
+          <div className="cx-kc-body">
+            <span className="cx-kc-label">Taux d’activation</span>
+            <span className="cx-kc-value">{activationRate}%</span>
+            <span className="cx-kc-bar">
+              <i style={{ width: `${activationRate}%` }} />
+            </span>
+          </div>
+        </div>
+        <div className="cx-kc">
+          <span className="cx-kc-ico cx-kc-gold">
+            <Clock3 aria-hidden />
+          </span>
+          <div className="cx-kc-body">
+            <span className="cx-kc-label">Dernière activité</span>
+            <span className="cx-kc-value" style={{ fontSize: '1.05rem' }}>{lastActivityLabel}</span>
+            <span className="cx-kc-sub">connexion la plus récente</span>
+          </div>
+        </div>
       </div>
 
-      <section className="admin-section admins-table-card">
-        <div className="admin-section-head">
-          <h3 className="admin-section-label">
-            Comptes ({admins.length}) — {activeCount} actif{activeCount > 1 ? 's' : ''}
-            {superCount > 0 ? ` · ${superCount} superadmin${superCount > 1 ? 's' : ''}` : ''}
-          </h3>
-          {admins.length > 0 ? (
-            <StatusBadge tone="success" withIcon={false}>
-              {activationRate}% actifs
-            </StatusBadge>
-          ) : null}
-        </div>
-        <div className="admin-section-body" style={{ padding: 0 }}>
-          {error ? (
-            <p className="form-error" role="alert" style={{ margin: 16 }}>
-              {error}
+      <section className="cx-panel">
+        <div className="cx-panel-head cx-ph cx-ph-plain">
+          <span className="cx-phi cx-phi-tile">
+            <ShieldCheck aria-hidden />
+          </span>
+          <div className="cx-ph-txt">
+            <h2 className="cx-panel-title">Comptes ({admins.length})</h2>
+            <p className="cx-muted">
+              {activeCount} actif{activeCount > 1 ? 's' : ''}
+              {superCount > 0 ? ` · ${superCount} superadmin${superCount > 1 ? 's' : ''}` : ''}
             </p>
-          ) : null}
+          </div>
+        </div>
 
-          <div className="admin-data-table-wrap">
-            <table className="admin-data-table admins-table" style={{ minWidth: 640 }}>
+        {loading && admins.length === 0 ? (
+          <SkeletonBlock rows={4} />
+        ) : admins.length === 0 ? (
+          <EmptyState title="Aucun administrateur" description="Créez le premier compte administrateur." />
+        ) : (
+          <div className="cx-table-wrap">
+            <table className="cx-data" style={{ minWidth: 640 }}>
               <thead>
                 <tr>
                   <th>Administrateur</th>
@@ -197,62 +196,41 @@ export function AdminsPage() {
                 </tr>
               </thead>
               <tbody>
-                {loading && admins.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="muted">
-                      Chargement…
-                    </td>
-                  </tr>
-                ) : null}
-                {!loading && admins.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="muted">
-                      Aucun administrateur
-                    </td>
-                  </tr>
-                ) : null}
                 {admins.map((admin) => (
                   <tr key={admin.id}>
-                    <td data-label="Administrateur">
-                      <div className="admins-identity">
-                        <span className="sidebar-profile-avatar admins-avatar">
-                          {initials(admin.fullName)}
-                        </span>
-                        <strong>{admin.fullName}</strong>
+                    <td>
+                      <div className="cx-person">
+                        <span className="cx-avatar">{initials(admin.fullName)}</span>
+                        <div>
+                          <strong>{admin.fullName}</strong>
+                        </div>
                       </div>
                     </td>
-                    <td data-label="Téléphone">
-                      <span className="admins-phone-cell">
-                        <Phone size={13} strokeWidth={2} aria-hidden />
+                    <td>
+                      <span className="cx-dim">
+                        <Phone className="cx-ico-inline" aria-hidden />
                         {admin.phone}
                       </span>
                     </td>
-                    <td data-label="Rôle">
-                      <StatusBadge
-                        tone={admin.role === 'superadmin' ? 'warning' : 'neutral'}
-                        withIcon={false}
-                      >
+                    <td>
+                      <span className={`cx-chip ${admin.role === 'superadmin' ? 'cx-amber' : ''}`.trim()}>
                         {roleLabel(admin.role)}
-                      </StatusBadge>
+                      </span>
                     </td>
-                    <td data-label="Créé le">
+                    <td>
                       <DateCell value={admin.createdAt} icon="created" />
                     </td>
-                    <td data-label="Dernière connexion">
+                    <td>
                       <DateCell value={admin.lastLoginAt} icon="login" />
                     </td>
-                    <td data-label="Statut">
-                      <StatusBadge tone={admin.isActive ? 'success' : 'danger'} withIcon={false}>
-                        <span className="admins-status-dot" aria-hidden />
+                    <td>
+                      <span className={`cx-chip ${admin.isActive ? 'cx-green' : 'cx-red'}`}>
                         {admin.isActive ? 'Actif' : 'Inactif'}
-                      </StatusBadge>
+                      </span>
                     </td>
-                    <td data-label="Actions">
-                      <Link
-                        to={`/administrateurs/${admin.id}`}
-                        className="ui-btn ui-btn-ghost admins-manage-btn"
-                      >
-                        <Settings2 size={13} strokeWidth={2} />
+                    <td>
+                      <Link to={`/administrateurs/${admin.id}`} className="cx-btn cx-btn-sm">
+                        <Settings2 aria-hidden />
                         Gérer
                       </Link>
                     </td>
@@ -261,37 +239,8 @@ export function AdminsPage() {
               </tbody>
             </table>
           </div>
-        </div>
+        )}
       </section>
-
-      <div className="admins-kpi-grid">
-        <StatCard
-          label="Administrateurs"
-          value={admins.length}
-          icon={<Users size={16} strokeWidth={2} />}
-          meta="Total des comptes"
-        />
-        <StatCard
-          label="Administrateurs actifs"
-          value={activeCount}
-          icon={<UserCheck size={16} strokeWidth={2} />}
-          tone="success"
-          meta="Comptes activés"
-        />
-        <StatCard
-          label="Taux d’activation"
-          value={`${activationRate}%`}
-          icon={<ShieldCheck size={16} strokeWidth={2} />}
-          tone="success"
-          meta="Comptes actifs"
-        />
-        <StatCard
-          label="Dernière activité"
-          value={lastActivityLabel}
-          icon={<Clock3 size={16} strokeWidth={2} />}
-          meta="Connexion la plus récente"
-        />
-      </div>
-    </div>
+    </DirectionSection>
   )
 }

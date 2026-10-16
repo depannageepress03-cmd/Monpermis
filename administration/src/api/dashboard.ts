@@ -53,6 +53,27 @@ export interface DashboardSummary {
   }
 }
 
+export interface DashboardOverview {
+  date: string
+  year: string
+  month: string
+  currency: string
+  kpi: {
+    day: { ca: number; count: number; trend: number | null }
+    month: { ca: number; count: number; trend: number | null }
+    year: { ca: number; count: number; trend: number | null }
+  }
+  spark: { day: number[]; month: number[]; year: number[] }
+  /** Jours ayant au moins un paiement approuvé (sur 730 jours glissants). */
+  daily: { date: string; ca: number; count: number }[]
+  byModule: { key: string; label: string; ca: number }[]
+}
+
+export function fetchDashboardOverview(token: string, date?: string) {
+  const query = date ? `?date=${encodeURIComponent(date)}` : ''
+  return apiFetch<{ overview: DashboardOverview }>(`/api/admin/dashboard/overview${query}`, {}, token)
+}
+
 export function fetchDashboardSummary(token: string) {
   return apiFetch<{ summary: DashboardSummary }>('/api/admin/dashboard/summary', {}, token)
 }

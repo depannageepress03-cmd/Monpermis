@@ -2,11 +2,13 @@ import { FormEvent, useCallback, useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import {
   AlertTriangle,
+  CheckCircle2,
+  Clock3,
   Download,
-  Landmark,
+  Filter,
   RefreshCw,
-  Search,
-  X,
+  RotateCcw,
+  Wallet,
 } from 'lucide-react'
 import { paymentChannelLabel } from '../api/accessRequests'
 import {
@@ -25,8 +27,9 @@ import {
   type FinanceStatus,
   type FinanceSummary,
 } from '../api/finances'
-import { StatusBadge } from '../components/StatusBadge'
+import { DirectionSection } from '../components/model/DirectionSection'
 import { getAdminToken, isAuthError } from '../context/AdminAuthContext'
+import { Drawer, EmptyState, SkeletonBlock } from '../ui'
 import { MoniteurFinancesPanel } from './MoniteurFinancesPanel'
 
 type Tab = 'ledger' | 'refunds' | 'moniteurs'
@@ -49,6 +52,8 @@ function formatDateTime(value: string | null | undefined) {
     minute: '2-digit',
   })
 }
+
+const TONE_CHIP = { success: 'cx-green', warning: 'cx-amber', danger: 'cx-red', neutral: 'cx-slate' } as const
 
 function learnerName(learner: FinancePayment['learner']) {
   if (!learner) return 'Apprenant'
@@ -282,492 +287,439 @@ export function FinancesPage() {
   const period = summary?.[kpiPeriod]
   const outstanding = summary?.outstandingRefunds
 
+  const statusChip = (value: string) => (
+    <span className={`cx-chip ${TONE_CHIP[financeStatusTone(value)]}`}>{financeStatusLabel(value as FinanceStatus)}</span>
+  )
+
+  const tabs: { key: Tab; label: string; badge?: number }[] = [
+    { key: 'ledger', label: 'Grand livre' },
+    { key: 'refunds', label: 'À rembourser', badge: outstanding && outstanding.count > 0 ? outstanding.count : undefined },
+    { key: 'moniteurs', label: 'Paiements moniteurs' },
+  ]
+
   return (
-    <div className="admin-page finances-page">
-      <header className="admin-module-header">
-        <div>
-          <p className="admin-module-kicker">Trésorerie</p>
-          <h1 className="admin-module-title">
-            <Landmark size={22} strokeWidth={2} aria-hidden />
-            Finances
-          </h1>
-          <p className="admin-module-subtitle">
-            Traçabilité de tous les mouvements d’argent (Mobile Money, abonnements, réservations).
-            Les remboursements bancaires se font dans FedaPay / chez l’opérateur ; ici on journalise
-            et on clôture la file.
-          </p>
-        </div>
-        <div className="ar-row-actions">
+    <DirectionSection
+      kicker="Trésorerie"
+      title="Comptabilité"
+      subtitle="Traçabilité de tous les mouvements d’argent (Mobile Money, abonnements, réservations). Les remboursements se font dans FedaPay ou chez l’opérateur ; ici on journalise et on clôture la file."
+      actions={
+        <>
           <button
             type="button"
-            className="admin-btn admin-btn-secondary"
+            className="cx-refresh"
             onClick={() => {
               void loadSummary()
               void loadLedger(page)
             }}
             disabled={loading}
           >
-            <RefreshCw size={14} />
+            <RefreshCw aria-hidden />
             Actualiser
           </button>
-          <button
-            type="button"
-            className="admin-btn admin-btn-secondary"
-            onClick={() => void handleExport()}
-            disabled={exporting}
-          >
-            <Download size={14} />
+          <button type="button" className="cx-refresh" onClick={() => void handleExport()} disabled={exporting}>
+            <Download aria-hidden />
             {exporting ? 'Export…' : 'Exporter CSV'}
           </button>
-        </div>
-      </header>
+        </>
+      }
+    >
+      {error ? <p className="cx-note cx-note-err" role="alert">{error}</p> : null}
+      {success ? <p className="cx-note cx-note-ok" role="status">{success}</p> : null}
 
-      {error ? (
-        <p className="form-error" role="alert">
-          {error}
-        </p>
-      ) : null}
-      {success ? (
-        <p className="form-success" role="status">
-          {success}
-        </p>
-      ) : null}
-
-      <div className="finances-kpi-period" role="tablist" aria-label="Période KPI">
-        {(
-          [
-            ['today', 'Aujourd’hui'],
-            ['week', 'Cette semaine'],
-            ['month', 'Ce mois'],
-          ] as const
-        ).map(([key, label]) => (
-          <button
-            key={key}
-            type="button"
-            role="tab"
-            className={kpiPeriod === key ? 'active' : ''}
-            aria-selected={kpiPeriod === key}
-            onClick={() => setKpiPeriod(key)}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
-
-      <div className="ar-stats-row">
-        <div className="ar-stat-card ar-stat-card-muted">
-          <div className="ar-stat-head">
-            <p className="ar-stat-label">Encaissé</p>
-          </div>
-          <p className="ar-stat-value">{formatMoney(period?.encaisse.total ?? 0)}</p>
-          <p className="ar-stat-meta">{period?.encaisse.count ?? 0} paiement(s)</p>
-        </div>
-        <div className="ar-stat-card">
-          <div className="ar-stat-head">
-            <p className="ar-stat-label">En attente</p>
-          </div>
-          <p className="ar-stat-value">{formatMoney(period?.enAttente.total ?? 0)}</p>
-          <p className="ar-stat-meta">{period?.enAttente.count ?? 0} en cours</p>
-        </div>
-        <div className="ar-stat-card">
-          <div className="ar-stat-head">
-            <p className="ar-stat-label">À rembourser (période)</p>
-          </div>
-          <p className="ar-stat-value">{formatMoney(period?.aRembourser.total ?? 0)}</p>
-          <p className="ar-stat-meta">{period?.aRembourser.count ?? 0} signalé(s)</p>
-        </div>
-        <div className="ar-stat-card">
-          <div className="ar-stat-head">
-            <p className="ar-stat-label">File actuelle</p>
-            {outstanding && outstanding.count > 0 ? <AlertTriangle size={16} color="#b45309" /> : null}
-          </div>
-          <p className="ar-stat-value">{formatMoney(outstanding?.total ?? 0)}</p>
-          <p className="ar-stat-meta">
-            {outstanding?.count ?? 0} à traiter
-            {outstanding && outstanding.count > 0 ? (
-              <>
-                {' · '}
-                <button type="button" className="finances-link-btn" onClick={() => setActiveTab('refunds')}>
-                  Voir la file
-                </button>
-              </>
-            ) : null}
-          </p>
+      <div className="cx-toolbar">
+        <div className="cx-tabs" role="tablist" aria-label="Période des indicateurs">
+          {(
+            [
+              ['today', 'Aujourd’hui'],
+              ['week', 'Cette semaine'],
+              ['month', 'Ce mois'],
+            ] as const
+          ).map(([key, label]) => (
+            <button
+              key={key}
+              type="button"
+              role="tab"
+              className={kpiPeriod === key ? 'cx-active' : ''}
+              aria-selected={kpiPeriod === key}
+              onClick={() => setKpiPeriod(key)}
+            >
+              {label}
+            </button>
+          ))}
         </div>
       </div>
 
-      <div className="subscriptions-tabs" role="tablist" aria-label="Finances">
-        <button
-          type="button"
-          className={tab === 'ledger' ? 'active' : ''}
-          onClick={() => setActiveTab('ledger')}
-        >
-          Grand livre
-        </button>
-        <button
-          type="button"
-          className={tab === 'refunds' ? 'active' : ''}
-          onClick={() => setActiveTab('refunds')}
-        >
-          À rembourser
-          {outstanding && outstanding.count > 0 ? <span>{outstanding.count}</span> : null}
-        </button>
-        <button
-          type="button"
-          className={tab === 'moniteurs' ? 'active' : ''}
-          onClick={() => setActiveTab('moniteurs')}
-        >
-          Paiements moniteurs
-        </button>
-      </div>
-
-      {tab === 'moniteurs' ? (
-        <MoniteurFinancesPanel />
-      ) : (
-        <>
-      <form className="ar-filters finances-filters" onSubmit={applyFilters}>
-        <label className="ar-search-field">
-          <Search size={14} aria-hidden />
-          <input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Téléphone, nom, référence FedaPay…"
-            aria-label="Recherche"
-          />
-        </label>
-        {tab === 'ledger' ? (
-          <label>
-            <span className="muted">Statut</span>
-            <select value={status} onChange={(e) => setStatus(e.target.value as FinanceStatus | '')}>
-              <option value="">Tous</option>
-              <option value="pending">En attente</option>
-              <option value="approved">Encaissé</option>
-              <option value="needsRefund">À rembourser</option>
-              <option value="refunded">Remboursé</option>
-              <option value="failed">Échoué</option>
-              <option value="declined">Refusé</option>
-              <option value="canceled">Annulé</option>
-            </select>
-          </label>
-        ) : null}
-        <label>
-          <span className="muted">Type</span>
-          <select value={kind} onChange={(e) => setKind(e.target.value as FinanceKind | '')}>
-            <option value="">Tous</option>
-            <option value="abonnement">Abonnement</option>
-            <option value="reservation">Réservation</option>
-          </select>
-        </label>
-        <label>
-          <span className="muted">Opérateur</span>
-          <select
-            value={operator}
-            onChange={(e) => setOperator(e.target.value as 'mtn' | 'moov' | 'celtiis' | '')}
-          >
-            <option value="">Tous</option>
-            <option value="mtn">MTN</option>
-            <option value="moov">Moov</option>
-            <option value="celtiis">Celtiis</option>
-          </select>
-        </label>
-        <label>
-          <span className="muted">Du</span>
-          <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
-        </label>
-        <label>
-          <span className="muted">Au</span>
-          <input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
-        </label>
-        <button type="submit" className="admin-btn admin-btn-primary">
-          Filtrer
-        </button>
-        <button type="button" className="admin-btn admin-btn-secondary" onClick={resetFilters}>
-          Réinitialiser
-        </button>
-      </form>
-
-      {tab === 'refunds' ? (
-        <p className="admin-module-subtitle" style={{ marginTop: 0 }}>
-          Paiements encaissés sans livraison. Remboursez côté FedaPay / opérateur, puis marquez
-          résolu avec une note. Même file que{' '}
-          <Link to="/abonnements?tab=refunds">Abonnés → À rembourser</Link>.
-        </p>
-      ) : null}
-
-      <div className="admin-data-table-wrap">
-        <table className="admin-data-table finances-table">
-          <thead>
-            <tr>
-              <th>Date</th>
-              <th>Apprenant</th>
-              <th>Montant</th>
-              <th>Type</th>
-              <th>Statut</th>
-              <th>Canal</th>
-              <th>Référence</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading && payments.length === 0 ? (
-              <tr>
-                <td colSpan={7}>
-                  <div className="ar-empty-row">Chargement…</div>
-                </td>
-              </tr>
-            ) : payments.length === 0 ? (
-              <tr>
-                <td colSpan={7}>
-                  <div className="ar-empty-row">Aucun mouvement pour ces filtres.</div>
-                </td>
-              </tr>
-            ) : (
-              payments.map((payment) => (
-                <tr
-                  key={payment.id}
-                  className="finances-row-clickable"
-                  onClick={() => openDetail(payment.id)}
-                >
-                  <td className="muted">{formatDateTime(payment.activatedAt || payment.createdAt)}</td>
-                  <td>
-                    <div className="ar-learner">
-                      <span className="ar-avatar">{initials(payment.learner)}</span>
-                      <div className="ar-learner-body">
-                        <div className="ar-learner-name">{learnerName(payment.learner)}</div>
-                        <div className="ar-learner-meta">
-                          {payment.learner?.phone || payment.learner?.email || '—'}
-                        </div>
-                      </div>
-                    </div>
-                  </td>
-                  <td>
-                    <strong>{formatMoney(payment.amount, payment.currency)}</strong>
-                  </td>
-                  <td>{financeKindLabel(payment.kind)}</td>
-                  <td>
-                    <StatusBadge tone={financeStatusTone(payment.financeStatus)}>
-                      {financeStatusLabel(payment.financeStatus)}
-                    </StatusBadge>
-                  </td>
-                  <td className="muted">{paymentChannelLabel(payment)}</td>
-                  <td className="muted">{payment.fedapayReference || payment.declaredReference || '—'}</td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      {pages > 1 ? (
-        <div className="finances-pagination">
-          <button
-            type="button"
-            className="admin-btn admin-btn-secondary"
-            disabled={page <= 1 || loading}
-            onClick={() => {
-              syncParams(page - 1)
-              void loadLedger(page - 1)
-            }}
-          >
-            Précédent
-          </button>
-          <span className="muted">
-            Page {page} / {pages} · {total} mouvement(s)
+      <div className="cx-kc-grid">
+        <div className="cx-kc">
+          <span className="cx-kc-ico cx-kc-green">
+            <CheckCircle2 aria-hidden />
           </span>
-          <button
-            type="button"
-            className="admin-btn admin-btn-secondary"
-            disabled={page >= pages || loading}
-            onClick={() => {
-              syncParams(page + 1)
-              void loadLedger(page + 1)
-            }}
-          >
-            Suivant
-          </button>
+          <div className="cx-kc-body">
+            <span className="cx-kc-label">Encaissé</span>
+            <span className="cx-kc-value" style={{ fontSize: '1.2rem' }}>{formatMoney(period?.encaisse.total ?? 0)}</span>
+            <span className="cx-kc-sub">{period?.encaisse.count ?? 0} paiement(s)</span>
+          </div>
         </div>
-      ) : (
-        <p className="muted" style={{ margin: '8px 0 0' }}>
-          {total} mouvement(s)
-        </p>
-      )}
+        <div className="cx-kc">
+          <span className="cx-kc-ico cx-kc-gold">
+            <Clock3 aria-hidden />
+          </span>
+          <div className="cx-kc-body">
+            <span className="cx-kc-label">En attente</span>
+            <span className="cx-kc-value" style={{ fontSize: '1.2rem' }}>{formatMoney(period?.enAttente.total ?? 0)}</span>
+            <span className="cx-kc-sub">{period?.enAttente.count ?? 0} en cours</span>
+          </div>
+        </div>
+        <div className="cx-kc">
+          <span className="cx-kc-ico cx-kc-sky">
+            <Wallet aria-hidden />
+          </span>
+          <div className="cx-kc-body">
+            <span className="cx-kc-label">À rembourser (période)</span>
+            <span className="cx-kc-value" style={{ fontSize: '1.2rem' }}>{formatMoney(period?.aRembourser.total ?? 0)}</span>
+            <span className="cx-kc-sub">{period?.aRembourser.count ?? 0} signalé(s)</span>
+          </div>
+        </div>
+        <div className={`cx-kc${outstanding && outstanding.count > 0 ? ' cx-kc-alert' : ''}`}>
+          <span className={`cx-kc-ico ${outstanding && outstanding.count > 0 ? 'cx-kc-red' : 'cx-kc-blue'}`}>
+            <AlertTriangle aria-hidden />
+          </span>
+          <div className="cx-kc-body">
+            <span className="cx-kc-label">File actuelle</span>
+            <span className="cx-kc-value" style={{ fontSize: '1.2rem' }}>{formatMoney(outstanding?.total ?? 0)}</span>
+            <span className="cx-kc-sub">
+              {outstanding?.count ?? 0} à traiter
+              {outstanding && outstanding.count > 0 ? (
+                <>
+                  {' · '}
+                  <button type="button" className="cx-link-all" style={{ margin: 0, fontSize: '.8rem' }} onClick={() => setActiveTab('refunds')}>
+                    Voir la file
+                  </button>
+                </>
+              ) : null}
+            </span>
+          </div>
+        </div>
+      </div>
 
-      {detailId ? (
-        <div className="finances-drawer-backdrop" onClick={closeDetail}>
-          <aside
-            className="finances-drawer"
-            onClick={(e) => e.stopPropagation()}
-            aria-label="Détail du paiement"
-          >
-            <div className="finances-drawer-head">
-              <div>
-                <h2>Détail paiement</h2>
-                <p className="muted">{detailId}</p>
-              </div>
-              <button type="button" className="admin-btn admin-btn-secondary" onClick={closeDetail}>
-                <X size={14} />
-                Fermer
+      <section className="cx-panel">
+        <div className="cx-toolbar" style={{ marginBottom: '1rem' }}>
+          <div className="cx-tabs" role="tablist" aria-label="Finances">
+            {tabs.map((item) => (
+              <button
+                key={item.key}
+                type="button"
+                role="tab"
+                aria-selected={tab === item.key}
+                className={tab === item.key ? 'cx-active' : ''}
+                onClick={() => setActiveTab(item.key)}
+              >
+                {item.label}
+                {item.badge ? <span className="cx-nav-badge" style={{ marginLeft: '.4rem' }}>{item.badge}</span> : null}
               </button>
+            ))}
+          </div>
+        </div>
+
+        {tab === 'moniteurs' ? (
+          <MoniteurFinancesPanel />
+        ) : (
+          <>
+            <form className="cx-filter-bar" onSubmit={applyFilters} style={{ marginBottom: '1rem' }}>
+              <label className="cx-grow">
+                Recherche
+                <input
+                  className="cx-input"
+                  value={q}
+                  onChange={(e) => setQ(e.target.value)}
+                  placeholder="Téléphone, nom, référence FedaPay…"
+                  aria-label="Recherche"
+                />
+              </label>
+              {tab === 'ledger' ? (
+                <label>
+                  Statut
+                  <select className="cx-select" value={status} onChange={(e) => setStatus(e.target.value as FinanceStatus | '')}>
+                    <option value="">Tous</option>
+                    <option value="pending">En attente</option>
+                    <option value="approved">Encaissé</option>
+                    <option value="needsRefund">À rembourser</option>
+                    <option value="refunded">Remboursé</option>
+                    <option value="failed">Échoué</option>
+                    <option value="declined">Refusé</option>
+                    <option value="canceled">Annulé</option>
+                  </select>
+                </label>
+              ) : null}
+              <label>
+                Type
+                <select className="cx-select" value={kind} onChange={(e) => setKind(e.target.value as FinanceKind | '')}>
+                  <option value="">Tous</option>
+                  <option value="abonnement">Abonnement</option>
+                  <option value="reservation">Réservation</option>
+                </select>
+              </label>
+              <label>
+                Opérateur
+                <select className="cx-select" value={operator} onChange={(e) => setOperator(e.target.value as 'mtn' | 'moov' | 'celtiis' | '')}>
+                  <option value="">Tous</option>
+                  <option value="mtn">MTN</option>
+                  <option value="moov">Moov</option>
+                  <option value="celtiis">Celtiis</option>
+                </select>
+              </label>
+              <label>
+                Du
+                <input className="cx-input" type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
+              </label>
+              <label>
+                Au
+                <input className="cx-input" type="date" value={to} onChange={(e) => setTo(e.target.value)} />
+              </label>
+              <div className="cx-toolbar">
+                <button type="submit" className="cx-btn cx-btn-fill">
+                  <Filter aria-hidden />
+                  Filtrer
+                </button>
+                <button type="button" className="cx-btn" onClick={resetFilters}>
+                  <RotateCcw aria-hidden />
+                  Réinitialiser
+                </button>
+              </div>
+            </form>
+
+            {tab === 'refunds' ? (
+              <p className="cx-note cx-note-info" style={{ marginBottom: '1rem' }}>
+                Paiements encaissés sans livraison. Remboursez côté FedaPay / opérateur, puis marquez résolu avec une
+                note. Même file que <Link to="/abonnements?tab=refunds">Abonnés → À rembourser</Link>.
+              </p>
+            ) : null}
+
+            {loading && payments.length === 0 ? (
+              <SkeletonBlock rows={5} />
+            ) : payments.length === 0 ? (
+              <EmptyState title="Aucun mouvement" description="Aucun mouvement pour ces filtres." />
+            ) : (
+              <div className="cx-table-wrap">
+                <table className="cx-data">
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>Apprenant</th>
+                      <th>Montant</th>
+                      <th>Type</th>
+                      <th>Statut</th>
+                      <th>Canal</th>
+                      <th>Référence</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {payments.map((payment) => (
+                      <tr key={payment.id} className="cx-click" onClick={() => openDetail(payment.id)} title="Voir le détail">
+                        <td className="cx-dim">{formatDateTime(payment.activatedAt || payment.createdAt)}</td>
+                        <td>
+                          <div className="cx-person">
+                            <span className="cx-avatar">{initials(payment.learner)}</span>
+                            <div>
+                              <strong>{learnerName(payment.learner)}</strong>
+                              <small>{payment.learner?.phone || payment.learner?.email || '—'}</small>
+                            </div>
+                          </div>
+                        </td>
+                        <td>
+                          <strong>{formatMoney(payment.amount, payment.currency)}</strong>
+                        </td>
+                        <td>{financeKindLabel(payment.kind)}</td>
+                        <td>{statusChip(payment.financeStatus)}</td>
+                        <td className="cx-dim">{paymentChannelLabel(payment)}</td>
+                        <td className="cx-dim">{payment.fedapayReference || payment.declaredReference || '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            <div className="cx-pager">
+              <span>
+                {pages > 1 ? `Page ${page} / ${pages} · ` : ''}
+                {total} mouvement(s)
+              </span>
+              {pages > 1 ? (
+                <div>
+                  <button
+                    type="button"
+                    className="cx-btn cx-btn-sm"
+                    disabled={page <= 1 || loading}
+                    onClick={() => {
+                      syncParams(page - 1)
+                      void loadLedger(page - 1)
+                    }}
+                  >
+                    Précédent
+                  </button>
+                  <button
+                    type="button"
+                    className="cx-btn cx-btn-sm"
+                    disabled={page >= pages || loading}
+                    onClick={() => {
+                      syncParams(page + 1)
+                      void loadLedger(page + 1)
+                    }}
+                  >
+                    Suivant
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          </>
+        )}
+      </section>
+
+      <Drawer open={Boolean(detailId)} title="Détail du paiement" subtitle={detailId ?? undefined} onClose={closeDetail}>
+        {detailLoading || !detail ? (
+          <p className="cx-empty">{detailLoading ? 'Chargement…' : 'Introuvable'}</p>
+        ) : (
+          <div className="cx-form">
+            <div className="cx-form-grid">
+              <div className="cx-subject">
+                <span>Montant</span>
+                <b>{formatMoney(detail.payment.amount, detail.payment.currency)}</b>
+              </div>
+              <div className="cx-subject">
+                <span>Statut</span>
+                {statusChip(detail.payment.financeStatus)}
+              </div>
+              <div className="cx-subject">
+                <span>Type</span>
+                <b>{financeKindLabel(detail.payment.kind)}</b>
+              </div>
+              <div className="cx-subject">
+                <span>Canal</span>
+                <b>{paymentChannelLabel(detail.payment)}</b>
+              </div>
             </div>
 
-            {detailLoading || !detail ? (
-              <p className="muted" style={{ padding: 16 }}>
-                {detailLoading ? 'Chargement…' : 'Introuvable'}
+            <div className="cx-block">
+              <h3>Apprenant</h3>
+              <p style={{ color: 'var(--ink)' }}>
+                <strong>{learnerName(detail.payment.learner)}</strong>
+                <br />
+                {detail.payment.learner?.phone || '—'}
+                {detail.payment.learner?.email ? ` · ${detail.payment.learner.email}` : ''}
               </p>
-            ) : (
-              <div className="finances-drawer-body">
-                <div className="finances-detail-grid">
-                  <div>
-                    <p className="muted">Montant</p>
-                    <strong>
-                      {formatMoney(detail.payment.amount, detail.payment.currency)}
-                    </strong>
-                  </div>
-                  <div>
-                    <p className="muted">Statut</p>
-                    <StatusBadge tone={financeStatusTone(detail.payment.financeStatus)}>
-                      {financeStatusLabel(detail.payment.financeStatus)}
-                    </StatusBadge>
-                  </div>
-                  <div>
-                    <p className="muted">Type</p>
-                    <strong>{financeKindLabel(detail.payment.kind)}</strong>
-                  </div>
-                  <div>
-                    <p className="muted">Canal</p>
-                    <strong>{paymentChannelLabel(detail.payment)}</strong>
-                  </div>
-                </div>
+              {detail.learnerSoldeHeures != null ? <p>Solde heures : {detail.learnerSoldeHeures} h</p> : null}
+            </div>
 
-                <section>
-                  <h3>Apprenant</h3>
-                  <p>
-                    {learnerName(detail.payment.learner)}
-                    <br />
-                    <span className="muted">
-                      {detail.payment.learner?.phone || '—'}
-                      {detail.payment.learner?.email ? ` · ${detail.payment.learner.email}` : ''}
-                    </span>
-                  </p>
-                  {detail.learnerSoldeHeures != null ? (
-                    <p className="muted">Solde heures : {detail.learnerSoldeHeures} h</p>
-                  ) : null}
-                </section>
+            <div className="cx-block">
+              <h3>FedaPay</h3>
+              <p>
+                Réf. {detail.payment.fedapayReference || '—'}
+                <br />
+                Tx {detail.payment.fedapayTransactionId || '—'}
+                <br />
+                Dernier événement : {detail.payment.lastEventName || '—'}
+              </p>
+            </div>
 
-                <section>
-                  <h3>FedaPay</h3>
-                  <p className="muted">
-                    Réf. {detail.payment.fedapayReference || '—'}
-                    <br />
-                    Tx {detail.payment.fedapayTransactionId || '—'}
-                    <br />
-                    Dernier événement : {detail.payment.lastEventName || '—'}
-                  </p>
-                </section>
-
-                {detail.payment.accessRequests && detail.payment.accessRequests.length > 0 ? (
-                  <section>
-                    <h3>Abonnements liés</h3>
-                    <ul className="finances-linked-list">
-                      {detail.payment.accessRequests.map((r) => (
-                        <li key={r.id}>
-                          {r.module || 'module'} · {r.status} ·{' '}
-                          {formatMoney(r.amount || 0, r.currency || 'XOF')}
-                        </li>
-                      ))}
-                    </ul>
-                  </section>
-                ) : null}
-
-                {detail.payment.reservations && detail.payment.reservations.length > 0 ? (
-                  <section>
-                    <h3>Réservations liées</h3>
-                    <ul className="finances-linked-list">
-                      {detail.payment.reservations.map((r) => (
-                        <li key={r.id}>
-                          {r.status} / {r.paymentStatus}
-                          {r.startAt ? ` · ${formatDateTime(r.startAt)}` : ''}
-                          {r.priceFcfa != null ? ` · ${formatMoney(r.priceFcfa)}` : ''}
-                        </li>
-                      ))}
-                    </ul>
-                  </section>
-                ) : null}
-
-                {detail.relatedPromos.length > 0 ? (
-                  <section>
-                    <h3>Codes promo proches</h3>
-                    <ul className="finances-linked-list">
-                      {detail.relatedPromos.map((p) => (
-                        <li key={p.redemptionId}>
-                          {p.code || p.label || 'Promo'}
-                          {p.heuresBonus ? ` · +${p.heuresBonus} h` : ''}
-                          {' · '}
-                          {formatDateTime(p.redeemedAt)}
-                        </li>
-                      ))}
-                    </ul>
-                  </section>
-                ) : null}
-
-                <section>
-                  <h3>Chronologie</h3>
-                  <ol className="finances-timeline">
-                    {detail.timeline.map((event) => (
-                      <li key={event.id}>
-                        <div className="finances-timeline-dot" />
-                        <div>
-                          <strong>{ledgerEventLabel(event.eventType)}</strong>
-                          <div className="muted">
-                            {formatDateTime(event.createdAt)}
-                            {event.actorLabel ? ` · ${event.actorLabel}` : ''}
-                          </div>
-                          {event.note ? <p>{event.note}</p> : null}
-                          {event.fedapayEventName ? (
-                            <p className="muted">Webhook : {event.fedapayEventName}</p>
-                          ) : null}
-                        </div>
-                      </li>
-                    ))}
-                  </ol>
-                </section>
-
-                {detail.payment.adminNote ? (
-                  <section>
-                    <h3>Notes admin</h3>
-                    <pre className="finances-admin-note">{detail.payment.adminNote}</pre>
-                  </section>
-                ) : null}
-
-                {detail.payment.needsRefund ? (
-                  <section className="finances-refund-box">
-                    <h3>Marquer le remboursement</h3>
-                    <p className="muted">
-                      Après remboursement réel dans le dashboard FedaPay / opérateur Mobile Money.
-                    </p>
-                    <textarea
-                      value={refundNote}
-                      onChange={(e) => setRefundNote(e.target.value)}
-                      placeholder="Ex. remboursé MTN le 29/07, réf. XXX"
-                      rows={3}
-                      disabled={refundBusy}
-                    />
-                    <button
-                      type="button"
-                      className="admin-btn admin-btn-primary"
-                      disabled={refundBusy}
-                      onClick={() => void handleResolveRefund()}
-                    >
-                      {refundBusy ? '…' : 'Marquer résolu'}
-                    </button>
-                  </section>
-                ) : null}
+            {detail.payment.accessRequests && detail.payment.accessRequests.length > 0 ? (
+              <div className="cx-block">
+                <h3>Abonnements liés</h3>
+                <ul className="cx-scores">
+                  {detail.payment.accessRequests.map((r) => (
+                    <li key={r.id}>
+                      <span>
+                        {r.module || 'module'} · {r.status}
+                      </span>
+                      <strong>{formatMoney(r.amount || 0, r.currency || 'XOF')}</strong>
+                    </li>
+                  ))}
+                </ul>
               </div>
-            )}
-          </aside>
-        </div>
-      ) : null}
-        </>
-      )}
-    </div>
+            ) : null}
+
+            {detail.payment.reservations && detail.payment.reservations.length > 0 ? (
+              <div className="cx-block">
+                <h3>Réservations liées</h3>
+                <ul className="cx-scores">
+                  {detail.payment.reservations.map((r) => (
+                    <li key={r.id}>
+                      <span>
+                        {r.status} / {r.paymentStatus}
+                        {r.startAt ? ` · ${formatDateTime(r.startAt)}` : ''}
+                      </span>
+                      {r.priceFcfa != null ? <strong>{formatMoney(r.priceFcfa)}</strong> : null}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+
+            {detail.relatedPromos.length > 0 ? (
+              <div className="cx-block">
+                <h3>Codes promo proches</h3>
+                <ul className="cx-scores">
+                  {detail.relatedPromos.map((p) => (
+                    <li key={p.redemptionId}>
+                      <span>
+                        {p.code || p.label || 'Promo'}
+                        {p.heuresBonus ? ` · +${p.heuresBonus} h` : ''}
+                      </span>
+                      <small>{formatDateTime(p.redeemedAt)}</small>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+
+            <div className="cx-block">
+              <h3>Chronologie</h3>
+              <ol className="cx-tl">
+                {detail.timeline.map((event) => (
+                  <li key={event.id}>
+                    <span className="cx-tl-time">{formatDateTime(event.createdAt).split(' ').slice(0, 2).join(' ')}</span>
+                    <span className="cx-tl-dot" />
+                    <div className="cx-tl-body">
+                      <strong style={{ color: 'var(--ink)' }}>{ledgerEventLabel(event.eventType)}</strong>
+                      <span>
+                        {formatDateTime(event.createdAt)}
+                        {event.actorLabel ? ` · ${event.actorLabel}` : ''}
+                      </span>
+                      {event.note ? <span style={{ color: 'var(--ink)' }}>{event.note}</span> : null}
+                      {event.fedapayEventName ? <span>Webhook : {event.fedapayEventName}</span> : null}
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            </div>
+
+            {detail.payment.adminNote ? (
+              <div className="cx-block">
+                <h3>Notes admin</h3>
+                <p style={{ whiteSpace: 'pre-wrap', color: 'var(--ink)' }}>{detail.payment.adminNote}</p>
+              </div>
+            ) : null}
+
+            {detail.payment.needsRefund ? (
+              <div className="cx-block">
+                <h3>Marquer le remboursement</h3>
+                <p>Après remboursement réel dans le dashboard FedaPay / opérateur Mobile Money.</p>
+                <textarea
+                  className="cx-textarea"
+                  value={refundNote}
+                  onChange={(e) => setRefundNote(e.target.value)}
+                  placeholder="Ex. remboursé MTN le 29/07, réf. XXX"
+                  rows={3}
+                  disabled={refundBusy}
+                />
+                <button type="button" className="cx-btn cx-btn-fill" disabled={refundBusy} onClick={() => void handleResolveRefund()}>
+                  {refundBusy ? '…' : 'Marquer résolu'}
+                </button>
+              </div>
+            ) : null}
+          </div>
+        )}
+      </Drawer>
+    </DirectionSection>
   )
 }

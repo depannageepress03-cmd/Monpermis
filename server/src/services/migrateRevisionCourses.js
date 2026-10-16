@@ -1,12 +1,13 @@
 import { Chapter } from '../models/Chapter.js'
 import { RevisionCourse } from '../models/RevisionCourse.js'
 import { logger } from '../utils/logger.js'
+import { memoizeAsync } from '../utils/memoizeAsync.js'
 
 /**
  * Migre une fois les cours embarqués dans les chapitres vers la collection autonome.
  * Conserve les _id pour ne pas casser la progression apprenant.
  */
-export async function ensureStandaloneRevisionCourses() {
+async function migrateStandaloneRevisionCourses() {
   const existing = await RevisionCourse.countDocuments()
   if (existing > 0) return { migrated: false, count: existing }
 
@@ -54,6 +55,9 @@ export async function ensureStandaloneRevisionCourses() {
   return { migrated: true, count: created }
 }
 
+/** La migration est à sens unique : une fois faite, plus besoin de recompter à chaque requête. */
+export const ensureStandaloneRevisionCourses = memoizeAsync(migrateStandaloneRevisionCourses, 10 * 60_000)
+
 export const UNSORTED_CHAPTER_NAME = 'À classer'
 
 /**
@@ -76,7 +80,7 @@ export async function ensureUnsortedChapter() {
  * Rattache au chapitre tampon toute notion encore orpheline.
  * Idempotent : ne crée le chapitre tampon que s'il reste des notions à classer.
  */
-export async function ensureNotionsHaveChapter() {
+async function assignOrphanNotions() {
   const orphanFilter = { $or: [{ chapter: null }, { chapter: { $exists: false } }] }
   const orphanCount = await RevisionCourse.countDocuments(orphanFilter)
   if (orphanCount === 0) return { assigned: 0 }
@@ -91,3 +95,6 @@ export async function ensureNotionsHaveChapter() {
   }
   return { assigned, chapterId: String(chapter._id) }
 }
+
+/** Les notions créées par l'admin reçoivent déjà un chapitre : un contrôle par minute suffit. */
+export const ensureNotionsHaveChapter = memoizeAsync(assignOrphanNotions, 60_000)

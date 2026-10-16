@@ -1,5 +1,5 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
-import { Filter, RefreshCw, Search, Trash2, UserPlus } from 'lucide-react'
+import { CheckCircle2, PauseCircle, RefreshCw, Search, Trash2, UserPlus, Users } from 'lucide-react'
 import { useSearchParams } from 'react-router-dom'
 import {
   createUser,
@@ -9,9 +9,10 @@ import {
   type AppUser,
 } from '../api/users'
 import { PublishSwitch } from '../components/PublishSwitch'
-import { StatusBadge } from '../components/StatusBadge'
+import { PageSection } from '../components/model/PageSection'
+import { nf } from '../components/model/ModelCharts'
 import { getAdminToken, isAuthError } from '../context/AdminAuthContext'
-import { Button, Drawer, EmptyState, SkeletonBlock } from '../ui'
+import { Drawer, EmptyState, SkeletonBlock } from '../ui'
 import { normalizePhone, PHONE_PLACEHOLDER, isValidEmailFormat, validatePassword } from '../utils/validation'
 
 function formatDate(value?: string) {
@@ -200,85 +201,83 @@ export function UsersPage() {
     }
   }
 
+  const activePct = users.length ? Math.round((activeCount / users.length) * 100) : 0
+
   return (
-    <div className="admin-page">
-      <header className="admin-module-header">
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
-          <div>
-            <p className="admin-module-kicker">Gestion des comptes</p>
-            <h1 className="admin-module-title">Utilisateurs</h1>
-          </div>
-          <Button variant="primary" onClick={() => setCreateOpen(true)}>
-            <UserPlus size={14} strokeWidth={2} />
+    <PageSection
+      kicker="Gestion des comptes"
+      title="Apprenants"
+      subtitle="Comptes des apprenants inscrits : recherche, suspension, réactivation et création."
+      actions={
+        <>
+          <button type="button" className="cx-refresh" onClick={() => void loadUsers()} disabled={loading}>
+            <RefreshCw aria-hidden />
+            Actualiser
+          </button>
+          <button type="button" className="cx-btn cx-btn-fill" onClick={() => setCreateOpen(true)}>
+            <UserPlus aria-hidden />
             Nouvel apprenant
-          </Button>
-        </div>
-      </header>
+          </button>
+        </>
+      }
+    >
+      {error ? <p className="cx-note cx-note-err" role="alert">{error}</p> : null}
+      {success ? <p className="cx-note cx-note-ok" role="status">{success}</p> : null}
 
-      <section className="users-kpi-row" aria-label="Indicateurs utilisateurs">
-        <div className="users-kpi is-muted">
-          <span className="users-kpi-dot" />
-          <div>
-            <p className="users-kpi-label">Inscrits total</p>
-            <p className="users-kpi-value">{users.length}</p>
-            <p className="users-kpi-sub">Tous statuts</p>
+      <div className="cx-kc-grid cx-kc-grid-3" aria-label="Indicateurs apprenants">
+        <div className="cx-kc">
+          <span className="cx-kc-ico cx-kc-blue">
+            <Users aria-hidden />
+          </span>
+          <div className="cx-kc-body">
+            <span className="cx-kc-label">Inscrits</span>
+            <span className="cx-kc-value">{nf(users.length)}</span>
+            <span className="cx-kc-sub">tous statuts confondus</span>
           </div>
         </div>
-        <div className="users-kpi is-success">
-          <span className="users-kpi-dot" />
-          <div>
-            <p className="users-kpi-label">Actifs</p>
-            <p className="users-kpi-value">{activeCount}</p>
-            <p className="users-kpi-sub">Accès actif</p>
+        <div className="cx-kc">
+          <span className="cx-kc-ico cx-kc-green">
+            <CheckCircle2 aria-hidden />
+          </span>
+          <div className="cx-kc-body">
+            <span className="cx-kc-label">Actifs</span>
+            <span className="cx-kc-value">{nf(activeCount)}</span>
+            <span className="cx-kc-bar">
+              <i style={{ width: `${activePct}%` }} />
+            </span>
           </div>
         </div>
-        <div className="users-kpi is-navy">
-          <span className="users-kpi-dot" />
-          <div>
-            <p className="users-kpi-label">Suspendus</p>
-            <p className="users-kpi-value">{suspendedCount}</p>
-            <p className="users-kpi-sub">Nécessitent révision</p>
+        <div className="cx-kc">
+          <span className="cx-kc-ico cx-kc-gold">
+            <PauseCircle aria-hidden />
+          </span>
+          <div className="cx-kc-body">
+            <span className="cx-kc-label">Suspendus</span>
+            <span className="cx-kc-value">{nf(suspendedCount)}</span>
+            <span className="cx-kc-sub">nécessitent une révision</span>
           </div>
         </div>
-      </section>
+      </div>
 
-      <div className="users-table-card">
-        <div className="users-toolbar-figma">
-          <label className="users-search-figma" htmlFor="users-search">
-            <Search size={13} strokeWidth={2} />
+      <section className="cx-panel">
+        <div className="cx-toolbar" style={{ marginBottom: '1rem' }}>
+          <label className="cx-search" htmlFor="users-search">
+            <Search aria-hidden />
             <input
               id="users-search"
               type="search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Rechercher un apprenant…"
+              placeholder="Rechercher un apprenant (nom, e-mail, téléphone)…"
             />
           </label>
-          <button type="button" className="dash-filter-btn">
-            <Filter size={12} strokeWidth={2} /> Filtrer
-          </button>
-          <button
-            type="button"
-            className="dash-filter-btn"
-            onClick={() => void loadUsers()}
-            disabled={loading}
-          >
-            <RefreshCw size={12} strokeWidth={2} />
-            Actualiser
-          </button>
+          <span className="cx-chip">
+            {filteredUsers.length} / {users.length} apprenant{users.length > 1 ? 's' : ''}
+          </span>
         </div>
 
-        {error ? <p className="form-error" role="alert" style={{ margin: '12px 18px' }}>{error}</p> : null}
-        {success ? (
-          <p className="form-success" role="status" style={{ margin: '12px 18px' }}>
-            {success}
-          </p>
-        ) : null}
-
         {loading && users.length === 0 ? (
-          <div style={{ padding: '16px 18px' }}>
-            <SkeletonBlock rows={6} />
-          </div>
+          <SkeletonBlock rows={6} />
         ) : filteredUsers.length === 0 ? (
           <EmptyState
             title={query.trim() ? 'Aucun résultat' : 'Aucun apprenant'}
@@ -291,78 +290,68 @@ export function UsersPage() {
             onAction={query.trim() ? undefined : () => setCreateOpen(true)}
           />
         ) : (
-          <>
-            <div className="admin-data-table-wrap">
-              <table className="admin-data-table" style={{ minWidth: 480 }}>
-                <thead>
-                  <tr>
-                    <th>Apprenant</th>
-                    <th>Téléphone</th>
-                    <th>Inscription</th>
-                    <th>Statut</th>
-                    <th />
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredUsers.map((user) => {
-                    const busy = busyId === user.id
-                    return (
-                      <tr key={user.id} className={!user.isActive ? 'is-suspended' : undefined}>
-                        <td>
-                          <div className="users-avatar-cell">
-                            <div className={`users-avatar ${user.isActive ? 'is-ok' : 'is-bad'}`}>
-                              {userInitials(user)}
-                            </div>
-                            <div>
-                              <strong style={{ fontSize: 13, fontWeight: 600 }}>
-                                {user.firstName} {user.lastName}
-                              </strong>
-                              <p style={{ margin: 0, fontSize: 11, color: '#3d5a73' }}>Apprenant</p>
-                            </div>
+          <div className="cx-table-wrap">
+            <table className="cx-data">
+              <thead>
+                <tr>
+                  <th>Apprenant</th>
+                  <th>Téléphone</th>
+                  <th>Inscription</th>
+                  <th>Statut</th>
+                  <th />
+                </tr>
+              </thead>
+              <tbody>
+                {filteredUsers.map((user) => {
+                  const busy = busyId === user.id
+                  return (
+                    <tr key={user.id} className={!user.isActive ? 'cx-muted-row' : undefined}>
+                      <td>
+                        <div className="cx-person">
+                          <span className={`cx-avatar${user.isActive ? '' : ' cx-bad'}`}>{userInitials(user)}</span>
+                          <div>
+                            <strong>
+                              {user.firstName} {user.lastName}
+                            </strong>
+                            <small>{user.email || 'Apprenant'}</small>
                           </div>
-                        </td>
-                        <td className="muted">{user.phone || '—'}</td>
-                        <td className="muted">{formatDate(user.createdAt)}</td>
-                        <td>
-                          <div className="users-status-cell">
-                            <StatusBadge tone={user.isActive ? 'success' : 'danger'}>
-                              {user.isActive ? 'Actif' : 'Suspendu'}
-                            </StatusBadge>
-                            <PublishSwitch
-                              checked={user.isActive}
-                              onChange={(next) => void handleSetActive(user, next)}
-                              disabled={busy}
-                              label={user.isActive ? 'Actif' : 'Suspendu'}
-                            />
-                          </div>
-                        </td>
-                        <td>
-                          <button
-                            type="button"
-                            className="btn-text-danger"
+                        </div>
+                      </td>
+                      <td className="cx-dim">{user.phone || '—'}</td>
+                      <td className="cx-dim">{formatDate(user.createdAt)}</td>
+                      <td>
+                        <div className="cx-status-cell">
+                          <span className={`cx-chip ${user.isActive ? 'cx-green' : 'cx-red'}`}>
+                            {user.isActive ? 'Actif' : 'Suspendu'}
+                          </span>
+                          <PublishSwitch
+                            checked={user.isActive}
+                            onChange={(next) => void handleSetActive(user, next)}
                             disabled={busy}
-                            onClick={() => void handleDelete(user)}
-                            aria-label="Supprimer"
-                            style={{ padding: '4px 6px' }}
-                          >
-                            <Trash2 size={12} strokeWidth={2} />
-                          </button>
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
-
-            <div className="users-pagination">
-              <p>
-                {filteredUsers.length} apprenant{filteredUsers.length > 1 ? 's' : ''}
-              </p>
-            </div>
-          </>
+                            label={user.isActive ? 'Actif' : 'Suspendu'}
+                          />
+                        </div>
+                      </td>
+                      <td>
+                        <button
+                          type="button"
+                          className="cx-btn cx-btn-icon cx-btn-danger"
+                          disabled={busy}
+                          onClick={() => void handleDelete(user)}
+                          aria-label={`Supprimer ${user.firstName} ${user.lastName}`}
+                          title="Supprimer le compte"
+                        >
+                          <Trash2 aria-hidden />
+                        </button>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
         )}
-      </div>
+      </section>
 
       <Drawer
         open={createOpen}
@@ -371,79 +360,41 @@ export function UsersPage() {
         onClose={closeCreateDrawer}
         footer={
           <>
-            <Button variant="ghost" onClick={closeCreateDrawer}>
+            <button type="button" className="cx-btn" onClick={closeCreateDrawer}>
               Annuler
-            </Button>
-            <Button variant="primary" type="submit" form="create-user-form" disabled={creating}>
-              <UserPlus size={14} strokeWidth={2} />
+            </button>
+            <button type="submit" form="create-user-form" className="cx-btn cx-btn-fill" disabled={creating}>
+              <UserPlus aria-hidden />
               {creating ? 'Création…' : 'Créer le compte'}
-            </Button>
+            </button>
           </>
         }
       >
-        <form id="create-user-form" onSubmit={handleCreate} className="admin-form">
-          <div>
-            <label htmlFor="user-firstName">Prénom</label>
-            <input
-              id="user-firstName"
-              type="text"
-              required
-              minLength={2}
-              value={firstName}
-              onChange={(e) => setFirstName(e.target.value)}
-              placeholder="ex. Adjobi"
-            />
+        <form id="create-user-form" onSubmit={handleCreate} className="cx-form">
+          <div className="cx-form-grid">
+            <div className="cx-fld">
+              <label htmlFor="user-firstName">Prénom</label>
+              <input id="user-firstName" className="cx-input" type="text" required minLength={2} value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="ex. Adjobi" />
+            </div>
+            <div className="cx-fld">
+              <label htmlFor="user-lastName">Nom</label>
+              <input id="user-lastName" className="cx-input" type="text" required minLength={2} value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="ex. Kossou" />
+            </div>
           </div>
-          <div>
-            <label htmlFor="user-lastName">Nom</label>
-            <input
-              id="user-lastName"
-              type="text"
-              required
-              minLength={2}
-              value={lastName}
-              onChange={(e) => setLastName(e.target.value)}
-              placeholder="ex. Kossou"
-            />
+          <div className="cx-fld">
+            <label htmlFor="user-email">E-mail</label>
+            <input id="user-email" className="cx-input" type="text" inputMode="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="exemple@gmail.com" />
           </div>
-          <div>
-            <label htmlFor="user-email">Email</label>
-            <input
-              id="user-email"
-              type="text"
-              inputMode="email"
-              autoComplete="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="exemple@gmail.com"
-            />
-          </div>
-          <div>
+          <div className="cx-fld">
             <label htmlFor="user-phone">Téléphone</label>
-            <input
-              id="user-phone"
-              type="tel"
-              inputMode="numeric"
-              value={phone}
-              onChange={(e) => setPhone(normalizePhone(e.target.value))}
-              placeholder={PHONE_PLACEHOLDER}
-            />
+            <input id="user-phone" className="cx-input" type="tel" inputMode="numeric" value={phone} onChange={(e) => setPhone(normalizePhone(e.target.value))} placeholder={PHONE_PLACEHOLDER} />
           </div>
-          <div>
+          <div className="cx-fld">
             <label htmlFor="user-password">Mot de passe</label>
-            <input
-              id="user-password"
-              type="password"
-              required
-              minLength={8}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-            />
+            <input id="user-password" className="cx-input" type="password" required minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" />
           </div>
         </form>
       </Drawer>
-    </div>
+    </PageSection>
   )
 }

@@ -1,6 +1,8 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
 import {
   CalendarClock,
+  CheckCircle2,
+  Clock3,
   Eye,
   ImagePlus,
   Megaphone,
@@ -10,6 +12,7 @@ import {
   Search,
   Send,
   Trash2,
+  X,
 } from 'lucide-react'
 import {
   createAnnouncement,
@@ -24,9 +27,11 @@ import {
   type AnnouncementAudience,
   type AnnouncementKind,
 } from '../api/announcements'
+import { PageSection } from '../components/model/PageSection'
+import { nf } from '../components/model/ModelCharts'
 import { RichTextEditor } from '../components/RichTextEditor'
 import { getAdminToken, isAuthError } from '../context/AdminAuthContext'
-import { Button, Drawer, EmptyState, SkeletonBlock } from '../ui'
+import { Drawer, EmptyState, SkeletonBlock } from '../ui'
 import { resolveMediaUrl } from '../utils/mediaUrl'
 import { stripHtml } from '../utils/richText'
 
@@ -66,15 +71,15 @@ function fromLocalInput(value: string): string | null {
 function statusMeta(a: Announcement) {
   const now = Date.now()
   if (a.expiresAt && new Date(a.expiresAt).getTime() <= now) {
-    return { label: 'Expirée', className: 'is-danger' }
+    return { label: 'Expirée', className: 'cx-st-ko' }
   }
   if (a.active) {
-    return { label: 'Active', className: 'is-success' }
+    return { label: 'Active', className: 'cx-st-ok' }
   }
   if (a.scheduledAt && new Date(a.scheduledAt).getTime() > now) {
-    return { label: 'Programmée', className: 'is-warning' }
+    return { label: 'Programmée', className: 'cx-st-wait' }
   }
-  return { label: 'Dépubliée', className: 'is-muted' }
+  return { label: 'Dépubliée', className: 'cx-st-off' }
 }
 
 function emptyForm() {
@@ -399,372 +404,351 @@ export function AnnouncementsPage() {
         e.preventDefault()
         void handleSaveDraft()
       }}
-      className="create-admin-form"
+      className="cx-form"
     >
-            <div className="create-admin-grid">
-              <div className="create-admin-field">
-                <label htmlFor="ann-title">
-                  <Megaphone size={14} />
-                  Titre
-                </label>
-                <input
-                  id="ann-title"
-                  type="text"
-                  required
-                  maxLength={TITLE_MAX}
-                  value={form.title}
-                  onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))}
-                  placeholder="Ex : Nouvelle session d’examen blanc"
-                />
-                <p className="muted" style={{ margin: '4px 0 0', fontSize: 12 }}>
-                  {form.title.length}/{TITLE_MAX}
-                </p>
-              </div>
+      <div className="cx-form-grid">
+        <div className="cx-fld" style={{ gridColumn: '1 / -1' }}>
+          <label htmlFor="ann-title">
+            <Megaphone aria-hidden />
+            Titre
+          </label>
+          <input
+            id="ann-title"
+            className="cx-input"
+            type="text"
+            required
+            maxLength={TITLE_MAX}
+            value={form.title}
+            onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))}
+            placeholder="Ex : Nouvelle session d’examen blanc"
+          />
+          <p className="cx-hint">
+            {form.title.length}/{TITLE_MAX}
+          </p>
+        </div>
 
-              <div className="create-admin-field">
-                <label htmlFor="ann-kind">Catégorie</label>
-                <select
-                  id="ann-kind"
-                  value={form.kind}
-                  onChange={(e) =>
-                    setForm((p) => ({ ...p, kind: e.target.value as AnnouncementKind }))
-                  }
-                >
-                  <option value="info">Information</option>
-                  <option value="promo">Promotion</option>
-                  <option value="alerte">Alerte</option>
-                </select>
-              </div>
+        <div className="cx-fld">
+          <label htmlFor="ann-kind">Catégorie</label>
+          <select
+            id="ann-kind"
+            className="cx-select"
+            value={form.kind}
+            onChange={(e) => setForm((p) => ({ ...p, kind: e.target.value as AnnouncementKind }))}
+          >
+            <option value="info">Information</option>
+            <option value="promo">Promotion</option>
+            <option value="alerte">Alerte</option>
+          </select>
+        </div>
 
-              <div className="create-admin-field">
-                <label htmlFor="ann-audience">Audience</label>
-                <select
-                  id="ann-audience"
-                  value={form.audience}
-                  onChange={(e) =>
-                    setForm((p) => ({
-                      ...p,
-                      audience: e.target.value as AnnouncementAudience,
-                    }))
-                  }
-                >
-                  {(Object.keys(AUDIENCE_LABELS) as AnnouncementAudience[]).map((key) => (
-                    <option key={key} value={key}>
-                      {AUDIENCE_LABELS[key]}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <div className="create-admin-field">
-              <label htmlFor="ann-body">Message</label>
-              <RichTextEditor
-                value={form.body}
-                onChange={(html) => setForm((p) => ({ ...p, body: html }))}
-                placeholder="Détails de l’annonce (gras, listes, liens)…"
-              />
-              <p
-                className="muted"
-                style={{
-                  margin: '6px 0 0',
-                  fontSize: 12,
-                  color: plainLen > BODY_MAX ? '#b42318' : undefined,
-                }}
-              >
-                {plainLen}/{BODY_MAX} caractères
-              </p>
-            </div>
-
-            <div className="create-admin-grid">
-              <div className="create-admin-field">
-                <label htmlFor="ann-scheduled">
-                  <CalendarClock size={14} />
-                  Programmer (optionnel)
-                </label>
-                <input
-                  id="ann-scheduled"
-                  type="datetime-local"
-                  value={form.scheduledAt}
-                  onChange={(e) => setForm((p) => ({ ...p, scheduledAt: e.target.value }))}
-                />
-              </div>
-              <div className="create-admin-field">
-                <label htmlFor="ann-expires">Expire le (optionnel)</label>
-                <input
-                  id="ann-expires"
-                  type="datetime-local"
-                  value={form.expiresAt}
-                  onChange={(e) => setForm((p) => ({ ...p, expiresAt: e.target.value }))}
-                />
-              </div>
-              <div className="create-admin-field">
-                <label htmlFor="ann-cta">Lien CTA (optionnel)</label>
-                <input
-                  id="ann-cta"
-                  type="url"
-                  value={form.ctaUrl}
-                  onChange={(e) => setForm((p) => ({ ...p, ctaUrl: e.target.value }))}
-                  placeholder="https://… ou /abonnement"
-                />
-              </div>
-            </div>
-
-            <div className="create-admin-field">
-              <label>Image (optionnel)</label>
-              <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-                <label className="btn-outline-sm" style={{ cursor: 'pointer' }}>
-                  <ImagePlus size={14} />
-                  {uploadingImage ? 'Upload…' : 'Ajouter une image'}
-                  <input
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp,image/gif"
-                    hidden
-                    disabled={uploadingImage}
-                    onChange={(e) => void handleImagePick(e.target.files?.[0] ?? null)}
-                  />
-                </label>
-                {form.imageUrl ? (
-                  <>
-                    <img
-                      src={resolveMediaUrl(form.imageUrl)}
-                      alt=""
-                      style={{
-                        width: 64,
-                        height: 64,
-                        objectFit: 'cover',
-                        borderRadius: 8,
-                        border: '1px solid #e5e7eb',
-                      }}
-                    />
-                    <button
-                      type="button"
-                      className="btn-outline-sm"
-                      onClick={() =>
-                        setForm((p) => ({ ...p, imageUrl: '', imagePublicId: '' }))
-                      }
-                    >
-                      Retirer
-                    </button>
-                  </>
-                ) : null}
-              </div>
-            </div>
-
-            {error ? <p className="form-error" role="alert">{error}</p> : null}
-            {success ? <p className="form-success" role="status">{success}</p> : null}
-
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
-              <button
-                type="button"
-                disabled={submitting}
-                className="btn-outline"
-                onClick={() => void handleSaveDraft()}
-              >
-                <Save size={16} />
-                {submitting ? 'Enregistrement…' : 'Enregistrer brouillon'}
-              </button>
-              <button
-                type="button"
-                className="btn-outline"
-                disabled={!form.title.trim()}
-                onClick={() => setPreviewOpen(true)}
-              >
-                <Eye size={16} />
-                Aperçu
-              </button>
-              {editingId ? (
-                <>
-                  <button
-                    type="button"
-                    disabled={submitting}
-                    className="btn-outline"
-                    onClick={() => void handleSaveEdit()}
-                  >
-                    <Save size={16} />
-                    Enregistrer
-                  </button>
-                  <button
-                    type="button"
-                    disabled={submitting}
-                    className="btn-primary btn-primary-inline"
-                    onClick={() => void openConfirm('publish-existing', editingId)}
-                  >
-                    <Send size={16} />
-                    Publier &amp; notifier
-                  </button>
-                  <button
-                    type="button"
-                    disabled={submitting}
-                    className="btn-outline"
-                    onClick={() => void openConfirm('renotify', editingId)}
-                  >
-                    Re-notifier
-                  </button>
-                </>
-              ) : (
-                <button
-                  type="button"
-                  disabled={submitting}
-                  className="btn-primary btn-primary-inline"
-                  onClick={() => void openConfirm('publish-new')}
-                >
-                  <Send size={16} />
-                  Publier &amp; notifier
-                </button>
-              )}
-            </div>
-    </form>
-  )
-
-  return (
-    <div className="admin-page">
-      <div className="admin-page-intro">
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
-          <div>
-            <p className="admin-page-intro-label">Communication</p>
-            <h2 className="admin-page-intro-title">Annonces &amp; actualités</h2>
-            <p className="admin-page-intro-text">
-              Rédigez un brouillon, prévisualisez, puis publiez avec confirmation. Seuls les comptes
-              actifs ciblés reçoivent une notification.
-            </p>
-          </div>
-          <Button variant="primary" onClick={openCompose}>
-            <Plus size={16} />
-            Nouvelle annonce
-          </Button>
+        <div className="cx-fld">
+          <label htmlFor="ann-audience">Audience</label>
+          <select
+            id="ann-audience"
+            className="cx-select"
+            value={form.audience}
+            onChange={(e) => setForm((p) => ({ ...p, audience: e.target.value as AnnouncementAudience }))}
+          >
+            {(Object.keys(AUDIENCE_LABELS) as AnnouncementAudience[]).map((key) => (
+              <option key={key} value={key}>
+                {AUDIENCE_LABELS[key]}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
 
-      <section className="admin-section">
-        <div className="admin-section-head">
-          <h3 className="admin-section-label">Annonces</h3>
-        </div>
-        <div className="admin-section-body">
-          <div
-            style={{
-              display: 'flex',
-              flexWrap: 'wrap',
-              gap: 10,
-              marginBottom: 14,
-              alignItems: 'center',
-            }}
-          >
-            <div style={{ position: 'relative', flex: '1 1 220px' }}>
-              <Search
-                size={14}
-                style={{ position: 'absolute', left: 10, top: 11, opacity: 0.45 }}
-              />
-              <input
-                type="search"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Rechercher…"
-                style={{ width: '100%', paddingLeft: 32 }}
-              />
-            </div>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              style={{ minWidth: 160 }}
-            >
-              <option value="all">Tous les statuts</option>
-              <option value="active">Actives</option>
-              <option value="draft">Dépubliées</option>
-              <option value="scheduled">Programmées</option>
-              <option value="expired">Expirées</option>
-            </select>
-          </div>
+      <div className="cx-fld">
+        <label htmlFor="ann-body">Message</label>
+        <RichTextEditor
+          value={form.body}
+          onChange={(html) => setForm((p) => ({ ...p, body: html }))}
+          placeholder="Détails de l’annonce (gras, listes, liens)…"
+        />
+        <p className={`cx-hint${plainLen > BODY_MAX ? ' cx-bad' : ''}`}>
+          {plainLen}/{BODY_MAX} caractères
+        </p>
+      </div>
 
-          {loading ? (
-            <SkeletonBlock rows={5} />
-          ) : items.length === 0 ? (
-            <EmptyState
-              title="Aucune annonce"
-              description="Créez un brouillon, prévisualisez-le, puis publiez-le pour le diffuser aux apprenants."
-              actionLabel="Nouvelle annonce"
-              onAction={openCompose}
-              icon={<Megaphone size={32} style={{ opacity: 0.35 }} />}
+      <div className="cx-form-grid">
+        <div className="cx-fld">
+          <label htmlFor="ann-scheduled">
+            <CalendarClock aria-hidden />
+            Programmer (optionnel)
+          </label>
+          <input
+            id="ann-scheduled"
+            className="cx-input"
+            type="datetime-local"
+            value={form.scheduledAt}
+            onChange={(e) => setForm((p) => ({ ...p, scheduledAt: e.target.value }))}
+          />
+        </div>
+        <div className="cx-fld">
+          <label htmlFor="ann-expires">Expire le (optionnel)</label>
+          <input
+            id="ann-expires"
+            className="cx-input"
+            type="datetime-local"
+            value={form.expiresAt}
+            onChange={(e) => setForm((p) => ({ ...p, expiresAt: e.target.value }))}
+          />
+        </div>
+        <div className="cx-fld">
+          <label htmlFor="ann-cta">Lien CTA (optionnel)</label>
+          <input
+            id="ann-cta"
+            className="cx-input"
+            type="url"
+            value={form.ctaUrl}
+            onChange={(e) => setForm((p) => ({ ...p, ctaUrl: e.target.value }))}
+            placeholder="https://… ou /abonnement"
+          />
+        </div>
+      </div>
+
+      <div className="cx-fld">
+        <label>Image (optionnel)</label>
+        <div className="cx-photo-box">
+          {form.imageUrl ? <img src={resolveMediaUrl(form.imageUrl)} alt="" /> : null}
+          <label className="cx-filebtn">
+            <ImagePlus aria-hidden />
+            {uploadingImage ? 'Upload…' : form.imageUrl ? 'Changer l’image' : 'Ajouter une image'}
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              hidden
+              disabled={uploadingImage}
+              onChange={(e) => void handleImagePick(e.target.files?.[0] ?? null)}
             />
-          ) : (
-            <div className="admin-data-table-wrap">
-              <table className="admin-data-table">
-                <thead>
-                  <tr>
-                    <th>Titre</th>
-                    <th>Catégorie</th>
-                    <th>Audience</th>
-                    <th>Statut</th>
-                    <th>Vues</th>
-                    <th>Date</th>
-                    <th />
-                  </tr>
-                </thead>
-                <tbody>
-                  {items.map((a) => {
-                    const meta = statusMeta(a)
-                    const preview = stripHtml(a.body)
-                    return (
-                      <tr key={a.id}>
-                        <td>
-                          <strong style={{ fontSize: 13, fontWeight: 600 }}>{a.title}</strong>
-                          {preview ? (
-                            <p className="muted" style={{ margin: '2px 0 0' }}>
-                              {preview.length > 100 ? `${preview.slice(0, 99)}…` : preview}
-                            </p>
-                          ) : null}
-                          {a.broadcastAt ? (
-                            <p className="muted" style={{ margin: '2px 0 0', fontSize: 11 }}>
-                              Notifiée le {new Date(a.broadcastAt).toLocaleString('fr-FR')}
-                            </p>
-                          ) : null}
-                        </td>
-                        <td className="muted">{KIND_LABELS[a.kind]}</td>
-                        <td className="muted">{AUDIENCE_LABELS[a.audience || 'all']}</td>
-                        <td>
+          </label>
+          {form.imageUrl ? (
+            <button
+              type="button"
+              className="cx-btn cx-btn-sm"
+              onClick={() => setForm((p) => ({ ...p, imageUrl: '', imagePublicId: '' }))}
+            >
+              Retirer
+            </button>
+          ) : null}
+        </div>
+      </div>
+
+      {error ? <p className="cx-note cx-note-err" role="alert">{error}</p> : null}
+      {success ? <p className="cx-note cx-note-ok" role="status">{success}</p> : null}
+
+      <div className="cx-form-actions">
+        <button type="button" disabled={submitting} className="cx-btn" onClick={() => void handleSaveDraft()}>
+          <Save aria-hidden />
+          {submitting ? 'Enregistrement…' : 'Enregistrer brouillon'}
+        </button>
+        <button type="button" className="cx-btn" disabled={!form.title.trim()} onClick={() => setPreviewOpen(true)}>
+          <Eye aria-hidden />
+          Aperçu
+        </button>
+        {editingId ? (
+          <>
+            <button type="button" disabled={submitting} className="cx-btn" onClick={() => void handleSaveEdit()}>
+              <Save aria-hidden />
+              Enregistrer
+            </button>
+            <button
+              type="button"
+              disabled={submitting}
+              className="cx-btn cx-btn-fill"
+              onClick={() => void openConfirm('publish-existing', editingId)}
+            >
+              <Send aria-hidden />
+              Publier &amp; notifier
+            </button>
+            <button type="button" disabled={submitting} className="cx-btn" onClick={() => void openConfirm('renotify', editingId)}>
+              Re-notifier
+            </button>
+          </>
+        ) : (
+          <button type="button" disabled={submitting} className="cx-btn cx-btn-fill" onClick={() => void openConfirm('publish-new')}>
+            <Send aria-hidden />
+            Publier &amp; notifier
+          </button>
+        )}
+      </div>
+    </form>
+  )
+
+  const stats = useMemo(() => {
+    let active = 0
+    let scheduled = 0
+    let draft = 0
+    let views = 0
+    for (const a of items) {
+      const label = statusMeta(a).label
+      if (label === 'Active') active += 1
+      else if (label === 'Programmée') scheduled += 1
+      else if (label === 'Dépubliée') draft += 1
+      views += a.viewCount ?? 0
+    }
+    return { total: items.length, active, scheduled, draft, views }
+  }, [items])
+
+  return (
+    <PageSection
+      kicker="Communication"
+      title="Annonces & actualités"
+      subtitle="Rédigez un brouillon, prévisualisez, puis publiez avec confirmation. Seuls les comptes actifs ciblés reçoivent une notification."
+      actions={
+        <button type="button" className="cx-btn cx-btn-fill" onClick={openCompose}>
+          <Plus aria-hidden />
+          Nouvelle annonce
+        </button>
+      }
+    >
+      {!composeOpen && error ? <p className="cx-note cx-note-err" role="alert">{error}</p> : null}
+      {!composeOpen && success ? <p className="cx-note cx-note-ok" role="status">{success}</p> : null}
+
+      <div className="cx-kc-grid">
+        <div className="cx-kc">
+          <span className="cx-kc-ico cx-kc-blue">
+            <Megaphone aria-hidden />
+          </span>
+          <div className="cx-kc-body">
+            <span className="cx-kc-label">Annonces</span>
+            <span className="cx-kc-value">{nf(stats.total)}</span>
+            <span className="cx-kc-sub">dans la liste</span>
+          </div>
+        </div>
+        <div className="cx-kc">
+          <span className="cx-kc-ico cx-kc-green">
+            <CheckCircle2 aria-hidden />
+          </span>
+          <div className="cx-kc-body">
+            <span className="cx-kc-label">Actives</span>
+            <span className="cx-kc-value">{nf(stats.active)}</span>
+            <span className="cx-kc-sub">visibles côté apprenants</span>
+          </div>
+        </div>
+        <div className="cx-kc">
+          <span className="cx-kc-ico cx-kc-gold">
+            <Clock3 aria-hidden />
+          </span>
+          <div className="cx-kc-body">
+            <span className="cx-kc-label">Programmées</span>
+            <span className="cx-kc-value">{nf(stats.scheduled)}</span>
+            <span className="cx-kc-sub">{nf(stats.draft)} dépubliée{stats.draft > 1 ? 's' : ''}</span>
+          </div>
+        </div>
+        <div className="cx-kc">
+          <span className="cx-kc-ico cx-kc-sky">
+            <Eye aria-hidden />
+          </span>
+          <div className="cx-kc-body">
+            <span className="cx-kc-label">Vues</span>
+            <span className="cx-kc-value">{nf(stats.views)}</span>
+            <span className="cx-kc-sub">cumul des annonces listées</span>
+          </div>
+        </div>
+      </div>
+
+      <section className="cx-panel">
+        <div className="cx-toolbar" style={{ marginBottom: '1rem' }}>
+          <label className="cx-search">
+            <Search aria-hidden />
+            <input
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Rechercher une annonce…"
+              aria-label="Rechercher une annonce"
+            />
+          </label>
+          <select
+            className="cx-select"
+            style={{ width: 'auto', minWidth: '11rem' }}
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            aria-label="Filtrer par statut"
+          >
+            <option value="all">Tous les statuts</option>
+            <option value="active">Actives</option>
+            <option value="draft">Dépubliées</option>
+            <option value="scheduled">Programmées</option>
+            <option value="expired">Expirées</option>
+          </select>
+        </div>
+
+        {loading ? (
+          <SkeletonBlock rows={5} />
+        ) : items.length === 0 ? (
+          <EmptyState
+            title="Aucune annonce"
+            description="Créez un brouillon, prévisualisez-le, puis publiez-le pour le diffuser aux apprenants."
+            actionLabel="Nouvelle annonce"
+            onAction={openCompose}
+            icon={<Megaphone size={32} style={{ opacity: 0.35 }} />}
+          />
+        ) : (
+          <div className="cx-table-wrap">
+            <table className="cx-ann-table">
+              <thead>
+                <tr>
+                  <th>Titre</th>
+                  <th>Catégorie</th>
+                  <th>Audience</th>
+                  <th>Statut</th>
+                  <th>Vues</th>
+                  <th>Date</th>
+                  <th />
+                </tr>
+              </thead>
+              <tbody>
+                {items.map((a) => {
+                  const meta = statusMeta(a)
+                  const preview = stripHtml(a.body)
+                  return (
+                    <tr key={a.id}>
+                      <td className="cx-ann-title">
+                        <strong>{a.title}</strong>
+                        {preview ? <p>{preview.length > 100 ? `${preview.slice(0, 99)}…` : preview}</p> : null}
+                        {a.broadcastAt ? (
+                          <p>Notifiée le {new Date(a.broadcastAt).toLocaleString('fr-FR')}</p>
+                        ) : null}
+                      </td>
+                      <td>{KIND_LABELS[a.kind]}</td>
+                      <td>{AUDIENCE_LABELS[a.audience || 'all']}</td>
+                      <td>
+                        <button
+                          type="button"
+                          className={`cx-status ${meta.className}`}
+                          onClick={() => void handleToggle(a)}
+                          title={a.active ? 'Dépublier' : 'Publier'}
+                        >
+                          {meta.label}
+                        </button>
+                      </td>
+                      <td>{a.viewCount ?? 0}</td>
+                      <td>{new Date(a.createdAt).toLocaleDateString('fr-FR')}</td>
+                      <td>
+                        <div className="cx-row-actions">
+                          <button type="button" className="cx-btn cx-btn-icon" onClick={() => fillForm(a)} aria-label="Modifier" title="Modifier">
+                            <Pencil aria-hidden />
+                          </button>
                           <button
                             type="button"
-                            className={`admin-status-badge ${meta.className}`}
-                            style={{ border: 'none', cursor: 'pointer' }}
-                            onClick={() => void handleToggle(a)}
-                            title={a.active ? 'Dépublier' : 'Publier'}
+                            className="cx-btn cx-btn-icon cx-btn-danger"
+                            onClick={() => void handleDelete(a)}
+                            aria-label="Supprimer"
+                            title="Supprimer"
                           >
-                            {meta.label}
+                            <Trash2 aria-hidden />
                           </button>
-                        </td>
-                        <td className="muted">{a.viewCount ?? 0}</td>
-                        <td className="muted">
-                          {new Date(a.createdAt).toLocaleDateString('fr-FR')}
-                        </td>
-                        <td>
-                          <div style={{ display: 'flex', gap: 6 }}>
-                            <button
-                              type="button"
-                              className="btn-icon-danger"
-                              style={{ color: 'inherit', background: 'transparent' }}
-                              onClick={() => fillForm(a)}
-                              aria-label="Modifier"
-                            >
-                              <Pencil size={15} />
-                            </button>
-                            <button
-                              type="button"
-                              className="btn-icon-danger"
-                              onClick={() => void handleDelete(a)}
-                              aria-label="Supprimer"
-                            >
-                              <Trash2 size={15} />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </section>
 
       <Drawer
@@ -777,46 +761,33 @@ export function AnnouncementsPage() {
       </Drawer>
 
       {previewOpen ? (
-        <div className="modal-backdrop" onClick={() => setPreviewOpen(false)}>
-          <div
-            className="modal-content ann-preview-modal"
-            onClick={(e) => e.stopPropagation()}
-            style={{ maxWidth: 720, width: '92vw' }}
-          >
-            <div className="modal-header">
+        <div className="cx-modal-bg" onClick={() => setPreviewOpen(false)}>
+          <div className="cx-modal" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
+            <div className="cx-modal-head">
               <h2>Aperçu apprenant</h2>
-              <button type="button" className="btn-outline-sm" onClick={() => setPreviewOpen(false)}>
-                Fermer
+              <button type="button" className="cx-btn cx-btn-icon" onClick={() => setPreviewOpen(false)} aria-label="Fermer">
+                <X aria-hidden />
               </button>
             </div>
-            <div style={{ display: 'grid', gap: 16, gridTemplateColumns: '1fr 1fr' }}>
-              <div>
-                <p className="muted" style={{ margin: '0 0 8px', fontSize: 12 }}>
-                  Web — carte accueil
-                </p>
-                <article className={`ann-preview-web ann-preview-web--${form.kind}`}>
-                  {form.imageUrl ? (
-                    <img src={resolveMediaUrl(form.imageUrl)} alt="" className="ann-preview-img" />
-                  ) : null}
-                  <strong>{form.title || 'Sans titre'}</strong>
-                  {form.body ? (
-                    <div
-                      className="ann-preview-body"
-                      dangerouslySetInnerHTML={{ __html: form.body }}
-                    />
-                  ) : null}
-                  {form.ctaUrl ? <span className="ann-preview-cta">Voir plus</span> : null}
-                </article>
-              </div>
-              <div>
-                <p className="muted" style={{ margin: '0 0 8px', fontSize: 12 }}>
-                  Mobile — carte
-                </p>
-                <div className={`ann-preview-mobile ann-preview-mobile--${form.kind}`}>
-                  <div className="ann-preview-mobile-accent" />
-                  <div className="ann-preview-mobile-body">
+            <div className="cx-modal-body">
+              <div className="cx-prev-grid">
+                <div>
+                  <p className="cx-prev-label">Web — carte accueil</p>
+                  <article className={`cx-ann-web cx-k-${form.kind}`}>
+                    {form.imageUrl ? <img src={resolveMediaUrl(form.imageUrl)} alt="" className="cx-ann-img" /> : null}
                     <strong>{form.title || 'Sans titre'}</strong>
-                    <p>{stripHtml(form.body) || '—'}</p>
+                    {form.body ? <div className="cx-ann-body" dangerouslySetInnerHTML={{ __html: form.body }} /> : null}
+                    {form.ctaUrl ? <span className="cx-ann-cta">Voir plus</span> : null}
+                  </article>
+                </div>
+                <div>
+                  <p className="cx-prev-label">Mobile — carte</p>
+                  <div className={`cx-ann-mob cx-k-${form.kind}`}>
+                    <i />
+                    <div>
+                      <strong>{form.title || 'Sans titre'}</strong>
+                      <p>{stripHtml(form.body) || '—'}</p>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -826,102 +797,49 @@ export function AnnouncementsPage() {
       ) : null}
 
       {confirmMode ? (
-        <div className="modal-backdrop" onClick={() => setConfirmMode(null)}>
-          <div
-            className="modal-content"
-            onClick={(e) => e.stopPropagation()}
-            style={{ maxWidth: 440, width: '92vw' }}
-          >
-            <div className="modal-header">
+        <div className="cx-modal-bg" onClick={() => setConfirmMode(null)}>
+          <div className="cx-modal cx-modal-sm" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
+            <div className="cx-modal-head">
               <h2>{confirmCopy}</h2>
-              <button type="button" className="btn-outline-sm" onClick={() => setConfirmMode(null)}>
-                Fermer
+              <button type="button" className="cx-btn cx-btn-icon" onClick={() => setConfirmMode(null)} aria-label="Fermer">
+                <X aria-hidden />
               </button>
             </div>
-            <p style={{ margin: '0 0 12px', lineHeight: 1.45 }}>
-              Audience : <strong>{AUDIENCE_LABELS[form.audience]}</strong>
-              <br />
-              {confirmLoading ? (
-                'Calcul du nombre de destinataires…'
-              ) : (
-                <>
-                  Environ <strong>{recipientCount ?? '—'}</strong> compte(s) actif(s) seront
-                  notifiés dans l’application.
-                </>
-              )}
-            </p>
-            <p className="muted" style={{ fontSize: 13, marginBottom: 16 }}>
-              Les comptes suspendus ne sont pas notifiés. La diffusion se fait dans l’application
-              (boîte de notifications).
-            </p>
-            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-              <button type="button" className="btn-outline" onClick={() => setConfirmMode(null)}>
-                Annuler
-              </button>
-              <button
-                type="button"
-                className="btn-primary btn-primary-inline"
-                disabled={submitting || confirmLoading}
-                onClick={() => void confirmAction()}
-              >
-                <Send size={16} />
-                {submitting ? 'Envoi…' : 'Confirmer'}
-              </button>
+            <div className="cx-modal-body">
+              <p className="cx-panel-note" style={{ color: 'var(--ink)' }}>
+                Audience : <strong>{AUDIENCE_LABELS[form.audience]}</strong>
+                <br />
+                {confirmLoading ? (
+                  'Calcul du nombre de destinataires…'
+                ) : (
+                  <>
+                    Environ <strong>{recipientCount ?? '—'}</strong> compte(s) actif(s) seront notifiés dans
+                    l’application.
+                  </>
+                )}
+              </p>
+              <p className="cx-panel-note">
+                Les comptes suspendus ne sont pas notifiés. La diffusion se fait dans l’application (boîte de
+                notifications).
+              </p>
+              <div className="cx-actions">
+                <button type="button" className="cx-btn" onClick={() => setConfirmMode(null)}>
+                  Annuler
+                </button>
+                <button
+                  type="button"
+                  className="cx-btn cx-btn-fill"
+                  disabled={submitting || confirmLoading}
+                  onClick={() => void confirmAction()}
+                >
+                  <Send aria-hidden />
+                  {submitting ? 'Envoi…' : 'Confirmer'}
+                </button>
+              </div>
             </div>
           </div>
         </div>
       ) : null}
-
-      <style>{`
-        .admin-status-badge.is-muted { background: #eef1f4; color: #5b6b7c; }
-        .modal-backdrop {
-          position: fixed; inset: 0; background: rgba(0,16,48,.45);
-          display: flex; align-items: center; justify-content: center;
-          z-index: 80; padding: 1rem;
-        }
-        .modal-content {
-          background: #fff; border-radius: 14px; padding: 1.1rem 1.25rem 1.25rem;
-          box-shadow: 0 18px 50px rgba(0,16,48,.18); max-height: 90vh; overflow: auto;
-        }
-        .modal-header {
-          display: flex; align-items: center; justify-content: space-between;
-          gap: 12px; margin-bottom: 14px;
-        }
-        .modal-header h2 { margin: 0; font-size: 1.1rem; }
-        .ann-preview-web {
-          border: 1px solid #e5e7eb; border-radius: 14px; padding: .9rem 1rem;
-          border-left: 4px solid #00b050; background: #fff;
-        }
-        .ann-preview-web--promo { border-left-color: #f59e0b; }
-        .ann-preview-web--alerte { border-left-color: #e11d48; }
-        .ann-preview-web strong { display: block; margin-bottom: .35rem; font-size: .95rem; }
-        .ann-preview-body { font-size: .85rem; color: #3d5a73; line-height: 1.45; }
-        .ann-preview-body p { margin: 0 0 .4rem; }
-        .ann-preview-img {
-          width: 100%; max-height: 140px; object-fit: cover; border-radius: 10px;
-          margin-bottom: .6rem;
-        }
-        .ann-preview-cta {
-          display: inline-block; margin-top: .4rem; font-size: .8rem;
-          color: #00b050; font-weight: 600;
-        }
-        .ann-preview-mobile {
-          display: flex; background: #0b1220; border-radius: 14px; overflow: hidden;
-          min-height: 88px;
-        }
-        .ann-preview-mobile-accent { width: 4px; background: #00b050; flex-shrink: 0; }
-        .ann-preview-mobile--promo .ann-preview-mobile-accent { background: #f87171; }
-        .ann-preview-mobile--alerte .ann-preview-mobile-accent { background: #FFC000; }
-        .ann-preview-mobile-body { padding: .85rem 1rem; color: #e8eef6; }
-        .ann-preview-mobile-body strong { display: block; margin-bottom: .25rem; font-size: .9rem; }
-        .ann-preview-mobile-body p {
-          margin: 0; font-size: .78rem; color: #9aa8b8; line-height: 1.4;
-          display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
-        }
-        @media (max-width: 700px) {
-          .ann-preview-modal > div[style] { grid-template-columns: 1fr !important; }
-        }
-      `}</style>
-    </div>
+    </PageSection>
   )
 }
