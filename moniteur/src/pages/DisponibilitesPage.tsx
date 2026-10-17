@@ -1,5 +1,5 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
-import { Pencil, Plus, Trash2 } from 'lucide-react'
+import { CalendarDays, CalendarPlus, CalendarX2, ListChecks, Pencil, Plus, Save, Trash2 } from 'lucide-react'
 import {
   createCreneau,
   deleteCreneau,
@@ -11,6 +11,8 @@ import {
   type WeeklySlot,
 } from '../api/portal'
 import { getMoniteurToken, isAuthError } from '../context/MoniteurAuthContext'
+import { PageSection } from '../components/model/PageSection'
+import { dateParts, Empty, formatMoney, Notice, PanelHead, SessionRow } from '../components/model/Kit'
 
 const WEEK_DAYS = [
   { dayOfWeek: 1, label: 'Lundi' },
@@ -43,15 +45,9 @@ function toEditDayHours(slots: WeeklySlot[] | undefined): EditDayHours[] {
     return {
       dayOfWeek,
       enabled: same.length > 0,
-      morning: {
-        start: first?.start || '08:00',
-        end: first?.end || '12:00',
-      },
+      morning: { start: first?.start || '08:00', end: first?.end || '12:00' },
       afternoonEnabled: Boolean(second),
-      afternoon: {
-        start: second?.start || '14:00',
-        end: second?.end || '18:00',
-      },
+      afternoon: { start: second?.start || '14:00', end: second?.end || '18:00' },
     }
   })
 }
@@ -60,17 +56,9 @@ function fromEditDayHours(days: EditDayHours[]): WeeklySlot[] {
   const result: WeeklySlot[] = []
   for (const day of days) {
     if (!day.enabled) continue
-    result.push({
-      dayOfWeek: day.dayOfWeek,
-      start: day.morning.start,
-      end: day.morning.end,
-    })
+    result.push({ dayOfWeek: day.dayOfWeek, start: day.morning.start, end: day.morning.end })
     if (day.afternoonEnabled) {
-      result.push({
-        dayOfWeek: day.dayOfWeek,
-        start: day.afternoon.start,
-        end: day.afternoon.end,
-      })
+      result.push({ dayOfWeek: day.dayOfWeek, start: day.afternoon.start, end: day.afternoon.end })
     }
   }
   return result
@@ -81,16 +69,39 @@ function todayLocal() {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
 }
 
-function formatDateLabel(date: string) {
-  try {
-    return new Date(`${date}T12:00:00`).toLocaleDateString('fr-FR', {
-      weekday: 'short',
-      day: 'numeric',
-      month: 'short',
-    })
-  } catch {
-    return date
-  }
+function slotStatusChip(item: CreneauItem) {
+  if (item.status === 'bloque') return <span className="cx-chip cx-red">Bloqué</span>
+  if (item.reservationStatus === 'pending_moniteur') return <span className="cx-chip cx-amber">À confirmer</span>
+  return <span className="cx-chip cx-green">Réservé</span>
+}
+
+function RangeInput({
+  label,
+  value,
+  onChange,
+}: {
+  label: string
+  value: TimeInterval
+  onChange: (next: TimeInterval) => void
+}) {
+  return (
+    <span className="cx-range">
+      <span>{label}</span>
+      <input
+        type="time"
+        value={value.start}
+        aria-label={`${label} — début`}
+        onChange={(e) => onChange({ ...value, start: e.target.value })}
+      />
+      <i>→</i>
+      <input
+        type="time"
+        value={value.end}
+        aria-label={`${label} — fin`}
+        onChange={(e) => onChange({ ...value, end: e.target.value })}
+      />
+    </span>
+  )
 }
 
 export function DisponibilitesPage() {
@@ -131,6 +142,7 @@ export function DisponibilitesPage() {
 
   const editable = useMemo(() => items.filter((item) => item.editable), [items])
   const reserved = useMemo(() => items.filter((item) => !item.editable), [items])
+  const activeDays = dayHours.filter((day) => day.enabled).length
 
   const resetForm = () => {
     setEditingId(null)
@@ -158,8 +170,7 @@ export function DisponibilitesPage() {
     setError(null)
     setSuccess(null)
     try {
-      const slots = fromEditDayHours(dayHours)
-      const data = await saveAvailability(token, slots)
+      const data = await saveAvailability(token, fromEditDayHours(dayHours))
       setDayHours(toEditDayHours(data.weeklyAvailability))
       setSuccess('Disponibilités hebdomadaires enregistrées. Elles apparaissent dans l’app apprenant.')
     } catch (err) {
@@ -205,9 +216,7 @@ export function DisponibilitesPage() {
   const handleDelete = async (item: CreneauItem) => {
     const token = getMoniteurToken()
     if (!token) return
-    if (!window.confirm(`Supprimer le créneau du ${item.date} ${item.startTime}–${item.endTime} ?`)) {
-      return
-    }
+    if (!window.confirm(`Supprimer le créneau du ${item.date} ${item.startTime}–${item.endTime} ?`)) return
     setError(null)
     try {
       await deleteCreneau(token, item.id)
@@ -220,206 +229,168 @@ export function DisponibilitesPage() {
   }
 
   const updateDay = (dayOfWeek: number, patch: Partial<EditDayHours>) => {
-    setDayHours((prev) =>
-      prev.map((day) => (day.dayOfWeek === dayOfWeek ? { ...day, ...patch } : day)),
-    )
+    setDayHours((prev) => prev.map((day) => (day.dayOfWeek === dayOfWeek ? { ...day, ...patch } : day)))
   }
 
   return (
-    <div className="admin-page">
-      <header className="admin-page-header">
-        <div>
-          <p className="admin-kicker">Disponibilités</p>
-          <h1>Mes horaires</h1>
-          <p className="admin-muted">
-            Définissez vos plages hebdomadaires (matin / après-midi). Les apprenants ne peuvent
-            réserver que dans ces fenêtres, hors créneaux déjà pris.
-          </p>
-        </div>
-      </header>
+    <PageSection
+      kicker="Disponibilités"
+      title="Mes horaires"
+      subtitle="Les apprenants réservent uniquement dans vos plages hebdomadaires, hors créneaux déjà pris."
+    >
+      <Notice error={error} success={success} />
 
-      {error ? <p className="form-error">{error}</p> : null}
-      {success ? <p className="form-success">{success}</p> : null}
-
-      <form className="admin-card" onSubmit={handleWeeklySave}>
-        <h3>Disponibilité hebdomadaire</h3>
-        {loading ? <p className="admin-muted">Chargement…</p> : null}
-        <div className="moniteur-week-grid">
+      <form className="cx-panel" onSubmit={handleWeeklySave}>
+        <PanelHead
+          icon={<CalendarDays aria-hidden />}
+          title="Disponibilité hebdomadaire"
+          sub={`${activeDays} jour${activeDays > 1 ? 's' : ''} ouvert${activeDays > 1 ? 's' : ''} à la réservation`}
+          extra={
+            <button type="submit" className="cx-btn cx-btn-fill" disabled={savingWeekly || loading}>
+              <Save aria-hidden />
+              {savingWeekly ? 'Enregistrement…' : 'Enregistrer'}
+            </button>
+          }
+        />
+        {loading ? <p className="cx-loading">Chargement…</p> : null}
+        <div className="cx-week">
           {dayHours.map((day) => {
             const label = WEEK_DAYS.find((d) => d.dayOfWeek === day.dayOfWeek)?.label || ''
             return (
-              <div key={day.dayOfWeek} className="moniteur-week-day">
-                <label className="admin-check-row">
+              <div key={day.dayOfWeek} className="cx-week-row">
+                <label className="cx-switch cx-week-day">
                   <input
                     type="checkbox"
                     checked={day.enabled}
                     onChange={(e) => updateDay(day.dayOfWeek, { enabled: e.target.checked })}
                   />
-                  <strong>{label}</strong>
+                  <i aria-hidden="true" />
+                  {label}
                 </label>
                 {day.enabled ? (
-                  <div className="reserv-create-grid">
-                    <label>
-                      Matin début
-                      <input
-                        type="time"
-                        value={day.morning.start}
-                        onChange={(e) =>
-                          updateDay(day.dayOfWeek, {
-                            morning: { ...day.morning, start: e.target.value },
-                          })
-                        }
-                      />
-                    </label>
-                    <label>
-                      Matin fin
-                      <input
-                        type="time"
-                        value={day.morning.end}
-                        onChange={(e) =>
-                          updateDay(day.dayOfWeek, {
-                            morning: { ...day.morning, end: e.target.value },
-                          })
-                        }
-                      />
-                    </label>
-                    <label className="admin-check-row">
+                  <div className="cx-week-slots">
+                    <RangeInput
+                      label="Matin"
+                      value={day.morning}
+                      onChange={(morning) => updateDay(day.dayOfWeek, { morning })}
+                    />
+                    <label className="cx-switch">
                       <input
                         type="checkbox"
                         checked={day.afternoonEnabled}
-                        onChange={(e) =>
-                          updateDay(day.dayOfWeek, { afternoonEnabled: e.target.checked })
-                        }
+                        onChange={(e) => updateDay(day.dayOfWeek, { afternoonEnabled: e.target.checked })}
                       />
+                      <i aria-hidden="true" />
                       Après-midi
                     </label>
                     {day.afternoonEnabled ? (
-                      <>
-                        <label>
-                          Après-midi début
-                          <input
-                            type="time"
-                            value={day.afternoon.start}
-                            onChange={(e) =>
-                              updateDay(day.dayOfWeek, {
-                                afternoon: { ...day.afternoon, start: e.target.value },
-                              })
-                            }
-                          />
-                        </label>
-                        <label>
-                          Après-midi fin
-                          <input
-                            type="time"
-                            value={day.afternoon.end}
-                            onChange={(e) =>
-                              updateDay(day.dayOfWeek, {
-                                afternoon: { ...day.afternoon, end: e.target.value },
-                              })
-                            }
-                          />
-                        </label>
-                      </>
+                      <RangeInput
+                        label="Après-midi"
+                        value={day.afternoon}
+                        onChange={(afternoon) => updateDay(day.dayOfWeek, { afternoon })}
+                      />
                     ) : null}
                   </div>
-                ) : null}
+                ) : (
+                  <span className="cx-week-off">Fermé</span>
+                )}
               </div>
             )
           })}
         </div>
-        <div className="admin-actions-row" style={{ marginTop: 12 }}>
-          <button type="submit" className="btn-primary" disabled={savingWeekly}>
-            {savingWeekly ? 'Enregistrement…' : 'Enregistrer les horaires'}
-          </button>
-        </div>
       </form>
 
-      <form className="admin-card" style={{ marginTop: '1.25rem' }} onSubmit={handleSubmit}>
-        <h3>{editingId ? 'Modifier un créneau ponctuel' : 'Créneau ponctuel (optionnel)'}</h3>
-        <p className="admin-muted">
-          Les plages hebdo suffisent en général. Publiez un créneau précis seulement si besoin.
-        </p>
-        <div className="reserv-create-grid">
-          <label>
-            Date
-            <input type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
-          </label>
-          <label>
-            Début
-            <input
-              type="time"
-              value={startTime}
-              onChange={(e) => setStartTime(e.target.value)}
-              required
-            />
-          </label>
-          <label>
-            Fin
-            <input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} required />
-          </label>
-        </div>
-        <div className="admin-actions-row">
-          <button type="submit" className="btn-primary" disabled={saving}>
-            <Plus size={16} />
-            {saving ? 'Enregistrement…' : editingId ? 'Enregistrer' : 'Publier'}
-          </button>
-          {editingId ? (
-            <button type="button" className="btn-outline" onClick={resetForm}>
-              Annuler
+      <div className="cx-grid-2">
+        <form className="cx-panel" onSubmit={handleSubmit}>
+          <PanelHead
+            icon={<CalendarPlus aria-hidden />}
+            title={editingId ? 'Modifier un créneau ponctuel' : 'Créneau ponctuel'}
+            sub="Facultatif : les plages hebdomadaires suffisent en général."
+          />
+          <div className="cx-form-grid cx-cols-3">
+            <label>
+              Date
+              <input type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
+            </label>
+            <label>
+              Début
+              <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} required />
+            </label>
+            <label>
+              Fin
+              <input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} required />
+            </label>
+          </div>
+          <div className="cx-form-actions">
+            <button type="submit" className="cx-btn cx-btn-fill" disabled={saving}>
+              <Plus aria-hidden />
+              {saving ? 'Enregistrement…' : editingId ? 'Enregistrer' : 'Publier le créneau'}
             </button>
-          ) : null}
-        </div>
-      </form>
+            {editingId ? (
+              <button type="button" className="cx-btn" onClick={resetForm}>
+                Annuler
+              </button>
+            ) : null}
+          </div>
+        </form>
 
-      <section className="admin-card" style={{ marginTop: '1.25rem' }}>
-        <h3>Créneaux libres ({editable.length})</h3>
-        {!loading && editable.length === 0 ? (
-          <p className="admin-muted">Aucun créneau ponctuel libre.</p>
-        ) : null}
-        <ul className="upcoming-list">
-          {editable.map((item) => (
-            <li key={item.id}>
-              <div className="upcoming-item-main">
-                <strong>
-                  {formatDateLabel(item.date)} · {item.startTime} – {item.endTime}
-                </strong>
-                <span className="admin-muted">{item.priceFcfa.toLocaleString('fr-FR')} FCFA</span>
-              </div>
-              <div className="admin-actions-row">
-                <button type="button" className="btn-outline" onClick={() => startEdit(item)}>
-                  <Pencil size={14} />
-                  Modifier
-                </button>
-                <button type="button" className="btn-text-danger" onClick={() => void handleDelete(item)}>
-                  <Trash2 size={14} />
-                  Supprimer
-                </button>
-              </div>
-            </li>
-          ))}
-        </ul>
-      </section>
+        <section className="cx-panel">
+          <PanelHead
+            icon={<ListChecks aria-hidden />}
+            title={`Créneaux libres (${editable.length})`}
+            sub="Créneaux ponctuels publiés, encore réservables"
+          />
+          {!loading && editable.length === 0 ? <Empty>Aucun créneau ponctuel libre.</Empty> : null}
+          <div className="cx-sess">
+            {editable.map((item) => (
+              <SessionRow
+                key={item.id}
+                date={item.date}
+                title={`${item.startTime} – ${item.endTime}`}
+                lines={[dateParts(item.date).long, formatMoney(item.priceFcfa)]}
+                actions={
+                  <>
+                    <button type="button" className="cx-btn cx-btn-sm" onClick={() => startEdit(item)}>
+                      <Pencil aria-hidden />
+                      Modifier
+                    </button>
+                    <button
+                      type="button"
+                      className="cx-btn cx-btn-danger cx-btn-sm"
+                      onClick={() => void handleDelete(item)}
+                    >
+                      <Trash2 aria-hidden />
+                      Supprimer
+                    </button>
+                  </>
+                }
+              />
+            ))}
+          </div>
+        </section>
+      </div>
 
       {reserved.length > 0 ? (
-        <section className="admin-card" style={{ marginTop: '1.25rem' }}>
-          <h3>Créneaux réservés / bloqués ({reserved.length})</h3>
-          <ul className="upcoming-list">
+        <section className="cx-panel">
+          <PanelHead
+            icon={<CalendarX2 aria-hidden />}
+            title={`Créneaux réservés ou bloqués (${reserved.length})`}
+            sub="Non modifiables : une réservation y est rattachée"
+          />
+          <div className="cx-sess">
             {reserved.map((item) => (
-              <li key={item.id}>
-                <div className="upcoming-item-main">
-                  <strong>
-                    {formatDateLabel(item.date)} · {item.startTime} – {item.endTime}
-                  </strong>
-                  <span className="admin-muted">
-                    {item.status}
-                    {item.reservationStatus ? ` · ${item.reservationStatus}` : ''}
-                  </span>
-                </div>
-              </li>
+              <SessionRow
+                key={item.id}
+                date={item.date}
+                tone="grey"
+                title={`${item.startTime} – ${item.endTime}`}
+                lines={[dateParts(item.date).long]}
+                chip={slotStatusChip(item)}
+              />
             ))}
-          </ul>
+          </div>
         </section>
       ) : null}
-    </div>
+    </PageSection>
   )
 }

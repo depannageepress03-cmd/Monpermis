@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { CalendarCheck, Check, Hourglass, RefreshCw, X } from 'lucide-react'
 import {
   confirmReservation,
   fetchReservations,
@@ -6,18 +7,10 @@ import {
   type ReservationItem,
 } from '../api/portal'
 import { getMoniteurToken, isAuthError } from '../context/MoniteurAuthContext'
+import { PageSection } from '../components/model/PageSection'
+import { dateParts, Empty, formatMoney, Notice, PanelHead, SessionRow } from '../components/model/Kit'
 
-function formatDateLabel(date: string) {
-  try {
-    return new Date(`${date}T12:00:00`).toLocaleDateString('fr-FR', {
-      weekday: 'long',
-      day: 'numeric',
-      month: 'long',
-    })
-  } catch {
-    return date
-  }
-}
+type Tab = 'pending' | 'confirmed'
 
 export function ReservationsPage() {
   const [items, setItems] = useState<ReservationItem[]>([])
@@ -25,7 +18,7 @@ export function ReservationsPage() {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [busyId, setBusyId] = useState<string | null>(null)
-  const [tab, setTab] = useState<'pending' | 'confirmed'>('pending')
+  const [tab, setTab] = useState<Tab>('pending')
 
   const load = useCallback(async () => {
     const token = getMoniteurToken()
@@ -46,14 +39,8 @@ export function ReservationsPage() {
     void load()
   }, [load])
 
-  const pending = useMemo(
-    () => items.filter((item) => item.status === 'pending_moniteur'),
-    [items],
-  )
-  const confirmed = useMemo(
-    () => items.filter((item) => item.status === 'confirmed'),
-    [items],
-  )
+  const pending = useMemo(() => items.filter((item) => item.status === 'pending_moniteur'), [items])
+  const confirmed = useMemo(() => items.filter((item) => item.status === 'confirmed'), [items])
   const visible = tab === 'pending' ? pending : confirmed
 
   const handleConfirm = async (item: ReservationItem) => {
@@ -93,85 +80,104 @@ export function ReservationsPage() {
   }
 
   return (
-    <div className="admin-page">
-      <header className="admin-page-header">
-        <div>
-          <p className="admin-kicker">Réservations</p>
-          <h1>Mes rendez-vous</h1>
-          <p className="admin-muted">
-            Validez les demandes payées, puis suivez vos séances confirmées.
-          </p>
-        </div>
-      </header>
-
-      {error ? <p className="form-error">{error}</p> : null}
-      {success ? <p className="form-success">{success}</p> : null}
-
-      <div className="subscriptions-tabs" role="tablist" style={{ marginBottom: 16 }}>
-        <button
-          type="button"
-          className={tab === 'pending' ? 'active' : ''}
-          onClick={() => setTab('pending')}
-        >
-          À confirmer ({pending.length})
+    <PageSection
+      kicker="Réservations"
+      title="Mes rendez-vous"
+      subtitle="Validez les demandes payées, puis suivez vos séances confirmées."
+      actions={
+        <button type="button" className="cx-refresh" onClick={() => void load()} disabled={loading}>
+          <RefreshCw aria-hidden />
+          Actualiser
         </button>
-        <button
-          type="button"
-          className={tab === 'confirmed' ? 'active' : ''}
-          onClick={() => setTab('confirmed')}
-        >
-          Confirmées ({confirmed.length})
-        </button>
-      </div>
+      }
+    >
+      <Notice error={error} success={success} />
 
-      {loading ? <p className="admin-muted">Chargement…</p> : null}
-
-      {!loading && visible.length === 0 ? (
-        <div className="admin-card">
-          <p className="admin-muted">
-            {tab === 'pending' ? 'Aucune demande en attente.' : 'Aucune séance confirmée.'}
-          </p>
-        </div>
-      ) : null}
-
-      <ul className="upcoming-list">
-        {visible.map((item) => (
-          <li key={item.id} className="admin-card" style={{ listStyle: 'none', marginBottom: 12 }}>
-            <div className="upcoming-item-main">
-              <strong>{item.user?.fullName || 'Apprenant'}</strong>
-              <span>
-                {item.creneau
-                  ? `${formatDateLabel(item.creneau.date)} · ${item.creneau.startTime} – ${item.creneau.endTime}`
-                  : 'Créneau indisponible'}
-              </span>
-              <span className="admin-muted">
-                {item.user?.phone || item.user?.email || '—'} ·{' '}
-                {(item.priceFcfa || 0).toLocaleString('fr-FR')} FCFA
-              </span>
+      <section className="cx-panel">
+        <PanelHead
+          icon={tab === 'pending' ? <Hourglass aria-hidden /> : <CalendarCheck aria-hidden />}
+          title={tab === 'pending' ? 'Demandes à confirmer' : 'Séances confirmées'}
+          sub={
+            tab === 'pending'
+              ? 'L’apprenant a payé : acceptez ou refusez la séance.'
+              : 'Vos prochaines séances avec les apprenants.'
+          }
+          extra={
+            <div className="cx-seg" role="group" aria-label="Filtrer les réservations">
+              <button
+                type="button"
+                className={tab === 'pending' ? 'cx-on' : ''}
+                aria-pressed={tab === 'pending'}
+                onClick={() => setTab('pending')}
+              >
+                À confirmer ({pending.length})
+              </button>
+              <button
+                type="button"
+                className={tab === 'confirmed' ? 'cx-on' : ''}
+                aria-pressed={tab === 'confirmed'}
+                onClick={() => setTab('confirmed')}
+              >
+                Confirmées ({confirmed.length})
+              </button>
             </div>
-            {tab === 'pending' ? (
-              <div className="admin-actions-row">
-                <button
-                  type="button"
-                  className="btn-primary"
-                  disabled={busyId === item.id}
-                  onClick={() => void handleConfirm(item)}
-                >
-                  Accepter
-                </button>
-                <button
-                  type="button"
-                  className="btn-outline"
-                  disabled={busyId === item.id}
-                  onClick={() => void handleRefuse(item)}
-                >
-                  Refuser
-                </button>
-              </div>
-            ) : null}
-          </li>
-        ))}
-      </ul>
-    </div>
+          }
+        />
+
+        {loading ? <p className="cx-loading">Chargement…</p> : null}
+        {!loading && visible.length === 0 ? (
+          <Empty>{tab === 'pending' ? 'Aucune demande en attente.' : 'Aucune séance confirmée.'}</Empty>
+        ) : null}
+
+        <div className="cx-sess">
+          {visible.map((item) => (
+            <SessionRow
+              key={item.id}
+              date={item.creneau?.date}
+              tone={tab === 'pending' ? 'gold' : undefined}
+              title={item.user?.fullName || 'Apprenant'}
+              lines={[
+                item.creneau
+                  ? `${dateParts(item.creneau.date).long} · ${item.creneau.startTime} – ${item.creneau.endTime}`
+                  : 'Créneau indisponible',
+                item.user?.phone || item.user?.email || null,
+              ]}
+              amount={formatMoney(item.priceFcfa)}
+              chip={
+                tab === 'pending' ? (
+                  <span className="cx-chip-ok cx-chip-wait">En attente</span>
+                ) : (
+                  <span className="cx-chip-ok">Confirmée</span>
+                )
+              }
+              actions={
+                tab === 'pending' ? (
+                  <>
+                    <button
+                      type="button"
+                      className="cx-btn cx-btn-fill cx-btn-sm"
+                      disabled={busyId === item.id}
+                      onClick={() => void handleConfirm(item)}
+                    >
+                      <Check aria-hidden />
+                      Accepter
+                    </button>
+                    <button
+                      type="button"
+                      className="cx-btn cx-btn-danger cx-btn-sm"
+                      disabled={busyId === item.id}
+                      onClick={() => void handleRefuse(item)}
+                    >
+                      <X aria-hidden />
+                      Refuser
+                    </button>
+                  </>
+                ) : undefined
+              }
+            />
+          ))}
+        </div>
+      </section>
+    </PageSection>
   )
 }

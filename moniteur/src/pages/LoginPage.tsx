@@ -1,18 +1,51 @@
-import { FormEvent, useState } from 'react'
+import { FormEvent, useMemo, useRef, useState } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
-import { Eye, EyeOff, LockKeyhole, Mail, ShieldCheck } from 'lucide-react'
 import logoUrl from '../assets/logo.png'
 import { isAuthError, useMoniteurAuth } from '../context/MoniteurAuthContext'
 import { SITE_NAME } from '../theme/brand'
 
+const REMEMBER_KEY = 'monpermis-moniteur-remember-email'
+
+function readRemembered() {
+  try {
+    return localStorage.getItem(REMEMBER_KEY) || ''
+  } catch {
+    return ''
+  }
+}
+
+function EyeIcon({ open }: { open: boolean }) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinejoin="round"
+      />
+      <circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" strokeWidth="1.7" />
+      {open ? null : (
+        <path d="m4 20 16-16" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+      )}
+    </svg>
+  )
+}
+
+/** Page de connexion — même modèle que l'espace administrateur. */
 export function LoginPage() {
   const { moniteur, loading, signIn } = useMoniteurAuth()
   const navigate = useNavigate()
-  const [email, setEmail] = useState('')
+  const remembered = useMemo(readRemembered, [])
+  const [email, setEmail] = useState(remembered)
   const [password, setPassword] = useState('')
+  const [remember, setRemember] = useState(Boolean(remembered))
   const [showPassword, setShowPassword] = useState(false)
+  const [showHelp, setShowHelp] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [shake, setShake] = useState(false)
+  const formRef = useRef<HTMLFormElement>(null)
 
   if (!loading && moniteur) {
     return <Navigate to="/" replace />
@@ -22,86 +55,152 @@ export function LoginPage() {
     e.preventDefault()
     setError(null)
     setSubmitting(true)
+    const login = email.trim().toLowerCase()
+
     try {
-      const result = await signIn(email.trim().toLowerCase(), password)
+      const result = await signIn(login, password)
+      try {
+        if (remember) localStorage.setItem(REMEMBER_KEY, login)
+        else localStorage.removeItem(REMEMBER_KEY)
+      } catch {
+        /* stockage indisponible : la connexion n'en dépend pas */
+      }
       navigate(result.homePath || '/', { replace: true })
     } catch (err) {
-      setError(isAuthError(err) ? err.message : 'Connexion impossible. Vérifiez le réseau.')
+      setError(isAuthError(err) ? err.message : 'Connexion impossible. Vérifiez votre connexion réseau.')
+      // relance l'animation de secousse à chaque échec
+      setShake(false)
+      requestAnimationFrame(() => {
+        void formRef.current?.offsetWidth
+        setShake(true)
+      })
     } finally {
       setSubmitting(false)
     }
   }
 
   return (
-    <div className="login-page">
-      <div className="login-shell">
-        <aside className="login-aside" aria-label="Présentation">
-          <img src={logoUrl} alt="" className="login-aside-logo" />
-          <p className="login-aside-brand">{SITE_NAME}</p>
-          <p className="login-aside-text">
-            Publiez vos créneaux, confirmez les demandes des apprenants et suivez votre historique.
-          </p>
-        </aside>
+    <div className="cx-lg4">
+      <svg width="0" height="0" aria-hidden="true" style={{ position: 'absolute' }}>
+        <defs>
+          <clipPath id="lg4wave" clipPathUnits="objectBoundingBox">
+            <path d="M0 0H0.6C0.57 0.1 0.5 0.22 0.5 0.34C0.5 0.46 0.585 0.51 0.58 0.6C0.572 0.69 0.49 0.76 0.5 0.86C0.505 0.93 0.54 0.98 0.56 1H0Z" />
+          </clipPath>
+        </defs>
+      </svg>
+      <div className="cx-lg4-photo" aria-hidden="true" />
+      <h2 className="cx-lg4-slogan">
+        Chaque leçon compte,
+        <br />
+        chaque réussite aussi
+      </h2>
+      <header className="cx-lg4-top">
+        <span className="cx-lg4-logo">
+          <img src={logoUrl} alt="" />
+        </span>
+        <span className="cx-lg4-brand">MONPERMIS</span>
+      </header>
 
-        <div className="login-card">
-          <div className="login-card-top">
-            <img src={logoUrl} alt={SITE_NAME} className="login-logo" />
-            <p className="login-badge-text">
-              <ShieldCheck size={16} aria-hidden="true" />
-              <span>
-                Espace sécurisé · <strong>Moniteur</strong>
-              </span>
-            </p>
+      <main className="cx-lg4-main">
+        <h1 className="cx-lg4-title">
+          Bon
+          <br />
+          retour
+        </h1>
+        <p className="cx-lg4-sub">
+          Connectez-vous pour gérer vos disponibilités, vos réservations et vos revenus.
+        </p>
+        <form
+          ref={formRef}
+          className={`cx-lg4-form${shake ? ' cx-shake' : ''}`}
+          onSubmit={handleSubmit}
+          noValidate
+          autoComplete="on"
+        >
+          <div aria-live="assertive">
+            {error ? (
+              <p className="cx-login-error" role="alert">
+                <span className="cx-login-error-mark" aria-hidden="true">
+                  !
+                </span>
+                {error}
+              </p>
+            ) : null}
           </div>
 
-          <form onSubmit={handleSubmit} className="login-form" autoComplete="on">
-            <label htmlFor="email">Email</label>
-            <div className="login-phone-field">
-              <span className="login-phone-prefix" aria-hidden="true">
-                <Mail size={16} />
-              </span>
-              <input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="vous@exemple.com"
-                required
-                autoComplete="username"
-              />
-            </div>
+          <label className="cx-lg4-field">
+            <span>Adresse e-mail</span>
+            <input
+              name="email"
+              type="email"
+              inputMode="email"
+              placeholder="vous@exemple.com"
+              autoComplete="username"
+              autoFocus
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+          </label>
 
-            <label htmlFor="password">Mot de passe</label>
-            <div className="login-phone-field">
-              <span className="login-phone-prefix" aria-hidden="true">
-                <LockKeyhole size={16} />
-              </span>
+          <div className="cx-lg4-field">
+            <label htmlFor="moniteur-password">
+              <span>Mot de passe</span>
+            </label>
+            <div className="cx-lg4-pw">
               <input
-                id="password"
+                id="moniteur-password"
+                name="password"
                 type={showPassword ? 'text' : 'password'}
+                placeholder="Votre mot de passe"
+                autoComplete="current-password"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                required
-                autoComplete="current-password"
               />
               <button
                 type="button"
-                className="btn-icon"
+                className="cx-lg4-eye"
                 onClick={() => setShowPassword((v) => !v)}
-                aria-label={showPassword ? 'Masquer' : 'Afficher'}
+                aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+                aria-pressed={showPassword}
               >
-                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                <EyeIcon open={showPassword} />
               </button>
             </div>
+          </div>
 
-            {error ? <p className="form-error">{error}</p> : null}
-
-            <button type="submit" className="btn-primary" disabled={submitting}>
-              {submitting ? 'Connexion…' : 'Se connecter'}
+          <div className="cx-lg4-meta">
+            <label className="cx-lg4-remember">
+              <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} />
+              <span>Se souvenir de moi</span>
+            </label>
+            <button type="button" className="cx-lg4-forgot" onClick={() => setShowHelp((v) => !v)}>
+              Mot de passe oublié ?
             </button>
-          </form>
-        </div>
-      </div>
+          </div>
+          <p className="cx-lg4-help" hidden={!showHelp}>
+            Contactez l’administration de l’auto-école : elle peut vous attribuer un nouveau mot de passe.
+          </p>
+
+          <button type="submit" className={`cx-lg4-go${submitting ? ' cx-busy' : ''}`} disabled={submitting}>
+            <i className="cx-lg4-spin" aria-hidden="true" />
+            <span>{submitting ? 'Connexion…' : 'Connexion'}</span>
+          </button>
+          <p className="cx-lg4-or">Portail moniteur {SITE_NAME}</p>
+          <p className="cx-lg4-copy">© {new Date().getFullYear()} Monpermis.bj</p>
+        </form>
+      </main>
+
+      <svg className="cx-lg4-deco" viewBox="0 0 300 300" aria-hidden="true">
+        <circle cx="185" cy="185" r="150" fill="none" stroke="#ffc000" strokeWidth="1.2" />
+        <circle cx="198" cy="198" r="150" fill="none" stroke="#00b050" strokeWidth="1.2" />
+        <circle cx="212" cy="215" r="150" fill="#00a047" />
+        <circle cx="262" cy="262" r="78" fill="#ffc000" opacity=".92" />
+      </svg>
     </div>
   )
 }

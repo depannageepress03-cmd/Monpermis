@@ -1,16 +1,35 @@
 import { FormEvent, useCallback, useEffect, useState } from 'react'
-import { ImagePlus, Trash2 } from 'lucide-react'
-import {
-  fetchProfile,
-  updateProfile,
-  uploadMoniteurPhoto,
-  type MoniteurProfile,
-} from '../api/portal'
+import { Camera, Car, ImagePlus, KeyRound, Link2, NotebookPen, Save, Trash2, UserRound, Video } from 'lucide-react'
+import { fetchProfile, updateProfile, uploadMoniteurPhoto, type MoniteurProfile } from '../api/portal'
 import { getMoniteurToken, isAuthError, useMoniteurAuth } from '../context/MoniteurAuthContext'
 import { resolveMediaUrl } from '../utils/mediaUrl'
+import { PageSection } from '../components/model/PageSection'
+import { formatMoney, Notice, PanelHead } from '../components/model/Kit'
 
-function mediaSrc(url: string) {
-  return resolveMediaUrl(url)
+type UploadTarget = 'portrait' | 'vehicle' | 'gallery'
+
+function initialsOf(fullName?: string) {
+  const parts = (fullName || '').trim().split(/\s+/).filter(Boolean)
+  if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase()
+  return (parts[0] || 'MO').slice(0, 2).toUpperCase()
+}
+
+function UploadButton({
+  label,
+  busy,
+  onFile,
+}: {
+  label: string
+  busy: boolean
+  onFile: (file: File | null) => void
+}) {
+  return (
+    <label className="cx-btn cx-btn-sm cx-upload">
+      <ImagePlus aria-hidden />
+      {busy ? 'Import…' : label}
+      <input type="file" accept="image/*" onChange={(e) => onFile(e.target.files?.[0] ?? null)} disabled={busy} />
+    </label>
+  )
 }
 
 export function ProfilPage() {
@@ -32,7 +51,7 @@ export function ProfilPage() {
   const [newPassword, setNewPassword] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [uploading, setUploading] = useState<string | null>(null)
+  const [uploading, setUploading] = useState<UploadTarget | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
 
@@ -70,7 +89,7 @@ export function ProfilPage() {
     void load()
   }, [load])
 
-  const uploadTo = async (file: File | null, target: 'portrait' | 'vehicle' | 'gallery') => {
+  const uploadTo = async (file: File | null, target: UploadTarget) => {
     if (!file) return
     const token = getMoniteurToken()
     if (!token) return
@@ -133,252 +152,265 @@ export function ProfilPage() {
     }
   }
 
-  return (
-    <div className="admin-page">
-      <header className="admin-page-header">
-        <div>
-          <p className="admin-kicker">Compte</p>
-          <h1>Mon profil public</h1>
-          <p className="admin-muted">
-            Choisissez ce que les apprenants voient dans l’application : photo, véhicule, ville,
-            présentation.
-          </p>
-        </div>
-      </header>
+  const fullName = profile?.fullName || moniteur?.fullName || ''
+  const saveButton = (
+    <button type="submit" form="moniteur-profile" className="cx-btn cx-btn-fill" disabled={saving || Boolean(uploading) || !profile}>
+      <Save aria-hidden />
+      {saving ? 'Enregistrement…' : 'Enregistrer mon profil'}
+    </button>
+  )
 
-      {error ? <p className="form-error">{error}</p> : null}
-      {success ? <p className="form-success">{success}</p> : null}
-      {loading ? <p className="admin-muted">Chargement…</p> : null}
+  return (
+    <PageSection
+      kicker="Compte"
+      title="Mon profil public"
+      subtitle="Ce que les apprenants voient de vous dans l’application : photo, véhicule, ville et présentation."
+      actions={profile ? saveButton : undefined}
+    >
+      <Notice error={error} success={success} />
+      {loading ? <p className="cx-loading">Chargement…</p> : null}
 
       {!loading && profile ? (
-        <form className="admin-card" onSubmit={handleSubmit}>
-          <div className="reserv-create-grid">
-            <label>
-              Nom
-              <input value={profile.fullName || moniteur?.fullName || ''} disabled readOnly />
-            </label>
-            <label>
-              Identifiant de connexion
-              <input value={profile.email} disabled readOnly />
-            </label>
-            <label>
-              Téléphone
-              <input value={phone} onChange={(e) => setPhone(e.target.value)} />
-            </label>
-            <label>
-              Ville / zone
-              <input
-                value={city}
-                onChange={(e) => setCity(e.target.value)}
-                placeholder="ex. Cotonou, Calavi…"
-              />
-            </label>
-            <label>
-              Marque du véhicule
-              <input
-                value={vehicleBrand}
-                onChange={(e) => setVehicleBrand(e.target.value)}
-                placeholder="ex. Toyota Corolla"
-              />
-            </label>
-            <label>
-              Type de véhicule
-              <input
-                value={vehicleType}
-                onChange={(e) => setVehicleType(e.target.value)}
-                placeholder="voiture, moto…"
-              />
-            </label>
-            <label>
-              Spécialités (séparées par des virgules)
-              <input
-                value={specialties}
-                onChange={(e) => setSpecialties(e.target.value)}
-                placeholder="conduite ville, parking…"
-              />
-            </label>
-            <label>
-              Tarif horaire (FCFA)
-              <input
-                type="number"
-                min={0}
-                step={500}
-                value={defaultPriceFcfa}
-                onChange={(e) => setDefaultPriceFcfa(e.target.value)}
-              />
-            </label>
-          </div>
-
-          <label style={{ display: 'block', marginTop: 12 }}>
-            Présentation
-            <textarea
-              value={bio}
-              onChange={(e) => setBio(e.target.value)}
-              rows={4}
-              maxLength={2000}
-              style={{ width: '100%' }}
-              placeholder="Présentez-vous aux apprenants…"
-            />
-          </label>
-
-          <h3 style={{ marginTop: 24 }}>Photos</h3>
-          <div className="admin-actions-row" style={{ flexWrap: 'wrap' }}>
-            <label className="btn-outline btn-file">
-              <ImagePlus size={15} />
-              {uploading === 'portrait' ? 'Import…' : 'Photo portrait'}
-              <input
-                type="file"
-                accept="image/*"
-                hidden
-                onChange={(e) => void uploadTo(e.target.files?.[0] ?? null, 'portrait')}
-              />
-            </label>
-            <label className="btn-outline btn-file">
-              <ImagePlus size={15} />
-              {uploading === 'vehicle' ? 'Import…' : 'Photo véhicule'}
-              <input
-                type="file"
-                accept="image/*"
-                hidden
-                onChange={(e) => void uploadTo(e.target.files?.[0] ?? null, 'vehicle')}
-              />
-            </label>
-            <label className="btn-outline btn-file">
-              <ImagePlus size={15} />
-              {uploading === 'gallery' ? 'Import…' : 'Ajouter à la galerie'}
-              <input
-                type="file"
-                accept="image/*"
-                hidden
-                onChange={(e) => void uploadTo(e.target.files?.[0] ?? null, 'gallery')}
-              />
-            </label>
-          </div>
-
-          <div className="reserv-create-previews" style={{ marginTop: 12 }}>
+        <form id="moniteur-profile" className="cx-split" onSubmit={handleSubmit}>
+          <aside className="cx-panel cx-sticky cx-prof-card">
             {photoUrl ? (
-              <div className="moniteur-vehicle-preview">
-                <img src={mediaSrc(photoUrl)} alt="Portrait" />
-                <div>
-                  <p className="admin-muted">Portrait</p>
-                  <button type="button" className="btn-text-danger" onClick={() => setPhotoUrl('')}>
-                    <Trash2 size={14} />
-                    Retirer
-                  </button>
-                </div>
+              <img className="cx-prof-photo" src={resolveMediaUrl(photoUrl)} alt={`Portrait de ${fullName}`} />
+            ) : (
+              <span className="cx-prof-initials" aria-hidden="true">
+                {initialsOf(fullName)}
+              </span>
+            )}
+            <h2>{fullName || 'Moniteur'}</h2>
+            <p>{city || 'Ville non renseignée'}</p>
+            <UploadButton
+              label={photoUrl ? 'Changer la photo' : 'Ajouter une photo'}
+              busy={uploading === 'portrait'}
+              onFile={(file) => void uploadTo(file, 'portrait')}
+            />
+            <div className="cx-prof-facts">
+              <div>
+                <span>Identifiant</span>
+                <b>{profile.email}</b>
               </div>
-            ) : null}
-            {vehiclePhotoUrl ? (
-              <div className="moniteur-vehicle-preview">
-                <img src={mediaSrc(vehiclePhotoUrl)} alt="Véhicule" />
-                <div>
-                  <p className="admin-muted">Véhicule</p>
-                  <button
-                    type="button"
-                    className="btn-text-danger"
-                    onClick={() => setVehiclePhotoUrl('')}
-                  >
-                    <Trash2 size={14} />
-                    Retirer
-                  </button>
-                </div>
+              <div>
+                <span>Tarif horaire</span>
+                <b>{formatMoney(Number(defaultPriceFcfa) || 0)}</b>
               </div>
-            ) : null}
-          </div>
+              <div>
+                <span>Véhicule</span>
+                <b>{vehicleBrand || vehicleType || '—'}</b>
+              </div>
+              <div>
+                <span>Médias</span>
+                <b>
+                  {photos.length} photo{photos.length > 1 ? 's' : ''} · {videos.length} vidéo{videos.length > 1 ? 's' : ''}
+                </b>
+              </div>
+            </div>
+          </aside>
 
-          {photos.length > 0 ? (
-            <ul className="upcoming-list" style={{ marginTop: 12 }}>
-              {photos.map((url) => (
-                <li key={url}>
-                  <div className="upcoming-item-main">
-                    <img
-                      src={mediaSrc(url)}
-                      alt=""
-                      style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: 8 }}
+          <div className="cx-view">
+            <section className="cx-panel">
+              <PanelHead icon={<UserRound aria-hidden />} title="Informations" sub="Coordonnées et conditions de vos séances" />
+              <div className="cx-form-grid">
+                <label>
+                  Nom
+                  <input value={fullName} disabled readOnly />
+                </label>
+                <label>
+                  Identifiant de connexion
+                  <input value={profile.email} disabled readOnly />
+                </label>
+                <label>
+                  Téléphone
+                  <input value={phone} onChange={(e) => setPhone(e.target.value)} />
+                </label>
+                <label>
+                  Ville / zone
+                  <input value={city} onChange={(e) => setCity(e.target.value)} placeholder="ex. Cotonou, Calavi…" />
+                </label>
+                <label>
+                  Marque du véhicule
+                  <input
+                    value={vehicleBrand}
+                    onChange={(e) => setVehicleBrand(e.target.value)}
+                    placeholder="ex. Toyota Corolla"
+                  />
+                </label>
+                <label>
+                  Type de véhicule
+                  <input value={vehicleType} onChange={(e) => setVehicleType(e.target.value)} placeholder="voiture, moto…" />
+                </label>
+                <label>
+                  Spécialités (séparées par des virgules)
+                  <input
+                    value={specialties}
+                    onChange={(e) => setSpecialties(e.target.value)}
+                    placeholder="conduite en ville, créneau…"
+                  />
+                </label>
+                <label>
+                  Tarif horaire (FCFA)
+                  <input
+                    type="number"
+                    min={0}
+                    step={500}
+                    value={defaultPriceFcfa}
+                    onChange={(e) => setDefaultPriceFcfa(e.target.value)}
+                  />
+                </label>
+              </div>
+            </section>
+
+            <section className="cx-panel">
+              <PanelHead icon={<NotebookPen aria-hidden />} title="Présentation" sub="Quelques lignes pour rassurer les apprenants" />
+              <textarea
+                value={bio}
+                onChange={(e) => setBio(e.target.value)}
+                rows={5}
+                maxLength={2000}
+                aria-label="Présentation"
+                placeholder="Présentez-vous aux apprenants : expérience, méthode, zones desservies…"
+              />
+            </section>
+
+            <section className="cx-panel">
+              <PanelHead
+                icon={<Camera aria-hidden />}
+                title="Photos"
+                sub="Portrait, véhicule et galerie (12 photos maximum)"
+                extra={
+                  <div className="cx-page-actions">
+                    <UploadButton
+                      label="Photo du véhicule"
+                      busy={uploading === 'vehicle'}
+                      onFile={(file) => void uploadTo(file, 'vehicle')}
+                    />
+                    <UploadButton
+                      label="Ajouter à la galerie"
+                      busy={uploading === 'gallery'}
+                      onFile={(file) => void uploadTo(file, 'gallery')}
                     />
                   </div>
-                  <button
-                    type="button"
-                    className="btn-text-danger"
-                    onClick={() => setPhotos((prev) => prev.filter((item) => item !== url))}
-                  >
-                    <Trash2 size={14} />
-                    Retirer
-                  </button>
-                </li>
-              ))}
-            </ul>
-          ) : null}
-
-          <h3 style={{ marginTop: 24 }}>Vidéos (YouTube / Vimeo)</h3>
-          <div className="reserv-create-grid">
-            <input
-              value={newVideoUrl}
-              onChange={(e) => setNewVideoUrl(e.target.value)}
-              placeholder="https://youtube.com/…"
-            />
-            <button
-              type="button"
-              className="btn-outline"
-              onClick={() => {
-                const url = newVideoUrl.trim()
-                if (!url) return
-                setVideos((prev) => [...prev, url].slice(0, 6))
-                setNewVideoUrl('')
-              }}
-            >
-              Ajouter
-            </button>
-          </div>
-          {videos.length > 0 ? (
-            <ul className="upcoming-list" style={{ marginTop: 8 }}>
-              {videos.map((url) => (
-                <li key={url}>
-                  <div className="upcoming-item-main">
-                    <span>{url}</span>
-                  </div>
-                  <button
-                    type="button"
-                    className="btn-text-danger"
-                    onClick={() => setVideos((prev) => prev.filter((item) => item !== url))}
-                  >
-                    Retirer
-                  </button>
-                </li>
-              ))}
-            </ul>
-          ) : null}
-
-          <h3 style={{ marginTop: 24 }}>Changer le mot de passe</h3>
-          <div className="reserv-create-grid">
-            <label>
-              Mot de passe actuel
-              <input
-                type="password"
-                value={currentPassword}
-                onChange={(e) => setCurrentPassword(e.target.value)}
-                autoComplete="current-password"
+                }
               />
-            </label>
-            <label>
-              Nouveau mot de passe
-              <input
-                type="password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                autoComplete="new-password"
-                minLength={8}
-              />
-            </label>
-          </div>
+              {!photoUrl && !vehiclePhotoUrl && photos.length === 0 ? (
+                <p className="cx-empty">Aucune photo pour le moment.</p>
+              ) : (
+                <div className="cx-media-grid">
+                  {photoUrl ? (
+                    <figure className="cx-media">
+                      <img src={resolveMediaUrl(photoUrl)} alt="Portrait" />
+                      <figcaption>Portrait</figcaption>
+                      <button type="button" aria-label="Retirer le portrait" onClick={() => setPhotoUrl('')}>
+                        <Trash2 aria-hidden />
+                      </button>
+                    </figure>
+                  ) : null}
+                  {vehiclePhotoUrl ? (
+                    <figure className="cx-media">
+                      <img src={resolveMediaUrl(vehiclePhotoUrl)} alt="Véhicule" />
+                      <figcaption>
+                        <Car aria-hidden style={{ width: '.8rem', height: '.8rem', verticalAlign: '-.1rem' }} /> Véhicule
+                      </figcaption>
+                      <button type="button" aria-label="Retirer la photo du véhicule" onClick={() => setVehiclePhotoUrl('')}>
+                        <Trash2 aria-hidden />
+                      </button>
+                    </figure>
+                  ) : null}
+                  {photos.map((url, index) => (
+                    <figure key={url} className="cx-media">
+                      <img src={resolveMediaUrl(url)} alt={`Galerie ${index + 1}`} />
+                      <button
+                        type="button"
+                        aria-label={`Retirer la photo ${index + 1}`}
+                        onClick={() => setPhotos((prev) => prev.filter((item) => item !== url))}
+                      >
+                        <Trash2 aria-hidden />
+                      </button>
+                    </figure>
+                  ))}
+                </div>
+              )}
+            </section>
 
-          <div className="admin-actions-row" style={{ marginTop: 16 }}>
-            <button type="submit" className="btn-primary" disabled={saving || Boolean(uploading)}>
-              {saving ? 'Enregistrement…' : 'Enregistrer mon profil'}
-            </button>
+            <section className="cx-panel">
+              <PanelHead icon={<Video aria-hidden />} title="Vidéos" sub="Liens YouTube ou Vimeo (6 maximum)" />
+              <div className="cx-field-row">
+                <input
+                  className="cx-input"
+                  value={newVideoUrl}
+                  onChange={(e) => setNewVideoUrl(e.target.value)}
+                  placeholder="https://youtube.com/…"
+                  aria-label="Lien de la vidéo"
+                />
+                <button
+                  type="button"
+                  className="cx-btn"
+                  onClick={() => {
+                    const url = newVideoUrl.trim()
+                    if (!url) return
+                    setVideos((prev) => [...prev, url].slice(0, 6))
+                    setNewVideoUrl('')
+                  }}
+                >
+                  <Link2 aria-hidden />
+                  Ajouter
+                </button>
+              </div>
+              {videos.length > 0 ? (
+                <ul className="cx-video-list">
+                  {videos.map((url) => (
+                    <li key={url}>
+                      <Video aria-hidden style={{ width: '1rem', height: '1rem', color: '#4d6a82', flex: 'none' }} />
+                      <a href={url} target="_blank" rel="noreferrer">
+                        {url}
+                      </a>
+                      <button
+                        type="button"
+                        className="cx-btn cx-btn-danger cx-btn-sm"
+                        onClick={() => setVideos((prev) => prev.filter((item) => item !== url))}
+                      >
+                        Retirer
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </section>
+
+            <section className="cx-panel">
+              <PanelHead
+                icon={<KeyRound aria-hidden />}
+                title="Changer le mot de passe"
+                sub="Laissez vide pour conserver le mot de passe actuel"
+              />
+              <div className="cx-form-grid">
+                <label>
+                  Mot de passe actuel
+                  <input
+                    type="password"
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    autoComplete="current-password"
+                  />
+                </label>
+                <label>
+                  Nouveau mot de passe
+                  <input
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    autoComplete="new-password"
+                    minLength={8}
+                  />
+                </label>
+              </div>
+              <div className="cx-form-actions">{saveButton}</div>
+            </section>
           </div>
         </form>
       ) : null}
-    </div>
+    </PageSection>
   )
 }
