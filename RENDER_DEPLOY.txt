@@ -3,9 +3,12 @@
 #
 # Architecture de prod :
 #   Mobile  → Apprenants (dossier mobile/) — PAS sur Render, APK GitHub Releases
-#   API     → server/  + SPA moniteur dans web-dist  → https://monpermis-api.onrender.com
-#   Admin   → administration/                        → https://monpermis-admin.onrender.com
-#   Web     → moniteur/ (miroir optionnel)           → https://monpermis-web.onrender.com
+#   API      → server/ (API seule)       → https://monpermis-api.onrender.com
+#   Admin    → administration/ (statique) → https://monpermis-admin.onrender.com
+#   Moniteur → moniteur/ (statique)       → https://monpermis-moniteur.onrender.com
+#   L'API ne sert plus le portail moniteur : /connexion, /profil… y redirigent vers
+#   MONITEUR_CLIENT_URL, et /abonnement + /conduite/reservation affichent la page
+#   de retour de paiement FedaPay.
 #
 # Le local est déjà poussé sur origin/main. Un déploiement Render = rebuild
 # depuis ce commit, pas un upload de fichiers depuis le PC.
@@ -18,13 +21,21 @@
 4. Render lit `render.yaml` et propose 3 services :
    - monpermis-api (Node, plan free)
    - monpermis-admin (static)
-   - monpermis-web (static)
+   - monpermis-moniteur (static)
 5. Remplir UNIQUEMENT les secrets `sync: false` (voir section C).
    Ne pas toucher aux URLs déjà écrites dans le YAML.
 6. Apply. Attendre le build API (souvent 5–10 min, cold start free ensuite ~50 s).
 
 Si API et Admin existent déjà : Apply met à jour la config.
-Si `monpermis-web` est en 404 : le Blueprint le crée.
+Si `monpermis-moniteur` est en 404 : le Blueprint le crée.
+
+ORDRE DE MISE EN PLACE (migration depuis l'ancien portail embarqué dans l'API) :
+  1. Créer d'abord le site statique `monpermis-moniteur` (Blueprint, ou New → Static Site :
+     root `moniteur`, build `npm install --include=dev && npm run build`, publish `dist`,
+     env `VITE_API_URL=https://monpermis-api.onrender.com`, règle Rewrite `/*` → `/index.html`).
+  2. Vérifier https://monpermis-moniteur.onrender.com/connexion (connexion d'un moniteur).
+  3. Seulement ensuite redéployer `monpermis-api` : son build n'embarque plus le portail
+     (sinon le portail serait indisponible entre les deux).
 
 ## B. Redéployer le code actuel (déjà sur GitHub)
 
@@ -53,8 +64,8 @@ Déjà figés par render.yaml :
   NODE_VERSION=22
   CLIENT_URL=https://monpermis-api.onrender.com
   ADMIN_CLIENT_URL=https://monpermis-admin.onrender.com
-  MONITEUR_CLIENT_URL=https://monpermis-api.onrender.com
-  ALLOWED_ORIGINS=…api…, …admin…, …web…
+  MONITEUR_CLIENT_URL=https://monpermis-moniteur.onrender.com
+  ALLOWED_ORIGINS=…api…, …admin…, …moniteur…
   API_PUBLIC_URL=https://monpermis-api.onrender.com
   FEDAPAY_CALLBACK_URL=https://monpermis-api.onrender.com/abonnement
   FEDAPAY_ENVIRONMENT=live
@@ -75,15 +86,15 @@ Admin + Web static — déjà figé :
   https://monpermis-admin.onrender.com
     → login admin (téléphone + mot de passe)
 
-  https://monpermis-web.onrender.com
-    → même portail moniteur (si le static site a été créé)
+  https://monpermis-moniteur.onrender.com
+    → portail moniteur (e-mail + mot de passe)
 
 Webhook FedaPay :
   https://monpermis-api.onrender.com/api/webhooks/fedapay
 
 Google OAuth (client Web) — origines JS autorisées :
   https://monpermis-api.onrender.com
-  https://monpermis-web.onrender.com
+  https://monpermis-moniteur.onrender.com
   http://localhost:5175
 
 ## E. Ce qui n’est PAS Render

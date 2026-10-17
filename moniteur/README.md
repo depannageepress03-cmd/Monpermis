@@ -2,11 +2,11 @@
 
 ## En ligne
 
-**URL principale :** https://monpermis-api.onrender.com
+**URL :** https://monpermis-moniteur.onrender.com
 
-Le build Render de l’API embarque le portail moniteur dans `web-dist`.
-
-**URL static :** https://monpermis-web.onrender.com (même app `moniteur/`).
+Site statique Render indépendant de l’API (service `monpermis-moniteur` du `render.yaml`).
+Il appelle l’API en CORS : `VITE_API_URL=https://monpermis-api.onrender.com` au build.
+Les anciens liens `https://monpermis-api.onrender.com/connexion` redirigent vers ce site.
 
 ## Navigation
 

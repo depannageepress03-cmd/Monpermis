@@ -241,7 +241,7 @@ Fichiers médias : stockés sur le serveur (`server/uploads/`) et servis via `/u
 |--------|----------------------------|
 | API | `https://monpermis-api.onrender.com` |
 | Admin | `https://monpermis-admin.onrender.com` |
-| Moniteur | `https://monpermis-api.onrender.com` (SPA embarquée) · optionnel `https://monpermis-moniteur.onrender.com` |
+| Moniteur | `https://monpermis-moniteur.onrender.com` (site statique séparé de l'API) |
 | Web apprenant | service Render `monpermis-web` (ou domaine dédié) |
 | Mobile | APK GitHub Releases (`vX.Y.Z-preview`) |
 

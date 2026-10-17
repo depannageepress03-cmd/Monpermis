@@ -380,6 +380,39 @@ if (serveWebApp) {
   })
 } else {
   logger.info('SPA moniteur absente (web-dist) — API seule')
+
+  // Le portail moniteur est un site statique séparé (MONITEUR_CLIENT_URL). On garde ici :
+  // 1) les pages de retour de paiement FedaPay, qui pointent vers l'origine de l'API ;
+  // 2) la redirection des anciens liens du portail (favoris, e-mails) vers le nouveau site.
+  const moniteurSite = String(process.env.MONITEUR_CLIENT_URL || '')
+    .trim()
+    .replace(/^["']|["']$/g, '')
+    .replace(/\/$/, '')
+  const MONITEUR_PATHS = ['/', '/connexion', '/disponibilites', '/reservations', '/historique', '/revenus', '/profil']
+  const mobileScheme = String(process.env.MOBILE_SCHEME || 'monpermis').replace(/[^a-z0-9+.-]/gi, '') || 'monpermis'
+
+  app.get(['/abonnement', '/abonnement/*splat', '/conduite/reservation', '/conduite/reservation/*splat'], (_req, res) => {
+    res.setHeader('Cache-Control', 'no-store')
+    res.type('html').send(`<!doctype html>
+<html lang="fr"><head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta name="robots" content="noindex"/>
+<title>Paiement — Monpermis.bj</title>
+<style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#001135;color:#fff;font-family:system-ui,sans-serif;text-align:center;padding:1.5rem}main{max-width:26rem}h1{font-size:1.5rem;margin:0 0 .6rem}p{margin:0 0 1.4rem;opacity:.85;line-height:1.5}a{display:inline-block;padding:.8rem 1.4rem;border-radius:12px;background:#00b050;color:#fff;font-weight:700;text-decoration:none}</style>
+</head><body><main>
+<h1>Retour de paiement</h1>
+<p>Votre paiement est en cours de confirmation. Revenez dans l’application Monpermis : votre accès s’y met à jour automatiquement.</p>
+<a href="${mobileScheme}://">Ouvrir l’application</a>
+</main></body></html>`)
+  })
+
+  app.get(MONITEUR_PATHS, (req, res, next) => {
+    if (!moniteurSite || !/^https?:\/\//i.test(moniteurSite)) return next()
+    const here = `${req.protocol}://${req.get('host')}`
+    if (moniteurSite === here) return next() // évite une boucle si l'URL configurée est l'API elle-même
+    return res.redirect(302, `${moniteurSite}${req.path === '/' ? '/connexion' : req.path}`)
+  })
 }
 
 async function connectMongo() {

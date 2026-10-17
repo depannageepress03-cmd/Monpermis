@@ -11,16 +11,14 @@ services:
     plan: free
     branch: main
     autoDeployTrigger: commit
-    # Build l’API + le portail moniteur (SPA servie à la racine de monpermis-api.onrender.com)
-    # --include=dev : NODE_ENV=production omettrait sinon typescript/vite
-    # VITE_API_URL vide : mêmes origine que l’API → fetch('/api/...')
-    buildCommand: npm install && cd .. && npm install --prefix moniteur --include=dev && VITE_API_URL= npm run build --prefix moniteur && rm -rf server/web-dist && mkdir -p server/web-dist && cp -r moniteur/dist/. server/web-dist/
+    # API seule : le portail moniteur est un site statique séparé (monpermis-moniteur, plus bas).
+    # Les anciens liens du portail (/connexion, /profil…) redirigent vers MONITEUR_CLIENT_URL.
+    buildCommand: npm install
     startCommand: npm start
     healthCheckPath: /api/health
     buildFilter:
       paths:
         - server/**
-        - moniteur/**
         - render.yaml
     envVars:
       - key: NODE_VERSION
@@ -36,9 +34,9 @@ services:
       - key: ADMIN_CLIENT_URL
         value: https://monpermis-admin.onrender.com
       - key: MONITEUR_CLIENT_URL
-        value: https://monpermis-api.onrender.com
+        value: https://monpermis-moniteur.onrender.com
       - key: ALLOWED_ORIGINS
-        value: https://monpermis-api.onrender.com,https://monpermis-admin.onrender.com,https://monpermis-web.onrender.com
+        value: https://monpermis-api.onrender.com,https://monpermis-admin.onrender.com,https://monpermis-moniteur.onrender.com
       - key: API_PUBLIC_URL
         value: https://monpermis-api.onrender.com
       - key: GOOGLE_CLIENT_ID
@@ -116,9 +114,9 @@ services:
         source: /*
         destination: /index.html
 
-  # Miroir optionnel du portail moniteur (même app que la racine de l’API).
+  # Portail moniteur — site statique indépendant de l'API (appelle l'API en CORS).
   - type: web
-    name: monpermis-web
+    name: monpermis-moniteur
     runtime: static
     rootDir: moniteur
     branch: main
