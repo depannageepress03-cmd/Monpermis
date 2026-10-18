@@ -54,7 +54,9 @@ import { migrateShiftedHardcodedIds } from './services/migrateShiftedHardcodedId
 import {
   apiResponseHeaders,
   assertProductionSecrets,
+  attackTrap,
   permissionsPolicy,
+  rejectMongoOperators,
   sanitizeMongoInput,
 } from './middleware/security.js'
 
@@ -112,6 +114,9 @@ function isOriginAllowed(origin) {
 // Render / reverse-proxy : sans ça, toutes les requêtes partagent la même IP → 429 globaux
 app.set('trust proxy', 1)
 
+// Piège à pirates : scanners, traversée de répertoire, injections évidentes → insulte + bannissement.
+app.use(attackTrap(logger))
+
 // CORS manuel — plus fiable qu’avec Express 5 + package cors sur OPTIONS
 app.use((req, res, next) => {
   const origin = req.headers.origin
@@ -157,6 +162,7 @@ app.use(
   fedapayWebhooksRoutes,
 )
 app.use(express.json({ limit: '1mb' }))
+app.use(rejectMongoOperators(logger))
 app.use(sanitizeMongoInput)
 app.use(permissionsPolicy)
 // Disque local d’abord, puis MongoDB (Render n’a pas de disque persistant).

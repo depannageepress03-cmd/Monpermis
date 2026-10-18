@@ -76,3 +76,141 @@ export function safeEqual(a, b) {
   const hb = crypto.createHash('sha256').update(String(b)).digest()
   return crypto.timingSafeEqual(ha, hb)
 }
+
+/* ------------------------------------------------------------------ */
+/* Piège à pirates : signatures d'attaque évidentes → insulte + délai + bannissement   */
+/* ------------------------------------------------------------------ */
+
+const TAUNTS = [
+  'Pauvre pirate de pacotille, retourne jouer avec ton scanner.',
+  'Tu cherches quoi, bouffon ? Il n\'y a rien pour toi ici.',
+  'Même mon grand-père pirate mieux que toi.',
+  'Bravo, tu viens d\'être noté. Ton IP aussi.',
+  'Piratin du dimanche : tes scripts d\'occasion ne passeront pas.',
+  'Tu as copié ça sur un forum ? Ça se voit, nul.',
+  'Tout est journalisé, génie. Va réviser tes cours de hacking.',
+  'Ce système n\'est pas pour les amateurs dans ton genre.',
+]
+
+const SCANNER_PATHS =
+  /(^|\/)(\.env|\.git|\.svn|\.aws|\.ssh|wp-admin|wp-login|wp-content|xmlrpc\.php|phpmyadmin|pma|adminer|admin\.php|config\.php|shell\.php|cgi-bin|actuator|vendor\/phpunit|server-status|\.DS_Store|etc\/passwd|boot\.ini)(\/|$|\?|\.)/i
+const TRAVERSAL = /(\.\.\/|\.\.\\|%2e%2e(%2f|%5c)|%252e%252e)/i
+const SQLI_QUERY = /(union(\s|\+|%20)+select|(\s|\+|%20)or(\s|\+|%20)+1(=|%3d)1|sleep\s*\(|benchmark\s*\(|information_schema|<script|%3cscript|javascript:)/i
+const SCANNER_AGENTS = /(sqlmap|nikto|nmap|masscan|dirbuster|gobuster|wpscan|acunetix|nessus|hydra|havij|zgrab|nuclei)/i
+
+const STRIKE_WINDOW_MS = 10 * 60 * 1000
+const BAN_MS = 15 * 60 * 1000
+const MAX_STRIKES = 8
+const MAX_TRACKED_IPS = 5000
+const strikes = new Map()
+const bans = new Map()
+
+function pickTaunt() {
+  return TAUNTS[Math.floor(Math.random() * TAUNTS.length)]
+}
+
+function prune(map, now) {
+  if (map.size < MAX_TRACKED_IPS) return
+  for (const [key, value] of map) {
+    if ((value.until ?? value.first + STRIKE_WINDOW_MS) < now) map.delete(key)
+  }
+  if (map.size >= MAX_TRACKED_IPS) map.clear() // plafond mémoire : mieux vaut oublier que gonfler
+}
+
+/** Signature d'attaque claire dans la requête (jamais envoyée par un vrai client). */
+export function detectAttack(req) {
+  const url = String(req.originalUrl || req.url || '')
+  const agent = String(req.headers['user-agent'] || '')
+  if (SCANNER_PATHS.test(url.split('?')[0])) return 'chemin de scanner'
+  if (TRAVERSAL.test(url)) return 'traversée de répertoire'
+  const query = url.includes('?') ? url.slice(url.indexOf('?')) : ''
+  if (query && SQLI_QUERY.test(decodeURIComponent_safe(query))) return 'injection dans l\'URL'
+  if (SCANNER_AGENTS.test(agent)) return 'outil de piratage'
+  return null
+}
+
+function decodeURIComponent_safe(value) {
+  try {
+    return decodeURIComponent(value)
+  } catch {
+    return value
+  }
+}
+
+export function hasMongoOperators(value, depth = 0) {
+  if (depth > 12 || value === null || typeof value !== 'object') return false
+  if (Array.isArray(value)) return value.some((item) => hasMongoOperators(item, depth + 1))
+  return Object.entries(value).some(
+    ([key, inner]) => key.startsWith('$') || hasMongoOperators(inner, depth + 1),
+  )
+}
+
+/** Enregistre la tentative ; renvoie true si l'IP vient d'être (ou est déjà) bannie. */
+export function registerAttack(ip, reason, req, logger) {
+  const now = Date.now()
+  prune(strikes, now)
+  const entry = strikes.get(ip)
+  const current = entry && now - entry.first < STRIKE_WINDOW_MS ? entry : { first: now, count: 0 }
+  current.count += 1
+  strikes.set(ip, current)
+  logger?.warn?.('Tentative de piratage détectée', {
+    ip,
+    reason,
+    method: req.method,
+    path: String(req.originalUrl || '').slice(0, 200),
+    agent: String(req.headers['user-agent'] || '').slice(0, 120),
+    strikes: current.count,
+  })
+  if (current.count >= MAX_STRIKES) {
+    prune(bans, now)
+    bans.set(ip, { until: now + BAN_MS })
+    return true
+  }
+  return false
+}
+
+function taunt(res, status) {
+  const message = pickTaunt()
+  res.setHeader('X-Message-Au-Pirate', encodeURIComponent(message))
+  res.setHeader('X-Powered-By', 'Ton-Echec')
+  res.setHeader('Cache-Control', 'no-store')
+  return res.status(status).json({ success: false, error: message })
+}
+
+/**
+ * À monter tout en haut. Ne touche jamais une requête légitime : seules des signatures
+ * d'attaque évidentes (chemins de scanners, traversée, injection d'URL, outils connus,
+ * opérateurs NoSQL dans le corps — voir `rejectMongoOperators`) déclenchent la réponse.
+ */
+export function attackTrap(logger) {
+  return (req, res, next) => {
+    const now = Date.now()
+    const ban = bans.get(req.ip)
+    if (ban) {
+      if (ban.until > now) return taunt(res, 403)
+      bans.delete(req.ip)
+    }
+    const reason = detectAttack(req)
+    if (!reason) return next()
+    registerAttack(req.ip, reason, req, logger)
+    // Délai volontaire : fait perdre du temps aux scanners automatiques.
+    setTimeout(() => taunt(res, 404), 1500)
+  }
+}
+
+/** Corps contenant des opérateurs `$…` : refus + insulte (un vrai client n'en envoie jamais). */
+export function rejectMongoOperators(logger) {
+  return (req, res, next) => {
+    if (req.body && typeof req.body === 'object' && !Buffer.isBuffer(req.body) && hasMongoOperators(req.body)) {
+      registerAttack(req.ip, 'injection NoSQL', req, logger)
+      return taunt(res, 400)
+    }
+    return next()
+  }
+}
+
+/** Réinitialisation pour les tests. */
+export function _resetAttackState() {
+  strikes.clear()
+  bans.clear()
+}
