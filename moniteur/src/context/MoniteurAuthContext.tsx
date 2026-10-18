@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from 'react'
 import { ApiError } from '../api/client'
+import { useIdleLogout } from '../hooks/useIdleLogout'
 import { fetchMoniteurMe, loginMoniteur, type MoniteurUser } from '../api/auth'
 
 const TOKEN_KEY = 'monpermis_moniteur_token'
@@ -29,6 +30,9 @@ export function MoniteurAuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem(TOKEN_KEY)
     setMoniteur(null)
   }, [])
+
+  // Session moniteur : fermée après 30 min sans activité.
+  useIdleLogout(Boolean(moniteur), signOut)
 
   useEffect(() => {
     const token = localStorage.getItem(TOKEN_KEY)

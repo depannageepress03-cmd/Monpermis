@@ -17,6 +17,8 @@ const adminSchema = new mongoose.Schema(
     },
     isActive: { type: Boolean, default: true },
     lastLoginAt: { type: Date },
+    /** Les jetons émis avant cette date sont refusés (changement de mot de passe). */
+    passwordChangedAt: { type: Date },
     failedLoginAttempts: { type: Number, default: 0 },
     lockUntil: { type: Date },
   },
@@ -29,6 +31,8 @@ const LOCK_DURATION_MS = 15 * 60 * 1000
 adminSchema.pre('save', async function hashPassword(next) {
   if (!this.isModified('password')) return next()
   this.password = await bcrypt.hash(this.password, 12)
+  // Création : pas de session à invalider ; changement : coupe les anciens jetons.
+  if (!this.isNew) this.passwordChangedAt = new Date()
   next()
 })
 

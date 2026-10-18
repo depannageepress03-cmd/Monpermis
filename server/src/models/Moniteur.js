@@ -30,6 +30,11 @@ const moniteurSchema = new mongoose.Schema(
     passwordHash: { type: String, default: '', select: false },
     activeLogin: { type: Boolean, default: false },
     lastLoginAt: { type: Date },
+    /** Verrouillage anti force brute (même politique que les admins). */
+    failedLoginAttempts: { type: Number, default: 0 },
+    lockUntil: { type: Date },
+    /** Les jetons émis avant cette date sont refusés (changement de mot de passe). */
+    passwordChangedAt: { type: Date },
     specialties: { type: [String], default: [] },
     vehicleTypes: {
       type: [String],
@@ -66,6 +71,28 @@ moniteurSchema.index(
 
 moniteurSchema.methods.setPassword = async function setPassword(plain) {
   this.passwordHash = await bcrypt.hash(String(plain), 12)
+  this.passwordChangedAt = new Date()
+}
+
+const MAX_FAILED_ATTEMPTS = 5
+const LOCK_DURATION_MS = 15 * 60 * 1000
+
+moniteurSchema.methods.isLocked = function isLocked() {
+  return Boolean(this.lockUntil && this.lockUntil > new Date())
+}
+
+moniteurSchema.methods.registerFailedLogin = async function registerFailedLogin() {
+  this.failedLoginAttempts = (this.failedLoginAttempts || 0) + 1
+  if (this.failedLoginAttempts >= MAX_FAILED_ATTEMPTS) {
+    this.lockUntil = new Date(Date.now() + LOCK_DURATION_MS)
+    this.failedLoginAttempts = 0
+  }
+  await this.save()
+}
+
+moniteurSchema.methods.resetFailedLogins = function resetFailedLogins() {
+  this.failedLoginAttempts = 0
+  this.lockUntil = undefined
 }
 
 moniteurSchema.methods.comparePassword = function comparePassword(candidate) {

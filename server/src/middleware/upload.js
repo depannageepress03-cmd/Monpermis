@@ -34,6 +34,22 @@ const AUDIO_MIMES = new Set([
   'video/webm', // MediaRecorder peut envoyer webm audio sous ce type
 ])
 
+/** Type réel d'une image d'après ses octets (jamais d'après le nom ou l'en-tête client). */
+export function detectImageType(buffer) {
+  const b = buffer
+  if (b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) return { ext: '.jpg', mime: 'image/jpeg' }
+  if (b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47) return { ext: '.png', mime: 'image/png' }
+  if (b[0] === 0x47 && b[1] === 0x49 && b[2] === 0x46 && b[3] === 0x38) return { ext: '.gif', mime: 'image/gif' }
+  if (
+    b.length > 12 &&
+    b.toString('ascii', 0, 4) === 'RIFF' &&
+    b.toString('ascii', 8, 12) === 'WEBP'
+  ) {
+    return { ext: '.webp', mime: 'image/webp' }
+  }
+  throw Object.assign(new Error('Format image non supporté (JPEG, PNG, WebP, GIF)'), { status: 400 })
+}
+
 const IMAGE_MAGIC = [
   { ext: 'jpeg', bytes: [0xff, 0xd8, 0xff] },
   { ext: 'png', bytes: [0x89, 0x50, 0x4e, 0x47] },
@@ -102,13 +118,15 @@ async function writeFile(file) {
 
   const kind = resolveKind(file)
   const dest = resolveDir(kind)
-  const ext = path.extname(file.originalname).toLowerCase() || '.jpg'
+  // Extension et type MIME déduits du CONTENU, jamais du nom envoyé par le client :
+  // un « x.html » contenant une image piégée serait sinon servi comme page web.
+  const detected = detectImageType(file.buffer)
+  const ext = detected.ext
   const safeName = `${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`
   const fullPath = path.join(dest, safeName)
   fs.writeFileSync(fullPath, file.buffer)
 
-  const mimeType =
-    String(file.mimetype || '').toLowerCase() || MIME_BY_EXT[ext] || 'application/octet-stream'
+  const mimeType = detected.mime
   const key = `${kind}/${safeName}`
 
   await MediaAsset.findOneAndUpdate(
@@ -136,6 +154,9 @@ async function sendMediaAsset(req, res, next) {
       return res.status(404).end()
     }
 
+    res.setHeader('X-Content-Type-Options', 'nosniff')
+    res.setHeader('Content-Security-Policy', "default-src 'none'; sandbox")
+
     const diskPath = path.join(resolveDir(kind), filename)
     if (fs.existsSync(diskPath)) {
       return res.sendFile(diskPath)
@@ -148,7 +169,10 @@ async function sendMediaAsset(req, res, next) {
     }
 
     const ext = path.extname(filename).toLowerCase()
-    const mimeType = asset.mimeType || MIME_BY_EXT[ext] || 'application/octet-stream'
+    const declared = String(asset.mimeType || MIME_BY_EXT[ext] || '').toLowerCase()
+    // Seuls les types média attendus sont renvoyés tels quels : jamais text/html ni image/svg+xml.
+    const mimeType =
+      IMAGE_MIMES.has(declared) || AUDIO_MIMES.has(declared) ? declared : 'application/octet-stream'
     const raw = asset.data
     let body
     if (Buffer.isBuffer(raw)) body = raw

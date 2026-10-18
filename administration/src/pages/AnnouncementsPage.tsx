@@ -34,6 +34,7 @@ import { getAdminToken, isAuthError } from '../context/AdminAuthContext'
 import { Drawer, EmptyState, SkeletonBlock } from '../ui'
 import { resolveMediaUrl } from '../utils/mediaUrl'
 import { stripHtml } from '../utils/richText'
+import { sanitizeHtml } from '../utils/sanitizeHtml'
 
 const KIND_LABELS: Record<AnnouncementKind, string> = {
   info: 'Information',
@@ -776,7 +777,7 @@ export function AnnouncementsPage() {
                   <article className={`cx-ann-web cx-k-${form.kind}`}>
                     {form.imageUrl ? <img src={resolveMediaUrl(form.imageUrl)} alt="" className="cx-ann-img" /> : null}
                     <strong>{form.title || 'Sans titre'}</strong>
-                    {form.body ? <div className="cx-ann-body" dangerouslySetInnerHTML={{ __html: form.body }} /> : null}
+                    {form.body ? <div className="cx-ann-body" dangerouslySetInnerHTML={{ __html: sanitizeHtml(form.body) }} /> : null}
                     {form.ctaUrl ? <span className="cx-ann-cta">Voir plus</span> : null}
                   </article>
                 </div>

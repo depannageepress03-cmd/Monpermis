@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from 'react'
 import { ApiError } from '../api/client'
+import { useIdleLogout } from '../hooks/useIdleLogout'
 import {
   fetchAdminMe,
   loginAdmin,
@@ -61,6 +62,9 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
     setAdmin(null)
     setCapabilities(defaultCapabilities)
   }, [])
+
+  // Session d'administration : fermée après 30 min sans activité.
+  useIdleLogout(Boolean(admin), signOut)
 
   useEffect(() => {
     const token = localStorage.getItem(TOKEN_KEY)

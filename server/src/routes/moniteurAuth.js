@@ -4,6 +4,8 @@ import { Moniteur } from '../models/Moniteur.js'
 import { requireMoniteurAuth } from '../middleware/moniteurAuth.js'
 import { moniteurLoginLimiter } from '../middleware/rateLimiters.js'
 import { logger } from '../utils/logger.js'
+import { DUMMY_BCRYPT_HASH } from '../middleware/security.js'
+import bcrypt from 'bcryptjs'
 
 const router = Router()
 
@@ -31,8 +33,11 @@ function createMoniteurToken(moniteurId) {
 
 router.post('/login', moniteurLoginLimiter, async (req, res) => {
   try {
+    if (typeof req.body.email !== 'string' || typeof req.body.password !== 'string') {
+      return res.status(400).json({ success: false, error: 'Email et mot de passe requis' })
+    }
     const email = normalizeEmail(req.body.email)
-    const password = String(req.body.password || '')
+    const password = req.body.password
 
     if (!EMAIL_PATTERN.test(email) || !password) {
       return res.status(400).json({ success: false, error: 'Email et mot de passe requis' })
@@ -40,7 +45,18 @@ router.post('/login', moniteurLoginLimiter, async (req, res) => {
 
     const moniteur = await Moniteur.findOne({ email }).select('+passwordHash')
     if (!moniteur || !moniteur.passwordHash) {
+      // Même durée de réponse qu'un vrai compte : pas d'énumération par le temps.
+      await bcrypt.compare(password, DUMMY_BCRYPT_HASH)
+      logger.warn('Connexion moniteur refusée (compte inconnu)', { ip: req.ip })
       return res.status(401).json({ success: false, error: 'Identifiants invalides' })
+    }
+
+    if (moniteur.isLocked()) {
+      logger.warn('Connexion moniteur refusée (compte verrouillé)', { ip: req.ip, moniteurId: String(moniteur._id) })
+      return res.status(429).json({
+        success: false,
+        error: 'Compte temporairement verrouillé. Réessayez dans quelques minutes.',
+      })
     }
 
     if (!moniteur.active) {
@@ -61,9 +77,12 @@ router.post('/login', moniteurLoginLimiter, async (req, res) => {
 
     const ok = await moniteur.comparePassword(password)
     if (!ok) {
+      await moniteur.registerFailedLogin()
+      logger.warn('Connexion moniteur refusée (mot de passe)', { ip: req.ip, moniteurId: String(moniteur._id) })
       return res.status(401).json({ success: false, error: 'Identifiants invalides' })
     }
 
+    moniteur.resetFailedLogins()
     moniteur.lastLoginAt = new Date()
     await moniteur.save()
 

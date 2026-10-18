@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken'
 import { Moniteur } from '../models/Moniteur.js'
+import { isTokenRevoked } from './security.js'
 
 export async function requireMoniteurAuth(req, res, next) {
   try {
@@ -16,7 +17,7 @@ export async function requireMoniteurAuth(req, res, next) {
     }
 
     const moniteur = await Moniteur.findById(payload.moniteurId).select('+passwordHash')
-    if (!moniteur || !moniteur.active) {
+    if (!moniteur || !moniteur.active || isTokenRevoked(payload, moniteur.passwordChangedAt)) {
       return res.status(401).json({ success: false, error: 'Session invalide' })
     }
     if (!moniteur.activeLogin) {

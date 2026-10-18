@@ -51,6 +51,14 @@ import { runAnnouncementJobs } from './services/announcements.js'
 import { ensureSuperAdminBootstrap } from './utils/bootstrapSuperAdmin.js'
 import { ensureStandardRevisionChaptersSafe } from './services/standardRevisionChapters.js'
 import { migrateShiftedHardcodedIds } from './services/migrateShiftedHardcodedIds.js'
+import {
+  apiResponseHeaders,
+  assertProductionSecrets,
+  permissionsPolicy,
+  sanitizeMongoInput,
+} from './middleware/security.js'
+
+assertProductionSecrets()
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const app = express()
@@ -83,9 +91,13 @@ function parseAllowedOrigins() {
     'https://monpermis-moniteur.onrender.com',
     'https://monpermis-web.onrender.com',
     'https://monpermis-api.onrender.com',
-    'http://localhost:5175',
   ]
-  return [...new Set([...fromList, ...singles, ...defaults])]
+  // Origines de développement : jamais acceptées en production.
+  if (process.env.NODE_ENV !== 'production') defaults.push('http://localhost:5175', 'http://localhost:5174')
+  const all = [...new Set([...fromList, ...singles, ...defaults])]
+  return process.env.NODE_ENV === 'production'
+    ? all.filter((origin) => !/^https?:\/\/(localhost|127\.0\.0\.1)(:|$)/i.test(origin))
+    : all
 }
 
 const allowedOrigins = parseAllowedOrigins()
@@ -144,9 +156,20 @@ app.use(
   express.raw({ type: () => true }),
   fedapayWebhooksRoutes,
 )
-app.use(express.json())
+app.use(express.json({ limit: '1mb' }))
+app.use(sanitizeMongoInput)
+app.use(permissionsPolicy)
 // Disque local d’abord, puis MongoDB (Render n’a pas de disque persistant).
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')))
+app.use(
+  '/uploads',
+  express.static(path.join(__dirname, '../uploads'), {
+    setHeaders(res) {
+      // Un fichier envoyé par un utilisateur ne doit jamais s'exécuter comme page.
+      res.setHeader('X-Content-Type-Options', 'nosniff')
+      res.setHeader('Content-Security-Policy', "default-src 'none'; sandbox")
+    },
+  }),
+)
 app.get('/uploads/:kind/:filename', sendMediaAsset)
 // /content ne sert que des médias : les .txt (corrigés, transcripts), .md et .json
 // rangés à côté restent internes au dépôt.
@@ -236,6 +259,11 @@ app.get('/api/app/version', (_req, res) => {
 
 // Un seul limiteur API (évite le double comptage sur les mounts /admin/revision répétés).
 // Les routes /api/admin/* (hors login) sont déjà protégées par JWT → pas de rate-limit ici.
+app.use('/api', (req, res, next) => {
+  // /api/client-reset sert une page HTML : exclue de la CSP « rien » des réponses JSON.
+  if (req.path === '/client-reset') return next()
+  return apiResponseHeaders(req, res, next)
+})
 app.use('/api', (req, res, next) => {
   if (
     req.path.startsWith('/auth') ||

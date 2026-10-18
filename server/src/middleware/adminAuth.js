@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken'
 import { Admin } from '../models/Admin.js'
+import { isTokenRevoked } from './security.js'
 
 let superAdminExistsCache = { value: null, checkedAt: 0 }
 const SUPERADMIN_CACHE_MS = 60_000
@@ -37,7 +38,7 @@ export async function requireAdminAuth(req, res, next) {
     }
 
     const admin = await Admin.findById(payload.adminId)
-    if (!admin || !admin.isActive) {
+    if (!admin || !admin.isActive || isTokenRevoked(payload, admin.passwordChangedAt)) {
       return res.status(401).json({ success: false, error: 'Session invalide' })
     }
 

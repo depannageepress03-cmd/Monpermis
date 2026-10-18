@@ -1,6 +1,8 @@
 import { Router } from 'express'
 import jwt from 'jsonwebtoken'
 import mongoose from 'mongoose'
+import bcrypt from 'bcryptjs'
+import { DUMMY_BCRYPT_HASH } from '../middleware/security.js'
 import { Admin, ADMIN_ROLES } from '../models/Admin.js'
 import {
   hasActiveSuperAdmin,
@@ -157,7 +159,7 @@ router.post('/login', adminLoginLimiter, async (req, res) => {
   try {
     const { phone, password } = req.body
 
-    if (!phone || !password) {
+    if (typeof phone !== 'string' || typeof password !== 'string' || !phone || !password) {
       return res.status(400).json({ success: false, error: 'Téléphone et mot de passe requis' })
     }
 
@@ -165,10 +167,13 @@ router.post('/login', adminLoginLimiter, async (req, res) => {
     const admin = await Admin.findOne({ phone: normalizedPhone }).select('+password')
 
     if (!admin || !admin.isActive) {
+      await bcrypt.compare(String(password), DUMMY_BCRYPT_HASH)
+      logger.warn('Connexion admin refusée (compte inconnu ou inactif)', { ip: req.ip })
       return res.status(401).json({ success: false, error: 'Identifiants incorrects' })
     }
 
     if (admin.isLocked()) {
+      logger.warn('Connexion admin refusée (compte verrouillé)', { ip: req.ip, adminId: String(admin._id) })
       return res.status(429).json({
         success: false,
         error: 'Compte temporairement verrouillé. Réessayez dans quelques minutes.',
@@ -178,6 +183,7 @@ router.post('/login', adminLoginLimiter, async (req, res) => {
     const valid = await admin.comparePassword(password)
     if (!valid) {
       await admin.registerFailedLogin()
+      logger.warn('Connexion admin refusée (mot de passe)', { ip: req.ip, adminId: String(admin._id) })
       return res.status(401).json({ success: false, error: 'Identifiants incorrects' })
     }
 
