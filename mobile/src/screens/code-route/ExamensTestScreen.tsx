@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useNavigation, useRoute } from '@react-navigation/native'
+import { useIsFocused, useNavigation, useRoute } from '@react-navigation/native'
 import type { RouteProp } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { ClipboardCheck } from 'lucide-react-native'
@@ -225,6 +225,8 @@ export function ExamensTestTakeScreen() {
   const route = useRoute<TakeRoute>()
   const { examNumber } = route.params
   const { user, loading: authLoading } = useRequireAuth(navigation)
+  // Quitter vers l'accueil empile un autre écran sans démonter celui-ci : on coupe l'audio au blur.
+  const isFocused = useIsFocused()
   const [attempt, setAttempt] = useState<PracticeExamAttempt | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -331,6 +333,10 @@ export function ExamensTestTakeScreen() {
   useEffect(() => {
     if (finished) stopAllQuizAudio()
   }, [finished])
+
+  useEffect(() => {
+    if (!isFocused) stopAllQuizAudio()
+  }, [isFocused])
 
   // Sélection d’une réponse : ne coupe PAS l’audio (2 lectures complètes jusqu’à Continuer / fin de séquence).
 
@@ -576,7 +582,7 @@ export function ExamensTestTakeScreen() {
               {question.prompt?.text ? (
                 <QuestionPromptHtml text={question.prompt.text} style={styles.prompt} />
               ) : null}
-              {sequenceLive && !submitted ? (
+              {isFocused && sequenceLive && !submitted ? (
                 <QuestionAudioSequence
                   questionKey={question.id}
                   promptUri={question.prompt?.audioUrl}

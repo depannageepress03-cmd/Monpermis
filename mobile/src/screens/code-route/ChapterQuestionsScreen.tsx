@@ -1,4 +1,10 @@
-import { useFocusEffect, useNavigation, useRoute, type RouteProp } from '@react-navigation/native'
+import {
+  useFocusEffect,
+  useIsFocused,
+  useNavigation,
+  useRoute,
+  type RouteProp,
+} from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { setStatusBarStyle } from 'expo-status-bar'
 import {
@@ -115,6 +121,8 @@ function ProgressRing({
 
 export function ChapterQuestionsScreen() {
   const navigation = useNavigation<Nav>()
+  // Quitter vers l'accueil empile un autre écran sans démonter celui-ci : on coupe l'audio au blur.
+  const isFocused = useIsFocused()
   const route = useRoute<Route>()
   const { user, loading } = useRequireAuth(navigation)
   const { isOffline, enqueue } = useOffline()
@@ -245,6 +253,10 @@ export function ChapterQuestionsScreen() {
   useEffect(() => {
     if (finished) stopAllQuizAudio()
   }, [finished])
+
+  useEffect(() => {
+    if (!isFocused) stopAllQuizAudio()
+  }, [isFocused])
 
   // Sélection d’une réponse : ne coupe PAS l’audio (2 lectures complètes jusqu’à Continuer / fin de séquence).
 
@@ -732,7 +744,7 @@ export function ChapterQuestionsScreen() {
                 </View>
               ) : null}
 
-              {sequenceLive && !result ? (
+              {isFocused && sequenceLive && !result ? (
                 <View style={styles.audioWrap}>
                   <QuestionAudioSequence
                     questionKey={question.id}
