@@ -12,12 +12,33 @@ import { useIdleLogout } from '../hooks/useIdleLogout'
 import {
   fetchAdminMe,
   loginAdmin,
+  logoutAdmin,
   type AdminCapabilities,
   type AdminUser,
 } from '../api/auth'
 import { isSuperAdminRole } from '../utils/roles'
 
 const TOKEN_KEY = 'monpermis_admin_token'
+
+function readToken() {
+  const current = sessionStorage.getItem(TOKEN_KEY)
+  if (current) return current
+  const legacy = localStorage.getItem(TOKEN_KEY)
+  if (!legacy) return null
+  sessionStorage.setItem(TOKEN_KEY, legacy)
+  localStorage.removeItem(TOKEN_KEY)
+  return legacy
+}
+
+function writeToken(token: string) {
+  sessionStorage.setItem(TOKEN_KEY, token)
+  localStorage.removeItem(TOKEN_KEY)
+}
+
+function clearToken() {
+  sessionStorage.removeItem(TOKEN_KEY)
+  localStorage.removeItem(TOKEN_KEY)
+}
 
 export type SignInResult = {
   homePath: string
@@ -58,7 +79,9 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   const signOut = useCallback(() => {
-    localStorage.removeItem(TOKEN_KEY)
+    const token = readToken()
+    if (token) void logoutAdmin(token).catch(() => undefined)
+    clearToken()
     setAdmin(null)
     setCapabilities(defaultCapabilities)
   }, [])
@@ -67,7 +90,7 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
   useIdleLogout(Boolean(admin), signOut)
 
   useEffect(() => {
-    const token = localStorage.getItem(TOKEN_KEY)
+    const token = readToken()
     if (!token) {
       setLoading(false)
       return
@@ -79,7 +102,7 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
         setCapabilities(resolveCapabilities(me, caps))
       })
       .catch(() => {
-        localStorage.removeItem(TOKEN_KEY)
+        clearToken()
         setAdmin(null)
         setCapabilities(defaultCapabilities)
       })
@@ -88,7 +111,7 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
 
   const signIn = useCallback(async (phone: string, password: string) => {
     const { admin: loggedIn, token, homePath } = await loginAdmin(phone, password)
-    localStorage.setItem(TOKEN_KEY, token)
+    writeToken(token)
     setAdmin(loggedIn)
 
     let resolved = resolveCapabilities(loggedIn)
@@ -124,7 +147,7 @@ export function useAdminAuth() {
 }
 
 export function getAdminToken() {
-  return localStorage.getItem(TOKEN_KEY)
+  return readToken()
 }
 
 export function isAuthError(error: unknown) {

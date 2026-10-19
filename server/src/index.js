@@ -6,6 +6,7 @@ import path from 'path'
 import helmet from 'helmet'
 import { fileURLToPath } from 'url'
 import rateLimit from 'express-rate-limit'
+import { adminApiLimiter, moniteurApiLimiter } from './middleware/rateLimiters.js'
 import { logger } from './utils/logger.js'
 import authRoutes from './routes/auth.js'
 import adminAuthRoutes from './routes/adminAuth.js'
@@ -39,7 +40,7 @@ import trackingRoutes from './routes/tracking.js'
 import adminTrackingRoutes from './routes/adminTracking.js'
 import moniteurAuthRoutes from './routes/moniteurAuth.js'
 import moniteurPortalRoutes from './routes/moniteurPortal.js'
-import { fedapayKeyFingerprint, isFedaPayConfigured } from './services/fedapay.js'
+import { isFedaPayConfigured } from './services/fedapay.js'
 import { sendMediaAsset } from './middleware/upload.js'
 import { ensureReservationIndexes } from './models/Reservation.js'
 import { ensureUserIndexes } from './models/User.js'
@@ -124,10 +125,7 @@ app.use((req, res, next) => {
     res.setHeader('Access-Control-Allow-Origin', origin)
     res.setHeader('Vary', 'Origin')
     res.setHeader('Access-Control-Allow-Credentials', 'true')
-    res.setHeader(
-      'Access-Control-Allow-Headers',
-      req.headers['access-control-request-headers'] || 'Content-Type, Authorization',
-    )
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept')
     res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS')
   }
 
@@ -230,19 +228,12 @@ app.use(
 
 app.get('/api/health', (_req, res) => {
   const dbReady = mongoose.connection.readyState === 1
-  const fingerprint = fedapayKeyFingerprint()
-  const webhookSecretSet = Boolean(String(process.env.FEDAPAY_WEBHOOK_SECRET || '').trim())
   res.status(dbReady ? 200 : 503).json({
     success: dbReady,
     message: dbReady
       ? 'API Monpermis.bj op\u00e9rationnelle'
       : 'Service temporairement indisponible',
     db: dbReady ? 'connected' : 'disconnected',
-    fedapay: isFedaPayConfigured() ? 'configured' : 'missing',
-    fedapayEnvironment: process.env.FEDAPAY_ENVIRONMENT === 'sandbox' ? 'sandbox' : 'live',
-    fedapayKeyHint: fingerprint.secretSuffix ? `…${fingerprint.secretSuffix}` : null,
-    fedapayWebhookSecret: webhookSecretSet ? 'configured' : 'missing',
-    mobileMoneyModes: { mtn: 'mtn_open', moov: 'moov', celtiis: 'sbin' },
   })
 })
 
@@ -274,6 +265,7 @@ app.use('/api', (req, res, next) => {
   if (
     req.path.startsWith('/auth') ||
     req.path.startsWith('/admin') ||
+    req.path.startsWith('/moniteur') ||
     req.path.startsWith('/webhooks') ||
     req.path === '/health' ||
     req.path === '/app/version'
@@ -282,6 +274,8 @@ app.use('/api', (req, res, next) => {
   }
   return apiLimiter(req, res, next)
 })
+app.use('/api/admin', adminApiLimiter)
+app.use('/api/moniteur', moniteurApiLimiter)
 
 app.use('/api/auth', authRoutes)
 app.use('/api/admin/auth', adminAuthRoutes)
@@ -316,10 +310,16 @@ app.use('/api/tracking', trackingRoutes)
 app.use('/api/admin/tracking', adminTrackingRoutes)
 
 // Hors SW (navigateFallback ignore /api) : purge cache client puis redirige
+function safeClientResetPath(raw) {
+  const value = typeof raw === 'string' ? raw : ''
+  if (!/^\/[A-Za-z0-9/_\-.]*$/.test(value) || value.startsWith('//') || value.includes('..')) {
+    return '/code-de-la-route'
+  }
+  return value
+}
+
 app.get('/api/client-reset', (req, res) => {
-  const next = typeof req.query.next === 'string' && req.query.next.startsWith('/')
-    ? req.query.next
-    : '/code-de-la-route'
+  const next = safeClientResetPath(req.query.next)
   res.setHeader('Clear-Site-Data', '"cache", "storage"')
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate')
   res.setHeader('Pragma', 'no-cache')

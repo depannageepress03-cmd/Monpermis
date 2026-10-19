@@ -2,7 +2,7 @@ import { Router } from 'express'
 import jwt from 'jsonwebtoken'
 import mongoose from 'mongoose'
 import bcrypt from 'bcryptjs'
-import { DUMMY_BCRYPT_HASH } from '../middleware/security.js'
+import { DUMMY_BCRYPT_HASH, passwordPolicyError } from '../middleware/security.js'
 import { Admin, ADMIN_ROLES } from '../models/Admin.js'
 import {
   hasActiveSuperAdmin,
@@ -12,6 +12,7 @@ import {
 } from '../middleware/adminAuth.js'
 import { audit, logAdminAction } from '../middleware/audit.js'
 import { adminLoginLimiter } from '../middleware/rateLimiters.js'
+import { isFedaPayConfigured } from '../services/fedapay.js'
 import { logger } from '../utils/logger.js'
 
 const router = Router()
@@ -27,17 +28,20 @@ function normalizePhone(phone) {
   return local.slice(0, 10)
 }
 
-function createAdminToken(adminId, role) {
+function createAdminToken(admin) {
   return jwt.sign(
     {
-      adminId,
+      adminId: String(admin._id),
       scope: 'admin',
-      role: role === 'superadmin' ? 'superadmin' : 'admin',
+      role: admin.role === 'superadmin' ? 'superadmin' : 'admin',
+      sv: admin.sessionVersion || 0,
     },
     process.env.JWT_SECRET,
     {
       expiresIn: '8h',
       algorithm: 'HS256',
+      issuer: 'monpermis',
+      audience: 'admin',
     },
   )
 }
@@ -94,15 +98,9 @@ router.post(
         return res.status(400).json({ success: false, error: 'Numéro invalide. Exemple : 0147880143' })
       }
 
-      if (password.length < 8) {
-        return res.status(400).json({ success: false, error: 'Mot de passe : minimum 8 caractères' })
-      }
-
-      if (!/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/\d/.test(password)) {
-        return res.status(400).json({
-          success: false,
-          error: 'Mot de passe : doit contenir majuscule, minuscule et chiffre',
-        })
+      const pwdError = passwordPolicyError(password)
+      if (pwdError) {
+        return res.status(400).json({ success: false, error: pwdError })
       }
 
       if (password !== confirmPassword) {
@@ -172,6 +170,13 @@ router.post('/login', adminLoginLimiter, async (req, res) => {
       return res.status(401).json({ success: false, error: 'Identifiants incorrects' })
     }
 
+    const valid = await admin.comparePassword(password)
+    if (!valid) {
+      if (!admin.isLocked()) await admin.registerFailedLogin()
+      logger.warn('Connexion admin refusée (mot de passe)', { ip: req.ip, adminId: String(admin._id) })
+      return res.status(401).json({ success: false, error: 'Identifiants incorrects' })
+    }
+
     if (admin.isLocked()) {
       logger.warn('Connexion admin refusée (compte verrouillé)', { ip: req.ip, adminId: String(admin._id) })
       return res.status(429).json({
@@ -180,15 +185,8 @@ router.post('/login', adminLoginLimiter, async (req, res) => {
       })
     }
 
-    const valid = await admin.comparePassword(password)
-    if (!valid) {
-      await admin.registerFailedLogin()
-      logger.warn('Connexion admin refusée (mot de passe)', { ip: req.ip, adminId: String(admin._id) })
-      return res.status(401).json({ success: false, error: 'Identifiants incorrects' })
-    }
-
     await admin.resetFailedLogins()
-    const token = createAdminToken(admin._id, admin.role)
+    const token = createAdminToken(admin)
 
     logAdminAction(req, {
       action: 'login',
@@ -223,6 +221,31 @@ router.post('/login', adminLoginLimiter, async (req, res) => {
     }
     res.status(500).json({ success: false, error: 'Connexion impossible' })
   }
+})
+
+router.post('/logout', requireAdminAuth, async (req, res) => {
+  try {
+    await Admin.updateOne({ _id: req.admin._id }, { $inc: { sessionVersion: 1 } })
+    res.json({ success: true, data: { ok: true } })
+  } catch (error) {
+    logger.error('Erreur déconnexion admin:', error)
+    res.status(500).json({ success: false, error: 'Déconnexion impossible' })
+  }
+})
+
+router.get('/ops-status', requireAdminAuth, requireSuperAdmin, async (_req, res) => {
+  const dbReady = mongoose.connection.readyState === 1
+  res.json({
+    success: true,
+    data: {
+      db: dbReady ? 'connected' : 'disconnected',
+      fedapay: isFedaPayConfigured() ? 'configured' : 'missing',
+      fedapayEnvironment: process.env.FEDAPAY_ENVIRONMENT === 'sandbox' ? 'sandbox' : 'live',
+      fedapayWebhookSecret: String(process.env.FEDAPAY_WEBHOOK_SECRET || '').trim()
+        ? 'configured'
+        : 'missing',
+    },
+  })
 })
 
 router.get('/me', requireAdminAuth, async (req, res) => {

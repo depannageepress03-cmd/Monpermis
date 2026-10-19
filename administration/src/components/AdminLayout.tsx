@@ -21,12 +21,10 @@ import {
 import { FormEvent, useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import logoUrl from '../assets/logo.png'
+import { fetchOpsStatus } from '../api/auth'
 import { fetchDashboardSummary } from '../api/dashboard'
-import { useAdminAuth } from '../context/AdminAuthContext'
-import { getApiOrigin } from '../utils/mediaUrl'
+import { getAdminToken, useAdminAuth } from '../context/AdminAuthContext'
 import { SITE_NAME } from '../theme/brand'
-
-const ADMIN_TOKEN_KEY = 'monpermis_admin_token'
 
 type NavItem = {
   to: string
@@ -171,7 +169,7 @@ export function AdminLayout() {
   }, [])
 
   useEffect(() => {
-    const token = localStorage.getItem(ADMIN_TOKEN_KEY)
+    const token = getAdminToken()
     if (!token) {
       setBadges({ reservations: 0, access: 0, refunds: 0 })
       return
@@ -197,11 +195,10 @@ export function AdminLayout() {
   useEffect(() => {
     if (!canManageAdmins || healthDismissed) return
     let cancelled = false
-    const origin = getApiOrigin()
-    const url = origin ? `${origin}/api/health` : '/api/health'
-    fetch(url)
-      .then(async (res) => {
-        const json = (await res.json()) as HealthSnapshot & { success?: boolean }
+    const token = getAdminToken()
+    if (!token) return
+    fetchOpsStatus(token)
+      .then((json) => {
         if (cancelled) return
         setHealth({
           db: json.db || 'unknown',

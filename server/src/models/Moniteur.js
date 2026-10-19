@@ -35,6 +35,8 @@ const moniteurSchema = new mongoose.Schema(
     lockUntil: { type: Date },
     /** Les jetons émis avant cette date sont refusés (changement de mot de passe). */
     passwordChangedAt: { type: Date },
+    /** Incrémenté à la déconnexion et au changement de mot de passe : invalide les jetons précédents. */
+    sessionVersion: { type: Number, default: 0 },
     specialties: { type: [String], default: [] },
     vehicleTypes: {
       type: [String],
@@ -72,6 +74,7 @@ moniteurSchema.index(
 moniteurSchema.methods.setPassword = async function setPassword(plain) {
   this.passwordHash = await bcrypt.hash(String(plain), 12)
   this.passwordChangedAt = new Date()
+  this.sessionVersion = (this.sessionVersion || 0) + 1
 }
 
 const MAX_FAILED_ATTEMPTS = 5

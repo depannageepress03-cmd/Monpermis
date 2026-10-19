@@ -17,16 +17,19 @@ function normalizeEmail(value) {
     .toLowerCase()
 }
 
-function createMoniteurToken(moniteurId) {
+function createMoniteurToken(moniteur) {
   return jwt.sign(
     {
-      moniteurId: String(moniteurId),
+      moniteurId: String(moniteur._id),
       scope: 'moniteur',
+      sv: moniteur.sessionVersion || 0,
     },
     process.env.JWT_SECRET,
     {
       expiresIn: '12h',
       algorithm: 'HS256',
+      issuer: 'monpermis',
+      audience: 'moniteur',
     },
   )
 }
@@ -48,6 +51,13 @@ router.post('/login', moniteurLoginLimiter, async (req, res) => {
       // Même durée de réponse qu'un vrai compte : pas d'énumération par le temps.
       await bcrypt.compare(password, DUMMY_BCRYPT_HASH)
       logger.warn('Connexion moniteur refusée (compte inconnu)', { ip: req.ip })
+      return res.status(401).json({ success: false, error: 'Identifiants invalides' })
+    }
+
+    const ok = await moniteur.comparePassword(password)
+    if (!ok) {
+      if (!moniteur.isLocked()) await moniteur.registerFailedLogin()
+      logger.warn('Connexion moniteur refusée (mot de passe)', { ip: req.ip, moniteurId: String(moniteur._id) })
       return res.status(401).json({ success: false, error: 'Identifiants invalides' })
     }
 
@@ -75,13 +85,6 @@ router.post('/login', moniteurLoginLimiter, async (req, res) => {
       })
     }
 
-    const ok = await moniteur.comparePassword(password)
-    if (!ok) {
-      await moniteur.registerFailedLogin()
-      logger.warn('Connexion moniteur refusée (mot de passe)', { ip: req.ip, moniteurId: String(moniteur._id) })
-      return res.status(401).json({ success: false, error: 'Identifiants invalides' })
-    }
-
     moniteur.resetFailedLogins()
     moniteur.lastLoginAt = new Date()
     await moniteur.save()
@@ -90,13 +93,23 @@ router.post('/login', moniteurLoginLimiter, async (req, res) => {
       success: true,
       data: {
         moniteur: moniteur.toAuthJSON(),
-        token: createMoniteurToken(moniteur._id),
+        token: createMoniteurToken(moniteur),
         homePath: '/',
       },
     })
   } catch (error) {
     logger.error('Erreur login moniteur:', error)
     res.status(500).json({ success: false, error: 'Connexion impossible' })
+  }
+})
+
+router.post('/logout', requireMoniteurAuth, async (req, res) => {
+  try {
+    await Moniteur.updateOne({ _id: req.moniteur._id }, { $inc: { sessionVersion: 1 } })
+    res.json({ success: true, data: { ok: true } })
+  } catch (error) {
+    logger.error('Erreur déconnexion moniteur:', error)
+    res.status(500).json({ success: false, error: 'Déconnexion impossible' })
   }
 })
 

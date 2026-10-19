@@ -25,6 +25,10 @@ export function loginMoniteur(email: string, password: string) {
   })
 }
 
+export function logoutMoniteur(token: string) {
+  return apiFetch<{ ok: boolean }>('/api/moniteur/auth/logout', { method: 'POST' }, token)
+}
+
 export function fetchMoniteurMe(token: string) {
   return apiFetch<{ moniteur: MoniteurUser }>('/api/moniteur/auth/me', {}, token)
 }

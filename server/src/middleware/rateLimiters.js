@@ -31,6 +31,23 @@ export const adminLoginLimiter = rateLimit({
   message: authAttemptMessage(),
 })
 
+/** Trafic authentifié des portails : assez large pour l'usage normal, assez bas pour un script. */
+export const adminApiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: limitMax(800, 'ADMIN_API_RATE_LIMIT_MAX'),
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, error: 'Trop de requêtes. Réessayez dans 15 minutes.' },
+})
+
+export const moniteurApiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: limitMax(800, 'MONITEUR_API_RATE_LIMIT_MAX'),
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, error: 'Trop de requêtes. Réessayez dans 15 minutes.' },
+})
+
 export const moniteurLoginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: limitMax(12, 'AUTH_LOGIN_RATE_LIMIT_MAX'),

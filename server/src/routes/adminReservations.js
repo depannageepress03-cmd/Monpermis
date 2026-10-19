@@ -16,7 +16,9 @@ import {
   parseLocalDate,
 } from '../utils/localDate.js'
 import { creditHeuresEffectueesForCompletion } from '../utils/reservationLifecycle.js'
+import { passwordPolicyError } from '../middleware/security.js'
 import { filterAllowedMoniteurVideos } from '../utils/moniteurVideos.js'
+import { sanitizePublicUrl, sanitizePublicUrlList } from '../utils/publicUrl.js'
 
 function asObjectId(value) {
   if (!value) return null
@@ -42,15 +44,7 @@ function parseVehicleTypes(raw) {
 }
 
 function parseUrlList(raw, max = 50) {
-  if (!Array.isArray(raw)) return []
-  const out = []
-  for (const item of raw) {
-    const url = String(item || '').trim()
-    if (!url) continue
-    if (!out.includes(url)) out.push(url)
-    if (out.length >= max) break
-  }
-  return out
+  return sanitizePublicUrlList(raw, max)
 }
 
 function parsePhotosList(raw) {
@@ -117,11 +111,9 @@ router.post('/moniteurs', audit('create', 'moniteur'), async (req, res) => {
     if (lastName.length < 1) lastName = '—'
 
     const password = String(req.body.password || '')
-    if (!password || password.length < 8) {
-      return res.status(400).json({
-        success: false,
-        error: 'Mot de passe requis (minimum 8 caractères)',
-      })
+    const pwdError = passwordPolicyError(password)
+    if (pwdError) {
+      return res.status(400).json({ success: false, error: pwdError })
     }
 
     let email = String(req.body.email || '')
@@ -147,8 +139,8 @@ router.post('/moniteurs', audit('create', 'moniteur'), async (req, res) => {
       active: req.body.active !== false,
       defaultPriceFcfa: Number(req.body.defaultPriceFcfa) || 5000,
       vehicleBrand: String(req.body.vehicleBrand || '').trim(),
-      vehiclePhotoUrl: String(req.body.vehiclePhotoUrl || '').trim(),
-      photoUrl: String(req.body.photoUrl || '').trim(),
+      vehiclePhotoUrl: sanitizePublicUrl(req.body.vehiclePhotoUrl),
+      photoUrl: sanitizePublicUrl(req.body.photoUrl),
       city: String(req.body.city || '').trim(),
       bio: clampBio(req.body.bio),
       photos: parsePhotosList(req.body.photos),
@@ -203,11 +195,9 @@ router.patch('/moniteurs/:id', audit('update', 'moniteur'), async (req, res) => 
     }
     if (req.body.password !== undefined && String(req.body.password || '').length > 0) {
       const password = String(req.body.password)
-      if (password.length < 8) {
-        return res.status(400).json({
-          success: false,
-          error: 'Mot de passe moniteur : minimum 8 caractères',
-        })
+      const pwdError = passwordPolicyError(password)
+      if (pwdError) {
+        return res.status(400).json({ success: false, error: pwdError })
       }
       await moniteur.setPassword(password)
     }
@@ -232,10 +222,10 @@ router.patch('/moniteurs/:id', audit('update', 'moniteur'), async (req, res) => 
       moniteur.vehicleBrand = String(req.body.vehicleBrand).trim()
     }
     if (req.body.vehiclePhotoUrl !== undefined) {
-      moniteur.vehiclePhotoUrl = String(req.body.vehiclePhotoUrl).trim()
+      moniteur.vehiclePhotoUrl = sanitizePublicUrl(req.body.vehiclePhotoUrl)
     }
     if (req.body.photoUrl !== undefined) {
-      moniteur.photoUrl = String(req.body.photoUrl).trim()
+      moniteur.photoUrl = sanitizePublicUrl(req.body.photoUrl)
     }
     if (req.body.city !== undefined) {
       moniteur.city = String(req.body.city).trim()

@@ -9,9 +9,29 @@ import {
 } from 'react'
 import { ApiError } from '../api/client'
 import { useIdleLogout } from '../hooks/useIdleLogout'
-import { fetchMoniteurMe, loginMoniteur, type MoniteurUser } from '../api/auth'
+import { fetchMoniteurMe, loginMoniteur, logoutMoniteur, type MoniteurUser } from '../api/auth'
 
 const TOKEN_KEY = 'monpermis_moniteur_token'
+
+function readToken() {
+  const current = sessionStorage.getItem(TOKEN_KEY)
+  if (current) return current
+  const legacy = localStorage.getItem(TOKEN_KEY)
+  if (!legacy) return null
+  sessionStorage.setItem(TOKEN_KEY, legacy)
+  localStorage.removeItem(TOKEN_KEY)
+  return legacy
+}
+
+function writeToken(token: string) {
+  sessionStorage.setItem(TOKEN_KEY, token)
+  localStorage.removeItem(TOKEN_KEY)
+}
+
+function clearToken() {
+  sessionStorage.removeItem(TOKEN_KEY)
+  localStorage.removeItem(TOKEN_KEY)
+}
 
 interface MoniteurAuthContextValue {
   moniteur: MoniteurUser | null
@@ -27,7 +47,9 @@ export function MoniteurAuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   const signOut = useCallback(() => {
-    localStorage.removeItem(TOKEN_KEY)
+    const token = readToken()
+    if (token) void logoutMoniteur(token).catch(() => undefined)
+    clearToken()
     setMoniteur(null)
   }, [])
 
@@ -35,7 +57,7 @@ export function MoniteurAuthProvider({ children }: { children: ReactNode }) {
   useIdleLogout(Boolean(moniteur), signOut)
 
   useEffect(() => {
-    const token = localStorage.getItem(TOKEN_KEY)
+    const token = readToken()
     if (!token) {
       setLoading(false)
       return
@@ -43,7 +65,7 @@ export function MoniteurAuthProvider({ children }: { children: ReactNode }) {
     fetchMoniteurMe(token)
       .then(({ moniteur: me }) => setMoniteur(me))
       .catch(() => {
-        localStorage.removeItem(TOKEN_KEY)
+        clearToken()
         setMoniteur(null)
       })
       .finally(() => setLoading(false))
@@ -51,7 +73,7 @@ export function MoniteurAuthProvider({ children }: { children: ReactNode }) {
 
   const signIn = useCallback(async (email: string, password: string) => {
     const { moniteur: loggedIn, token, homePath } = await loginMoniteur(email, password)
-    localStorage.setItem(TOKEN_KEY, token)
+    writeToken(token)
     setMoniteur(loggedIn)
     return { homePath: homePath || '/' }
   }, [])
@@ -71,7 +93,7 @@ export function useMoniteurAuth() {
 }
 
 export function getMoniteurToken() {
-  return localStorage.getItem(TOKEN_KEY)
+  return readToken()
 }
 
 export function isAuthError(error: unknown) {

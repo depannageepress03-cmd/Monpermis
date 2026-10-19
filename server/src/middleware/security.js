@@ -70,6 +70,16 @@ export function permissionsPolicy(_req, res, next) {
   next()
 }
 
+/** Politique commune admin / moniteur : longueur + classes de caractères. */
+export function passwordPolicyError(password) {
+  const value = String(password || '')
+  if (value.length < 8) return 'Mot de passe : minimum 8 caractères'
+  if (!/[A-Z]/.test(value) || !/[a-z]/.test(value) || !/\d/.test(value)) {
+    return 'Mot de passe : doit contenir majuscule, minuscule et chiffre'
+  }
+  return null
+}
+
 /** Compare deux secrets en temps constant. */
 export function safeEqual(a, b) {
   const ha = crypto.createHash('sha256').update(String(a)).digest()

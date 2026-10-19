@@ -5,11 +5,13 @@ import { Payment } from '../models/Payment.js'
 import { Reservation } from '../models/Reservation.js'
 import { User } from '../models/User.js'
 import {
+  Moniteur,
   MONITEUR_BIO_MAX,
   MONITEUR_PHOTOS_MAX,
   MONITEUR_VIDEOS_MAX,
 } from '../models/Moniteur.js'
 import { requireMoniteurAuth } from '../middleware/moniteurAuth.js'
+import { passwordPolicyError } from '../middleware/security.js'
 import { imageUpload } from '../middleware/upload.js'
 import { notifyUser } from '../services/notifications.js'
 import { uploadImageBuffer } from '../services/cloudinary.js'
@@ -22,6 +24,7 @@ import {
 import { computeCreneauHeures } from '../utils/creneauDuration.js'
 import { normalizeVehicleType } from '../utils/localDate.js'
 import { filterAllowedMoniteurVideos } from '../utils/moniteurVideos.js'
+import { sanitizePublicUrl, sanitizePublicUrlList } from '../utils/publicUrl.js'
 import {
   computeMoniteurEarnings,
   normalizeWeeklyAvailability,
@@ -76,15 +79,7 @@ function parseVehicleTypes(raw) {
 }
 
 function parseUrlList(raw, max) {
-  if (!Array.isArray(raw)) return []
-  const out = []
-  for (const item of raw) {
-    const url = String(item || '').trim()
-    if (!url) continue
-    if (!out.includes(url)) out.push(url)
-    if (out.length >= max) break
-  }
-  return out
+  return sanitizePublicUrlList(raw, max)
 }
 
 function hydrateReservation(item) {
@@ -637,12 +632,12 @@ router.patch('/profile', async (req, res) => {
     if (req.body.bio !== undefined) {
       m.bio = String(req.body.bio || '').trim().slice(0, MONITEUR_BIO_MAX)
     }
-    if (req.body.photoUrl !== undefined) m.photoUrl = String(req.body.photoUrl || '').trim()
+    if (req.body.photoUrl !== undefined) m.photoUrl = sanitizePublicUrl(req.body.photoUrl)
     if (req.body.vehicleBrand !== undefined) {
       m.vehicleBrand = String(req.body.vehicleBrand || '').trim()
     }
     if (req.body.vehiclePhotoUrl !== undefined) {
-      m.vehiclePhotoUrl = String(req.body.vehiclePhotoUrl || '').trim()
+      m.vehiclePhotoUrl = sanitizePublicUrl(req.body.vehiclePhotoUrl)
     }
     if (req.body.vehicleTypes !== undefined) {
       m.vehicleTypes = parseVehicleTypes(req.body.vehicleTypes)
@@ -666,13 +661,12 @@ router.patch('/profile', async (req, res) => {
     const currentPassword = String(req.body.currentPassword || '')
     const newPassword = String(req.body.newPassword || req.body.password || '')
     if (newPassword) {
-      if (newPassword.length < 8) {
-        return res.status(400).json({
-          success: false,
-          error: 'Nouveau mot de passe : minimum 8 caractères',
-        })
+      const pwdError = passwordPolicyError(newPassword)
+      if (pwdError) {
+        return res.status(400).json({ success: false, error: pwdError })
       }
-      const ok = await m.comparePassword(currentPassword)
+      const secret = await Moniteur.findById(m._id).select('+passwordHash')
+      const ok = secret ? await secret.comparePassword(currentPassword) : false
       if (!ok) {
         return res.status(400).json({ success: false, error: 'Mot de passe actuel incorrect' })
       }

@@ -10,14 +10,24 @@ export async function requireMoniteurAuth(req, res, next) {
     }
 
     const token = header.slice(7)
-    const payload = jwt.verify(token, process.env.JWT_SECRET, { algorithms: ['HS256'] })
+    const payload = jwt.verify(token, process.env.JWT_SECRET, {
+      algorithms: ['HS256'],
+      issuer: 'monpermis',
+      audience: 'moniteur',
+    })
 
     if (payload.scope !== 'moniteur' || !payload.moniteurId) {
       return res.status(403).json({ success: false, error: 'Accès refusé' })
     }
 
-    const moniteur = await Moniteur.findById(payload.moniteurId).select('+passwordHash')
-    if (!moniteur || !moniteur.active || isTokenRevoked(payload, moniteur.passwordChangedAt)) {
+    const moniteur = await Moniteur.findById(payload.moniteurId)
+    const sessionVersion = moniteur?.sessionVersion || 0
+    if (
+      !moniteur ||
+      !moniteur.active ||
+      (payload.sv ?? 0) !== sessionVersion ||
+      isTokenRevoked(payload, moniteur.passwordChangedAt)
+    ) {
       return res.status(401).json({ success: false, error: 'Session invalide' })
     }
     if (!moniteur.activeLogin) {

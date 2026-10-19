@@ -112,8 +112,11 @@ export function ProfilPage() {
     e.preventDefault()
     const token = getMoniteurToken()
     if (!token) return
-    if (newPassword && newPassword.length < 8) {
-      setError('Nouveau mot de passe : minimum 8 caractères')
+    if (
+      newPassword &&
+      (newPassword.length < 8 || !/[A-Z]/.test(newPassword) || !/[a-z]/.test(newPassword) || !/\d/.test(newPassword))
+    ) {
+      setError('Mot de passe : minimum 8 caractères, avec majuscule, minuscule et chiffre')
       return
     }
     setSaving(true)

@@ -37,9 +37,10 @@ router.get('/', async (req, res) => {
     const filter = {}
 
     if (q) {
+      const safe = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').slice(0, 80)
       filter.$or = [
-        { title: { $regex: q, $options: 'i' } },
-        { body: { $regex: q, $options: 'i' } },
+        { title: { $regex: safe, $options: 'i' } },
+        { body: { $regex: safe, $options: 'i' } },
       ]
     }
 

@@ -57,6 +57,21 @@ export interface AdminCapabilities {
   manageRefunds?: boolean
 }
 
+export function logoutAdmin(token: string) {
+  return apiFetch<{ ok: boolean }>('/api/admin/auth/logout', { method: 'POST' }, token)
+}
+
+export interface OpsStatus {
+  db: string
+  fedapay: string
+  fedapayEnvironment: string
+  fedapayWebhookSecret: string
+}
+
+export function fetchOpsStatus(token: string) {
+  return apiFetch<OpsStatus>('/api/admin/auth/ops-status', {}, token)
+}
+
 export function fetchAdminMe(token: string) {
   return apiFetch<{ admin: AdminUser; capabilities?: AdminCapabilities }>(
     '/api/admin/auth/me',

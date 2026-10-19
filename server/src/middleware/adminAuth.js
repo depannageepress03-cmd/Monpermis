@@ -31,14 +31,24 @@ export async function requireAdminAuth(req, res, next) {
     }
 
     const token = header.slice(7)
-    const payload = jwt.verify(token, process.env.JWT_SECRET, { algorithms: ['HS256'] })
+    const payload = jwt.verify(token, process.env.JWT_SECRET, {
+      algorithms: ['HS256'],
+      issuer: 'monpermis',
+      audience: 'admin',
+    })
 
     if (payload.scope !== 'admin' || !payload.adminId) {
       return res.status(403).json({ success: false, error: 'Accès refusé' })
     }
 
     const admin = await Admin.findById(payload.adminId)
-    if (!admin || !admin.isActive || isTokenRevoked(payload, admin.passwordChangedAt)) {
+    const sessionVersion = admin?.sessionVersion || 0
+    if (
+      !admin ||
+      !admin.isActive ||
+      (payload.sv ?? 0) !== sessionVersion ||
+      isTokenRevoked(payload, admin.passwordChangedAt)
+    ) {
       return res.status(401).json({ success: false, error: 'Session invalide' })
     }
 

@@ -183,8 +183,8 @@ export function MoniteursPage() {
       setError('Saisissez le nom du moniteur')
       return
     }
-    if (password.length < 8) {
-      setError('Mot de passe : minimum 8 caractères')
+    if (password.length < 8 || !/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/\d/.test(password)) {
+      setError('Mot de passe : minimum 8 caractères, avec majuscule, minuscule et chiffre')
       return
     }
 
