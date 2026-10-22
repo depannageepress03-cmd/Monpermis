@@ -22,6 +22,10 @@ interface ExamItem {
   examNumber: number
   questionCount: number
   published: boolean
+  /** Fiche du sujet (examens blancs) : saisis par l'admin. */
+  author?: string
+  sceneName?: string
+  coefficient?: number
   updatedAt?: string
 }
 
@@ -78,7 +82,11 @@ interface BaseExamConfig {
   fetchOverview: (token: string) => Promise<ExamOverview>
   generateExams: (token: string) => Promise<{ examCount: number; requiredSize: number; exams: ExamItem[] }>
   fetchExamById: (token: string, examId: string) => Promise<{ exam: ExamWithQuestions }>
-  updateExam: (token: string, examId: string, payload: { published: boolean }) => Promise<{ exam: ExamWithQuestions }>
+  updateExam: (
+    token: string,
+    examId: string,
+    payload: { published?: boolean; author?: string; sceneName?: string; coefficient?: number },
+  ) => Promise<{ exam: ExamWithQuestions }>
   backTo: string
   backLabel: string
 }
@@ -92,6 +100,8 @@ export function BaseExamAdminPage(config: BaseExamConfig) {
   const [detailExam, setDetailExam] = useState<ExamWithQuestions | null>(null)
   const [detailLoading, setDetailLoading] = useState(false)
   const [expandedQuestionId, setExpandedQuestionId] = useState<string | null>(null)
+  const [metaForm, setMetaForm] = useState({ author: '', sceneName: '', coefficient: '1' })
+  const [metaSaving, setMetaSaving] = useState(false)
 
   const load = useCallback(async () => {
     const token = getAdminToken()
@@ -149,6 +159,11 @@ export function BaseExamAdminPage(config: BaseExamConfig) {
     try {
       const { exam } = await config.fetchExamById(token, examId)
       setDetailExam(exam)
+      setMetaForm({
+        author: exam.author ?? '',
+        sceneName: exam.sceneName ?? '',
+        coefficient: String(exam.coefficient ?? 1),
+      })
     } catch (err) {
       setError(isAuthError(err) ? err.message : 'Chargement impossible')
     } finally {
@@ -168,6 +183,36 @@ export function BaseExamAdminPage(config: BaseExamConfig) {
       await load()
     } catch (err) {
       setError(isAuthError(err) ? err.message : 'Mise à jour impossible')
+    }
+  }
+
+  const handleSaveMeta = async () => {
+    const token = getAdminToken()
+    if (!token || !detailExam) return
+    const coefficient = Number(metaForm.coefficient.replace(',', '.'))
+    if (!Number.isFinite(coefficient) || coefficient <= 0) {
+      setError('Coefficient invalide : saisissez un nombre supérieur à 0.')
+      return
+    }
+    setMetaSaving(true)
+    setError(null)
+    try {
+      await config.updateExam(token, detailExam.id, {
+        author: metaForm.author.trim(),
+        sceneName: metaForm.sceneName.trim(),
+        coefficient,
+      })
+      setDetailExam((prev) =>
+        prev
+          ? { ...prev, author: metaForm.author.trim(), sceneName: metaForm.sceneName.trim(), coefficient }
+          : null,
+      )
+      setSuccess(`Fiche du ${config.itemLabel.toLowerCase()} ${detailExam.examNumber} enregistrée.`)
+      await load()
+    } catch (err) {
+      setError(isAuthError(err) ? err.message : 'Enregistrement impossible')
+    } finally {
+      setMetaSaving(false)
     }
   }
 
@@ -296,6 +341,11 @@ export function BaseExamAdminPage(config: BaseExamConfig) {
                       </b>
                       <span>{exam.questionCount} questions</span>
                       {!exam.published ? <span className="cx-chip cx-amber">Brouillon</span> : null}
+                      {exam.coefficient !== undefined && (!exam.author || !exam.sceneName) ? (
+                        <span className="cx-chip cx-amber" title="Auteur ou nom de scène non renseigné">
+                          Fiche à compléter
+                        </span>
+                      ) : null}
                     </button>
                   ))}
                 </div>
@@ -391,6 +441,49 @@ export function BaseExamAdminPage(config: BaseExamConfig) {
               </button>
             </div>
             <div className="cx-modal-body">
+              {detailExam.coefficient !== undefined ? (
+                <form
+                  className="cx-filter-bar"
+                  style={{ marginBottom: '1rem' }}
+                  onSubmit={(e) => {
+                    e.preventDefault()
+                    void handleSaveMeta()
+                  }}
+                >
+                  <label>
+                    Auteur du sujet
+                    <input
+                      className="cx-input"
+                      value={metaForm.author}
+                      maxLength={120}
+                      placeholder="Non renseigné"
+                      onChange={(e) => setMetaForm((f) => ({ ...f, author: e.target.value }))}
+                    />
+                  </label>
+                  <label>
+                    Nom de la scène / épreuve
+                    <input
+                      className="cx-input"
+                      value={metaForm.sceneName}
+                      maxLength={120}
+                      placeholder="Non renseigné"
+                      onChange={(e) => setMetaForm((f) => ({ ...f, sceneName: e.target.value }))}
+                    />
+                  </label>
+                  <label>
+                    Coefficient
+                    <input
+                      className="cx-input"
+                      inputMode="decimal"
+                      value={metaForm.coefficient}
+                      onChange={(e) => setMetaForm((f) => ({ ...f, coefficient: e.target.value }))}
+                    />
+                  </label>
+                  <button type="submit" className="cx-btn cx-btn-fill" disabled={metaSaving}>
+                    {metaSaving ? 'Enregistrement…' : 'Enregistrer la fiche'}
+                  </button>
+                </form>
+              ) : null}
               {detailLoading ? (
                 <p className="cx-empty">Chargement des questions…</p>
               ) : (

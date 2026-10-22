@@ -21,6 +21,9 @@ export interface AdminPracticeExamOverview {
     examNumber: number
     questionCount: number
     published: boolean
+    author?: string
+    sceneName?: string
+    coefficient?: number
     updatedAt?: string
   }[]
   recentResults: {
@@ -60,7 +63,14 @@ export function fetchAdminPracticeExamById(token: string, examId: string) {
   )
 }
 
-export function updateAdminPracticeExam(token: string, examId: string, payload: { published: boolean }) {
+export interface AdminPracticeExamUpdate {
+  published?: boolean
+  author?: string
+  sceneName?: string
+  coefficient?: number
+}
+
+export function updateAdminPracticeExam(token: string, examId: string, payload: AdminPracticeExamUpdate) {
   return apiFetch<{ exam: AdminPracticeExamOverview['exams'][0] & { questions: any[] } }>(
     `/api/admin/revision/practice-exams/${examId}`,
     { method: 'PATCH', body: JSON.stringify(payload) },

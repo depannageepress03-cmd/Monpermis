@@ -54,6 +54,54 @@ export interface TrackExamSession {
   passed: boolean | null
 }
 
+export type ExamAttemptOutcome = 'completed' | 'in_progress' | 'stopped'
+
+export interface ExamAttemptSummary {
+  attemptId: string
+  userId: string
+  firstName: string
+  lastName: string
+  phone: string
+  examNumber: number
+  status: 'in_progress' | 'completed'
+  outcome: ExamAttemptOutcome
+  startAt: string
+  lastAt: string
+  completedAt: string | null
+  durationSeconds: number
+  questionCount: number
+  answered: number
+  skipped: number
+  correct: number
+  wrong: number
+  total: number
+  passScore: number
+  passed: boolean | null
+  quits: number
+}
+
+export interface ExamAttemptQuestion {
+  index: number
+  questionId: string
+  found: boolean
+  correctionAvailable: boolean
+  chapterOrder: number | null
+  questionNumber: number | null
+  prompt: { text: string; audioUrl: string; imageUrls: string[] }
+  answers: {
+    id: string
+    label: string
+    text: string
+    audioUrl: string
+    isCorrect: boolean
+    selected: boolean
+  }[]
+  state: 'correct' | 'wrong' | 'skipped' | 'unanswered'
+  isCorrect: boolean | null
+  elapsedMs: number | null
+  answeredAt: string | null
+}
+
 export interface TrackLearner {
   userId: string
   firstName: string
@@ -99,6 +147,7 @@ export interface TrackQuery {
   event?: string
   examNumber?: string
   attemptId?: string
+  outcome?: ExamAttemptOutcome | ''
   q?: string
   from?: string
   to?: string
@@ -112,6 +161,7 @@ function buildQuery(params: TrackQuery) {
   if (params.event) qs.set('event', params.event)
   if (params.examNumber) qs.set('examNumber', params.examNumber)
   if (params.attemptId) qs.set('attemptId', params.attemptId)
+  if (params.outcome) qs.set('outcome', params.outcome)
   if (params.q) qs.set('q', params.q)
   if (params.from) qs.set('from', params.from)
   if (params.to) qs.set('to', params.to)
@@ -138,6 +188,22 @@ export function fetchTrackExamSessions(token: string, params: TrackQuery = {}) {
 export function fetchTrackAttemptTimeline(token: string, attemptId: string) {
   return apiFetch<{ attemptId: string; events: TrackEvent[] }>(
     `/api/admin/tracking/exams/${encodeURIComponent(attemptId)}`,
+    {},
+    token,
+  )
+}
+
+export function fetchExamAttempts(token: string, params: TrackQuery = {}) {
+  return apiFetch<{ attempts: ExamAttemptSummary[]; pagination: Pagination }>(
+    `/api/admin/tracking/attempts${buildQuery(params)}`,
+    {},
+    token,
+  )
+}
+
+export function fetchExamAttemptDetail(token: string, attemptId: string) {
+  return apiFetch<{ attempt: ExamAttemptSummary; questions: ExamAttemptQuestion[] }>(
+    `/api/admin/tracking/attempts/${encodeURIComponent(attemptId)}`,
     {},
     token,
   )

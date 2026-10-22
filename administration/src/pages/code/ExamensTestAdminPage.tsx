@@ -10,7 +10,7 @@ export function ExamensTestAdminPage() {
   return (
     <BaseExamAdminPage
       title="Examens test"
-      kicker="24 sujets · mélange par chapitres"
+      kicker="80 sujets · questions tirées au hasard à chaque essai"
       itemLabel="Sujet"
       itemsLabel="sujets"
       backTo="/code"

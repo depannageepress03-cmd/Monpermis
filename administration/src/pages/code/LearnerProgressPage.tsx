@@ -11,6 +11,8 @@ import {
 import { CodeSection } from '../../components/model/CodeSection'
 import { getAdminToken, isAuthError } from '../../context/AdminAuthContext'
 import { EmptyState, SkeletonBlock } from '../../ui'
+import { LearnerRankingPanel } from './LearnerRankingPanel'
+import { LearnerReportPanels } from './LearnerReportPanels'
 
 function statusLabel(status: string) {
   switch (status) {
@@ -161,6 +163,7 @@ export function LearnerProgressListPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [query, setQuery] = useState('')
+  const [view, setView] = useState<'list' | 'ranking'>('list')
 
   const load = useCallback(async () => {
     const token = getAdminToken()
@@ -205,8 +208,20 @@ export function LearnerProgressListPage() {
         </button>
       }
     >
-      {error ? <p className="cx-note cx-note-err" role="alert">{error}</p> : null}
+      <div className="cx-tabs" role="tablist" style={{ marginBottom: '1rem' }}>
+        <button type="button" role="tab" aria-selected={view === 'list'} className={view === 'list' ? 'cx-active' : ''} onClick={() => setView('list')}>
+          Liste des apprenants
+        </button>
+        <button type="button" role="tab" aria-selected={view === 'ranking'} className={view === 'ranking' ? 'cx-active' : ''} onClick={() => setView('ranking')}>
+          Classement par moyenne
+        </button>
+      </div>
 
+      {view === 'ranking' ? <LearnerRankingPanel /> : null}
+
+      {view === 'list' && error ? <p className="cx-note cx-note-err" role="alert">{error}</p> : null}
+
+      {view === 'list' ? (
       <section className="cx-panel">
         <div className="cx-toolbar" style={{ marginBottom: '.8rem' }}>
           <label className="cx-search">
@@ -257,6 +272,7 @@ export function LearnerProgressListPage() {
           )
         ) : null}
       </section>
+      ) : null}
     </CodeSection>
   )
 }
@@ -322,6 +338,8 @@ export function LearnerProgressDetailPage() {
     >
       {loading && !data ? <SkeletonBlock rows={6} /> : null}
       {error ? <p className="cx-note cx-note-err" role="alert">{error}</p> : null}
+
+      {userId ? <LearnerReportPanels userId={userId} /> : null}
 
       {data ? (
         <>

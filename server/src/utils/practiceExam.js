@@ -5,8 +5,8 @@ import {
   summarizeChapterBank,
 } from './chapterBalancedPick.js'
 
-/** Nombre d'examens blancs (sujets de test) disponibles. */
-export const PRACTICE_EXAM_COUNT = 24
+/** Nombre d'examens blancs (sujets) proposés. Chaque démarrage tire de nouvelles questions au hasard. */
+export const PRACTICE_EXAM_COUNT = 80
 /** Questions par examen (= note sur 20). */
 export const PRACTICE_EXAM_SIZE = 20
 /** Seuil de réussite. */

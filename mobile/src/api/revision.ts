@@ -345,6 +345,104 @@ export async function fetchLearnerJourney(): Promise<LearnerJourney> {
   }
 }
 
+/** « Mes résultats » : même rapport que celui de l'administration, limité à l'apprenant connecté. */
+export interface ResultExamRow {
+  attemptId: string
+  examNumber: number
+  subject: string
+  author: string
+  sceneName: string
+  composedAt: string | null
+  completedAt: string | null
+  lastAt: string | null
+  status: 'completed' | 'not_completed'
+  statusLabel: string
+  total: number
+  treated: number
+  correct: number
+  incorrect: number
+  unanswered: number
+  failed: number
+  note: number | null
+  completed: boolean
+  evaluated: boolean
+  coefficient: number
+  passed: boolean | null
+  counted: boolean
+}
+
+export interface ResultExamSummary {
+  evaluatedCount: number
+  completedCount: number
+  unfinishedCount: number
+  totalQuestions: number
+  totalCorrect: number
+  totalIncorrect: number
+  totalUnanswered: number
+  totalFailed: number
+  average: number | null
+  bestNote: number | null
+  lowestNote: number | null
+}
+
+export interface ResultLesson {
+  chapterId: string
+  chapterName: string
+  chapterOrder: number
+  courseId: string
+  title: string
+  state: 'not_started' | 'in_progress' | 'completed'
+  validated: boolean
+}
+
+export interface ResultCourse {
+  total: number
+  followed: number
+  completed: number
+  inProgress: number
+  notStarted: number
+  validated: number
+  percent: number | null
+  status: 'not_started' | 'in_progress' | 'completed' | 'validated' | 'to_verify'
+  statusLabel: string
+  chaptersTotal: number
+  chaptersValidated: number
+  remaining: ResultLesson[]
+}
+
+export interface LearnerResultsReport {
+  generatedAt: string
+  learner: { id: string; firstName: string; lastName: string; registeredAt: string | null }
+  exams: { passScore: number; questionsPerExam: number; rows: ResultExamRow[]; summary: ResultExamSummary }
+  course: ResultCourse
+}
+
+export interface ResultReviewQuestion {
+  index: number
+  questionId: string
+  found: boolean
+  correctionAvailable: boolean
+  hidden: boolean
+  chapterOrder: number | null
+  questionNumber: number | null
+  prompt: { text: string; audioUrl: string; imageUrls: string[] }
+  answers: { id: string; label: string; text: string; isCorrect: boolean; selected: boolean }[]
+  state: 'correct' | 'wrong' | 'skipped' | 'unanswered'
+  elapsedMs: number | null
+}
+
+export async function fetchLearnerResults(): Promise<LearnerResultsReport> {
+  return request<LearnerResultsReport>('/content/revision/results/report', { auth: true })
+}
+
+export async function fetchResultAttemptReview(attemptId: string): Promise<ResultReviewQuestion[]> {
+  const data = await request<{ attemptId: string; questions: ResultReviewQuestion[] }>(
+    `/content/revision/results/attempts/${encodeURIComponent(attemptId)}`,
+    { auth: true },
+  )
+  return data.questions
+}
+
 export async function fetchPracticeExams(): Promise<PracticeExamsOverview> {
   return request<PracticeExamsOverview>('/content/revision/practice-exams', { auth: true })
 }

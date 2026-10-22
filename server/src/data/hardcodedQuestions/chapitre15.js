@@ -18,6 +18,13 @@ function audioUrl(n) {
   return `/content/code-audio/chapitre-15/${n}.mp3`
 }
 
+function imageUrl(n) {
+  return `/content/code-images/chapitre-15/${n}.png`
+}
+
+/** Images disponibles (N.png = question N). */
+const QUESTIONS_WITH_IMAGES = new Set([1, 2, 3, 8])
+
 function answers(questionIndex, letters, correctLetters) {
   const correct = new Set(correctLetters.map((l) => l.toUpperCase()))
   return letters.map((letter) => {
@@ -43,7 +50,7 @@ function question(order, letterOptions, correctLetters) {
       text: '',
       audioUrl: audioUrl(order),
       audioPublicId: '',
-      imageUrls: [],
+      imageUrls: QUESTIONS_WITH_IMAGES.has(order) ? [imageUrl(order)] : [],
     },
     answers: answers(order, letterOptions, correctLetters),
   }

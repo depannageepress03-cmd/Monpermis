@@ -565,6 +565,20 @@ export function AbonnementScreen() {
         modules={modules}
         defaultPhone={user.phone}
         onClose={() => setCheckoutOpen(false)}
+        onRedeemPromo={async (code) => {
+          // Même vérification serveur que le champ de la page : le code débloque l'accès gratuitement.
+          const result = await redeemPromoCode(code)
+          setMe(result.access)
+          const labels = result.modules
+            .map((key) => modules.find((m) => m.key === key)?.label || key)
+            .join(', ')
+          setPromoError(null)
+          setPromoSuccess(`Code activé : ${labels} débloqué${result.modules.length > 1 ? 's' : ''}.`)
+          setSelected({})
+          setCheckoutOpen(false)
+          setPendingCart(null)
+          void clearPendingCheckoutCart()
+        }}
         onSuccess={(access) => {
           setMe(access)
           setSelected({})

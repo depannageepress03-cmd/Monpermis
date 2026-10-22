@@ -52,6 +52,9 @@ router.get('/practice-exams', async (_req, res) => {
           examNumber: exam.examNumber,
           questionCount: (exam.questionIds || []).length,
           published: Boolean(exam.published),
+          author: exam.author || '',
+          sceneName: exam.sceneName || '',
+          coefficient: exam.coefficient ?? 1,
           updatedAt: exam.updatedAt,
         })),
         recentResults: recentAttempts.map((attempt) => {
@@ -127,6 +130,23 @@ router.patch('/practice-exams/:examId', audit('update', 'practice_exam'), async 
     }
     if (req.body.published !== undefined) {
       exam.published = Boolean(req.body.published)
+    }
+    for (const field of ['author', 'sceneName']) {
+      if (req.body[field] === undefined) continue
+      const value = String(req.body[field] ?? '').trim()
+      if (value.length > 120) {
+        return res.status(400).json({ success: false, error: 'Texte trop long (120 caractères max)' })
+      }
+      exam[field] = value
+    }
+    if (req.body.coefficient !== undefined) {
+      const coefficient = Number(req.body.coefficient)
+      if (!Number.isFinite(coefficient) || coefficient <= 0 || coefficient > 100) {
+        return res
+          .status(400)
+          .json({ success: false, error: 'Coefficient invalide (nombre supérieur à 0, 100 max)' })
+      }
+      exam.coefficient = coefficient
     }
     await exam.save()
     const questions = await loadQuestionsByIds(exam.questionIds)

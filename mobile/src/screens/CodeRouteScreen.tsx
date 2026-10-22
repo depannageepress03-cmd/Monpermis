@@ -180,8 +180,8 @@ export function CodeRouteScreen() {
       },
       {
         id: 'MesNotes',
-        label: 'Mes notes & avancée',
-        subtitle: 'Suis tes résultats et ta progression en temps réel.',
+        label: 'Mes résultats',
+        subtitle: 'Tes notes, ta moyenne et ta progression dans le cours.',
         image: require('../../assets/code-route/cards/notes.jpg'),
         tone: 'green',
         Icon: LineChart,

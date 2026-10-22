@@ -9,9 +9,11 @@ interface DrawerProps {
   onClose: () => void
   children: ReactNode
   footer?: ReactNode
+  /** Panneau élargi (contenu riche : images, listes détaillées). */
+  wide?: boolean
 }
 
-export function Drawer({ open, title, subtitle, onClose, children, footer }: DrawerProps) {
+export function Drawer({ open, title, subtitle, onClose, children, footer, wide }: DrawerProps) {
   const titleId = useId()
   const panelRef = useRef<HTMLDivElement>(null)
 
@@ -37,7 +39,7 @@ export function Drawer({ open, title, subtitle, onClose, children, footer }: Dra
       <button type="button" className="ui-drawer-backdrop" aria-label="Fermer" onClick={onClose} />
       <div
         ref={panelRef}
-        className="ui-drawer-panel"
+        className={`ui-drawer-panel${wide ? ' ui-drawer-wide' : ''}`}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}

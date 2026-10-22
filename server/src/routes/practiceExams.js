@@ -10,8 +10,13 @@ import {
   isPracticeExamPassed,
   scoreLabel,
 } from '../utils/practiceExam.js'
-import { ensurePracticeExamSheets } from '../services/practiceExams.js'
+import {
+  ensurePracticeExamSheets,
+  loadPublishedExamQuestionBank,
+  pickFreshExamQuestions,
+} from '../services/practiceExams.js'
 import { loadQuestionsByIds } from '../services/hardcodedQuestions.js'
+import { buildLearnerReport, buildAttemptQuestions } from '../services/learnerReport.js'
 
 const router = Router()
 const withCodeAccess = [requireUserAuth, requireModuleAccess('code')]
@@ -92,15 +97,6 @@ router.get('/practice-exams', ...withCodeAccess, async (req, res) => {
       }
     }
 
-    const inProgress = await PracticeExamAttempt.find({
-      userId: req.user._id,
-      status: 'in_progress',
-    })
-
-    const inProgressByExam = new Map(
-      inProgress.map((attempt) => [attempt.examNumber, attempt]),
-    )
-
     res.json({
       success: true,
       data: {
@@ -115,13 +111,13 @@ router.get('/practice-exams', ...withCodeAccess, async (req, res) => {
           .length,
         exams: exams.map((exam) => {
           const best = bestByExam.get(exam.examNumber)
-          const active = inProgressByExam.get(exam.examNumber)
           return {
             id: exam._id,
             examNumber: exam.examNumber,
             questionCount: PRACTICE_EXAM_SIZE,
-            status: active ? 'in_progress' : best ? 'completed' : 'available',
-            attemptId: active ? String(active._id) : null,
+            // Pas de reprise : chaque démarrage compose un nouvel examen avec de nouvelles questions.
+            status: best ? 'completed' : 'available',
+            attemptId: null,
             score: best
               ? {
                   correct: best.correct,
@@ -170,24 +166,31 @@ router.post('/practice-exams/:examNumber/start', ...withCodeAccess, async (req, 
       return res.status(404).json({ success: false, error: 'Examen introuvable' })
     }
 
-    let attempt = await PracticeExamAttempt.findOne({
-      userId: req.user._id,
-      examNumber,
-      status: 'in_progress',
-    })
-
-    if (!attempt) {
-      attempt = await PracticeExamAttempt.create({
-        userId: req.user._id,
-        examId: exam._id,
-        examNumber,
-        questionIds: exam.questionIds,
-        responses: [],
-        status: 'in_progress',
-        total: PRACTICE_EXAM_SIZE,
-        hcIdsV2: true,
+    // Chaque démarrage tire de NOUVELLES questions au hasard (parmi les questions entièrement utilisables),
+    // en évitant celles déjà vues par l'apprenant. Un examen quitté en cours n'est pas repris.
+    const [{ questions: bank }, previous] = await Promise.all([
+      loadPublishedExamQuestionBank(),
+      PracticeExamAttempt.find({ userId: req.user._id }).select('questionIds').lean(),
+    ])
+    const seenIds = previous.flatMap((item) => item.questionIds || [])
+    const picked = pickFreshExamQuestions(bank, seenIds, PRACTICE_EXAM_SIZE)
+    if (picked.length < PRACTICE_EXAM_SIZE) {
+      return res.status(400).json({
+        success: false,
+        error: `Pas assez de questions disponibles pour composer un examen (${picked.length}/${PRACTICE_EXAM_SIZE}).`,
       })
     }
+
+    const attempt = await PracticeExamAttempt.create({
+      userId: req.user._id,
+      examId: exam._id,
+      examNumber,
+      questionIds: picked.map((question) => String(question._id)),
+      responses: [],
+      status: 'in_progress',
+      total: PRACTICE_EXAM_SIZE,
+      hcIdsV2: true,
+    })
 
     const questions = await loadQuestionsByIds(attempt.questionIds)
     res.status(201).json({
@@ -304,6 +307,56 @@ router.post('/practice-exams/attempts/:attemptId/complete', ...withCodeAccess, a
   } catch (error) {
     console.error('Erreur fin examen test:', error)
     res.status(500).json({ success: false, error: 'Validation impossible' })
+  }
+})
+
+/**
+ * « Mes résultats » : même rapport que celui de l'admin (notes, moyenne, progression du cours),
+ * limité à l'apprenant connecté. Les alertes de saisie admin (auteur/scène manquants) ne sont pas exposées.
+ */
+router.get('/results/report', ...withCodeAccess, async (req, res) => {
+  try {
+    const report = await buildLearnerReport(req.user)
+    const { missingInfo: _missingInfo, ...learnerReport } = report
+    res.json({ success: true, data: learnerReport })
+  } catch (error) {
+    console.error('Erreur rapport apprenant:', error)
+    res.status(500).json({ success: false, error: 'Résultats indisponibles' })
+  }
+})
+
+/**
+ * Correction question par question d'un de SES examens. Pour un examen encore en cours, les bonnes réponses
+ * des questions non répondues restent masquées (l'examen peut être repris).
+ */
+router.get('/results/attempts/:attemptId', ...withCodeAccess, async (req, res) => {
+  try {
+    const attempt = await PracticeExamAttempt.findOne({
+      _id: req.params.attemptId,
+      userId: req.user._id,
+    })
+    if (!attempt) {
+      return res.status(404).json({ success: false, error: 'Tentative introuvable' })
+    }
+
+    const completed = attempt.status === 'completed'
+    const questions = (await buildAttemptQuestions(attempt)).map((question) => {
+      const reveal = completed || question.state !== 'unanswered'
+      return {
+        ...question,
+        correctionAvailable: reveal ? question.correctionAvailable : false,
+        hidden: !reveal,
+        answers: question.answers.map((answer) => ({
+          ...answer,
+          isCorrect: reveal ? answer.isCorrect : false,
+        })),
+      }
+    })
+
+    res.json({ success: true, data: { attemptId: String(attempt._id), questions } })
+  } catch (error) {
+    console.error('Erreur correction examen apprenant:', error)
+    res.status(500).json({ success: false, error: 'Correction indisponible' })
   }
 })
 

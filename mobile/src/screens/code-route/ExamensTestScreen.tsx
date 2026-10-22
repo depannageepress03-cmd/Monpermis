@@ -5,6 +5,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { ClipboardCheck } from 'lucide-react-native'
 import {
   ActivityIndicator,
+  Image,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -38,6 +39,7 @@ import { useRequireAuth } from '../../hooks/useRequireAuth'
 import type { RootStackParamList } from '../../navigation/types'
 import { dark, fonts } from '../../theme'
 import { stopAllQuizAudio } from '../../utils/quizSounds'
+import { resolveQuestionImageUri } from '../../utils/questionImages'
 import { tracker } from '../../tracking/tracker'
 
 type ListNav = NativeStackNavigationProp<RootStackParamList, 'ExamensTest'>
@@ -114,7 +116,7 @@ export function ExamensTestScreen() {
           <Text style={styles.kicker}>Auto-évaluation</Text>
           <Text style={styles.title}>Examens test</Text>
           <Text style={styles.subtitle}>
-            {data?.examTotal ?? 24} sujets · mélange de tous les chapitres ·{' '}
+            {data?.examTotal ?? 80} sujets · questions tirées au hasard à chaque essai ·{' '}
             {data?.requiredSize ?? 20} questions · note /20 · moyenne {data?.passScore ?? 14}/20
           </Text>
 
@@ -234,6 +236,8 @@ export function ExamensTestTakeScreen() {
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [checking, setChecking] = useState(false)
   const [submitted, setSubmitted] = useState(false)
+  // Correction affichée sur la même page après validation : vert = bonne réponse, rouge = choix faux.
+  const [feedback, setFeedback] = useState<{ isCorrect: boolean; correctAnswerIds: string[] } | null>(null)
   const [answeredCount, setAnsweredCount] = useState(0)
   const [finished, setFinished] = useState(false)
   const [finalScore, setFinalScore] = useState<{
@@ -343,6 +347,28 @@ export function ExamensTestTakeScreen() {
   const questions = attempt?.questions || []
   questionsRef.current = questions
   const question = questions[index]
+
+  // Images de l'énoncé (panneaux, situations de route) : fichier embarqué, réseau en secours.
+  const [resolvedImages, setResolvedImages] = useState<{ key: string; uri: string }[]>([])
+  useEffect(() => {
+    let cancelled = false
+    const urls = question?.prompt?.imageUrls || []
+    if (!question || urls.length === 0) {
+      setResolvedImages([])
+      return
+    }
+    ;(async () => {
+      const next: { key: string; uri: string }[] = []
+      for (const url of urls) {
+        const uri = await resolveQuestionImageUri(question.id, url)
+        if (uri) next.push({ key: url, uri })
+      }
+      if (!cancelled) setResolvedImages(next)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [question?.id, question?.prompt?.imageUrls])
   const displayAnswers = useMemo(() => {
     if (!question) return []
     const transcript = resolveQuestionTranscript({
@@ -403,6 +429,7 @@ export function ExamensTestTakeScreen() {
     setIndex((value) => value + 1)
     setSelectedIds([])
     setSubmitted(false)
+    setFeedback(null)
     setSequenceLive(true)
   }, [examNumber])
 
@@ -479,7 +506,7 @@ export function ExamensTestTakeScreen() {
           },
         )
         setAnsweredCount(data.answeredCount)
-        await finishOrAdvance()
+        setFeedback({ isCorrect: data.isCorrect, correctAnswerIds: data.correctAnswerIds || [] })
       } catch (err) {
         setSubmitted(false)
         setError(err instanceof ContentError ? err.message : 'Vérification impossible')
@@ -488,7 +515,7 @@ export function ExamensTestTakeScreen() {
         setChecking(false)
       }
     },
-    [examNumber, finishOrAdvance],
+    [examNumber],
   )
 
   const handleSequenceComplete = useCallback(() => {
@@ -511,8 +538,8 @@ export function ExamensTestTakeScreen() {
 
   const leaveMessage =
     answeredCount > 0
-      ? `Quitter ? Vos ${answeredCount} réponses sont enregistrées — reprenez via Continuer sur la même épreuve.`
-      : 'Quitter ? Votre progression en cours sera conservée si vous reprenez le même examen.'
+      ? `Quitter ? Vos ${answeredCount} réponses seront conservées dans vos notes, mais cet examen ne pourra pas être repris : de nouvelles questions seront tirées au prochain essai.`
+      : 'Quitter ? Cet examen ne pourra pas être repris : de nouvelles questions seront tirées au prochain essai.'
   useLeaveGuard(Boolean(attempt) && !finished && !loading, leaveMessage, () => {
     const currentAttempt = attemptRef.current
     tracker.track(
@@ -546,7 +573,7 @@ export function ExamensTestTakeScreen() {
           <Text style={styles.kicker}>Examen blanc</Text>
           <Text style={styles.title}>Examen {examNumber}</Text>
           <Text style={styles.subtitle}>
-            Seuil de réussite : {attempt?.passScore ?? 14}/20 · Résultats à la fin
+            Seuil de réussite : {attempt?.passScore ?? 14}/20 · Note finale à la fin
           </Text>
 
           {loading ? <ActivityIndicator color={dark.green} /> : null}
@@ -590,12 +617,32 @@ export function ExamensTestTakeScreen() {
                   onSequenceComplete={handleSequenceComplete}
                 />
               ) : null}
+              {resolvedImages.length > 0 ? (
+                <View style={styles.images}>
+                  {resolvedImages.map((img) => (
+                    <Image
+                      key={img.key}
+                      source={{ uri: img.uri }}
+                      style={styles.image}
+                      resizeMode="cover"
+                      onError={() => setResolvedImages((prev) => prev.filter((item) => item.key !== img.key))}
+                    />
+                  ))}
+                </View>
+              ) : null}
               {displayAnswers.map((answer) => {
                 const selected = selectedIds.includes(answer.id)
+                const isGood = Boolean(feedback && feedback.correctAnswerIds.includes(answer.id))
+                const isBad = Boolean(feedback && selected && !isGood)
                 return (
                   <Pressable
                     key={answer.id}
-                    style={[styles.answer, selected && styles.answerSelected]}
+                    style={[
+                      styles.answer,
+                      selected && !feedback && styles.answerSelected,
+                      isGood && styles.answerCorrect,
+                      isBad && styles.answerWrong,
+                    ]}
                     onPress={() => toggleAnswer(answer.id)}
                     disabled={submitted || checking}
                   >
@@ -614,13 +661,25 @@ export function ExamensTestTakeScreen() {
                   {checking ? (
                     <ActivityIndicator color={'#0B0F1A'} />
                   ) : (
-                    <Text style={styles.primaryBtnText}>Continuer</Text>
+                    <Text style={styles.primaryBtnText}>Valider</Text>
                   )}
                 </Pressable>
               ) : null}
+              {feedback ? (
+                <>
+                  <Text style={[styles.feedbackLine, feedback.isCorrect ? styles.feedbackOk : styles.feedbackKo]}>
+                    {feedback.isCorrect ? 'Bonne réponse' : 'Mauvaise réponse'}
+                  </Text>
+                  <Pressable style={styles.primaryBtn} onPress={() => void finishOrAdvance()}>
+                    <Text style={styles.primaryBtnText}>
+                      {index + 1 >= (attempt?.questions.length ?? 0) ? 'Terminer l’examen' : 'Question suivante'}
+                    </Text>
+                  </Pressable>
+                </>
+              ) : null}
               {!submitted && selectedIds.length === 0 ? (
                 <Text style={styles.awaitingText}>
-                  L’audio lit la question 2 fois. Vous pouvez cocher pendant la lecture ; Continuer valide sans attendre.
+                  L’audio lit la question 2 fois. Vous pouvez cocher pendant la lecture ; Valider corrige sans attendre.
                 </Text>
               ) : null}
             </View>
@@ -827,10 +886,36 @@ const styles = StyleSheet.create({
     padding: 14,
     backgroundColor: dark.surfaceRaised,
   },
+  images: {
+    gap: 8,
+    marginBottom: 4,
+  },
+  image: {
+    width: '100%',
+    aspectRatio: 2 / 1,
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+  },
   answerSelected: {
     borderColor: dark.green,
     backgroundColor: dark.greenSoft,
   },
+  answerCorrect: {
+    borderColor: dark.green,
+    backgroundColor: dark.greenSoft,
+  },
+  answerWrong: {
+    borderColor: dark.coral,
+    backgroundColor: dark.coralSoft,
+  },
+  feedbackLine: {
+    fontFamily: fonts.displayBold,
+    fontSize: 16,
+    textAlign: 'center',
+    marginTop: 4,
+  },
+  feedbackOk: { color: dark.green },
+  feedbackKo: { color: dark.coral },
   answerLabel: {
     fontFamily: fonts.displayBold,
     color: dark.textPrimary,
