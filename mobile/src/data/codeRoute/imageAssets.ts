@@ -1,4 +1,4 @@
-/** Images embarquées — quiz hors ligne. N° image = N° question. */
+/** Images embarquées — quiz hors ligne. N° image = N° question (questions sûres uniquement ; généré par generate-bundled-assets.mjs). */
 export const CODE_IMAGE_MODULES: Record<number, Record<number, number>> = {
   1: {
     3: require('../../../assets/code-images/chapitre-1/3.png'),
@@ -10,18 +10,29 @@ export const CODE_IMAGE_MODULES: Record<number, Record<number, number>> = {
     12: require('../../../assets/code-images/chapitre-1/12.png'),
     13: require('../../../assets/code-images/chapitre-1/13.png'),
     14: require('../../../assets/code-images/chapitre-1/14.png'),
-    17: require('../../../assets/code-images/chapitre-1/17.png'),
     15: require('../../../assets/code-images/chapitre-1/15.png'),
     16: require('../../../assets/code-images/chapitre-1/16.png'),
+    17: require('../../../assets/code-images/chapitre-1/17.png'),
     18: require('../../../assets/code-images/chapitre-1/18.png'),
     19: require('../../../assets/code-images/chapitre-1/19.png'),
     20: require('../../../assets/code-images/chapitre-1/20.png'),
     22: require('../../../assets/code-images/chapitre-1/22.png'),
+    25: require('../../../assets/code-images/chapitre-1/25.png'),
+    29: require('../../../assets/code-images/chapitre-1/29.png'),
+    30: require('../../../assets/code-images/chapitre-1/30.png'),
+    31: require('../../../assets/code-images/chapitre-1/31.png'),
+    32: require('../../../assets/code-images/chapitre-1/32.png'),
     33: require('../../../assets/code-images/chapitre-1/33.png'),
+    34: require('../../../assets/code-images/chapitre-1/34.png'),
+    35: require('../../../assets/code-images/chapitre-1/35.png'),
     36: require('../../../assets/code-images/chapitre-1/36.png'),
+    37: require('../../../assets/code-images/chapitre-1/37.png'),
+    38: require('../../../assets/code-images/chapitre-1/38.png'),
+    40: require('../../../assets/code-images/chapitre-1/40.png'),
     44: require('../../../assets/code-images/chapitre-1/44.png'),
     45: require('../../../assets/code-images/chapitre-1/45.png'),
     46: require('../../../assets/code-images/chapitre-1/46.png'),
+    47: require('../../../assets/code-images/chapitre-1/47.png'),
     48: require('../../../assets/code-images/chapitre-1/48.png'),
     49: require('../../../assets/code-images/chapitre-1/49.png'),
     50: require('../../../assets/code-images/chapitre-1/50.png'),
@@ -36,18 +47,23 @@ export const CODE_IMAGE_MODULES: Record<number, Record<number, number>> = {
     59: require('../../../assets/code-images/chapitre-1/59.png'),
     60: require('../../../assets/code-images/chapitre-1/60.png'),
     61: require('../../../assets/code-images/chapitre-1/61.png'),
+    62: require('../../../assets/code-images/chapitre-1/62.png'),
     63: require('../../../assets/code-images/chapitre-1/63.png'),
     64: require('../../../assets/code-images/chapitre-1/64.png'),
     66: require('../../../assets/code-images/chapitre-1/66.png'),
+    67: require('../../../assets/code-images/chapitre-1/67.png'),
     68: require('../../../assets/code-images/chapitre-1/68.png'),
+    69: require('../../../assets/code-images/chapitre-1/69.png'),
     70: require('../../../assets/code-images/chapitre-1/70.png'),
     71: require('../../../assets/code-images/chapitre-1/71.png'),
     72: require('../../../assets/code-images/chapitre-1/72.png'),
     73: require('../../../assets/code-images/chapitre-1/73.png'),
     74: require('../../../assets/code-images/chapitre-1/74.png'),
+    75: require('../../../assets/code-images/chapitre-1/75.png'),
     76: require('../../../assets/code-images/chapitre-1/76.png'),
     77: require('../../../assets/code-images/chapitre-1/77.png'),
     78: require('../../../assets/code-images/chapitre-1/78.png'),
+    79: require('../../../assets/code-images/chapitre-1/79.png'),
     80: require('../../../assets/code-images/chapitre-1/80.png'),
     81: require('../../../assets/code-images/chapitre-1/81.png'),
     96: require('../../../assets/code-images/chapitre-1/96.png'),
@@ -58,23 +74,7 @@ export const CODE_IMAGE_MODULES: Record<number, Record<number, number>> = {
     101: require('../../../assets/code-images/chapitre-1/101.png'),
     102: require('../../../assets/code-images/chapitre-1/102.png'),
     104: require('../../../assets/code-images/chapitre-1/104.png'),
-    106: require('../../../assets/code-images/chapitre-1/106.png'),
-    25: require('../../../assets/code-images/chapitre-1/25.png'),
-    29: require('../../../assets/code-images/chapitre-1/29.png'),
-    30: require('../../../assets/code-images/chapitre-1/30.png'),
-    31: require('../../../assets/code-images/chapitre-1/31.png'),
-    32: require('../../../assets/code-images/chapitre-1/32.png'),
-    34: require('../../../assets/code-images/chapitre-1/34.png'),
-    35: require('../../../assets/code-images/chapitre-1/35.png'),
-    37: require('../../../assets/code-images/chapitre-1/37.png'),
-    38: require('../../../assets/code-images/chapitre-1/38.png'),
-    40: require('../../../assets/code-images/chapitre-1/40.png'),
-    47: require('../../../assets/code-images/chapitre-1/47.png'),
-    62: require('../../../assets/code-images/chapitre-1/62.png'),
-    67: require('../../../assets/code-images/chapitre-1/67.png'),
-    69: require('../../../assets/code-images/chapitre-1/69.png'),
-    75: require('../../../assets/code-images/chapitre-1/75.png'),
-    79: require('../../../assets/code-images/chapitre-1/79.png'),
+    106: require('../../../assets/code-images/chapitre-1/106.png')
   },
   2: {
     13: require('../../../assets/code-images/chapitre-2/13.png'),
@@ -88,21 +88,22 @@ export const CODE_IMAGE_MODULES: Record<number, Record<number, number>> = {
     26: require('../../../assets/code-images/chapitre-2/26.png'),
     27: require('../../../assets/code-images/chapitre-2/27.png'),
     28: require('../../../assets/code-images/chapitre-2/28.png'),
-    29: require('../../../assets/code-images/chapitre-2/29.png'),
+    29: require('../../../assets/code-images/chapitre-2/29.png')
   },
   3: {
     2: require('../../../assets/code-images/chapitre-3/2.png'),
-    8: require('../../../assets/code-images/chapitre-3/8.png'),
+    6: require('../../../assets/code-images/chapitre-3/6.png'),
+    8: require('../../../assets/code-images/chapitre-3/8.png')
   },
   4: {
-    9: require('../../../assets/code-images/chapitre-4/9.png'),
+    9: require('../../../assets/code-images/chapitre-4/9.png')
   },
   6: {
     24: require('../../../assets/code-images/chapitre-6/24.png'),
-    25: require('../../../assets/code-images/chapitre-6/25.png'),
+    25: require('../../../assets/code-images/chapitre-6/25.png')
   },
   7: {
-    4: require('../../../assets/code-images/chapitre-7/4.png'),
+    4: require('../../../assets/code-images/chapitre-7/4.png')
   },
   8: {
     22: require('../../../assets/code-images/chapitre-8/22.png'),
@@ -110,7 +111,7 @@ export const CODE_IMAGE_MODULES: Record<number, Record<number, number>> = {
     31: require('../../../assets/code-images/chapitre-8/31.png'),
     32: require('../../../assets/code-images/chapitre-8/32.png'),
     33: require('../../../assets/code-images/chapitre-8/33.png'),
-    34: require('../../../assets/code-images/chapitre-8/34.png'),
+    34: require('../../../assets/code-images/chapitre-8/34.png')
   },
   9: {
     1: require('../../../assets/code-images/chapitre-9/1.png'),
@@ -118,53 +119,21 @@ export const CODE_IMAGE_MODULES: Record<number, Record<number, number>> = {
     26: require('../../../assets/code-images/chapitre-9/26.png'),
     27: require('../../../assets/code-images/chapitre-9/27.png'),
     28: require('../../../assets/code-images/chapitre-9/28.png'),
-    29: require('../../../assets/code-images/chapitre-9/29.png'),
+    29: require('../../../assets/code-images/chapitre-9/29.png')
   },
   11: {
-    1: require('../../../assets/code-images/chapitre-11/1.png'),
-    2: require('../../../assets/code-images/chapitre-11/2.png'),
-    3: require('../../../assets/code-images/chapitre-11/3.png'),
-    4: require('../../../assets/code-images/chapitre-11/4.png'),
-    5: require('../../../assets/code-images/chapitre-11/5.png'),
-    6: require('../../../assets/code-images/chapitre-11/6.png'),
-    7: require('../../../assets/code-images/chapitre-11/7.png'),
-    8: require('../../../assets/code-images/chapitre-11/8.png'),
-    9: require('../../../assets/code-images/chapitre-11/9.png'),
-    10: require('../../../assets/code-images/chapitre-11/10.png'),
-    11: require('../../../assets/code-images/chapitre-11/11.png'),
-    12: require('../../../assets/code-images/chapitre-11/12.png'),
-    13: require('../../../assets/code-images/chapitre-11/13.png'),
-    14: require('../../../assets/code-images/chapitre-11/14.png'),
-    15: require('../../../assets/code-images/chapitre-11/15.png'),
-    16: require('../../../assets/code-images/chapitre-11/16.png'),
-    17: require('../../../assets/code-images/chapitre-11/17.png'),
-    18: require('../../../assets/code-images/chapitre-11/18.png'),
-    19: require('../../../assets/code-images/chapitre-11/19.png'),
-    20: require('../../../assets/code-images/chapitre-11/20.png'),
-    21: require('../../../assets/code-images/chapitre-11/21.png'),
-    22: require('../../../assets/code-images/chapitre-11/22.png'),
-    23: require('../../../assets/code-images/chapitre-11/23.png'),
-    24: require('../../../assets/code-images/chapitre-11/24.png'),
     25: require('../../../assets/code-images/chapitre-11/25.png'),
-    26: require('../../../assets/code-images/chapitre-11/26.png'),
-    27: require('../../../assets/code-images/chapitre-11/27.png'),
-    28: require('../../../assets/code-images/chapitre-11/28.png'),
-    29: require('../../../assets/code-images/chapitre-11/29.png'),
-    30: require('../../../assets/code-images/chapitre-11/30.png'),
-    31: require('../../../assets/code-images/chapitre-11/31.png'),
-    32: require('../../../assets/code-images/chapitre-11/32.png'),
-    33: require('../../../assets/code-images/chapitre-11/33.png'),
-    34: require('../../../assets/code-images/chapitre-11/34.png'),
+    31: require('../../../assets/code-images/chapitre-11/31.png')
   },
   15: {
     1: require('../../../assets/code-images/chapitre-15/1.png'),
     2: require('../../../assets/code-images/chapitre-15/2.png'),
     3: require('../../../assets/code-images/chapitre-15/3.png'),
-    8: require('../../../assets/code-images/chapitre-15/8.png'),
+    8: require('../../../assets/code-images/chapitre-15/8.png')
   },
   17: {
-    1: require('../../../assets/code-images/chapitre-17/1.png'),
-  },
+    1: require('../../../assets/code-images/chapitre-17/1.png')
+  }
 }
 
 export function getCodeImageModule(chapterOrder: number, imageIndex: number): number | null {

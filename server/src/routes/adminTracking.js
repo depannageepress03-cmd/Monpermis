@@ -1,13 +1,21 @@
 import { Router } from 'express'
 import mongoose from 'mongoose'
 import { LearnerTrackEvent, LEARNER_TRACK_EVENTS } from '../models/LearnerTrackEvent.js'
+import { PracticeExamAttempt } from '../models/PracticeExamAttempt.js'
 import { requireAdminAuth } from '../middleware/adminAuth.js'
+import {
+  ATTEMPT_IDLE_MS,
+  attemptOutcome,
+  buildAttemptQuestions,
+} from '../services/learnerReport.js'
+import { PRACTICE_EXAM_PASS_SCORE, PRACTICE_EXAM_SIZE } from '../utils/practiceExam.js'
 import { logger } from '../utils/logger.js'
 
 const router = Router()
 router.use(requireAdminAuth)
 
 const EXAM_EVENTS = ['exam_start', 'exam_answer', 'exam_skip', 'exam_quit', 'exam_complete']
+
 
 function toObjectId(value) {
   if (!value) return null
@@ -329,6 +337,141 @@ router.get('/exams/:attemptId', async (req, res) => {
     })
   } catch (error) {
     logger.error('Erreur chronologie tentative', { error: error.message })
+    res.status(500).json({ success: false, error: 'Chargement impossible' })
+  }
+})
+
+/** Résumé admin d'une tentative d'examen blanc (source : PracticeExamAttempt). */
+function summarizeAttempt(attempt, user, quits = 0) {
+  const responses = attempt.responses || []
+  const answered = responses.length
+  const skipped = responses.filter((r) => !r.answerIds || r.answerIds.length === 0).length
+  const liveCorrect = responses.filter((r) => r.isCorrect).length
+  const completed = attempt.status === 'completed'
+  const correct = completed ? attempt.correct : liveCorrect
+  const total = attempt.total || PRACTICE_EXAM_SIZE
+  const startAt = attempt.createdAt
+  const endAt = completed ? attempt.completedAt || attempt.updatedAt : attempt.updatedAt
+  const durationSeconds =
+    startAt && endAt ? Math.max(0, Math.round((new Date(endAt) - new Date(startAt)) / 1000)) : 0
+
+  return {
+    attemptId: String(attempt._id),
+    userId: attempt.userId ? String(attempt.userId) : '',
+    firstName: user?.firstName || '',
+    lastName: user?.lastName || '',
+    phone: user?.phone || '',
+    examNumber: attempt.examNumber,
+    status: attempt.status,
+    outcome: attemptOutcome(attempt),
+    startAt,
+    lastAt: attempt.updatedAt,
+    completedAt: attempt.completedAt || null,
+    durationSeconds,
+    questionCount: (attempt.questionIds || []).length || total,
+    answered,
+    skipped,
+    correct,
+    wrong: answered - liveCorrect,
+    total,
+    passScore: PRACTICE_EXAM_PASS_SCORE,
+    passed: completed ? Boolean(attempt.passed) || correct >= PRACTICE_EXAM_PASS_SCORE : null,
+    quits,
+  }
+}
+
+async function countQuitsByAttempt(attemptIds) {
+  if (!attemptIds.length) return new Map()
+  const rows = await LearnerTrackEvent.aggregate([
+    { $match: { event: 'exam_quit', 'context.attemptId': { $in: attemptIds } } },
+    { $group: { _id: '$context.attemptId', count: { $sum: 1 } } },
+  ])
+  return new Map(rows.map((r) => [String(r._id), r.count]))
+}
+
+/** Tentatives d'examens blancs (terminées, en cours ou arrêtées en chemin). */
+router.get('/attempts', async (req, res) => {
+  try {
+    const page = Math.max(1, parseInt(req.query.page) || 1)
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 30))
+    const skip = (page - 1) * limit
+    const examNumber = String(req.query.examNumber || '').trim()
+    const outcome = String(req.query.outcome || '').trim()
+    const from = parseDate(req.query.from)
+    const to = parseDate(req.query.to)
+
+    const filter = {}
+    const userIdOid = toObjectId(req.query.userId)
+    if (userIdOid) filter.userId = userIdOid
+    if (examNumber && Number.isFinite(Number(examNumber))) filter.examNumber = Number(examNumber)
+    if (from || to) {
+      filter.createdAt = {}
+      if (from) filter.createdAt.$gte = from
+      if (to) filter.createdAt.$lte = new Date(to.getTime() + 24 * 60 * 60 * 1000 - 1)
+    }
+    const idleSince = new Date(Date.now() - ATTEMPT_IDLE_MS)
+    if (outcome === 'completed') filter.status = 'completed'
+    else if (outcome === 'in_progress') Object.assign(filter, { status: 'in_progress', updatedAt: { $gte: idleSince } })
+    else if (outcome === 'stopped') Object.assign(filter, { status: 'in_progress', updatedAt: { $lt: idleSince } })
+
+    const [attempts, total] = await Promise.all([
+      PracticeExamAttempt.find(filter)
+        .sort({ updatedAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .populate('userId', 'firstName lastName phone'),
+      PracticeExamAttempt.countDocuments(filter),
+    ])
+
+    const quits = await countQuitsByAttempt(attempts.map((a) => String(a._id)))
+    const rows = attempts.map((a) => {
+      const user = a.userId && typeof a.userId === 'object' && a.userId._id ? a.userId : null
+      const plain = user ? Object.assign(a.toObject(), { userId: user._id }) : a
+      return summarizeAttempt(plain, user, quits.get(String(a._id)) || 0)
+    })
+
+    res.json({
+      success: true,
+      data: {
+        attempts: rows,
+        pagination: { page, limit, total, pages: Math.ceil(total / limit) },
+      },
+    })
+  } catch (error) {
+    logger.error('Erreur liste tentatives examens', { error: error.message })
+    res.status(500).json({ success: false, error: 'Chargement impossible' })
+  }
+})
+
+/** Détail d'une tentative : chaque question, la réponse choisie et la bonne réponse. */
+router.get('/attempts/:attemptId', async (req, res) => {
+  try {
+    const attemptId = String(req.params.attemptId || '').trim()
+    if (!mongoose.isValidObjectId(attemptId)) {
+      return res.status(400).json({ success: false, error: 'Identifiant invalide' })
+    }
+    const attempt = await PracticeExamAttempt.findById(attemptId).populate('userId', 'firstName lastName phone')
+    if (!attempt) {
+      return res.status(404).json({ success: false, error: 'Tentative introuvable' })
+    }
+
+    const user = attempt.userId && typeof attempt.userId === 'object' && attempt.userId._id ? attempt.userId : null
+    const plain = Object.assign(attempt.toObject(), { userId: user?._id || attempt.userId })
+
+    const [items, quitsMap] = await Promise.all([
+      buildAttemptQuestions(attempt),
+      countQuitsByAttempt([attemptId]),
+    ])
+
+    res.json({
+      success: true,
+      data: {
+        attempt: summarizeAttempt(plain, user, quitsMap.get(attemptId) || 0),
+        questions: items,
+      },
+    })
+  } catch (error) {
+    logger.error('Erreur détail tentative examen', { error: error.message })
     res.status(500).json({ success: false, error: 'Chargement impossible' })
   }
 })

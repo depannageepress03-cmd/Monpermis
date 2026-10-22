@@ -1,8 +1,11 @@
 import { Router } from 'express'
+import mongoose from 'mongoose'
 import { User } from '../models/User.js'
 import { requireAdminAuth } from '../middleware/adminAuth.js'
 import { audit } from '../middleware/audit.js'
 import { buildLearnerJourney } from '../utils/learnerJourney.js'
+import { buildLearnerReport, buildRanking } from '../services/learnerReport.js'
+import { createLearnerReportPdf, reportPdfFileName } from '../services/learnerReportPdf.js'
 import { AccountDeleteBlockedError, deleteUserAccount } from '../utils/deleteUserAccount.js'
 import { isValidEmailFormat } from '../utils/emailValidation.js'
 import { logger } from '../utils/logger.js'
@@ -77,6 +80,62 @@ router.get('/search', async (req, res) => {
   } catch (error) {
     logger.error('Erreur recherche utilisateurs', { error: error.message })
     res.status(500).json({ success: false, error: 'Recherche impossible' })
+  }
+})
+
+/** Classement des apprenants par moyenne générale (examens blancs, coefficients appliqués). */
+router.get('/ranking', async (_req, res) => {
+  try {
+    res.json({ success: true, data: await buildRanking() })
+  } catch (error) {
+    logger.error('Erreur classement apprenants', { error: error.message })
+    res.status(500).json({ success: false, error: 'Classement indisponible' })
+  }
+})
+
+async function loadUserForReport(req, res) {
+  if (!mongoose.isValidObjectId(req.params.userId)) {
+    res.status(400).json({ success: false, error: 'Identifiant invalide' })
+    return null
+  }
+  const user = await User.findById(req.params.userId)
+  if (!user) {
+    res.status(404).json({ success: false, error: 'Apprenant introuvable' })
+    return null
+  }
+  return user
+}
+
+/** Fiche de suivi complète : identité, registre des notes, moyenne, progression du cours. */
+router.get('/:userId/report', async (req, res) => {
+  try {
+    const user = await loadUserForReport(req, res)
+    if (!user) return
+    res.json({ success: true, data: await buildLearnerReport(user) })
+  } catch (error) {
+    logger.error('Erreur fiche apprenant', { error: error.message })
+    res.status(500).json({ success: false, error: 'Fiche indisponible' })
+  }
+})
+
+/** Fiche de résultats PDF d'un seul apprenant, recalculée à chaque téléchargement. */
+router.get('/:userId/report.pdf', async (req, res) => {
+  try {
+    const user = await loadUserForReport(req, res)
+    if (!user) return
+    const report = await buildLearnerReport(user)
+    const doc = createLearnerReportPdf(report)
+    res.setHeader('Content-Type', 'application/pdf')
+    res.setHeader('Content-Disposition', `attachment; filename="${reportPdfFileName(report)}"`)
+    res.setHeader('Cache-Control', 'no-store')
+    doc.on('error', (error) => {
+      logger.error('Erreur génération PDF fiche', { error: error.message })
+      res.destroy(error)
+    })
+    doc.pipe(res)
+  } catch (error) {
+    logger.error('Erreur PDF fiche apprenant', { error: error.message })
+    if (!res.headersSent) res.status(500).json({ success: false, error: 'PDF indisponible' })
   }
 })
 

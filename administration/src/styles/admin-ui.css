@@ -74,27 +74,6 @@
   color: var(--navy-muted);
 }
 
-.ui-skeleton {
-  display: block;
-  border-radius: var(--r-sm);
-  background: linear-gradient(90deg, #eef1f4 0%, #f7f8fa 50%, #eef1f4 100%);
-  background-size: 200% 100%;
-  animation: ui-skel 1.2s ease-in-out infinite;
-}
-@keyframes ui-skel {
-  0% {
-    background-position: 100% 0;
-  }
-  100% {
-    background-position: -100% 0;
-  }
-}
-.ui-skeleton-row {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
 .ui-drawer-root {
   position: fixed;
   inset: 0;
@@ -355,4 +334,7 @@
 }
 .ui-panel-body {
   padding: 14px 16px;
+}
+.ui-drawer-panel.ui-drawer-wide {
+  width: min(760px, 100vw);
 }

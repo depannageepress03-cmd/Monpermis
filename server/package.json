@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "node --watch src/index.js",
     "start": "node src/index.js",
+    "test": "node --test src/utils/gradeCalc.test.js src/utils/examPick.test.js",
     "test:email": "node scripts/test-email.js",
     "verify:user": "node scripts/verify-user.js",
     "seed:admin": "node scripts/seed-admin.js",
@@ -14,6 +15,7 @@
     "migrate:audios:cloudinary": "node scripts/migrate-audios-to-cloudinary.mjs",
     "audit:audios": "node scripts/audit-question-audios.mjs",
     "generate:learner-banks": "node scripts/generate-learner-banks.mjs",
+    "generate:bundled-assets": "node scripts/generate-bundled-assets.mjs",
     "generate:transcripts": "node scripts/export-question-transcripts.mjs",
     "check:banks-sync": "node scripts/check-learner-banks-sync.mjs",
     "generate:panneaux": "python3 scripts/build-panneaux-catalog.py"
@@ -33,6 +35,7 @@
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.19.1",
     "multer": "^2.2.0",
-    "nodemailer": "^10.1.6"
+    "nodemailer": "^10.1.6",
+    "pdfkit": "^0.20.2"
   }
 }

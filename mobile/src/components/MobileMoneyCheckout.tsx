@@ -39,6 +39,8 @@ interface Props {
   defaultPhone?: string
   onClose: () => void
   onSuccess: (access: AccessMe) => void
+  /** Code promo saisi en bas de la liste des moyens de paiement : débloque l'accès gratuitement. */
+  onRedeemPromo?: (code: string) => Promise<void>
 }
 
 export function MobileMoneyCheckout({
@@ -48,7 +50,11 @@ export function MobileMoneyCheckout({
   defaultPhone = '',
   onClose,
   onSuccess,
+  onRedeemPromo,
 }: Props) {
+  const [promoCode, setPromoCode] = useState('')
+  const [promoBusy, setPromoBusy] = useState(false)
+  const [promoError, setPromoError] = useState<string | null>(null)
   const [step, setStep] = useState<'intro' | 'operator' | 'phone' | 'waiting'>('intro')
   const [operator, setOperator] = useState<MobileMoneyOperator | null>(null)
   const [phone, setPhone] = useState(defaultPhone)
@@ -69,6 +75,8 @@ export function MobileMoneyCheckout({
     setBusy(false)
     setVerifying(false)
     setPendingId(null)
+    setPromoCode('')
+    setPromoError(null)
     if (items.length > 0) {
       void savePendingCheckoutCart({
         items,
@@ -91,6 +99,20 @@ export function MobileMoneyCheckout({
     return { ...item, label: module?.label || item.module, amount }
   })
   const total = lines.reduce((sum, line) => sum + line.amount, 0)
+
+  const redeemPromo = async () => {
+    const code = promoCode.trim()
+    if (!code || !onRedeemPromo) return
+    setPromoBusy(true)
+    setPromoError(null)
+    try {
+      await onRedeemPromo(code)
+    } catch (err) {
+      setPromoError(err instanceof Error && err.message ? err.message : 'Code promo invalide')
+    } finally {
+      setPromoBusy(false)
+    }
+  }
 
   const stopPoll = () => {
     if (pollRef.current) {
@@ -282,6 +304,33 @@ export function MobileMoneyCheckout({
                     <Text style={styles.choiceText}>{item.label}</Text>
                   </Pressable>
                 ))}
+                {onRedeemPromo ? (
+                  <View style={styles.promoBox}>
+                    <Text style={styles.kicker}>Code promo</Text>
+                    <TextInput
+                      style={styles.input}
+                      autoCapitalize="characters"
+                      autoCorrect={false}
+                      placeholder="Entrez votre code promo"
+                      placeholderTextColor={dark.textMuted}
+                      value={promoCode}
+                      editable={!promoBusy}
+                      onChangeText={(text) => setPromoCode(text.toUpperCase())}
+                    />
+                    {promoError ? <Text style={styles.error}>{promoError}</Text> : null}
+                    <Pressable
+                      style={[styles.payBtn, (promoBusy || !promoCode.trim()) && styles.disabled]}
+                      disabled={promoBusy || !promoCode.trim()}
+                      onPress={() => void redeemPromo()}
+                    >
+                      {promoBusy ? (
+                        <ActivityIndicator color="#fff" />
+                      ) : (
+                        <Text style={styles.payText}>Utiliser le code promo</Text>
+                      )}
+                    </Pressable>
+                  </View>
+                ) : null}
                 <Pressable style={styles.backBtn} onPress={() => setStep('intro')}>
                   <Text style={styles.backText}>Retour</Text>
                 </Pressable>
@@ -442,5 +491,12 @@ const styles = StyleSheet.create({
   },
   payText: { color: '#fff', fontFamily: fonts.displayBold, fontSize: 15 },
   disabled: { opacity: 0.55 },
+  promoBox: {
+    marginTop: 6,
+    paddingTop: 14,
+    borderTopWidth: 1,
+    borderTopColor: dark.border,
+    gap: 10,
+  },
   hint: { color: dark.textMuted, fontFamily: fonts.body, fontSize: 14, lineHeight: 20 },
 })

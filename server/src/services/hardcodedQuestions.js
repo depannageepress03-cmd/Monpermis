@@ -6,6 +6,7 @@ import {
 } from '../data/hardcodedQuestions/index.js'
 import { Chapter } from '../models/Chapter.js'
 import { Question } from '../models/Question.js'
+import { checkExamEligibility, isExamEligible } from './examEligibility.js'
 
 /**
  * @returns {null | object[]} banque complète (avec isCorrect) ou null si non hardcodé
@@ -19,18 +20,27 @@ export function findHardcodedQuestionById(questionId) {
   return findHardcodedQuestionInBanks(questionId)?.question || null
 }
 
+/** Seules les questions SÛRES (clé de réponses, audio, transcription, images) sont montrées à l'apprenant. */
+function reliableOnly(bank) {
+  return bank.filter((q) => isExamEligible(q))
+}
+
 export function listHardcodedQuestionsPublic(chapter) {
   const bank = getHardcodedQuestionsForChapter(chapter)
   if (!bank) return null
   const chapterId = String(chapter._id || chapter.id)
-  return bank.map((q) => toPublicHardcodedQuestion(q, chapterId))
+  return reliableOnly(bank).map((q) => toPublicHardcodedQuestion(q, chapterId))
 }
 
 export function listHardcodedQuestionsAdmin(chapter) {
   const bank = getHardcodedQuestionsForChapter(chapter)
   if (!bank) return null
   const chapterId = String(chapter._id || chapter.id)
-  return bank.map((q) => toAdminHardcodedQuestion(q, chapterId))
+  // L'admin voit tout, avec la raison pour laquelle une question n'est pas proposée aux apprenants.
+  return bank.map((q) => ({
+    ...toAdminHardcodedQuestion(q, chapterId),
+    unreliableReasons: checkExamEligibility(q).reasons,
+  }))
 }
 
 export function findHardcodedQuestion(chapter, questionId) {
@@ -65,7 +75,7 @@ export function hardcodedAsQuestionDocs(chapter) {
   const bank = getHardcodedQuestionsForChapter(chapter)
   if (!bank) return null
   const chapterId = chapter._id || chapter.id
-  return bank.map((q) => ({
+  return reliableOnly(bank).map((q) => ({
     _id: q.id,
     id: q.id,
     chapterId,

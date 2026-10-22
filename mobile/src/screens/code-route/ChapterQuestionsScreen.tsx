@@ -475,8 +475,9 @@ export function ChapterQuestionsScreen() {
     })
   }
 
+  // Mode révision : aucun avertissement en quittant. La confirmation ne concerne que les sujets test.
   useLeaveGuard(
-    !finished && !loadingQuestions && questions.length > 0,
+    isTest && !finished && !loadingQuestions && questions.length > 0,
     score.total > 0
       ? `Quitter ? Vos ${score.total} réponses en cours ne seront pas sauvegardées comme un examen — recommencez si besoin.`
       : 'Quitter ? Votre progression de cette session ne sera pas conservée.',
@@ -773,6 +774,7 @@ export function ChapterQuestionsScreen() {
                       source={{ uri: img.uri }}
                       style={styles.image}
                       resizeMode="cover"
+                      onError={() => setResolvedImages((prev) => prev.filter((item) => item.key !== img.key))}
                     />
                   ))}
                 </View>
@@ -856,11 +858,25 @@ export function ChapterQuestionsScreen() {
               <Bouncy
                 scaleTo={0.98}
                 style={styles.validateFlex}
-                onPress={() => void finishOrAdvance(score)}
+                onPress={() => {
+                  // Question ouverte seule depuis la liste : pas de score, on revient à la liste.
+                  if (isSingleQuestion && index + 1 >= questions.length) {
+                    stopAllQuizAudio()
+                    navigation.goBack()
+                    return
+                  }
+                  void finishOrAdvance(score)
+                }}
               >
                 <View style={styles.validateBtn}>
                   <Text style={styles.validateBtnText}>
-                    {index + 1 >= questions.length ? 'Voir le score' : 'Question suivante'}
+                    {index + 1 < questions.length
+                      ? 'Question suivante'
+                      : isTest
+                        ? 'Voir le score'
+                        : isSingleQuestion
+                          ? 'Retour à la liste'
+                          : 'Terminer'}
                   </Text>
                   <ChevronRight size={20} color="#FFFFFF" />
                 </View>

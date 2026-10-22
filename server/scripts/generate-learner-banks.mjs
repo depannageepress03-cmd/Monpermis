@@ -16,6 +16,9 @@ const root = join(__dirname, '../..')
 const mod = await import(
   pathToFileURL(join(root, 'server/src/data/hardcodedQuestions/index.js')).href
 )
+const { isExamEligible } = await import(
+  pathToFileURL(join(root, 'server/src/services/examEligibility.js')).href
+)
 const banks = [...(mod.HARDCODED_CHAPTER_BANKS || [])].sort((a, b) => a.order - b.order)
 
 function letterList(answers) {
@@ -126,7 +129,8 @@ let body = ''
 const mapEntries = []
 for (const bank of banks) {
   const order = bank.order
-  const qs = bank.questions || []
+  // Seules les questions SÛRES (clé de réponses, audio, transcription, images) vont dans l'application.
+  const qs = (bank.questions || []).filter((q) => isExamEligible(q))
   body += `\nconst CHAPITRE_${order}: LocalQuestion[] = [\n`
   for (const q of qs) {
     body += `${emitQuestionLine(order, q)}\n`

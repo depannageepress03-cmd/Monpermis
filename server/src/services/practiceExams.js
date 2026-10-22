@@ -8,6 +8,7 @@ import {
   summarizeChapterBank,
 } from '../utils/practiceExam.js'
 import { hardcodedAsQuestionDocs } from './hardcodedQuestions.js'
+import { isExamEligible } from './examEligibility.js'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -32,18 +33,33 @@ export async function loadPublishedExamQuestionBank() {
     .sort({ order: 1, createdAt: 1 })
   const chapterNameById = new Map(chapters.map((chapter) => [String(chapter._id), chapter.name]))
 
-  // Examens test : uniquement questions hardcodées avec audio généré (hors-ligne).
+  // Examens : uniquement les questions entièrement utilisables — audio présent, transcription complète
+  // (énoncé + chaque réponse) et images existantes. Les autres ne sont jamais proposées.
   let questions = []
   for (const chapter of chapters) {
     const hardcoded = hardcodedAsQuestionDocs(chapter)
     if (!hardcoded?.length) continue
     for (const doc of hardcoded) {
       if (!hasGeneratedExamAudio(doc.id)) continue
+      if (!isExamEligible(doc)) continue
       questions.push({ _id: doc.id, chapterId: chapter._id })
     }
   }
 
   return { questions, chapters, chapterNameById }
+}
+
+/**
+ * Tirage d'un NOUVEL examen au hasard (équilibré par chapitre). Les questions déjà vues par l'apprenant
+ * sont écartées tant qu'il reste assez de questions neuves ; sinon on retire dans toute la banque.
+ * @param {{ _id: string, chapterId: unknown }[]} bank  questions éligibles
+ * @param {Iterable<string>} seenIds questions déjà proposées à cet apprenant
+ */
+export function pickFreshExamQuestions(bank, seenIds = [], count = PRACTICE_EXAM_SIZE) {
+  const seen = new Set([...seenIds].map(String))
+  let pool = bank.filter((question) => !seen.has(String(question._id)))
+  if (pool.length < count) pool = bank
+  return pickChapterBalancedQuestions(pool, count)
 }
 
 export async function countPublishedQuestions() {
@@ -76,16 +92,23 @@ export async function generatePracticeExamSheets() {
   }
 
   const fingerprint = computeQuestionBankFingerprint(questions)
+  // Auteur / scène / coefficient sont saisis par l'admin : on les reporte sur les nouvelles fiches.
+  const previous = await PracticeExam.find().select('examNumber author sceneName coefficient').lean()
+  const metaByNumber = new Map(previous.map((exam) => [exam.examNumber, exam]))
   await PracticeExam.deleteMany({})
 
   const sheets = []
   for (let examNumber = 1; examNumber <= PRACTICE_EXAM_COUNT; examNumber += 1) {
     const selected = pickChapterBalancedQuestions(questions, PRACTICE_EXAM_SIZE)
+    const meta = metaByNumber.get(examNumber)
     sheets.push({
       examNumber,
       questionIds: selected.map((question) => question._id),
       published: true,
       bankFingerprint: fingerprint,
+      author: meta?.author || '',
+      sceneName: meta?.sceneName || '',
+      coefficient: meta?.coefficient ?? 1,
     })
   }
 

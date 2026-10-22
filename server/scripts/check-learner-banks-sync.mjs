@@ -16,11 +16,14 @@ async function loadServerCounts() {
   const mod = await import(
     pathToFileURL(join(root, 'server/src/data/hardcodedQuestions/index.js')).href
   )
+  const { isExamEligible } = await import(
+    pathToFileURL(join(root, 'server/src/services/examEligibility.js')).href
+  )
   /** @type {Record<number, number>} */
   const counts = {}
   for (const bank of mod.HARDCODED_CHAPTER_BANKS || []) {
     const order = Number(bank.order)
-    const n = Array.isArray(bank.questions) ? bank.questions.length : 0
+    const n = Array.isArray(bank.questions) ? bank.questions.filter((q) => isExamEligible(q)).length : 0
     if (order) counts[order] = n
   }
   return counts

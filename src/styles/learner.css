@@ -755,45 +755,6 @@
   }
 }
 
-.page-skeleton {
-  padding: 0.25rem 0 1rem;
-}
-
-.page-skeleton--home {
-  padding: 0.5rem 0 1.5rem;
-}
-
-.page-skeleton-row {
-  display: flex;
-  justify-content: space-between;
-  gap: 0.75rem;
-}
-
-.page-skeleton-block {
-  background: linear-gradient(90deg, #e2e8f0 0%, #f1f5f9 50%, #e2e8f0 100%);
-  background-size: 200% 100%;
-  animation: page-skeleton-shimmer 1.4s ease-in-out infinite;
-  border-radius: 8px;
-  width: 100%;
-}
-
-.page-skeleton-card {
-  border: 1px solid #e2e8f0;
-  background: #fff;
-  border-radius: 16px;
-  padding: 1rem;
-  margin-bottom: 0.75rem;
-}
-
-@keyframes page-skeleton-shimmer {
-  0% {
-    background-position: 100% 0;
-  }
-  100% {
-    background-position: -100% 0;
-  }
-}
-
 .empty-state {
   text-align: center;
   padding: 1.75rem 0.75rem;

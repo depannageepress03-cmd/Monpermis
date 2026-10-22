@@ -25,6 +25,12 @@ const practiceExamSchema = new mongoose.Schema(
       },
     },
     published: { type: Boolean, default: true },
+    /** Auteur du sujet — saisi par l'admin, jamais déduit. */
+    author: { type: String, default: '', trim: true, maxlength: 120 },
+    /** Nom de la scène / session / épreuve — saisi par l'admin, jamais déduit. */
+    sceneName: { type: String, default: '', trim: true, maxlength: 120 },
+    /** Coefficient pour la moyenne générale (1 = poids égal). */
+    coefficient: { type: Number, default: 1, min: 0.01, max: 100 },
     /** Empreinte de la banque au moment de la génération (régénération auto si obsolète). */
     bankFingerprint: { type: String, default: '' },
   },
@@ -51,6 +57,9 @@ practiceExamSchema.methods.toAdminJSON = function toAdminJSON(questions = []) {
   return {
     ...data,
     published: Boolean(this.published),
+    author: this.author || '',
+    sceneName: this.sceneName || '',
+    coefficient: this.coefficient ?? 1,
     createdAt: this.createdAt,
     updatedAt: this.updatedAt,
   }

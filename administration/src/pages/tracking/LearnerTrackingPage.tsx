@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import {
   Activity,
   CalendarDays,
+  Check,
   Clock,
   Eye,
   Filter,
@@ -12,18 +13,23 @@ import {
   Timer,
   Trophy,
   Users,
+  X,
 } from 'lucide-react'
 import {
+  fetchExamAttemptDetail,
+  fetchExamAttempts,
   fetchTrackAttemptTimeline,
   fetchTrackEvents,
-  fetchTrackExamSessions,
   fetchTrackLearners,
   fetchTrackStats,
+  type ExamAttemptOutcome,
+  type ExamAttemptQuestion,
+  type ExamAttemptSummary,
   type Pagination,
   type TrackEvent,
-  type TrackExamSession,
   type TrackLearner,
 } from '../../api/tracking'
+import { QuestionReview } from '../../components/ExamQuestionReview'
 import { PageSection } from '../../components/model/PageSection'
 import { nf } from '../../components/model/ModelCharts'
 import { getAdminToken, isAuthError } from '../../context/AdminAuthContext'
@@ -106,6 +112,8 @@ function formatDelta(ms: number) {
   return formatDuration(ms / 1000)
 }
 
+type QuestionFilter = 'all' | ExamAttemptQuestion['state']
+
 function learnerName(user?: { firstName?: string; lastName?: string; phone?: string }) {
   if (!user) return '—'
   const name = `${user.firstName || ''} ${user.lastName || ''}`.trim()
@@ -127,9 +135,10 @@ export function LearnerTrackingPage() {
   const [dateTo, setDateTo] = useState('')
   const [examNumberFilter, setExamNumberFilter] = useState('')
   const [eventFilter, setEventFilter] = useState('')
+  const [outcomeFilter, setOutcomeFilter] = useState<ExamAttemptOutcome | ''>('')
   const [learnerSearch, setLearnerSearch] = useState('')
 
-  const [exams, setExams] = useState<TrackExamSession[]>([])
+  const [exams, setExams] = useState<ExamAttemptSummary[]>([])
   const [examsPagination, setExamsPagination] = useState<Pagination | null>(null)
   const [events, setEvents] = useState<TrackEvent[]>([])
   const [eventsPagination, setEventsPagination] = useState<Pagination | null>(null)
@@ -139,7 +148,10 @@ export function LearnerTrackingPage() {
   const [error, setError] = useState<string | null>(null)
   const [page, setPage] = useState(1)
 
-  const [selectedAttempt, setSelectedAttempt] = useState<TrackExamSession | null>(null)
+  const [selectedAttempt, setSelectedAttempt] = useState<ExamAttemptSummary | null>(null)
+  const [detailQuestions, setDetailQuestions] = useState<ExamAttemptQuestion[] | null>(null)
+  const [detailError, setDetailError] = useState<string | null>(null)
+  const [questionFilter, setQuestionFilter] = useState<QuestionFilter>('all')
   const [timeline, setTimeline] = useState<TrackEvent[] | null>(null)
   const [timelineLoading, setTimelineLoading] = useState(false)
   const [timelineError, setTimelineError] = useState<string | null>(null)
@@ -184,11 +196,12 @@ export function LearnerTrackingPage() {
       to: dateTo || undefined,
       examNumber: examNumberFilter || undefined,
       event: eventFilter || undefined,
+      outcome: outcomeFilter || undefined,
     }
     try {
       if (tab === 'exams') {
-        const data = await fetchTrackExamSessions(token, params)
-        setExams(data.exams)
+        const data = await fetchExamAttempts(token, params)
+        setExams(data.attempts)
         setExamsPagination(data.pagination)
       } else if (tab === 'events') {
         const data = await fetchTrackEvents(token, params)
@@ -204,7 +217,7 @@ export function LearnerTrackingPage() {
     } finally {
       setLoading(false)
     }
-  }, [tab, page, learnerFilter, dateFrom, dateTo, examNumberFilter, eventFilter, learnerSearch])
+  }, [tab, page, learnerFilter, dateFrom, dateTo, examNumberFilter, eventFilter, outcomeFilter, learnerSearch])
 
   useEffect(() => {
     void loadStats()
@@ -255,22 +268,64 @@ export function LearnerTrackingPage() {
     setPage(1)
   }, [tab])
 
-  const openTimeline = useCallback(async (session: TrackExamSession) => {
+  const loadAttemptDetail = useCallback(async (attemptId: string, silent = false) => {
     const token = getAdminToken()
     if (!token) return
-    setSelectedAttempt(session)
-    setTimeline(null)
-    setTimelineError(null)
-    setTimelineLoading(true)
-    try {
-      const data = await fetchTrackAttemptTimeline(token, session.attemptId)
-      setTimeline(data.events)
-    } catch (err) {
-      setTimelineError(isAuthError(err) ? err.message : 'Chronologie indisponible')
-    } finally {
-      setTimelineLoading(false)
+    if (!silent) {
+      setTimelineLoading(true)
+      setDetailError(null)
+      setTimelineError(null)
     }
+    const [detail, events] = await Promise.allSettled([
+      fetchExamAttemptDetail(token, attemptId),
+      fetchTrackAttemptTimeline(token, attemptId),
+    ])
+    if (detail.status === 'fulfilled') {
+      setSelectedAttempt((prev) => (prev && prev.attemptId === attemptId ? detail.value.attempt : prev))
+      setDetailQuestions(detail.value.questions)
+    } else if (!silent) {
+      setDetailError(isAuthError(detail.reason) ? detail.reason.message : 'Détail de l’examen indisponible')
+    }
+    if (events.status === 'fulfilled') {
+      setTimeline(events.value.events)
+    } else if (!silent) {
+      setTimelineError(isAuthError(events.reason) ? events.reason.message : 'Chronologie indisponible')
+    }
+    if (!silent) setTimelineLoading(false)
   }, [])
+
+  const openAttempt = useCallback(
+    (attempt: ExamAttemptSummary) => {
+      setSelectedAttempt(attempt)
+      setDetailQuestions(null)
+      setTimeline(null)
+      setQuestionFilter('all')
+      void loadAttemptDetail(attempt.attemptId)
+    },
+    [loadAttemptDetail],
+  )
+
+  // Suivi en direct d'un examen en cours ouvert dans le panneau
+  const liveAttemptId = selectedAttempt?.outcome === 'in_progress' ? selectedAttempt.attemptId : null
+  useEffect(() => {
+    if (!liveAttemptId) return
+    const timer = window.setInterval(() => void loadAttemptDetail(liveAttemptId, true), 8000)
+    return () => window.clearInterval(timer)
+  }, [liveAttemptId, loadAttemptDetail])
+
+  const questionCounts = useMemo(() => {
+    const counts = { all: 0, correct: 0, wrong: 0, skipped: 0, unanswered: 0 }
+    for (const q of detailQuestions ?? []) {
+      counts.all++
+      counts[q.state]++
+    }
+    return counts
+  }, [detailQuestions])
+
+  const visibleQuestions = useMemo(
+    () => (detailQuestions ?? []).filter((q) => questionFilter === 'all' || q.state === questionFilter),
+    [detailQuestions, questionFilter],
+  )
 
   const timelineDeltas = useMemo(() => {
     if (!timeline || timeline.length < 2) return []
@@ -287,18 +342,20 @@ export function LearnerTrackingPage() {
   const passRate =
     examStats?.passRate !== null && examStats?.passRate !== undefined ? `${examStats.passRate}%` : '—'
 
-  const outcomeChip = (e: TrackExamSession) =>
-    e.completed ? (
-      <span className={`cx-chip ${e.passed ? 'cx-green' : 'cx-red'}`}>{e.passed ? 'Réussi' : 'Raté'}</span>
+  const outcomeChip = (e: ExamAttemptSummary) =>
+    e.outcome === 'completed' ? (
+      <span className={`cx-chip ${e.passed ? 'cx-green' : 'cx-red'}`}>Terminé · {e.passed ? 'Réussi' : 'Raté'}</span>
+    ) : e.outcome === 'stopped' ? (
+      <span className="cx-chip cx-amber">Arrêté à la question {Math.min(e.answered + 1, e.questionCount)}</span>
     ) : (
-      <span className="cx-chip cx-amber">En cours</span>
+      <span className="cx-chip cx-blue">En cours</span>
     )
 
   return (
     <PageSection
       kicker="Traçage APK"
       title="Activité des apprenants"
-      subtitle="Faits et gestes sur l’application mobile, avec un focus sur les examens blancs. Mise à jour automatique toutes les 8 secondes."
+      subtitle="Chaque examen blanc question par question : réponse choisie, bonne réponse, examen terminé ou arrêté en chemin, et note finale. Mise à jour automatique toutes les 8 secondes."
       actions={
         <button type="button" className="cx-refresh" onClick={() => void loadData()}>
           <RefreshCw aria-hidden />
@@ -359,7 +416,7 @@ export function LearnerTrackingPage() {
         <div className="cx-toolbar" style={{ marginBottom: '1rem' }}>
           <div className="cx-tabs" role="tablist">
             <button type="button" role="tab" aria-selected={tab === 'exams'} className={tab === 'exams' ? 'cx-active' : ''} onClick={() => setTab('exams')}>
-              <Eye aria-hidden /> Sessions d’examens
+              <Eye aria-hidden /> Examens blancs
             </button>
             <button type="button" role="tab" aria-selected={tab === 'events'} className={tab === 'events' ? 'cx-active' : ''} onClick={() => setTab('events')}>
               <Radar aria-hidden /> Fil des événements
@@ -384,10 +441,28 @@ export function LearnerTrackingPage() {
               </select>
             </label>
             {tab === 'exams' ? (
-              <label>
-                N° de sujet
-                <input className="cx-input" type="number" min={1} placeholder="Tous" value={examNumberFilter} onChange={(e) => setExamNumberFilter(e.target.value)} />
-              </label>
+              <>
+                <label>
+                  N° de sujet
+                  <input className="cx-input" type="number" min={1} placeholder="Tous" value={examNumberFilter} onChange={(e) => setExamNumberFilter(e.target.value)} />
+                </label>
+                <label>
+                  Statut
+                  <select
+                    className="cx-select"
+                    value={outcomeFilter}
+                    onChange={(e) => {
+                      setOutcomeFilter(e.target.value as ExamAttemptOutcome | '')
+                      setPage(1)
+                    }}
+                  >
+                    <option value="">Tous les statuts</option>
+                    <option value="completed">Terminé</option>
+                    <option value="stopped">Arrêté en chemin</option>
+                    <option value="in_progress">En cours</option>
+                  </select>
+                </label>
+              </>
             ) : (
               <label>
                 Événement
@@ -433,49 +508,56 @@ export function LearnerTrackingPage() {
           <div className="cx-table-wrap">
             {exams.length === 0 ? (
               <EmptyState
-                title="Aucune session d’examen"
-                description="Les sessions apparaîtront ici dès que des apprenants passeront des examens blancs sur l’APK (version récente)."
+                title="Aucun examen blanc"
+                description="Les examens apparaîtront ici dès qu’un apprenant commencera un examen blanc sur l’application."
               />
             ) : (
               <table className="cx-data">
                 <thead>
                   <tr>
                     <th>Apprenant</th>
-                    <th>Type</th>
                     <th>Sujet</th>
                     <th>Début</th>
+                    <th>Dernière action</th>
                     <th>Durée</th>
-                    <th>Réponses</th>
+                    <th>Progression</th>
+                    <th>Bonnes</th>
+                    <th>Fausses</th>
                     <th>Zappées</th>
-                    <th>Quitté</th>
-                    <th>Résultat</th>
+                    <th>Note finale</th>
                     <th>Statut</th>
                   </tr>
                 </thead>
                 <tbody>
                   {exams.map((e) => (
-                    <tr key={e.attemptId} className="cx-click" onClick={() => void openTimeline(e)} title="Voir la chronologie détaillée">
+                    <tr key={e.attemptId} className="cx-click" onClick={() => openAttempt(e)} title="Voir chaque question et la réponse choisie">
                       <td>
                         <strong>{learnerName(e)}</strong>
                         {e.phone ? <span className="cx-dim"> · {e.phone}</span> : null}
                       </td>
-                      <td className="cx-dim">{e.examType === 'ecodepermis' ? 'Ancien examen' : 'Blanc'}</td>
-                      <td>{e.examNumber ?? '—'}</td>
+                      <td>{e.examNumber}</td>
                       <td className="cx-dim">{formatDateTime(e.startAt)}</td>
+                      <td className="cx-dim">{formatDateTime(e.lastAt)}</td>
                       <td className="cx-dim">
                         <Timer className="cx-ico-inline" aria-hidden /> {formatDuration(e.durationSeconds)}
                       </td>
-                      <td>{e.answers}</td>
-                      <td>{e.skips > 0 ? <span className="cx-warn-n">{e.skips}</span> : e.skips}</td>
-                      <td>{e.quits > 0 ? <span className="cx-chip cx-red">Quitté</span> : <span className="cx-dim">—</span>}</td>
                       <td>
-                        {e.completed && e.correct !== null ? (
-                          <strong>
-                            {e.correct}/{e.total ?? 20}
-                          </strong>
-                        ) : (
-                          <span className="cx-dim">—</span>
-                        )}
+                        <span className="cx-xr-score">
+                          {e.answered}
+                          <small>/{e.questionCount}</small>
+                        </span>
+                        <span className="cx-xr-bar" aria-hidden>
+                          <span style={{ width: `${Math.min(100, (e.answered / Math.max(1, e.questionCount)) * 100)}%` }} />
+                        </span>
+                      </td>
+                      <td>{e.correct}</td>
+                      <td>{e.wrong - e.skipped > 0 ? <span className="cx-warn-n">{e.wrong - e.skipped}</span> : 0}</td>
+                      <td>{e.skipped > 0 ? <span className="cx-warn-n">{e.skipped}</span> : 0}</td>
+                      <td>
+                        <span className="cx-xr-score">
+                          {e.correct}
+                          <small>/{e.total}</small>
+                        </span>
                       </td>
                       <td>{outcomeChip(e)}</td>
                     </tr>
@@ -539,7 +621,15 @@ export function LearnerTrackingPage() {
                 </thead>
                 <tbody>
                   {learners.map((l) => (
-                    <tr key={l.userId}>
+                    <tr
+                      key={l.userId}
+                      className="cx-click"
+                      title="Voir les examens de cet apprenant"
+                      onClick={() => {
+                        setLearnerFilter(l.userId)
+                        setTab('exams')
+                      }}
+                    >
                       <td>
                         <strong>{learnerName(l)}</strong>
                         {l.email ? <span className="cx-dim"> · {l.email}</span> : null}
@@ -559,27 +649,92 @@ export function LearnerTrackingPage() {
       </section>
 
       <Drawer
+        wide
         open={Boolean(selectedAttempt)}
         onClose={() => setSelectedAttempt(null)}
-        title={selectedAttempt ? `Sujet ${selectedAttempt.examNumber ?? '?'} — ${learnerName(selectedAttempt)}` : ''}
+        title={selectedAttempt ? `Examen blanc n° ${selectedAttempt.examNumber} — ${learnerName(selectedAttempt)}` : ''}
+        subtitle={selectedAttempt ? `Commencé le ${formatDateTime(selectedAttempt.startAt)}` : undefined}
       >
         {selectedAttempt ? (
           <div>
-            <div className="cx-tl-meta">
-              <span className="cx-chip cx-blue">{selectedAttempt.examType === 'ecodepermis' ? 'Ancien examen' : 'Examen blanc'}</span>
-              <span className="cx-chip">Début : {formatDateTime(selectedAttempt.startAt)}</span>
-              <span className="cx-chip">Durée : {formatDuration(selectedAttempt.durationSeconds)}</span>
-              <span className="cx-chip">Réponses : {selectedAttempt.answers}</span>
-              <span className="cx-chip">Zappées : {selectedAttempt.skips}</span>
-              {selectedAttempt.quits > 0 ? <span className="cx-chip cx-red">Quitté {selectedAttempt.quits} fois</span> : null}
-              {selectedAttempt.completed ? (
-                <span className={`cx-chip ${selectedAttempt.passed ? 'cx-green' : 'cx-red'}`}>
-                  Note : {selectedAttempt.correct}/{selectedAttempt.total ?? 20} {selectedAttempt.passed ? '(Réussi)' : '(Raté)'}
-                </span>
-              ) : null}
+            <AttemptVerdict attempt={selectedAttempt} />
+
+            <div className="cx-xr-summary">
+              <div className="cx-xr-stat">
+                <span>Répondues</span>
+                <strong>
+                  {selectedAttempt.answered}/{selectedAttempt.questionCount}
+                </strong>
+              </div>
+              <div className="cx-xr-stat">
+                <span>Bonnes</span>
+                <strong>{selectedAttempt.correct}</strong>
+              </div>
+              <div className="cx-xr-stat">
+                <span>Fausses / zappées</span>
+                <strong>
+                  {selectedAttempt.wrong - selectedAttempt.skipped} / {selectedAttempt.skipped}
+                </strong>
+              </div>
+              <div className="cx-xr-stat">
+                <span>Durée</span>
+                <strong>{formatDuration(selectedAttempt.durationSeconds)}</strong>
+              </div>
             </div>
 
-            {timelineLoading ? (
+            <div className="cx-tl-meta">
+              <span className="cx-chip">Dernière action : {formatDateTime(selectedAttempt.lastAt)}</span>
+              {selectedAttempt.completedAt ? (
+                <span className="cx-chip">Terminé le : {formatDateTime(selectedAttempt.completedAt)}</span>
+              ) : null}
+              {selectedAttempt.quits > 0 ? (
+                <span className="cx-chip cx-red">A quitté l’examen {selectedAttempt.quits} fois</span>
+              ) : null}
+              <span className="cx-chip">
+                Seuil de réussite : {selectedAttempt.passScore}/{selectedAttempt.total}
+              </span>
+            </div>
+
+            <h3 className="cx-xr-section">Questions et réponses</h3>
+            {timelineLoading && !detailQuestions ? (
+              <SkeletonBlock rows={4} />
+            ) : detailError ? (
+              <p className="cx-note cx-note-err">{detailError}</p>
+            ) : detailQuestions && detailQuestions.length > 0 ? (
+              <>
+                <div className="cx-xr-filter" role="group" aria-label="Filtrer les questions">
+                  {(
+                    [
+                      ['all', 'Toutes'],
+                      ['wrong', 'Fausses'],
+                      ['correct', 'Bonnes'],
+                      ['skipped', 'Zappées'],
+                      ['unanswered', 'Non répondues'],
+                    ] as [QuestionFilter, string][]
+                  ).map(([key, label]) => (
+                    <button
+                      key={key}
+                      type="button"
+                      className={`cx-btn cx-btn-sm${questionFilter === key ? ' cx-btn-fill' : ''}`}
+                      onClick={() => setQuestionFilter(key)}
+                      disabled={key !== 'all' && questionCounts[key] === 0}
+                    >
+                      {label} ({questionCounts[key]})
+                    </button>
+                  ))}
+                </div>
+                <ol className="cx-xr-list">
+                  {visibleQuestions.map((q) => (
+                    <QuestionReview key={q.questionId} question={q} />
+                  ))}
+                </ol>
+              </>
+            ) : (
+              <EmptyState title="Aucune question" description="Les questions de cet examen n’ont pas pu être chargées." />
+            )}
+
+            <h3 className="cx-xr-section">Chronologie</h3>
+            {timelineLoading && !timeline ? (
               <SkeletonBlock rows={4} />
             ) : timelineError ? (
               <p className="cx-note cx-note-err">{timelineError}</p>
@@ -612,12 +767,55 @@ export function LearnerTrackingPage() {
                 })}
               </ol>
             ) : (
-              <EmptyState title="Chronologie vide" description="Aucun événement détaillé pour cette tentative." />
+              <EmptyState
+                title="Chronologie vide"
+                description="Aucun événement détaillé (application sans traçage ou examen ancien)."
+              />
             )}
           </div>
         ) : null}
       </Drawer>
     </PageSection>
+  )
+}
+
+function AttemptVerdict({ attempt }: { attempt: ExamAttemptSummary }) {
+  const note = (
+    <span className="cx-xr-note">
+      {attempt.correct}/{attempt.total}
+    </span>
+  )
+  if (attempt.outcome === 'completed') {
+    return (
+      <div className={`cx-xr-verdict ${attempt.passed ? 'cx-ok' : 'cx-ko'}`}>
+        {attempt.passed ? <Check aria-hidden /> : <X aria-hidden />}
+        <span>Examen terminé — note finale</span>
+        {note}
+        <span>{attempt.passed ? 'Réussi' : 'Raté'}</span>
+      </div>
+    )
+  }
+  const stoppedAt = Math.min(attempt.answered + 1, attempt.questionCount)
+  if (attempt.outcome === 'stopped') {
+    return (
+      <div className="cx-xr-verdict cx-stop">
+        <Clock aria-hidden />
+        <span>
+          Arrêté en chemin à la question {stoppedAt}/{attempt.questionCount} ({attempt.answered} réponse
+          {attempt.answered > 1 ? 's' : ''}) — note au moment de l’arrêt
+        </span>
+        {note}
+      </div>
+    )
+  }
+  return (
+    <div className="cx-xr-verdict cx-live">
+      <Activity aria-hidden />
+      <span>
+        Examen en cours — question {stoppedAt}/{attempt.questionCount}, note provisoire
+      </span>
+      {note}
+    </div>
   )
 }
 

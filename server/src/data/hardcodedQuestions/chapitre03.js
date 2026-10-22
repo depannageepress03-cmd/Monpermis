@@ -25,7 +25,7 @@ function imageUrl(n) {
 }
 
 /** Images disponibles (N.png = question N). */
-const QUESTIONS_WITH_IMAGES = new Set([2, 8])
+const QUESTIONS_WITH_IMAGES = new Set([2, 6, 8])
 
 const QUESTIONS_DATA = [
   {

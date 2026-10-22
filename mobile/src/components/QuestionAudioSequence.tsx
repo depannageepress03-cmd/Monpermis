@@ -116,6 +116,20 @@ async function playUntilEnd(player: Player, isCancelled?: () => boolean) {
   })
 }
 
+/**
+ * Chaque énoncé dure plusieurs secondes (le plus court : ~4,8 s). Une lecture qui « se termine » en moins de
+ * 1,2 s est une lecture muette (lecteur pas prêt) : on réessaie une fois avant de passer à la suite.
+ */
+async function playUntilEndReliably(player: Player, isCancelled?: () => boolean) {
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const startedAt = Date.now()
+    await playUntilEnd(player, isCancelled)
+    if (isCancelled?.()) return
+    if (Date.now() - startedAt >= 1200) return
+    await wait(300, isCancelled)
+  }
+}
+
 function AudioWaveform({ active }: { active: boolean }) {
   const anims = useMemo(
     () => WAVE_BARS.map(() => new Animated.Value(0.35)),
@@ -269,7 +283,7 @@ export function QuestionAudioSequence({
           } else {
             listenPassRef.current?.(1)
             setStatus('Première écoute…')
-            await playUntilEnd(localPlayer, isCancelled)
+            await playUntilEndReliably(localPlayer, isCancelled)
             if (cancelledRef.current) return
 
             await wait(PAUSE_MS, isCancelled)
@@ -277,7 +291,7 @@ export function QuestionAudioSequence({
 
             listenPassRef.current?.(2)
             setStatus('Deuxième écoute…')
-            await playUntilEnd(localPlayer, isCancelled)
+            await playUntilEndReliably(localPlayer, isCancelled)
             if (cancelledRef.current) return
           }
         }
