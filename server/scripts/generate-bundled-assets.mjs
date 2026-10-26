@@ -38,7 +38,7 @@ for (const bank of banks) {
       const m = new RegExp(`chapitre-${ch}/(\\d+)\\.png`, 'i').exec(String(url))
       if (!m) continue
       const idx = Number(m[1])
-      if (!existsSync(join(root, `mobile/assets/code-images/chapitre-${ch}/${idx}.png`))) { missing += 1; continue }
+      if (!existsSync(join(root, `mobile/assets/code-images/chapitre-${ch}/${idx}.webp`))) { missing += 1; continue }
       if (!images.has(ch)) images.set(ch, [])
       if (!images.get(ch).includes(idx)) images.get(ch).push(idx)
     }
@@ -66,7 +66,7 @@ writeFileSync(
 )
 writeFileSync(
   join(outDir, 'imageAssets.ts'),
-  emit(images, '/** Images embarquées — quiz hors ligne. N° image = N° question (questions sûres uniquement ; généré par generate-bundled-assets.mjs). */', 'CODE_IMAGE_MODULES', 'code-images', 'png', 'getCodeImageModule', '', 'imageIndex'),
+  emit(images, '/** Images embarquées — quiz hors ligne. N° image = N° question (questions sûres uniquement ; généré par generate-bundled-assets.mjs). */', 'CODE_IMAGE_MODULES', 'code-images', 'webp', 'getCodeImageModule', '', 'imageIndex'),
 )
 
 const count = (m) => [...m.values()].reduce((s, a) => s + new Set(a).size, 0)
