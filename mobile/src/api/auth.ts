@@ -188,7 +188,8 @@ export async function probeSession(): Promise<boolean> {
       await invalidateSessionIfUnauthorized(401)
       return false
     }
-    return response.ok
+    // Seul un 401 invalide la session : une erreur serveur ne doit pas déconnecter l’apprenant.
+    return true
   } catch {
     // Timeout / hors-ligne : on garde la session locale.
     return true

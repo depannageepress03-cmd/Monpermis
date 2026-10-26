@@ -23,6 +23,7 @@ import {
 } from '../../data/codeRoute/panneauxCatalog'
 import type { RootStackParamList } from '../../navigation/types'
 import { dark, fonts, radii, shadows } from '../../theme'
+import { getPanneauAssetModule } from '../../data/codeRoute/panneauxAssets'
 import { resolveMediaUrl } from '../../utils/mediaUrl'
 import {
   resolvePanneauAudioUrl,
@@ -212,7 +213,8 @@ export function RevisionPanneauxCategoryScreen() {
             </View>
           }
           renderItem={({ item }) => {
-            const uri = resolveMediaUrl(item.image)
+            const bundled = getPanneauAssetModule(item.image)
+            const uri = bundled ? undefined : resolveMediaUrl(item.image)
             const def =
               item.definition && item.definition !== item.code
                 ? item.definition
@@ -221,7 +223,9 @@ export function RevisionPanneauxCategoryScreen() {
             return (
               <View style={styles.card}>
                 <View style={styles.media}>
-                  {uri ? (
+                  {bundled ? (
+                    <Image source={bundled} style={styles.cardImage} resizeMode="contain" />
+                  ) : uri ? (
                     <Image source={{ uri }} style={styles.cardImage} resizeMode="contain" />
                   ) : (
                     <View style={styles.cardImage} />

@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 
 const PREFIX = '@mp/cache/v1:'
 const INDEX_KEY = '@mp/cache/v1:__index'
-const MAX_ENTRIES = 48
+const MAX_ENTRIES = 120
 const DEFAULT_TTL_MS = 30 * 60 * 1000
 
 /** TTL étendu pour le mode hors-ligne (7 jours). */

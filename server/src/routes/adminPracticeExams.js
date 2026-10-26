@@ -11,6 +11,7 @@ import {
 } from '../utils/practiceExam.js'
 import {
   ensurePracticeExamSheets,
+  loadPublishedExamQuestionBank,
   generatePracticeExamSheets,
   getPracticeExamBankStats,
 } from '../services/practiceExams.js'
@@ -162,6 +163,7 @@ router.patch('/practice-exams/:examId', audit('update', 'practice_exam'), async 
 
 router.post('/practice-exams/ensure', audit('ensure', 'practice_exam'), async (_req, res) => {
   try {
+    loadPublishedExamQuestionBank.invalidate()
     const result = await ensurePracticeExamSheets()
     if (result.error) {
       return res.status(400).json({ success: false, error: result.error })

@@ -20,6 +20,7 @@ import {
   type AccessModuleKey,
   type CheckoutCartItem,
   type MobileMoneyOperator,
+  redeemPromoCode,
 } from '../api/accessRequests'
 import { dark, fonts } from '../theme'
 import { hapticLight, hapticSuccess } from '../utils/haptics'
@@ -39,7 +40,10 @@ interface Props {
   defaultPhone?: string
   onClose: () => void
   onSuccess: (access: AccessMe) => void
-  /** Code promo saisi en bas de la liste des moyens de paiement : débloque l'accès gratuitement. */
+  /**
+   * Code promo (débloque l'accès gratuitement). Facultatif : sans ce paramètre, la fenêtre applique
+   * le code elle-même puis appelle `onSuccess` — le champ est donc présent dans tous les écrans de paiement.
+   */
   onRedeemPromo?: (code: string) => Promise<void>
 }
 
@@ -102,11 +106,18 @@ export function MobileMoneyCheckout({
 
   const redeemPromo = async () => {
     const code = promoCode.trim()
-    if (!code || !onRedeemPromo) return
+    if (!code) return
     setPromoBusy(true)
     setPromoError(null)
     try {
-      await onRedeemPromo(code)
+      if (onRedeemPromo) {
+        await onRedeemPromo(code)
+      } else {
+        const result = await redeemPromoCode(code)
+        void clearPendingCheckoutCart()
+        void hapticSuccess()
+        onSuccess(result.access)
+      }
     } catch (err) {
       setPromoError(err instanceof Error && err.message ? err.message : 'Code promo invalide')
     } finally {
@@ -242,6 +253,34 @@ export function MobileMoneyCheckout({
     }
   }
 
+  const promoBlock = (
+    <View style={styles.promoBox}>
+      <Text style={styles.kicker}>Code promo</Text>
+      <TextInput
+        style={styles.input}
+        autoCapitalize="characters"
+        autoCorrect={false}
+        placeholder="Entrez votre code promo"
+        placeholderTextColor={dark.textMuted}
+        value={promoCode}
+        editable={!promoBusy}
+        onChangeText={(text) => setPromoCode(text.toUpperCase())}
+      />
+      {promoError ? <Text style={styles.error}>{promoError}</Text> : null}
+      <Pressable
+        style={[styles.payBtn, (promoBusy || !promoCode.trim()) && styles.disabled]}
+        disabled={promoBusy || !promoCode.trim()}
+        onPress={() => void redeemPromo()}
+      >
+        {promoBusy ? (
+          <ActivityIndicator color="#fff" />
+        ) : (
+          <Text style={styles.payText}>Utiliser le code promo</Text>
+        )}
+      </Pressable>
+    </View>
+  )
+
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <View style={styles.backdrop}>
@@ -283,6 +322,7 @@ export function MobileMoneyCheckout({
                 >
                   <Text style={styles.payText}>Passer au paiement</Text>
                 </Pressable>
+                {promoBlock}
               </View>
             ) : null}
 
@@ -304,33 +344,7 @@ export function MobileMoneyCheckout({
                     <Text style={styles.choiceText}>{item.label}</Text>
                   </Pressable>
                 ))}
-                {onRedeemPromo ? (
-                  <View style={styles.promoBox}>
-                    <Text style={styles.kicker}>Code promo</Text>
-                    <TextInput
-                      style={styles.input}
-                      autoCapitalize="characters"
-                      autoCorrect={false}
-                      placeholder="Entrez votre code promo"
-                      placeholderTextColor={dark.textMuted}
-                      value={promoCode}
-                      editable={!promoBusy}
-                      onChangeText={(text) => setPromoCode(text.toUpperCase())}
-                    />
-                    {promoError ? <Text style={styles.error}>{promoError}</Text> : null}
-                    <Pressable
-                      style={[styles.payBtn, (promoBusy || !promoCode.trim()) && styles.disabled]}
-                      disabled={promoBusy || !promoCode.trim()}
-                      onPress={() => void redeemPromo()}
-                    >
-                      {promoBusy ? (
-                        <ActivityIndicator color="#fff" />
-                      ) : (
-                        <Text style={styles.payText}>Utiliser le code promo</Text>
-                      )}
-                    </Pressable>
-                  </View>
-                ) : null}
+                {promoBlock}
                 <Pressable style={styles.backBtn} onPress={() => setStep('intro')}>
                   <Text style={styles.backText}>Retour</Text>
                 </Pressable>

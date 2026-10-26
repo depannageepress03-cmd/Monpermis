@@ -9,6 +9,7 @@ import {
 } from '../utils/practiceExam.js'
 import { hardcodedAsQuestionDocs } from './hardcodedQuestions.js'
 import { isExamEligible } from './examEligibility.js'
+import { memoizeAsync } from '../utils/memoizeAsync.js'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -16,8 +17,19 @@ import { fileURLToPath } from 'node:url'
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const CODE_AUDIO_ROOT = path.resolve(__dirname, '../../content/code-audio')
 
+// Les MP3 ne changent qu'au déploiement : un seul test de fichier par question et par démarrage.
+const generatedAudioCache = new Map()
+
 /** True si l’audio généré (MP3 embarqué serveur) existe pour cet id hc-ch… */
 export function hasGeneratedExamAudio(questionId) {
+  const key = String(questionId || '')
+  if (generatedAudioCache.has(key)) return generatedAudioCache.get(key)
+  const exists = checkGeneratedExamAudio(key)
+  generatedAudioCache.set(key, exists)
+  return exists
+}
+
+function checkGeneratedExamAudio(questionId) {
   const match = String(questionId || '').match(/^hc-ch(\d+)-q(\d+)$/i)
   if (!match) return false
   const chapter = Number(match[1])
@@ -27,7 +39,7 @@ export function hasGeneratedExamAudio(questionId) {
   return fs.existsSync(file)
 }
 
-export async function loadPublishedExamQuestionBank() {
+async function loadPublishedExamQuestionBankUncached() {
   const chapters = await Chapter.find({ published: true })
     .select('_id name order')
     .sort({ order: 1, createdAt: 1 })
@@ -48,6 +60,12 @@ export async function loadPublishedExamQuestionBank() {
 
   return { questions, chapters, chapterNameById }
 }
+
+/**
+ * Banque d'examens mise en cache 60 s (appelée à chaque ouverture de la liste et à chaque démarrage d'examen).
+ * `loadPublishedExamQuestionBank.invalidate()` force le rechargement (actions admin).
+ */
+export const loadPublishedExamQuestionBank = memoizeAsync(loadPublishedExamQuestionBankUncached, 60_000)
 
 /**
  * Tirage d'un NOUVEL examen au hasard (équilibré par chapitre). Les questions déjà vues par l'apprenant

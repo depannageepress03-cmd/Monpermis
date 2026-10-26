@@ -14,6 +14,7 @@ import {
   MinusCircle,
   Trophy,
   TrendingDown,
+  WifiOff,
   XCircle,
 } from 'lucide-react-native'
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native'
@@ -21,6 +22,8 @@ import {
   ContentError,
   fetchLearnerJourney,
   fetchLearnerResults,
+  prefetchResultReviews,
+  readCachedLearnerResults,
   type LearnerJourney,
   type LearnerResultsReport,
   type ResultExamRow,
@@ -51,14 +54,34 @@ export function MesNotesScreen() {
   const [showRemaining, setShowRemaining] = useState(false)
   const [selected, setSelected] = useState<ResultExamRow | null>(null)
 
+  const [offlineSavedAt, setOfflineSavedAt] = useState<number | null>(null)
+
   const load = useCallback(async (silent = false) => {
-    if (!silent) setLoading(true)
+    // 1) Copie locale d'abord : l'écran s'affiche instantanément, même sans connexion.
+    const cached = await readCachedLearnerResults()
+    if (cached) {
+      setReport((current) => current ?? cached.data)
+      setLoading(false)
+    } else if (!silent) {
+      setLoading(true)
+    }
+
+    // 2) Puis le serveur, en arrière-plan.
     const [reportResult, journeyResult] = await Promise.allSettled([
       fetchLearnerResults(),
       fetchLearnerJourney(),
     ])
     if (reportResult.status === 'fulfilled') {
       setReport(reportResult.value)
+      setOfflineSavedAt(null)
+      setError(null)
+      const recent = [...reportResult.value.exams.rows]
+        .sort((a, b) => new Date(b.lastAt || 0).getTime() - new Date(a.lastAt || 0).getTime())
+        .slice(0, 12)
+        .map((row) => row.attemptId)
+      void prefetchResultReviews(recent)
+    } else if (cached) {
+      setOfflineSavedAt(cached.savedAt)
       setError(null)
     } else {
       setError(
@@ -126,6 +149,15 @@ export function MesNotesScreen() {
         >
           <Text style={styles.hello}>Bonjour {user.firstName} !</Text>
           <Text style={styles.helloSub}>Voici le suivi de vos examens et de votre cours</Text>
+
+          {offlineSavedAt ? (
+            <View style={styles.offlineBox}>
+              <WifiOff size={16} color={RES.warn} />
+              <Text style={styles.offlineText}>
+                Hors connexion · résultats enregistrés le {formatDateFr(new Date(offlineSavedAt).toISOString())}
+              </Text>
+            </View>
+          ) : null}
 
           {loading && !report ? <ActivityIndicator color={RES.navy} style={{ marginTop: 24 }} /> : null}
           {error && !journey ? <Text style={styles.error}>Impossible de charger vos résultats. Tirez vers le bas pour réessayer.</Text> : null}
@@ -483,6 +515,17 @@ const styles = StyleSheet.create({
   hello: { fontFamily: fonts.displayBold, fontSize: 24, color: RES.ink },
   helloSub: { fontFamily: fonts.body, fontSize: 13, color: RES.muted, marginTop: 2, marginBottom: 16 },
   error: { fontFamily: fonts.body, color: RES.ko, marginVertical: 12 },
+  offlineBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: RES.warnSoft,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    marginBottom: 12,
+  },
+  offlineText: { flex: 1, fontFamily: fonts.bodyMedium, fontSize: 12, color: RES.warn },
   note: { fontFamily: fonts.body, fontSize: 12.5, lineHeight: 18, color: RES.muted, marginTop: 10 },
 
   hero: { borderRadius: 26, paddingVertical: 22, paddingHorizontal: 16, alignItems: 'center' },

@@ -92,9 +92,21 @@ export function hardcodedAsQuestionDocs(chapter) {
   }))
 }
 
+const CHAPTER_ID_TTL_MS = 5 * 60_000
+const chapterIdCache = new Map()
+
 async function resolveChapterMongoId(order) {
   const n = Number(order)
   if (!Number.isFinite(n)) return null
+  const hit = chapterIdCache.get(n)
+  if (hit && Date.now() < hit.expiresAt) return hit.id
+  const id = await findChapterMongoId(n)
+  // Un chapitre introuvable n'est pas mis en cache : il peut être créé juste après.
+  if (id) chapterIdCache.set(n, { id, expiresAt: Date.now() + CHAPTER_ID_TTL_MS })
+  return id
+}
+
+async function findChapterMongoId(n) {
   const chapter = await Chapter.findOne({
     $or: [
       { order: n },

@@ -1,5 +1,6 @@
 import * as Speech from 'expo-speech'
 import { ensureAudioSession } from './audioSession'
+import { getPanneauAssetModule } from '../data/codeRoute/panneauxAssets'
 import { resolveMediaUrl } from './mediaUrl'
 
 type Player = {
@@ -134,7 +135,9 @@ export async function speakPanneau(
   onEnd?: () => void,
 ) {
   stopPanneauSpeech()
-  const resolved = resolvePanneauAudioUrl(opts.audioUrl)
+  // MP3 embarqué en priorité : fonctionne sans connexion et démarre sans téléchargement.
+  const bundled = getPanneauAssetModule(opts.audioUrl)
+  const resolved = bundled ?? resolvePanneauAudioUrl(opts.audioUrl)
 
   if (!resolved) {
     await speakSystem(opts.code, opts.definition, onEnd)
@@ -145,8 +148,8 @@ export async function speakPanneau(
     await ensureAudioSession()
     const audio = await import('expo-audio')
     const player = audio.createAudioPlayer(
-      { uri: resolved },
-      { downloadFirst: true },
+      typeof resolved === 'number' ? resolved : { uri: resolved },
+      { downloadFirst: typeof resolved !== 'number' },
     ) as Player
     currentPlayer = player
     if (typeof player.volume === 'number') player.volume = 1

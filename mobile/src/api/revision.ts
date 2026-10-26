@@ -80,7 +80,7 @@ export class ContentError extends Error {
 
 async function request<T>(
   path: string,
-  options?: RequestInit & { auth?: boolean },
+  options?: RequestInit & { auth?: boolean; timeoutMs?: number },
 ): Promise<T> {
   const { auth: _auth, ...rest } = options ?? {}
   try {
@@ -325,11 +325,21 @@ export interface PracticeExamAttempt {
   startedAt?: string | null
 }
 
+const RESULTS_REPORT_KEY = 'results:report'
+const JOURNEY_KEY = 'results:journey'
+const REVIEW_KEY_PREFIX = 'results:review:'
+/** Les résultats restent consultables hors connexion pendant 90 jours. */
+const RESULTS_OFFLINE_TTL_MS = 90 * 24 * 60 * 60 * 1000
+
 export async function fetchLearnerJourney(): Promise<LearnerJourney> {
   try {
-    return await request<LearnerJourney>('/content/revision/progress/journey', { auth: true })
+    const fresh = await request<LearnerJourney>('/content/revision/progress/journey', { auth: true })
+    await cacheSet(JOURNEY_KEY, fresh).catch(() => undefined)
+    return fresh
   } catch {
-    // Hors ligne : retourner un voyage vide
+    const cached = await cacheGet<LearnerJourney>(JOURNEY_KEY, RESULTS_OFFLINE_TTL_MS)
+    if (cached) return cached.data
+    // Hors ligne sans copie locale : parcours vide
     return {
       code: { currentStop: null, chaptersDone: 0, chaptersTotal: 19 },
       conduite: { currentStop: null, chaptersDone: 0, chaptersTotal: 0 },
@@ -431,16 +441,45 @@ export interface ResultReviewQuestion {
   elapsedMs: number | null
 }
 
+/** Copie locale du dernier rapport (null si jamais synchronisé). */
+export async function readCachedLearnerResults(): Promise<{ data: LearnerResultsReport; savedAt: number } | null> {
+  const cached = await cacheGet<LearnerResultsReport>(RESULTS_REPORT_KEY, RESULTS_OFFLINE_TTL_MS)
+  return cached ? { data: cached.data, savedAt: cached.savedAt } : null
+}
+
 export async function fetchLearnerResults(): Promise<LearnerResultsReport> {
-  return request<LearnerResultsReport>('/content/revision/results/report', { auth: true })
+  const fresh = await request<LearnerResultsReport>('/content/revision/results/report', { auth: true })
+  await cacheSet(RESULTS_REPORT_KEY, fresh).catch(() => undefined)
+  return fresh
 }
 
 export async function fetchResultAttemptReview(attemptId: string): Promise<ResultReviewQuestion[]> {
-  const data = await request<{ attemptId: string; questions: ResultReviewQuestion[] }>(
-    `/content/revision/results/attempts/${encodeURIComponent(attemptId)}`,
-    { auth: true },
-  )
-  return data.questions
+  const key = `${REVIEW_KEY_PREFIX}${attemptId}`
+  try {
+    const data = await request<{ attemptId: string; questions: ResultReviewQuestion[] }>(
+      `/content/revision/results/attempts/${encodeURIComponent(attemptId)}`,
+      { auth: true },
+    )
+    await cacheSet(key, data.questions).catch(() => undefined)
+    return data.questions
+  } catch (error) {
+    const cached = await cacheGet<ResultReviewQuestion[]>(key, RESULTS_OFFLINE_TTL_MS)
+    if (cached) return cached.data
+    throw error
+  }
+}
+
+/** Télécharge en arrière-plan la correction des derniers examens pour la consulter hors connexion. */
+export async function prefetchResultReviews(attemptIds: string[]): Promise<void> {
+  for (const attemptId of attemptIds) {
+    const key = `${REVIEW_KEY_PREFIX}${attemptId}`
+    if (await cacheGet(key, RESULTS_OFFLINE_TTL_MS)) continue
+    try {
+      await fetchResultAttemptReview(attemptId)
+    } catch {
+      return // hors ligne ou serveur indisponible : on réessaiera au prochain chargement
+    }
+  }
 }
 
 export async function fetchPracticeExams(): Promise<PracticeExamsOverview> {
@@ -507,7 +546,7 @@ export async function fetchChapterQuestions(chapterId: string): Promise<Revision
   try {
     const data = await request<{ questions: RevisionQuestion[] }>(
       `/content/revision/chapters/${encodeURIComponent(chapterId)}/questions`,
-      { auth: true },
+      { auth: true, timeoutMs: 8000 },
     )
     const questions = data.questions || []
     await cacheSet(`revision:questions:${chapterId}`, questions)
@@ -582,6 +621,8 @@ export async function checkQuestionAnswers(
       {
         method: 'POST',
         auth: true,
+        // Réseau faible : bascule vite sur la banque locale plutôt que de faire attendre l'apprenant.
+        timeoutMs: 5000,
         body: JSON.stringify({ questionId, answerIds }),
       },
     )

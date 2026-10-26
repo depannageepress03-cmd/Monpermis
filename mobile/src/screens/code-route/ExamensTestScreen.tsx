@@ -23,12 +23,13 @@ import {
   type PracticeExamsOverview,
 } from '../../api/revision'
 import { DarkScreen } from '../../components/DarkScreen'
-import { AnimatedCheckmark } from '../../components/AnimatedCheckmark'
 import { ConfettiBurst } from '../../components/ConfettiBurst'
+import { ExamResultCard } from '../../components/ExamResultCard'
 import { PageNavbar } from '../../components/PageNavbar'
 import { QuestionAudioSequence } from '../../components/QuestionAudioSequence'
 import { QuestionPromptHtml } from '../../components/QuestionPromptHtml'
 import { ScreenLoader } from '../../components/ScreenLoader'
+import { checkLocalAnswers } from '../../data/codeRoute/banks'
 import {
   enrichAnswersFromTranscript,
   resolveQuestionTranscript,
@@ -236,8 +237,6 @@ export function ExamensTestTakeScreen() {
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [checking, setChecking] = useState(false)
   const [submitted, setSubmitted] = useState(false)
-  // Correction affichée sur la même page après validation : vert = bonne réponse, rouge = choix faux.
-  const [feedback, setFeedback] = useState<{ isCorrect: boolean; correctAnswerIds: string[] } | null>(null)
   const [answeredCount, setAnsweredCount] = useState(0)
   const [finished, setFinished] = useState(false)
   const [finalScore, setFinalScore] = useState<{
@@ -257,11 +256,30 @@ export function ExamensTestTakeScreen() {
   checkingRef.current = checking
   const indexRef = useRef(index)
   indexRef.current = index
+  const answeredCountRef = useRef(0)
   const questionsRef = useRef<PracticeExamAttempt['questions']>([])
   const attemptRef = useRef(attempt)
   attemptRef.current = attempt
   const sequenceLiveRef = useRef(sequenceLive)
   sequenceLiveRef.current = sequenceLive
+  // Réponses en cours d'envoi au serveur (en arrière-plan, dans l'ordre). Ne rejette jamais.
+  answeredCountRef.current = answeredCount
+  const syncQueueRef = useRef<Promise<void>>(Promise.resolve())
+
+  const enqueueServerSync = useCallback((attemptId: string, questionId: string, ids: string[]) => {
+    syncQueueRef.current = syncQueueRef.current.then(async () => {
+      for (let attemptNo = 0; attemptNo < 4; attemptNo += 1) {
+        try {
+          await checkPracticeExamAnswer(attemptId, questionId, ids)
+          return
+        } catch (err) {
+          // Déjà enregistrée par un envoi précédent dont la réponse s'est perdue : c'est un succès.
+          if (err instanceof ContentError && /déjà répondue/i.test(err.message)) return
+          await new Promise((resolve) => setTimeout(resolve, 1500 * (attemptNo + 1)))
+        }
+      }
+    })
+  }, [])
 
   useEffect(() => {
     void import('../../utils/audioSession').then((m) => m.ensureAudioSession())
@@ -402,6 +420,7 @@ export function ExamensTestTakeScreen() {
       stopAllQuizAudio()
       setSequenceLive(false)
       try {
+        await syncQueueRef.current
         const { attempt: score } = await completePracticeExam(currentAttempt.id)
         tracker.track(
           'exam_complete',
@@ -429,7 +448,6 @@ export function ExamensTestTakeScreen() {
     setIndex((value) => value + 1)
     setSelectedIds([])
     setSubmitted(false)
-    setFeedback(null)
     setSequenceLive(true)
   }, [examNumber])
 
@@ -444,31 +462,23 @@ export function ExamensTestTakeScreen() {
     )
       return
 
-    setChecking(true)
     setSubmitted(true)
     setSequenceLive(false)
     stopAllQuizAudio()
-    try {
-      const data = await checkPracticeExamAnswer(currentAttempt.id, currentQuestion.id, [])
-      tracker.track(
-        'exam_skip',
-        {
-          attemptId: currentAttempt.id,
-          examNumber,
-          examType: 'practice',
-          questionId: currentQuestion.id,
-        },
-        { index: indexRef.current, elapsedMs: tracker.consumeElapsedMs() },
-      )
-      setAnsweredCount(data.answeredCount)
-      await finishOrAdvance()
-    } catch (err) {
-      setSubmitted(false)
-      setError(err instanceof ContentError ? err.message : 'Vérification impossible')
-    } finally {
-      setChecking(false)
-    }
-  }, [examNumber, finishOrAdvance])
+    enqueueServerSync(currentAttempt.id, currentQuestion.id, [])
+    tracker.track(
+      'exam_skip',
+      {
+        attemptId: currentAttempt.id,
+        examNumber,
+        examType: 'practice',
+        questionId: currentQuestion.id,
+      },
+      { index: indexRef.current, elapsedMs: tracker.consumeElapsedMs() },
+    )
+    setAnsweredCount((value) => value + 1)
+    await finishOrAdvance()
+  }, [examNumber, finishOrAdvance, enqueueServerSync])
 
   const resolveSelection = useCallback(
     async (ids: string[]) => {
@@ -483,12 +493,11 @@ export function ExamensTestTakeScreen() {
       )
         return
 
-      setChecking(true)
       setSubmitted(true)
       setSequenceLive(false)
       stopAllQuizAudio()
-      try {
-        const data = await checkPracticeExamAnswer(currentAttempt.id, currentQuestion.id, ids)
+
+      const trackAnswer = (isCorrect: boolean, answeredTotal: number) =>
         tracker.track(
           'exam_answer',
           {
@@ -499,14 +508,32 @@ export function ExamensTestTakeScreen() {
           },
           {
             answerIds: ids,
-            isCorrect: data.isCorrect,
+            isCorrect,
             index: indexRef.current,
-            answeredCount: data.answeredCount,
+            answeredCount: answeredTotal,
             elapsedMs: tracker.consumeElapsedMs(),
           },
         )
+
+      // Correction instantanée depuis la banque embarquée ; le serveur est mis à jour en arrière-plan.
+      const local = checkLocalAnswers(currentQuestion.id, ids)
+      if (local) {
+        enqueueServerSync(currentAttempt.id, currentQuestion.id, ids)
+        const total = answeredCountRef.current + 1
+        setAnsweredCount(total)
+        trackAnswer(local.isCorrect, total)
+        // Conditions d'examen : aucune correction pendant l'épreuve, on passe directement à la suite.
+        await finishOrAdvance()
+        return
+      }
+
+      // Question absente de la banque locale : la correction vient du serveur.
+      setChecking(true)
+      try {
+        const data = await checkPracticeExamAnswer(currentAttempt.id, currentQuestion.id, ids)
+        trackAnswer(data.isCorrect, data.answeredCount)
         setAnsweredCount(data.answeredCount)
-        setFeedback({ isCorrect: data.isCorrect, correctAnswerIds: data.correctAnswerIds || [] })
+        await finishOrAdvance()
       } catch (err) {
         setSubmitted(false)
         setError(err instanceof ContentError ? err.message : 'Vérification impossible')
@@ -515,7 +542,7 @@ export function ExamensTestTakeScreen() {
         setChecking(false)
       }
     },
-    [examNumber],
+    [examNumber, enqueueServerSync, finishOrAdvance],
   )
 
   const handleSequenceComplete = useCallback(() => {
@@ -570,11 +597,15 @@ export function ExamensTestTakeScreen() {
         />
 
         <ScrollView contentContainerStyle={styles.scroll}>
-          <Text style={styles.kicker}>Examen blanc</Text>
-          <Text style={styles.title}>Examen {examNumber}</Text>
-          <Text style={styles.subtitle}>
-            Seuil de réussite : {attempt?.passScore ?? 14}/20 · Note finale à la fin
-          </Text>
+          {!finished ? (
+            <>
+              <Text style={styles.kicker}>Examen blanc</Text>
+              <Text style={styles.title}>Examen {examNumber}</Text>
+              <Text style={styles.subtitle}>
+                Seuil de réussite : {attempt?.passScore ?? 14}/20 · Note finale à la fin
+              </Text>
+            </>
+          ) : null}
 
           {loading ? <ActivityIndicator color={dark.green} /> : null}
           {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -586,16 +617,15 @@ export function ExamensTestTakeScreen() {
           ) : null}
 
           {finished && finalScore ? (
-            <View style={styles.resultBox}>
-              <AnimatedCheckmark active color={finalScore.passed ? dark.green : dark.coral} />
-              <Text style={[styles.resultTitle, { marginTop: 12 }]}>
-                {finalScore.passed ? 'Examen réussi' : 'Examen non réussi'}
-              </Text>
-              <Text style={styles.resultScore}>{finalScore.scoreLabel}</Text>
-              <Pressable style={styles.startBtn} onPress={() => navigation.navigate('MesNotes')}>
-                <Text style={styles.startBtnText}>Voir mes notes</Text>
-              </Pressable>
-            </View>
+            <ExamResultCard
+              examNumber={examNumber}
+              correct={finalScore.correct}
+              total={finalScore.total}
+              passScore={finalScore.passScore}
+              passed={finalScore.passed}
+              onSeeNotes={() => navigation.navigate('MesNotes')}
+              onRetry={() => navigation.navigate('ExamensTest')}
+            />
           ) : null}
 
           {!loading && question && !finished ? (
@@ -632,16 +662,12 @@ export function ExamensTestTakeScreen() {
               ) : null}
               {displayAnswers.map((answer) => {
                 const selected = selectedIds.includes(answer.id)
-                const isGood = Boolean(feedback && feedback.correctAnswerIds.includes(answer.id))
-                const isBad = Boolean(feedback && selected && !isGood)
                 return (
                   <Pressable
                     key={answer.id}
                     style={[
                       styles.answer,
-                      selected && !feedback && styles.answerSelected,
-                      isGood && styles.answerCorrect,
-                      isBad && styles.answerWrong,
+                      selected && styles.answerSelected,
                     ]}
                     onPress={() => toggleAnswer(answer.id)}
                     disabled={submitted || checking}
@@ -665,21 +691,9 @@ export function ExamensTestTakeScreen() {
                   )}
                 </Pressable>
               ) : null}
-              {feedback ? (
-                <>
-                  <Text style={[styles.feedbackLine, feedback.isCorrect ? styles.feedbackOk : styles.feedbackKo]}>
-                    {feedback.isCorrect ? 'Bonne réponse' : 'Mauvaise réponse'}
-                  </Text>
-                  <Pressable style={styles.primaryBtn} onPress={() => void finishOrAdvance()}>
-                    <Text style={styles.primaryBtnText}>
-                      {index + 1 >= (attempt?.questions.length ?? 0) ? 'Terminer l’examen' : 'Question suivante'}
-                    </Text>
-                  </Pressable>
-                </>
-              ) : null}
               {!submitted && selectedIds.length === 0 ? (
                 <Text style={styles.awaitingText}>
-                  L’audio lit la question 2 fois. Vous pouvez cocher pendant la lecture ; Valider corrige sans attendre.
+                  L’audio lit la question 2 fois. Cochez votre réponse puis validez : la correction sera disponible à la fin de l’examen.
                 </Text>
               ) : null}
             </View>

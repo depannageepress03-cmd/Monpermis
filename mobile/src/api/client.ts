@@ -30,7 +30,11 @@ export type ApiRequestOptions = RequestInit & {
   retries?: number
   /** Allow success:false / missing data without throwing — caller inspects body. */
   raw?: boolean
+  /** Délai max avant abandon (ms, défaut 15 s) : évite les écrans qui « traînent » sur réseau faible. */
+  timeoutMs?: number
 }
+
+const DEFAULT_TIMEOUT_MS = 15000
 
 const NETWORK_MSG =
   'Impossible de joindre le serveur. Vérifiez votre connexion internet.'
@@ -55,15 +59,26 @@ function mergeHeaders(
   return { ...base, ...(extra as Record<string, string>) }
 }
 
+async function fetchWithTimeout(url: string, init: RequestInit, timeoutMs: number): Promise<Response> {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
+  try {
+    return await fetch(url, { ...init, signal: init.signal ?? controller.signal })
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
 async function fetchWithRetries(
   url: string,
   init: RequestInit,
   retries: number,
+  timeoutMs: number,
 ): Promise<Response> {
   let lastError: unknown
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
-      return await fetch(url, init)
+      return await fetchWithTimeout(url, init, timeoutMs)
     } catch (error) {
       lastError = error
       if (attempt < retries) {
@@ -84,7 +99,7 @@ export async function apiRequest<T>(
   path: string,
   options: ApiRequestOptions = {},
 ): Promise<T> {
-  const { auth = false, retries = 0, raw: _raw, headers, ...rest } = options
+  const { auth = false, retries = 0, raw: _raw, timeoutMs = DEFAULT_TIMEOUT_MS, headers, ...rest } = options
 
   const requestHeaders: Record<string, string> = mergeHeaders(
     {
@@ -102,7 +117,7 @@ export async function apiRequest<T>(
 
   let response: Response
   try {
-    response = await fetchWithRetries(`${getApiBase()}${path}`, { ...rest, headers: requestHeaders }, retries)
+    response = await fetchWithRetries(`${getApiBase()}${path}`, { ...rest, headers: requestHeaders }, retries, timeoutMs)
   } catch {
     throw new ApiError(NETWORK_MSG)
   }
