@@ -48,7 +48,7 @@ const IMAGE_REFERENCES = [
   /\bcette (image|situation|intersection|scène|photo|signalisation|route|voie|zone|man[oœ]uvre|configuration|courbe|chaussée|piste|file)\b/i,
   /\bsur (l['’]\s?)?(image|photo|illustration|schéma)\b/i,
   /\bci-(dessus|dessous)\b/i,
-  /\b(ce|ces|cet) (panneau|panneaux|véhicule|véhicules|bus|camion|piéton|cycliste|feu|feux|marquage|passage|croisement|carrefour|virage|signal|emplacement|endroit|usager|motard|conducteur|deux|trois|quatre|cinq)\b/i,
+  /\b(ce|ces|cet) (panneau|panneaux|véhicule|véhicules|bus|camion|piéton|cycliste|feu|feux|marquage|passage|croisement|carrefour|virage|signal|emplacement|endroit|usager|motard|conducteur|parking|stationnement|rond-point|tunnel|pont|trottoir|agent|automobiliste|deux|trois|quatre|cinq)\b/i,
   /\bla (ligne|voie|flèche|bande) (située|de droite|de gauche|visible)\b/i,
   /\bje (peux|dois) (dépasser|passer|tourner|stationner|m[’']arrêter|rouler|circuler)\b.*\?/i,
   /\bje suis bien placé\b/i,

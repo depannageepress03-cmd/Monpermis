@@ -32,8 +32,21 @@ export function listHardcodedQuestionsPublic(chapter) {
   return reliableOnly(bank).map((q) => toPublicHardcodedQuestion(q, chapterId))
 }
 
-export function listHardcodedQuestionsAdmin(chapter) {
+/** Question qui attend encore son image (non rattachée, ou fichier absent) : sans elle, elle n'a pas de sens. */
+export function awaitsImage(question) {
+  return checkExamEligibility(question).reasons.some(
+    (reason) => reason === 'image requise mais non rattachée' || reason === 'image manquante',
+  )
+}
+
+/** Banque vue par l'administration : les questions qui attendent leur image en sont exclues. */
+export function getAdminHardcodedQuestionsForChapter(chapter) {
   const bank = getHardcodedQuestionsForChapter(chapter)
+  return bank ? bank.filter((question) => !awaitsImage(question)) : null
+}
+
+export function listHardcodedQuestionsAdmin(chapter) {
+  const bank = getAdminHardcodedQuestionsForChapter(chapter)
   if (!bank) return null
   const chapterId = String(chapter._id || chapter.id)
   // L'admin voit tout, avec la raison pour laquelle une question n'est pas proposée aux apprenants.

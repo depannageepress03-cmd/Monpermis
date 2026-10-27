@@ -10,7 +10,7 @@ import { requireAdminAuth } from '../middleware/adminAuth.js'
 import { audit } from '../middleware/audit.js'
 import { logger } from '../utils/logger.js'
 import {
-  getHardcodedQuestionsForChapter,
+  getAdminHardcodedQuestionsForChapter,
   listHardcodedQuestionsAdmin,
 } from '../services/hardcodedQuestions.js'
 
@@ -108,7 +108,7 @@ router.get('/chapters/:chapterId/test-subjects/current', async (req, res) => {
       return res.status(404).json({ success: false, error: 'Chapitre introuvable' })
     }
 
-    const hardcoded = getHardcodedQuestionsForChapter(chapter)
+    const hardcoded = getAdminHardcodedQuestionsForChapter(chapter)
     const publishedCount = hardcoded
       ? hardcoded.length
       : await Question.countDocuments({ chapterId: chapter._id, published: true })
