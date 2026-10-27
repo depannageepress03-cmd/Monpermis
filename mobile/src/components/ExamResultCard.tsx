@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { LinearGradient } from 'expo-linear-gradient'
-import { CheckCircle2, ClipboardList, Flag, RotateCcw, Target, XCircle } from 'lucide-react-native'
+import { Check, CheckCircle2, ClipboardList, Flag, RotateCcw, Target, X, XCircle } from 'lucide-react-native'
 import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native'
 import Svg, { Circle, G, Line } from 'react-native-svg'
 import { fonts } from '../theme'
@@ -16,17 +16,55 @@ const RADIUS = (RING - STROKE) / 2
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS
 
 type Props = {
-  examNumber: number
+  /** Numéro d'examen blanc (affiche « Examen N ») ; ignoré si `subtitle` est fourni. */
+  examNumber?: number
+  /** Libellé sous la pastille (ex. « Sujet test · Chapitre 3 »). */
+  subtitle?: string
   correct: number
   total: number
   passScore: number
   passed: boolean
-  onSeeNotes: () => void
-  onRetry: () => void
+  /** Ouvre la correction / les résultats. Bouton masqué si absent. */
+  onSeeNotes?: () => void
+  /** Relance l'épreuve. Bouton masqué si absent. */
+  onRetry?: () => void
+  notesLabel?: string
+  retryLabel?: string
+  /** Lien discret sous les boutons (ex. « Retour aux chapitres »). */
+  footerLabel?: string
+  onFooter?: () => void
 }
 
-/** Page de fin d'examen : verte si réussi, rouge si raté, avec anneau de score animé et détail de la note. */
-export function ExamResultCard({ examNumber, correct, total, passScore, passed, onSeeNotes, onRetry }: Props) {
+/** Page de fin d'épreuve : verte si réussi, rouge si raté, avec anneau de score animé et détail de la note. */
+export function ExamResultCard({
+  examNumber,
+  subtitle,
+  correct,
+  total,
+  passScore,
+  passed,
+  onSeeNotes,
+  onRetry,
+  notesLabel,
+  retryLabel,
+  footerLabel,
+  onFooter,
+}: Props) {
+  const heading = subtitle ?? `Examen ${examNumber ?? ''}`.trim()
+  const notesText = notesLabel ?? (passed ? 'Voir mes résultats' : 'Voir la correction')
+  const retryText = retryLabel ?? (passed ? 'Passer un autre examen' : 'Réessayer un examen')
+  // Réussi : on met la suite en avant ; raté : on met « réessayer » en avant.
+  const actions = (
+    passed
+      ? [
+          onSeeNotes && { key: 'notes', label: notesText, onPress: onSeeNotes, icon: ClipboardList },
+          onRetry && { key: 'retry', label: retryText, onPress: onRetry, icon: RotateCcw },
+        ]
+      : [
+          onRetry && { key: 'retry', label: retryText, onPress: onRetry, icon: RotateCcw },
+          onSeeNotes && { key: 'notes', label: notesText, onPress: onSeeNotes, icon: Flag },
+        ]
+  ).filter(Boolean) as { key: string; label: string; onPress: () => void; icon: typeof Flag }[]
   const tone = passed ? PASS : FAIL
   const wrong = Math.max(0, total - correct)
   const missing = Math.max(0, passScore - correct)
@@ -75,7 +113,7 @@ export function ExamResultCard({ examNumber, correct, total, passScore, passed, 
         end={{ x: 1, y: 1 }}
         style={styles.hero}
         accessibilityRole="summary"
-        accessibilityLabel={`Examen ${examNumber} ${passed ? 'réussi' : 'non réussi'}, note ${correct} sur ${total}`}
+        accessibilityLabel={`${heading} ${passed ? 'réussi' : 'non réussi'}, note ${correct} sur ${total}`}
       >
         <View style={styles.decoA} />
         <View style={styles.decoB} />
@@ -84,7 +122,7 @@ export function ExamResultCard({ examNumber, correct, total, passScore, passed, 
           {passed ? <CheckCircle2 size={14} color="#fff" /> : <XCircle size={14} color="#fff" />}
           <Text style={styles.pillText}>{tone.label}</Text>
         </View>
-        <Text style={styles.examLabel}>Examen {examNumber}</Text>
+        <Text style={styles.examLabel}>{heading}</Text>
 
         <View style={styles.ringBox}>
           <Svg width={RING} height={RING}>
@@ -113,54 +151,86 @@ export function ExamResultCard({ examNumber, correct, total, passScore, passed, 
           </View>
         </View>
 
-        <Text style={styles.threshold}>
-          Le trait blanc marque le seuil : {passScore}/{total}
-        </Text>
+        <View style={styles.thresholdRow}>
+          <Target size={16} color="rgba(255,255,255,0.9)" />
+          <Text style={styles.threshold}>
+            Le trait blanc marque le seuil : {passScore}/{total}
+          </Text>
+        </View>
       </LinearGradient>
 
       <View style={styles.card}>
-        <Text style={[styles.message, { color: tone.ink }]}>
-          {passed
-            ? 'Félicitations, vous avez atteint le niveau requis. Continuez ainsi pour rester prêt le jour de l’examen.'
-            : `Il vous manquait ${missing} bonne${missing > 1 ? 's' : ''} réponse${missing > 1 ? 's' : ''} pour réussir. Consultez la correction puis réessayez : chaque essai vous rapproche du permis.`}
-        </Text>
+        <View style={styles.messageRow}>
+          <View style={[styles.messageIcon, { backgroundColor: tone.to }]}>
+            {passed ? (
+              <Check size={18} color="#fff" strokeWidth={3} />
+            ) : (
+              <Text style={styles.messageBang}>!</Text>
+            )}
+          </View>
+          <View style={styles.messageCopy}>
+            <Text style={[styles.messageTitle, { color: tone.ink }]}>
+              {passed
+                ? 'Félicitations, vous avez atteint le niveau requis.'
+                : `Il vous manquait ${missing} bonne${missing > 1 ? 's' : ''} réponse${missing > 1 ? 's' : ''} pour réussir.`}
+            </Text>
+            <Text style={styles.messageBody}>
+              {passed
+                ? 'Continuez ainsi pour rester prêt le jour de l’examen.'
+                : onSeeNotes
+                  ? 'Consultez la correction puis réessayez : chaque essai vous rapproche du permis.'
+                  : 'Réessayez : chaque essai vous rapproche du permis.'}
+            </Text>
+          </View>
+        </View>
 
         <View style={styles.stats}>
           <View style={[styles.stat, { backgroundColor: PASS.soft }]}>
-            <CheckCircle2 size={18} color={PASS.ink} />
+            <View style={[styles.statIcon, { backgroundColor: PASS.to }]}><Check size={16} color="#fff" strokeWidth={3} /></View>
             <Text style={[styles.statValue, { color: PASS.ink }]}>{correct}</Text>
             <Text style={styles.statLabel}>Bonnes</Text>
           </View>
           <View style={[styles.stat, { backgroundColor: FAIL.soft }]}>
-            <XCircle size={18} color={FAIL.ink} />
+            <View style={[styles.statIcon, { backgroundColor: FAIL.to }]}><X size={16} color="#fff" strokeWidth={3} /></View>
             <Text style={[styles.statValue, { color: FAIL.ink }]}>{wrong}</Text>
             <Text style={styles.statLabel}>Erreurs</Text>
           </View>
           <View style={[styles.stat, { backgroundColor: '#EEF2F8' }]}>
-            <Target size={18} color="#001030" />
+            <View style={[styles.statIcon, { backgroundColor: '#0B2A5B' }]}><Target size={16} color="#fff" /></View>
             <Text style={[styles.statValue, { color: '#001030' }]}>{passScore}</Text>
             <Text style={styles.statLabel}>Seuil</Text>
           </View>
         </View>
 
-        <Pressable
-          onPress={passed ? onSeeNotes : onRetry}
-          accessibilityRole="button"
-          style={({ pressed }) => [styles.primary, { backgroundColor: tone.to }, pressed && styles.pressed]}
-        >
-          {passed ? <ClipboardList size={18} color="#fff" /> : <RotateCcw size={18} color="#fff" />}
-          <Text style={styles.primaryText}>{passed ? 'Voir mes résultats' : 'Réessayer un examen'}</Text>
-        </Pressable>
-        <Pressable
-          onPress={passed ? onRetry : onSeeNotes}
-          accessibilityRole="button"
-          style={({ pressed }) => [styles.secondary, { borderColor: tone.to }, pressed && styles.pressed]}
-        >
-          <Flag size={16} color={tone.ink} />
-          <Text style={[styles.secondaryText, { color: tone.ink }]}>
-            {passed ? 'Passer un autre examen' : 'Voir la correction'}
-          </Text>
-        </Pressable>
+        {actions.map((action, i) => {
+          const Icon = action.icon
+          return i === 0 ? (
+            <Pressable
+              key={action.key}
+              onPress={action.onPress}
+              accessibilityRole="button"
+              style={({ pressed }) => [styles.primary, { backgroundColor: tone.to }, pressed && styles.pressed]}
+            >
+              <Icon size={18} color="#fff" />
+              <Text style={styles.primaryText}>{action.label}</Text>
+            </Pressable>
+          ) : (
+            <Pressable
+              key={action.key}
+              onPress={action.onPress}
+              accessibilityRole="button"
+              style={({ pressed }) => [styles.secondary, { borderColor: tone.to }, pressed && styles.pressed]}
+            >
+              <Icon size={16} color={tone.ink} />
+              <Text style={[styles.secondaryText, { color: tone.ink }]}>{action.label}</Text>
+            </Pressable>
+          )
+        })}
+        {footerLabel && onFooter ? (
+          <Pressable onPress={onFooter} accessibilityRole="button" style={styles.footerLink} hitSlop={8}>
+            <Text style={[styles.footerLinkText, { color: tone.ink }]}>{footerLabel}</Text>
+          </Pressable>
+        ) : null}
       </View>
     </Animated.View>
   )
@@ -188,7 +258,8 @@ const styles = StyleSheet.create({
   score: { fontFamily: fonts.displayExtraBold, fontSize: 56, color: '#fff', lineHeight: 62 },
   scoreMax: { fontFamily: fonts.displayBold, fontSize: 22, color: 'rgba(255,255,255,0.8)' },
   percent: { fontFamily: fonts.bodySemiBold, fontSize: 13, color: 'rgba(255,255,255,0.85)', marginTop: -2 },
-  threshold: { fontFamily: fonts.body, fontSize: 12, color: 'rgba(255,255,255,0.85)', marginTop: 14 },
+  thresholdRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 14 },
+  threshold: { fontFamily: fonts.body, fontSize: 12, color: 'rgba(255,255,255,0.9)' },
   card: {
     backgroundColor: '#fff',
     borderRadius: 24,
@@ -197,7 +268,13 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(0,16,48,0.08)',
     gap: 14,
   },
-  message: { fontFamily: fonts.bodyMedium, fontSize: 14, lineHeight: 21 },
+  messageRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 14 },
+  messageIcon: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  messageBang: { fontFamily: fonts.displayBold, fontSize: 20, color: '#fff', lineHeight: 24 },
+  messageCopy: { flex: 1, gap: 4 },
+  messageTitle: { fontFamily: fonts.bodyBold, fontSize: 15, lineHeight: 21 },
+  messageBody: { fontFamily: fonts.body, fontSize: 14, lineHeight: 21, color: '#001030' },
+  statIcon: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
   stats: { flexDirection: 'row', gap: 10 },
   stat: { flex: 1, borderRadius: 16, paddingVertical: 12, paddingHorizontal: 12, gap: 3 },
   statValue: { fontFamily: fonts.displayBold, fontSize: 24 },
@@ -221,5 +298,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
   },
   secondaryText: { fontFamily: fonts.bodyBold, fontSize: 14 },
+  footerLink: { alignItems: 'center', paddingVertical: 6 },
+  footerLinkText: { fontFamily: fonts.bodySemiBold, fontSize: 14 },
   pressed: { opacity: 0.85 },
 })

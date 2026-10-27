@@ -13,8 +13,6 @@ import {
   ChevronRight,
   ClipboardList,
   HelpCircle,
-  Square,
-  SquareCheck,
   Trophy,
   X,
 } from 'lucide-react-native'
@@ -38,8 +36,8 @@ import {
   type RevisionQuestion,
 } from '../../api/revision'
 import { EmptyState } from '../../components/EmptyState'
-import { AnimatedCheckmark } from '../../components/AnimatedCheckmark'
 import { Bouncy } from '../../components/Bouncy'
+import { ExamResultCard } from '../../components/ExamResultCard'
 import { ConfettiBurst } from '../../components/ConfettiBurst'
 import { FadeUp } from '../../components/FadeUp'
 import { LegalFooter } from '../../components/LegalFooter'
@@ -666,24 +664,29 @@ export function ChapterQuestionsScreen() {
               </Pressable>
             </View>
           ) : finished ? (
-            <View style={styles.centerBox}>
-              <AnimatedCheckmark
-                active
-                color={
-                  score.total > 0 && score.correct / score.total >= 0.5 ? dark.green : dark.coral
+            <View style={styles.resultWrap}>
+              <ExamResultCard
+                subtitle={
+                  isTest
+                    ? `Sujet test${chapterName ? ` · ${chapterName}` : ''}`
+                    : chapterName || 'Questions du chapitre'
+                }
+                correct={score.correct}
+                total={score.total}
+                // Objectif de réussite aligné sur l'examen (14/20 = 70 %).
+                passScore={Math.ceil(score.total * 0.7)}
+                passed={score.total > 0 && score.correct >= Math.ceil(score.total * 0.7)}
+                onSeeNotes={reviewHistory.length > 0 ? () => setReviewing(true) : undefined}
+                notesLabel="Mode correction"
+                onRetry={isSingleQuestion ? undefined : () => void loadQuestions()}
+                retryLabel="Recommencer"
+                footerLabel={isSingleQuestion ? 'Retour à la liste' : 'Retour aux chapitres'}
+                onFooter={() =>
+                  isSingleQuestion
+                    ? navigation.navigate('ChapterQuestionsList', { chapterId, chapterName, chapterOrder })
+                    : navigation.navigate('RevisionChapitres')
                 }
               />
-              <Text style={[styles.emptyTitle, { marginTop: 16 }]}>
-                {score.total > 0 && score.correct / score.total >= 0.7
-                  ? 'Bravo !'
-                  : score.total > 0 && score.correct / score.total >= 0.5
-                    ? 'Bien joué'
-                    : 'Terminé'}
-              </Text>
-              <Text style={styles.scoreText}>
-                {score.correct} / {score.total} bonne{score.total > 1 ? 's' : ''} réponse
-                {score.total > 1 ? 's' : ''}
-              </Text>
               {isTest ? (
                 <Text style={styles.emptyText}>
                   {savingTest
@@ -693,31 +696,6 @@ export function ChapterQuestionsScreen() {
                       : 'Sujet test terminé.'}
                 </Text>
               ) : null}
-              {reviewHistory.length > 0 ? (
-                <Pressable style={styles.inlinePrimary} onPress={() => setReviewing(true)}>
-                  <Text style={styles.inlinePrimaryText}>Mode correction</Text>
-                </Pressable>
-              ) : null}
-              {isSingleQuestion ? (
-                <Pressable
-                  style={styles.secondaryBtn}
-                  onPress={() => navigation.navigate('ChapterQuestionsList', { chapterId, chapterName, chapterOrder })}
-                >
-                  <Text style={styles.secondaryBtnText}>Retour à la liste</Text>
-                </Pressable>
-              ) : (
-                <>
-                  <Pressable style={styles.secondaryBtn} onPress={() => void loadQuestions()}>
-                    <Text style={styles.secondaryBtnText}>Recommencer</Text>
-                  </Pressable>
-                  <Pressable
-                    style={styles.secondaryBtn}
-                    onPress={() => navigation.navigate('RevisionChapitres')}
-                  >
-                    <Text style={styles.secondaryBtnText}>Retour aux chapitres</Text>
-                  </Pressable>
-                </>
-              )}
             </View>
           ) : question ? (
             <FadeUp delay={80}>
@@ -789,18 +767,18 @@ export function ChapterQuestionsScreen() {
 
               {displayAnswers.map((answer) => {
                 const selected = selectedIds.has(answer.id)
-                const isCorrectAnswer = result?.correctAnswerIds.includes(answer.id)
-                const showCorrect = Boolean(result && isCorrectAnswer)
-                const showWrong = Boolean(result && selected && !isCorrectAnswer)
+                // Après une erreur : on indique la ou les bonnes réponses (contour vert).
+                const revealCorrect = Boolean(
+                  result && !result.isCorrect && result.correctAnswerIds.includes(answer.id),
+                )
 
                 return (
                   <Pressable
                     key={answer.id}
                     style={({ pressed }) => [
                       styles.answerRow,
-                      selected && !result && styles.answerSelected,
-                      showCorrect && styles.answerCorrect,
-                      showWrong && styles.answerWrong,
+                      revealCorrect && styles.answerReveal,
+                      selected && styles.answerSelected,
                       pressed && !result && !checking && styles.answerPressed,
                     ]}
                     onPress={() => toggleAnswer(answer.id)}
@@ -809,22 +787,17 @@ export function ChapterQuestionsScreen() {
                     accessibilityState={{ checked: selected }}
                   >
                     <View style={styles.answerLeft}>
-                      {selected ? (
-                        <SquareCheck
-                          size={24}
-                          color={showWrong ? dark.coral : dark.green}
-                        />
-                      ) : (
-                        <Square size={24} color="rgba(0,16,48,0.28)" />
-                      )}
+                      <View style={[styles.checkbox, selected && styles.checkboxChecked]}>
+                        {selected ? <Check size={18} color="#FFFFFF" strokeWidth={3} /> : null}
+                      </View>
                       <View style={styles.answerCopy}>
                         <Text style={styles.answerLabel}>{answer.label.toUpperCase()}</Text>
                         {answer.text ? (
                           <Text style={styles.answerText}>{answer.text}</Text>
                         ) : null}
+                        {revealCorrect ? <Text style={styles.answerRevealTag}>Bonne réponse</Text> : null}
                       </View>
                     </View>
-                    {showWrong ? <X size={18} color={dark.coral} /> : null}
                   </Pressable>
                 )
               })}
@@ -835,7 +808,20 @@ export function ChapterQuestionsScreen() {
                     styles.feedback,
                     result.isCorrect ? styles.feedbackOk : styles.feedbackKo,
                   ]}
+                  accessibilityRole="alert"
                 >
+                  <View
+                    style={[
+                      styles.feedbackIcon,
+                      result.isCorrect ? styles.feedbackIconOk : styles.feedbackIconKo,
+                    ]}
+                  >
+                    {result.isCorrect ? (
+                      <Check size={20} color="#FFFFFF" strokeWidth={3} />
+                    ) : (
+                      <X size={20} color="#FFFFFF" strokeWidth={3} />
+                    )}
+                  </View>
                   <Text
                     style={[
                       styles.feedbackText,
@@ -1111,6 +1097,15 @@ const styles = StyleSheet.create({
     borderColor: dark.coral,
     backgroundColor: dark.coralSoft,
   },
+  answerReveal: {
+    borderColor: dark.green,
+  },
+  answerRevealTag: {
+    fontFamily: fonts.bodyBold,
+    fontSize: 12,
+    color: dark.green,
+    marginTop: 2,
+  },
   answerPressed: {
     opacity: 0.92,
     transform: [{ scale: 0.99 }],
@@ -1118,8 +1113,22 @@ const styles = StyleSheet.create({
   answerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 16,
     flex: 1,
+  },
+  checkbox: {
+    width: 26,
+    height: 26,
+    borderRadius: 7,
+    borderWidth: 2,
+    borderColor: 'rgba(0,16,48,0.28)',
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkboxChecked: {
+    borderColor: dark.green,
+    backgroundColor: dark.green,
   },
   answerCopy: {
     flex: 1,
@@ -1135,6 +1144,10 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
     color: dark.textPrimary,
+  },
+  resultWrap: {
+    gap: 12,
+    paddingBottom: 20,
   },
   reviewWrap: {
     gap: 12,
@@ -1159,9 +1172,12 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   feedback: {
-    borderRadius: 14,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    borderRadius: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
     marginTop: 4,
     marginBottom: 8,
   },
@@ -1169,18 +1185,31 @@ const styles = StyleSheet.create({
     backgroundColor: dark.greenSoft,
   },
   feedbackKo: {
-    backgroundColor: dark.coralSoft,
+    backgroundColor: 'rgba(220,38,38,0.10)',
+  },
+  feedbackIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  feedbackIconOk: {
+    backgroundColor: dark.green,
+  },
+  feedbackIconKo: {
+    backgroundColor: '#E11D2E',
   },
   feedbackText: {
+    flex: 1,
     fontFamily: fonts.bodyBold,
-    fontSize: 15,
-    textAlign: 'center',
+    fontSize: 17,
   },
   feedbackTextOk: {
     color: dark.green,
   },
   feedbackTextKo: {
-    color: dark.coral,
+    color: '#DC2626',
   },
   bottomBar: {
     position: 'absolute',

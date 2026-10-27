@@ -64,25 +64,25 @@ export function ProgressiveSubtitles({ text, resetKey, progressive = true }: Pro
 
 const styles = StyleSheet.create({
   box: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
+    backgroundColor: brand.greenPale,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: 'rgba(0,176,80,0.22)',
-    paddingVertical: 12,
-    paddingHorizontal: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
     gap: 6,
   },
   kicker: {
     fontFamily: fonts.bodyBold,
-    fontSize: 11,
+    fontSize: 12,
     letterSpacing: 0.8,
     textTransform: 'uppercase',
     color: dark.green,
   },
   text: {
-    fontFamily: fonts.body,
-    fontSize: 16,
-    lineHeight: 24,
+    fontFamily: fonts.bodyMedium,
+    fontSize: 18,
+    lineHeight: 27,
     color: brand.navy,
   },
 })
