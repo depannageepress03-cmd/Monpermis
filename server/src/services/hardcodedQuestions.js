@@ -32,17 +32,14 @@ export function listHardcodedQuestionsPublic(chapter) {
   return reliableOnly(bank).map((q) => toPublicHardcodedQuestion(q, chapterId))
 }
 
-/** Question qui attend encore son image (non rattachée, ou fichier absent) : sans elle, elle n'a pas de sens. */
-export function awaitsImage(question) {
-  return checkExamEligibility(question).reasons.some(
-    (reason) => reason === 'image requise mais non rattachée' || reason === 'image manquante',
-  )
-}
-
-/** Banque vue par l'administration : les questions qui attendent leur image en sont exclues. */
+/**
+ * Banque vue par l'administration : uniquement les questions correctes, c'est-à-dire les mêmes que celles
+ * proposées aux apprenants. Sont exclues : image ou audio manquant, clé de réponses absente,
+ * transcription incomplète, question signalée « à confirmer ».
+ */
 export function getAdminHardcodedQuestionsForChapter(chapter) {
   const bank = getHardcodedQuestionsForChapter(chapter)
-  return bank ? bank.filter((question) => !awaitsImage(question)) : null
+  return bank ? bank.filter((question) => isExamEligible(question)) : null
 }
 
 export function listHardcodedQuestionsAdmin(chapter) {

@@ -1,6 +1,7 @@
 # Questions qui attendent encore leur image
 
-Ces questions ne sont **proposées ni aux apprenants ni dans l'espace administrateur** tant que leur image n'existe pas
+L'espace administrateur n'affiche que les questions correctes (les mêmes que celles proposées aux apprenants) : 688 sur 888.
+Les questions ci-dessous n'y figurent pas, ni chez les apprenants, tant que leur image n'existe pas
 (l'énoncé renvoie à une scène ou un panneau à regarder : sans image, la question n'a pas de sens).
 Liste produite par l'audit du serveur (`checkExamEligibility`), 80 questions au total.
 
