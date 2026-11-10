@@ -6,6 +6,11 @@ const TOKEN_KEY = 'token'
 const USER_KEY = 'user'
 /** Ancienne clé AsyncStorage — migrée puis effacée. */
 const LEGACY_TOKEN_KEY = 'token'
+/**
+ * Repli quand le Keychain est indisponible (simulateur/build sans entitlement
+ * keychain-access-groups, ex. « A required entitlement isn't present »).
+ */
+const FALLBACK_TOKEN_KEY = 'token.fallback'
 
 export interface AuthUser {
   id: string
@@ -34,21 +39,39 @@ function notifySessionInvalidated() {
 
 async function readSecureToken(): Promise<string | null> {
   try {
-    return await SecureStore.getItemAsync(TOKEN_KEY)
+    const secure = await SecureStore.getItemAsync(TOKEN_KEY)
+    if (secure) return secure
+  } catch {
+    /* Keychain indisponible : on tente le repli AsyncStorage. */
+  }
+  try {
+    return await AsyncStorage.getItem(FALLBACK_TOKEN_KEY)
   } catch {
     return null
   }
 }
 
 async function writeSecureToken(token: string): Promise<void> {
-  await SecureStore.setItemAsync(TOKEN_KEY, token, {
-    keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
-  })
+  try {
+    await SecureStore.setItemAsync(TOKEN_KEY, token, {
+      keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
+    })
+    await AsyncStorage.removeItem(FALLBACK_TOKEN_KEY)
+  } catch {
+    // Keychain indisponible (ex. simulateur non signé) : la session reste
+    // utilisable, comme l'ancien stockage AsyncStorage.
+    await AsyncStorage.setItem(FALLBACK_TOKEN_KEY, token)
+  }
 }
 
 async function deleteSecureToken(): Promise<void> {
   try {
     await SecureStore.deleteItemAsync(TOKEN_KEY)
+  } catch {
+    /* ignore */
+  }
+  try {
+    await AsyncStorage.removeItem(FALLBACK_TOKEN_KEY)
   } catch {
     /* ignore */
   }

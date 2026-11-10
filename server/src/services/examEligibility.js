@@ -3,7 +3,10 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parseTranscript, referencesImage, transcriptProblems } from '../utils/transcriptParse.js'
 import { answerKeyProblems } from '../utils/answerKey.js'
-import { UNCERTAIN_QUESTIONS } from '../data/hardcodedQuestions/uncertain.js'
+import {
+  CONFIRMED_ALL_CORRECT_QUESTIONS,
+  UNCERTAIN_QUESTIONS,
+} from '../data/hardcodedQuestions/uncertain.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const CONTENT_ROOT = path.resolve(__dirname, '../../content')
@@ -25,7 +28,7 @@ function imageFile(url) {
 
 /**
  * Une question n'est proposée à l'apprenant (révision, sujets test, examens) que si elle est SÛRE :
- *  - réponses fiables : au moins une bonne réponse, pas « toutes bonnes », pas signalée « à confirmer » ;
+ *  - réponses fiables : au moins une bonne réponse, pas « toutes bonnes » non confirmées, pas signalée « à confirmer » ;
  *  - audio présent et non vide ;
  *  - transcription complète (énoncé + texte de chaque réponse) ;
  *  - toutes les images qu'elle exige existent, et une image est rattachée si l'audio en parle.
@@ -39,7 +42,16 @@ export function checkExamEligibility(doc) {
   if (cache.has(id)) return cache.get(id)
 
   const reasons = []
-  for (const problem of answerKeyProblems(doc?.answers)) reasons.push(`réponses : ${problem}`)
+  for (const problem of answerKeyProblems(doc?.answers)) {
+    // QCM où chaque option est juste : OK seulement si revue manuelle (liste confirmée).
+    if (
+      problem === 'toutes les réponses marquées bonnes (à confirmer)' &&
+      CONFIRMED_ALL_CORRECT_QUESTIONS[id]
+    ) {
+      continue
+    }
+    reasons.push(`réponses : ${problem}`)
+  }
   if (UNCERTAIN_QUESTIONS[id]) reasons.push('signalée à confirmer')
   const match = /^hc-ch(\d+)-q(\d+)$/i.exec(id)
   if (!match) {

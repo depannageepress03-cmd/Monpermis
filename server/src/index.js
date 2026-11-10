@@ -96,7 +96,9 @@ function parseAllowedOrigins() {
     'https://monpermis-api.onrender.com',
   ]
   // Origines de développement : jamais acceptées en production.
-  if (process.env.NODE_ENV !== 'production') defaults.push('http://localhost:5175', 'http://localhost:5174')
+  if (process.env.NODE_ENV !== 'production') {
+    defaults.push('http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175')
+  }
   const all = [...new Set([...fromList, ...singles, ...defaults])]
   return process.env.NODE_ENV === 'production'
     ? all.filter((origin) => !/^https?:\/\/(localhost|127\.0\.0\.1)(:|$)/i.test(origin))
@@ -450,10 +452,30 @@ if (serveWebApp) {
 }
 
 async function connectMongo() {
-  await mongoose.connect(process.env.MONGODB_URI, {
-    serverSelectionTimeoutMS: 8000,
-  })
-  logger.info('Connecté à MongoDB Atlas')
+  try {
+    await mongoose.connect(process.env.MONGODB_URI, {
+      serverSelectionTimeoutMS: 8000,
+    })
+    logger.info('Connecté à MongoDB')
+  } catch (error) {
+    logger.error('MongoDB inaccessible au démarrage', { error: error.message })
+    // Fallback: utiliser mongodb-memory-server en développement
+    if (process.env.NODE_ENV !== 'production') {
+      try {
+        const { MongoMemoryServer } = await import('mongodb-memory-server')
+        const mongod = await MongoMemoryServer.create()
+        const uri = mongod.getUri()
+        process.env.MONGODB_URI = uri
+        await mongoose.connect(uri, { serverSelectionTimeoutMS: 8000 })
+        logger.info('Connecté à MongoDB en mémoire (fallback dev)')
+      } catch (e2) {
+        logger.error('Échec fallback mongodb-memory-server', { error: e2.message })
+        throw error
+      }
+    } else {
+      throw error
+    }
+  }
   await ensureUserIndexes()
   await ensureReservationIndexes()
   try {

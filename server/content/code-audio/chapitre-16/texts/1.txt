@@ -1,1 +1,5 @@
-Si j'arrive le premier sur les lieux d'un accident corporel, a, je balise ou avertis des autres usagers, oui, b, je balise ou avertis des autres usagers, non, c, je préviens la police ou la gendarmerie, oui, d, je préviens la police ou la gendarmerie, non.
+Si j'arrive le premier sur les lieux d'un accident corporel :
+A. Je balise ou avertis les autres usagers. Oui.
+B. Je balise ou avertis les autres usagers. Non.
+C. Je préviens la police ou la gendarmerie. Oui.
+D. Je préviens la police ou la gendarmerie. Non.

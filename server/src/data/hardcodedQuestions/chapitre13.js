@@ -22,6 +22,13 @@ function audioUrl(n) {
   return `/content/code-audio/chapitre-13/${n}.mp3`
 }
 
+function imageUrl(n) {
+  return `/content/code-images/chapitre-13/${n}.png`
+}
+
+/** Images disponibles (N.png = question N). */
+const QUESTIONS_WITH_IMAGES = new Set([1, 3, 4, 7, 8, 9, 16, 18, 22, 23, 33])
+
 function answers(questionIndex, letters, correctLetters) {
   const correct = new Set(correctLetters.map((l) => l.toUpperCase()))
   return letters.map((letter) => {
@@ -47,7 +54,7 @@ function question(order, letterOptions, correctLetters) {
       text: '',
       audioUrl: audioUrl(order),
       audioPublicId: '',
-      imageUrls: [],
+      imageUrls: QUESTIONS_WITH_IMAGES.has(order) ? [imageUrl(order)] : [],
     },
     answers: answers(order, letterOptions, correctLetters),
   }
@@ -55,27 +62,27 @@ function question(order, letterOptions, correctLetters) {
 
 /** 95 questions — autoroute, priorités, signalisation. */
 export const CHAPITRE_13_QUESTIONS = [
-  question(1, ['A', 'B'], []),
-  question(2, ['A', 'B'], []),
-  question(3, ['A', 'B'], []),
-  question(4, ['A', 'B'], []),
-  question(5, ['A', 'B'], []),
-  question(6, ['A', 'B', 'C'], []),
-  question(7, ['A', 'B'], []),
-  question(8, ['A', 'B'], []),
+  question(1, ['A', 'B'], ['B']),
+  question(2, ['A', 'B'], ['A']),
+  question(3, ['A', 'B'], ['B']),
+  question(4, ['A', 'B'], ['B']),
+  question(5, ['A', 'B'], ['B']),
+  question(6, ['A', 'B', 'C'], ['C']),
+  question(7, ['A', 'B'], ['A']),
+  question(8, ['A', 'B'], ['A']),
   question(9, ['A', 'B', 'C'], ['B']),
-  question(10, ['A', 'B'], []),
-  question(11, ['A', 'B'], []),
-  question(12, ['A', 'B'], []),
-  question(13, ['A', 'B'], []),
+  question(10, ['A', 'B'], ['A']),
+  question(11, ['A', 'B'], ['B']),
+  question(12, ['A', 'B'], ['A']),
+  question(13, ['A', 'B'], ['A']),
   question(14, ['A', 'B'], ['B']),
-  question(15, ['A', 'B'], []),
-  question(16, ['A', 'B', 'C', 'D'], []),
-  question(17, ['A', 'B', 'C'], []),
-  question(18, ['A', 'B', 'C'], []),
+  question(15, ['A', 'B'], ['B']),
+  question(16, ['A', 'B', 'C', 'D'], ['B', 'C']),
+  question(17, ['A', 'B', 'C'], ['B']),
+  question(18, ['A', 'B', 'C'], ['C']),
   question(19, ['A', 'B'], ['B']),
   question(20, ['A', 'B', 'C'], ['A']),
-  question(21, ['A', 'B'], []),
+  question(21, ['A', 'B'], ['A']),
   question(22, ['A', 'B', 'C', 'D'], ['B']),
   question(23, ['A', 'B', 'C', 'D'], ['A']),
   question(24, ['A', 'B', 'C', 'D'], ['B']),
@@ -86,7 +93,7 @@ export const CHAPITRE_13_QUESTIONS = [
   question(29, ['A', 'B', 'C', 'D'], ['B']),
   question(30, ['A', 'B', 'C', 'D'], ['B']),
   question(31, ['A', 'B', 'C', 'D'], ['B']),
-  question(32, ['A', 'B', 'C', 'D'], []),
+  question(32, ['A', 'B', 'C', 'D'], ['B']),
   question(33, ['A', 'B', 'C'], ['C']),
   question(34, ['A', 'B', 'C', 'D'], ['C']),
   question(35, ['A', 'B', 'C', 'D'], ['A', 'B']),

@@ -64,7 +64,7 @@ export const CHAPITRE_15_QUESTIONS = [
   question(4, ['A', 'B', 'C', 'D'], ['A', 'B', 'C', 'D']),
   question(5, ['A', 'B'], ['A']),
   question(6, ['A', 'B'], ['A']),
-  // Q7 : seuil délictuel classique 0,8 g/L absent des options — à confirmer
+  // Q7 : options 0,6 / 0,4 / 1 — on retient 0,6 (1er seuil > limite légale Bénin 0,5 g/L)
   question(7, ['A', 'B', 'C'], ['A']),
   question(8, ['A', 'B', 'C', 'D'], ['B', 'D']),
   question(9, ['A', 'B', 'C', 'D'], ['B']),

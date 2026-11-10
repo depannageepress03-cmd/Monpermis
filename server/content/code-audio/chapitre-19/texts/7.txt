@@ -1,1 +1,4 @@
-Avant un voyage, j'ai pas obtenu des renseignements sur la circulation A par le téléphone, B par la carte routière, C par la radio.
+Avant un voyage, je peux obtenir des renseignements sur la circulation :
+A. Par le téléphone.
+B. Par la carte routière.
+C. Par la radio.

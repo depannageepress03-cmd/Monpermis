@@ -1,1 +1,5 @@
-Avec quel catégorie de permis peut-on conduire un taxi ? A, permissé, B, permissé 1, C, permité A ou T, C, D, permité.
+Avec quelle catégorie de permis peut-on conduire un taxi ?
+A. Permis B.
+B. Permis C1.
+C. Permis A ou T.
+D. Permis D.

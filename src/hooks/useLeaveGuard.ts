@@ -6,7 +6,7 @@ import { useCallback, useEffect } from 'react'
  */
 export function useLeaveGuard(
   when: boolean,
-  message = 'Quitter ? Votre progression en cours sera conservée si vous reprenez le même examen.',
+  message = 'Quitter ? Cet examen ne pourra pas être repris : de nouvelles questions seront tirées au prochain essai.',
 ) {
   useEffect(() => {
     if (!when) return

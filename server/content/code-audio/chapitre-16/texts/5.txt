@@ -1,1 +1,4 @@
-En cas d'accident sur l'autoroute, je peux prévenir les secours à l'aide des bonnes d'appels d'urgence, des à l'aide de mon téléphone portable, c'est à l'aide de notre usager.
+En cas d'accident sur l'autoroute, je peux prévenir les secours :
+A. À l'aide des bornes d'appels d'urgence.
+B. À l'aide de mon téléphone portable.
+C. À l'aide d'un autre usager.

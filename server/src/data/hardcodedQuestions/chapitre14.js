@@ -22,6 +22,13 @@ function audioUrl(n) {
   return `/content/code-audio/chapitre-14/${n}.mp3`
 }
 
+function imageUrl(n) {
+  return `/content/code-images/chapitre-14/${n}.png`
+}
+
+/** Images disponibles (N.png = question N). */
+const QUESTIONS_WITH_IMAGES = new Set([1, 3, 5, 8])
+
 function answers(questionIndex, letters, correctLetters) {
   const correct = new Set(correctLetters.map((l) => l.toUpperCase()))
   return letters.map((letter) => {
@@ -47,7 +54,7 @@ function question(order, letterOptions, correctLetters) {
       text: '',
       audioUrl: audioUrl(order),
       audioPublicId: '',
-      imageUrls: [],
+      imageUrls: QUESTIONS_WITH_IMAGES.has(order) ? [imageUrl(order)] : [],
     },
     answers: answers(order, letterOptions, correctLetters),
   }
@@ -55,14 +62,14 @@ function question(order, letterOptions, correctLetters) {
 
 /** 27 questions — véhicules lents, dimensions, comportement. */
 export const CHAPITRE_14_QUESTIONS = [
-  question(1, ['A', 'B', 'C'], []),
+  question(1, ['A', 'B', 'C'], ['A']),
   question(2, ['A', 'B'], ['B']),
-  question(3, ['A', 'B'], []),
-  question(4, ['A', 'B', 'C'], []),
-  question(5, ['A', 'B'], []),
+  question(3, ['A', 'B'], ['B']),
+  question(4, ['A', 'B', 'C'], ['C']),
+  question(5, ['A', 'B'], ['A']),
   question(6, ['A', 'B', 'C', 'D'], ['B']),
   question(7, ['A', 'B', 'C', 'D'], ['C']),
-  question(8, ['A', 'B', 'C', 'D'], []),
+  question(8, ['A', 'B', 'C', 'D'], ['A', 'C']),
   question(9, ['A', 'B', 'C', 'D'], ['D']),
   question(10, ['A', 'B', 'C', 'D'], ['A']),
   question(11, ['A', 'B', 'C', 'D'], ['C']),

@@ -69,6 +69,41 @@ test('deux tirages successifs diffèrent', () => {
   assert.notEqual(a, c)
 })
 
+import { pickChapterBalancedQuestions } from './chapterBalancedPick.js'
+import { examContentKey, normalizeExamText } from './examContentKey.js'
+
+test('empreinte de contenu : formulations quasi identiques (ch17/ch18)', () => {
+  const a = examContentKey(
+    "L'ABS (anti-blocage des roues) permet, en cas d'urgence, de diminuer fortement la distance de freinage :",
+    { A: 'Oui', B: 'Non' },
+  )
+  const b = examContentKey(
+    "L'ABS, anti-blocage des roues, permet, en cas d'urgence, de diminuer fortement la distance de freinage :",
+    { A: 'Oui', B: 'Non' },
+  )
+  assert.equal(a, b)
+  assert.equal(normalizeExamText('1,6 millimètres'), normalizeExamText('1,6 mm'))
+  assert.equal(normalizeExamText('CO₂'), normalizeExamText('CO2'))
+})
+
+test('un sujet n’embarque pas deux questions au même énoncé', () => {
+  const questions = [
+    { _id: 'hc-ch17-q01', chapterId: 'c17', contentKey: 'meme::a:oui|b:non' },
+    { _id: 'hc-ch17-q02', chapterId: 'c17', contentKey: 'autre17::a:oui|b:non' },
+    { _id: 'hc-ch18-q01', chapterId: 'c18', contentKey: 'meme::a:oui|b:non' },
+    { _id: 'hc-ch18-q02', chapterId: 'c18', contentKey: 'autre18::a:oui|b:non' },
+    { _id: 'hc-ch1-q01', chapterId: 'c1', contentKey: 'ch1::a:oui|b:non' },
+  ]
+  for (let i = 0; i < 30; i += 1) {
+    const picked = pickChapterBalancedQuestions(questions, 3)
+    assert.equal(picked.length, 3)
+    const keys = picked.map((q) => q.contentKey)
+    assert.equal(new Set(keys).size, keys.length, `doublon de contenu : ${keys.join(', ')}`)
+    const ids = new Set(picked.map((q) => q._id))
+    assert.ok(!(ids.has('hc-ch17-q01') && ids.has('hc-ch18-q01')))
+  }
+})
+
 import { answerKeyProblems } from './answerKey.js'
 import { UNCERTAIN_QUESTIONS } from '../data/hardcodedQuestions/uncertain.js'
 import { checkExamEligibility } from '../services/examEligibility.js'
@@ -93,10 +128,19 @@ test('moins de deux réponses : non sûre', () => {
 })
 
 test('question signalée « à confirmer » : écartée même avec une clé valide', () => {
-  const id = Object.keys(UNCERTAIN_QUESTIONS)[0]
-  const result = checkExamEligibility({ id, prompt: { imageUrls: [] }, answers: ans(true, false, false) })
-  assert.equal(result.ok, false)
-  assert.ok(result.reasons.includes('signalée à confirmer'))
+  const listed = Object.keys(UNCERTAIN_QUESTIONS)
+  // Si la liste prod est vide, on vérifie le mécanisme avec une clé temporaire.
+  const id = listed[0] || '__test-uncertain__'
+  const prev = UNCERTAIN_QUESTIONS[id]
+  if (!listed.length) UNCERTAIN_QUESTIONS[id] = 'fixture test'
+  try {
+    const result = checkExamEligibility({ id, prompt: { imageUrls: [] }, answers: ans(true, false, false) })
+    assert.equal(result.ok, false)
+    assert.ok(result.reasons.includes('signalée à confirmer'))
+  } finally {
+    if (!listed.length) delete UNCERTAIN_QUESTIONS[id]
+    else if (prev === undefined) delete UNCERTAIN_QUESTIONS[id]
+  }
 })
 
 test('une vraie question sûre du projet est éligible (audio, transcription, clé)', () => {

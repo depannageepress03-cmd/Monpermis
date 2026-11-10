@@ -30,7 +30,6 @@ export function ExamensTestPage() {
   const { user, loading: authLoading } = useAuth()
   const [data, setData] = useState<PracticeExamsOverview | null>(null)
   const [loading, setLoading] = useState(true)
-  const [starting, setStarting] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
@@ -56,19 +55,9 @@ export function ExamensTestPage() {
       .catch(() => undefined)
   })
 
-  const handleStart = async (examNumber: number) => {
-    setStarting(examNumber)
-    setError(null)
-    try {
-      const { attempt } = await startPracticeExam(examNumber)
-      navigate(`/code-de-la-route/examens-test/${examNumber}`, {
-        state: { attemptId: attempt.id },
-      })
-    } catch (err) {
-      setError(err instanceof ContentError ? err.message : 'Démarrage impossible')
-    } finally {
-      setStarting(null)
-    }
+  const handleStart = (examNumber: number) => {
+    // Un seul start : l’écran d’épreuve appelle startPracticeExam au montage.
+    navigate(`/code-de-la-route/examens-test/${examNumber}`)
   }
 
   if (authLoading || !user) return <PageLoader />
@@ -85,7 +74,7 @@ export function ExamensTestPage() {
         <header className="auth-header learner-header">
           <p className="learner-kicker">Auto-évaluation</p>
           <p>
-            {data?.examTotal ?? 24} sujets de test · mélange aléatoire de tous les chapitres ·{' '}
+            {data?.examTotal ?? 80} sujets de test · mélange aléatoire de tous les chapitres ·{' '}
             {data?.requiredSize ?? 20} questions · note sur 20 · moyenne {data?.passScore ?? 14}/20
           </p>
         </header>
@@ -146,16 +135,14 @@ export function ExamensTestPage() {
                         <button
                           type="button"
                           className="btn-primary btn-primary-inline"
-                          disabled={starting === exam.examNumber || data.examCount === 0}
-                          onClick={() => void handleStart(exam.examNumber)}
+                          disabled={data.examCount === 0}
+                          onClick={() => handleStart(exam.examNumber)}
                         >
-                          {starting === exam.examNumber
-                            ? 'Ouverture…'
-                            : exam.status === 'completed'
-                              ? 'Repasser'
-                              : exam.status === 'in_progress'
-                                ? 'Continuer'
-                                : 'Commencer'}
+                          {exam.status === 'completed'
+                            ? 'Repasser'
+                            : exam.status === 'in_progress'
+                              ? 'Continuer'
+                              : 'Commencer'}
                         </button>
                       </article>
                     ))}
@@ -394,8 +381,8 @@ export function ExamensTestTakePage() {
 
   const leaveMessage =
     answeredCount > 0
-      ? `Quitter ? Vos ${answeredCount} réponses sont enregistrées — reprenez via Continuer sur la même épreuve.`
-      : 'Quitter ? Votre progression en cours sera conservée si vous reprenez le même examen.'
+      ? `Quitter ? Vos ${answeredCount} réponses seront conservées dans vos notes, mais cet examen ne pourra pas être repris : de nouvelles questions seront tirées au prochain essai.`
+      : 'Quitter ? Cet examen ne pourra pas être repris : de nouvelles questions seront tirées au prochain essai.'
   const { confirmLeave } = useLeaveGuard(Boolean(attempt) && !finished && !loading, leaveMessage)
 
   if (authLoading || !user) return <PageLoader />

@@ -1,1 +1,3 @@
-S'ucourir un accidenté de la route A, obligatoire, B, facultatif
+Secourir un accidenté de la route est :
+A. Obligatoire.
+B. Facultatif.

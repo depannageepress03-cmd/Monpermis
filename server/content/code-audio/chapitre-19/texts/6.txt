@@ -1,1 +1,5 @@
-Le moteur au régime élevé fait des accousses. À quoi cela peut-il être dû ? Ah, le bougie d'allumage, B, la lumière déréglée, C, la vis platinée déréglée, D, la batterie déchargée.
+Le moteur au régime élevé fait des à-coups. À quoi cela peut-il être dû ?
+A. Aux bougies d'allumage.
+B. À l'allumage déréglé.
+C. À la vis platinée déréglée.
+D. À la batterie déchargée.

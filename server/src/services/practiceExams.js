@@ -7,6 +7,8 @@ import {
   computeQuestionBankFingerprint,
   summarizeChapterBank,
 } from '../utils/practiceExam.js'
+import { examContentKey } from '../utils/examContentKey.js'
+import { parseTranscript } from '../utils/transcriptParse.js'
 import { hardcodedAsQuestionDocs } from './hardcodedQuestions.js'
 import { isExamEligible } from './examEligibility.js'
 import fs from 'node:fs'
@@ -27,6 +29,18 @@ export function hasGeneratedExamAudio(questionId) {
   return fs.existsSync(file)
 }
 
+/** Empreinte d’énoncé pour éviter les clones (ch.17/18…) dans un même sujet. */
+export function contentKeyForQuestionId(questionId) {
+  const match = String(questionId || '').match(/^hc-ch(\d+)-q(\d+)$/i)
+  if (!match) return ''
+  const chapter = Number(match[1])
+  const order = Number(match[2])
+  const textFile = path.join(CODE_AUDIO_ROOT, `chapitre-${chapter}`, 'texts', `${order}.txt`)
+  if (!fs.existsSync(textFile)) return ''
+  const { stem, options } = parseTranscript(fs.readFileSync(textFile, 'utf8'))
+  return examContentKey(stem, options)
+}
+
 export async function loadPublishedExamQuestionBank() {
   const chapters = await Chapter.find({ published: true })
     .select('_id name order')
@@ -42,7 +56,11 @@ export async function loadPublishedExamQuestionBank() {
     for (const doc of hardcoded) {
       if (!hasGeneratedExamAudio(doc.id)) continue
       if (!isExamEligible(doc)) continue
-      questions.push({ _id: doc.id, chapterId: chapter._id })
+      questions.push({
+        _id: doc.id,
+        chapterId: chapter._id,
+        contentKey: contentKeyForQuestionId(doc.id),
+      })
     }
   }
 

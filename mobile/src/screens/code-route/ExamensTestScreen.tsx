@@ -52,7 +52,6 @@ export function ExamensTestScreen() {
   const [data, setData] = useState<PracticeExamsOverview | null>(null)
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
-  const [starting, setStarting] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const load = useCallback(async (silent = false) => {
@@ -77,17 +76,9 @@ export function ExamensTestScreen() {
     void load(true)
   })
 
-  const handleStart = async (examNumber: number) => {
-    setStarting(examNumber)
-    setError(null)
-    try {
-      await startPracticeExam(examNumber)
-      navigation.navigate('ExamensTestTake', { examNumber })
-    } catch (err) {
-      setError(err instanceof ContentError ? err.message : 'Démarrage impossible')
-    } finally {
-      setStarting(null)
-    }
+  const handleStart = (examNumber: number) => {
+    // Un seul start : l’écran d’épreuve appelle startPracticeExam au montage.
+    navigation.navigate('ExamensTestTake', { examNumber })
   }
 
   if (authLoading || !user) return <ScreenLoader />
@@ -198,17 +189,15 @@ export function ExamensTestScreen() {
                       </View>
                       <Pressable
                         style={styles.startBtn}
-                        disabled={starting === exam.examNumber || data.examCount === 0}
-                        onPress={() => void handleStart(exam.examNumber)}
+                        disabled={data.examCount === 0}
+                        onPress={() => handleStart(exam.examNumber)}
                       >
                         <Text style={styles.startBtnText}>
-                          {starting === exam.examNumber
-                            ? '…'
-                            : exam.status === 'completed'
-                              ? 'Repasser'
-                              : exam.status === 'in_progress'
-                                ? 'Continuer'
-                                : 'Go'}
+                          {exam.status === 'completed'
+                            ? 'Repasser'
+                            : exam.status === 'in_progress'
+                              ? 'Continuer'
+                              : 'Go'}
                         </Text>
                       </Pressable>
                     </View>

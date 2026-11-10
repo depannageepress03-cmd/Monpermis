@@ -1,1 +1,5 @@
-La consommation de caburant augmente. A, si le ralenti du moteur est trop élevé. Oui. B, si le ralenti du moteur est trop élevé. Non. C, si le filtre à R est en cracé. Oui. D, si le filtre à R est en cracé. Non.
+La consommation de carburant augmente :
+A. Si le ralenti du moteur est trop élevé. Oui.
+B. Si le ralenti du moteur est trop élevé. Non.
+C. Si le filtre à air est encrassé. Oui.
+D. Si le filtre à air est encrassé. Non.

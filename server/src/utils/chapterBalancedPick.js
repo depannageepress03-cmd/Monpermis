@@ -11,22 +11,51 @@ export function shuffleInPlace(array, random = Math.random) {
   return pool
 }
 
+function questionId(question) {
+  return String(question?._id || question?.id || '')
+}
+
+function contentKeyOf(question) {
+  const key = String(question?.contentKey || '').trim()
+  return key || null
+}
+
+/** Ajoute une question si son id et son contenu ne sont pas déjà pris. */
+function tryPushUnique(selected, usedIds, usedContentKeys, question) {
+  const id = questionId(question)
+  if (!id || usedIds.has(id)) return false
+  const contentKey = contentKeyOf(question)
+  if (contentKey && usedContentKeys.has(contentKey)) return false
+  selected.push(question)
+  usedIds.add(id)
+  if (contentKey) usedContentKeys.add(contentKey)
+  return true
+}
+
 /** Mélange global (sans contrainte de chapitre). */
 export function pickRandomQuestions(questions, count) {
   const pool = shuffleInPlace([...questions])
-  return pool.slice(0, Math.min(count, pool.length))
+  const selected = []
+  const usedIds = new Set()
+  const usedContentKeys = new Set()
+  for (const question of pool) {
+    if (selected.length >= count) break
+    tryPushUnique(selected, usedIds, usedContentKeys, question)
+  }
+  return selected
 }
 
 /**
  * Tirage équilibré : chaque chapitre publié avec des questions contribue
  * proportionnellement (et au moins 1 question si le quota le permet).
  * Les slots restants sont redistribués, puis l’ordre final est re-mélangé.
+ * Si `contentKey` est présent, deux questions au même énoncé ne sont pas tirées ensemble.
  */
 export function pickChapterBalancedQuestions(questions, count) {
   const target = Math.min(Math.max(0, Number(count) || 0), questions.length)
   if (target <= 0) return []
   if (questions.length <= target) {
-    return shuffleInPlace([...questions]).slice(0, target)
+    return pickRandomQuestions(questions, target)
   }
 
   const byChapter = new Map()
@@ -98,18 +127,38 @@ export function pickChapterBalancedQuestions(questions, count) {
 
   const selected = []
   const usedIds = new Set()
+  const usedContentKeys = new Set()
   for (const allocation of allocations) {
-    for (const question of allocation.pool.slice(0, allocation.take)) {
-      selected.push(question)
-      usedIds.add(String(question._id || question.id))
+    let taken = 0
+    for (const question of allocation.pool) {
+      if (taken >= allocation.take) break
+      if (tryPushUnique(selected, usedIds, usedContentKeys, question)) taken += 1
     }
   }
 
   if (selected.length < target) {
     const leftover = shuffleInPlace(
-      questions.filter((question) => !usedIds.has(String(question._id || question.id))),
+      questions.filter((question) => !usedIds.has(questionId(question))),
     )
-    selected.push(...leftover.slice(0, target - selected.length))
+    for (const question of leftover) {
+      if (selected.length >= target) break
+      tryPushUnique(selected, usedIds, usedContentKeys, question)
+    }
+  }
+
+  // Dernier recours : si le dédoublonnage empêche d’atteindre le quota, on complète
+  // sans contrainte de contenu (mieux qu’un sujet incomplet).
+  if (selected.length < target) {
+    const leftover = shuffleInPlace(
+      questions.filter((question) => !usedIds.has(questionId(question))),
+    )
+    for (const question of leftover) {
+      if (selected.length >= target) break
+      const id = questionId(question)
+      if (!id || usedIds.has(id)) continue
+      selected.push(question)
+      usedIds.add(id)
+    }
   }
 
   return shuffleInPlace(selected).slice(0, target)
