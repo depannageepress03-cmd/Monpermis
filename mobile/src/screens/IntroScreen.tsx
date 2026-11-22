@@ -54,12 +54,14 @@ export function IntroScreen() {
   }, [goNext])
 
   useEffect(() => {
+    // Utilisateur déjà connu : intro très courte (commercial / retours).
+    const delayMs = user ? 900 : MAX_INTRO_MS
     const safety = setTimeout(() => {
       revealDoneRef.current = true
       void goNext()
-    }, MAX_INTRO_MS)
+    }, delayMs)
     return () => clearTimeout(safety)
-  }, [goNext])
+  }, [goNext, user])
 
   const onWebMessage = useCallback(
     (event: WebViewMessageEvent) => {

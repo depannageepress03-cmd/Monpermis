@@ -328,11 +328,21 @@ export function ChapterQuestionsScreen() {
                 total: nextScore.total,
               })
             } else {
-              await markChapterTestCompleted(chapterId, nextScore.correct, nextScore.total)
+              try {
+                await markChapterTestCompleted(chapterId, nextScore.correct, nextScore.total)
+              } catch {
+                // Ne jamais perdre le score : file d’attente si le serveur est indisponible.
+                await enqueue('markTestCompleted', {
+                  chapterId,
+                  correct: nextScore.correct,
+                  total: nextScore.total,
+                })
+              }
             }
             setTestSaved(true)
-          } catch (err) {
-            setError(err instanceof Error ? err.message : 'Validation du test impossible')
+          } catch {
+            // Dernier recours : garder l’écran de score, l’utilisateur pourra réessayer plus tard.
+            setTestSaved(false)
           } finally {
             setSavingTest(false)
           }
@@ -494,12 +504,17 @@ export function ChapterQuestionsScreen() {
   const canValidate = showQuizChrome && !result && selectedIds.size > 0 && !checking
   const canAdvance = showQuizChrome && Boolean(result)
 
+  // Seuil officiel code : 14/20 (proportionnel si le sujet a une autre taille).
+  const passThreshold =
+    score.total > 0 ? Math.max(1, Math.ceil((14 / 20) * score.total)) : 14
+  const scorePassed = score.total > 0 && score.correct >= passThreshold
+
   if (loading || !user) return <ScreenLoader />
 
   return (
     <View style={styles.root}>
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-        <ConfettiBurst active={finished && score.total > 0 && score.correct / score.total >= 0.7} />
+        <ConfettiBurst active={finished && scorePassed} />
 
         <View style={styles.topBar}>
           <Pressable
@@ -669,18 +684,12 @@ export function ChapterQuestionsScreen() {
             <View style={styles.centerBox}>
               <AnimatedCheckmark
                 active
-                color={
-                  score.total > 0 && score.correct / score.total >= 0.5 ? dark.green : dark.coral
-                }
+                color={scorePassed ? dark.green : dark.coral}
               />
               <Text style={[styles.emptyTitle, { marginTop: 16 }]}>
-                {score.total > 0 && score.correct / score.total >= 0.7
-                  ? 'Bravo !'
-                  : score.total > 0 && score.correct / score.total >= 0.5
-                    ? 'Bien joué'
-                    : 'Terminé'}
+                {scorePassed ? 'Bravo !' : 'Terminé'}
               </Text>
-              <Text style={styles.scoreText}>
+              <Text style={[styles.scoreText, { color: scorePassed ? dark.green : dark.coral }]}>
                 {score.correct} / {score.total} bonne{score.total > 1 ? 's' : ''} réponse
                 {score.total > 1 ? 's' : ''}
               </Text>

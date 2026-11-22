@@ -33,6 +33,7 @@ import {
   fetchAccessMe,
   fetchAccessModules,
   redeemPromoCode,
+  syncAccessRequest,
   type AccessMe,
   type AccessModule,
   type AccessModuleKey,
@@ -90,6 +91,8 @@ export function AbonnementScreen() {
   const [promoError, setPromoError] = useState<string | null>(null)
   const [promoSuccess, setPromoSuccess] = useState<string | null>(null)
   const [pendingCart, setPendingCart] = useState<PendingCheckoutCart | null>(null)
+  const [verifyingPending, setVerifyingPending] = useState(false)
+  const [pendingSyncMsg, setPendingSyncMsg] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -103,12 +106,42 @@ export function AbonnementScreen() {
       setModules(moduleCatalog.filter((m) => m.key !== 'aiChat'))
       setMe(meResult)
       setPendingCart(savedCart?.source === 'abonnement' ? savedCart : null)
+      if (!meResult.pendingRequest) setPendingSyncMsg(null)
     } catch (err) {
       setError(err instanceof AccessRequestError ? err.message : 'Chargement impossible')
     } finally {
       setLoading(false)
     }
   }, [])
+
+  const verifyPendingPayment = useCallback(async () => {
+    const pendingId = me?.pendingRequest?.id
+    if (!pendingId) return
+    setVerifyingPending(true)
+    setPendingSyncMsg(null)
+    setError(null)
+    try {
+      const result = await syncAccessRequest(pendingId)
+      setMe(result.access)
+      if (result.access.access.code || !result.access.pendingRequest) {
+        setPendingSyncMsg('Paiement confirmé. Ton accès est actif.')
+        await clearPendingCheckoutCart()
+        setPendingCart(null)
+      } else {
+        setPendingSyncMsg(
+          'Paiement pas encore confirmé. Valide la notification sur ton téléphone, puis réessaie.',
+        )
+      }
+    } catch (err) {
+      setError(
+        err instanceof AccessRequestError
+          ? err.message
+          : 'Vérification temporairement indisponible. Réessaie dans un instant.',
+      )
+    } finally {
+      setVerifyingPending(false)
+    }
+  }, [me?.pendingRequest?.id])
 
   useFocusEffect(
     useCallback(() => {
@@ -332,10 +365,29 @@ export function AbonnementScreen() {
                 <FadeUp delay={110}>
                   <View style={styles.infoCard}>
                     <TriangleAlert size={18} color={dark.green} />
-                    <Text style={styles.infoCardText}>
-                      Paiement en confirmation… Valide la demande sur ton téléphone puis reviens
-                      ici.
-                    </Text>
+                    <View style={{ flex: 1, gap: 10 }}>
+                      <Text style={styles.infoCardText}>
+                        Paiement en confirmation… Valide la demande sur ton téléphone, puis
+                        appuie sur le bouton ci-dessous.
+                      </Text>
+                      {pendingSyncMsg ? (
+                        <Text style={styles.infoCardText}>{pendingSyncMsg}</Text>
+                      ) : null}
+                      <Pressable
+                        style={({ pressed }) => [
+                          styles.verifyPendingBtn,
+                          (verifyingPending || pressed) && { opacity: 0.85 },
+                        ]}
+                        disabled={verifyingPending}
+                        onPress={() => void verifyPendingPayment()}
+                      >
+                        {verifyingPending ? (
+                          <ActivityIndicator color="#FFFFFF" />
+                        ) : (
+                          <Text style={styles.verifyPendingBtnText}>J’ai payé, vérifier</Text>
+                        )}
+                      </Pressable>
+                    </View>
                   </View>
                 </FadeUp>
               ) : null}
@@ -881,6 +933,20 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
     color: dark.textMuted,
+  },
+  verifyPendingBtn: {
+    alignSelf: 'flex-start',
+    backgroundColor: dark.green,
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    minHeight: 44,
+    justifyContent: 'center',
+  },
+  verifyPendingBtnText: {
+    color: '#FFFFFF',
+    fontFamily: fonts.bodyBold,
+    fontSize: 14,
   },
   catalogHead: {
     gap: 4,

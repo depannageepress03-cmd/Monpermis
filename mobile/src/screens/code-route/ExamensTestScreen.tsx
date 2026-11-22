@@ -118,16 +118,24 @@ export function ExamensTestScreen() {
             <>
               {data.unlocked === false ? (
                 <View style={styles.lockedBox}>
-                  <Text style={styles.lockedTitle}>Examens test verrouillés</Text>
+                  <Text style={styles.lockedTitle}>Examens momentanément indisponibles</Text>
                   <Text style={styles.empty}>
                     {data.message ||
-                      'Terminez tous les cours de chaque chapitre pour débloquer les examens test. Vous pouvez encore répondre aux questions et passer le sujet test de chaque chapitre.'}
+                      'Les examens blancs ne sont pas disponibles pour le moment. Réessaie dans un instant, ou continue la révision par chapitre.'}
                   </Text>
                   <Pressable
                     style={styles.revisionBtn}
+                    onPress={() => void load()}
+                  >
+                    <Text style={styles.revisionBtnText}>Réessayer</Text>
+                  </Pressable>
+                  <Pressable
+                    style={[styles.revisionBtn, { marginTop: 10, backgroundColor: 'transparent', borderWidth: 1, borderColor: dark.border }]}
                     onPress={() => navigation.navigate('RevisionChapitres')}
                   >
-                    <Text style={styles.revisionBtnText}>Continuer la révision</Text>
+                    <Text style={[styles.revisionBtnText, { color: dark.textPrimary }]}>
+                      Continuer la révision
+                    </Text>
                   </Pressable>
                 </View>
               ) : (
@@ -580,7 +588,14 @@ export function ExamensTestTakeScreen() {
               <Text style={[styles.resultTitle, { marginTop: 12 }]}>
                 {finalScore.passed ? 'Examen réussi' : 'Examen non réussi'}
               </Text>
-              <Text style={styles.resultScore}>{finalScore.scoreLabel}</Text>
+              <Text
+                style={[
+                  styles.resultScore,
+                  { color: finalScore.passed ? dark.green : dark.coral },
+                ]}
+              >
+                {finalScore.scoreLabel}
+              </Text>
               <Pressable style={styles.startBtn} onPress={() => navigation.navigate('MesNotes')}>
                 <Text style={styles.startBtnText}>Voir mes notes</Text>
               </Pressable>

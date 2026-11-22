@@ -280,6 +280,14 @@ export function RevisionChapitresScreen() {
                 const title = chapter.name?.trim() || `Chapitre ${order}`
                 const testDone = completedTestIds.has(chapter.id)
                 const testScore = completedTests.find((entry) => entry.chapterId === chapter.id)
+                const passThreshold =
+                  testScore && testScore.total > 0
+                    ? Math.max(1, Math.ceil((14 / 20) * testScore.total))
+                    : 14
+                const testPassed =
+                  Boolean(testScore) &&
+                  testScore!.total > 0 &&
+                  testScore!.correct >= passThreshold
 
                 return (
                   <FadeUp key={chapter.id} delay={80 + Math.min(index, 8) * 40}>
@@ -299,10 +307,23 @@ export function RevisionChapitresScreen() {
                           </Text>
                           <View style={styles.statusRow}>
                             {testDone ? (
-                              <View style={styles.statusPillDone}>
-                                <Check size={12} color={dark.green} />
-                                <Text style={styles.statusPillDoneText}>
-                                  Test validé
+                              <View
+                                style={[
+                                  styles.statusPillDone,
+                                  !testPassed && styles.statusPillFail,
+                                ]}
+                              >
+                                <Check
+                                  size={12}
+                                  color={testPassed ? dark.green : dark.coral}
+                                />
+                                <Text
+                                  style={[
+                                    styles.statusPillDoneText,
+                                    !testPassed && styles.statusPillFailText,
+                                  ]}
+                                >
+                                  {testPassed ? 'Test réussi' : 'À refaire'}
                                   {testScore?.total
                                     ? ` · ${testScore.correct}/${testScore.total}`
                                     : ''}
@@ -539,6 +560,12 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bodySemiBold,
     fontSize: 12,
     color: dark.green,
+  },
+  statusPillFail: {
+    backgroundColor: dark.coralSoft,
+  },
+  statusPillFailText: {
+    color: dark.coral,
   },
   actionsDivider: {
     height: 1,

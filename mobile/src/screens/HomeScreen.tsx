@@ -32,6 +32,7 @@ import { HomeHeroDecor } from '../components/HomeHeroDecor'
 import { InfiniteImageMarquee } from '../components/InfiniteImageMarquee'
 import { HomeSkeleton } from '../components/Skeleton'
 import { ScreenLoader } from '../components/ScreenLoader'
+import { UpdateBanner } from '../components/UpdateBanner'
 import { useAuth } from '../context/AuthContext'
 import { useOffline } from '../context/OfflineContext'
 import { useRequireAuth } from '../hooks/useRequireAuth'
@@ -75,7 +76,9 @@ export function HomeScreen() {
             setBootstrapping(false)
           },
         },
-      ).catch(() => setAccessMe(null))
+      ).catch(() => {
+        // Garder le dernier état : ne pas afficher « Accès requis » à tort.
+      })
     } finally {
       setBootstrapping(false)
     }
@@ -178,6 +181,8 @@ export function HomeScreen() {
                 </Pressable>
               </View>
             </View>
+
+            <UpdateBanner />
 
             <View style={styles.heroRow}>
               <View style={styles.heroCopy}>

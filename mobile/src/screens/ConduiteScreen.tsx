@@ -189,19 +189,33 @@ export function ConduiteScreen() {
     }
   }
 
+  const loadAccess = useCallback(async () => {
+    if (!user) return
+    setAccessLoading(true)
+    try {
+      const [me, catalog] = await Promise.all([fetchAccessMe(), fetchAccessModules()])
+      setAccessMe(me)
+      setModules(catalog)
+      const { cacheSet } = await import('../utils/contentCache')
+      await cacheSet(`access:me:${user.id}`, me)
+    } catch {
+      const cached = await import('../utils/contentCache').then((m) =>
+        m.cacheGet<AccessMe>(`access:me:${user.id}`, 7 * 24 * 60 * 60 * 1000),
+      )
+      if (cached?.data) {
+        setAccessMe(cached.data)
+      } else {
+        setAccessMe((prev) => prev)
+      }
+    } finally {
+      setAccessLoading(false)
+    }
+  }, [user])
+
   useEffect(() => {
     if (!user) return
-    void Promise.all([fetchAccessMe(), fetchAccessModules()])
-      .then(([me, catalog]) => {
-        setAccessMe(me)
-        setModules(catalog)
-      })
-      .catch(() => {
-        setAccessMe(null)
-        setModules([])
-      })
-      .finally(() => setAccessLoading(false))
-  }, [user])
+    void loadAccess()
+  }, [user, loadAccess])
 
   const conduiteUnlocked = Boolean(
     accessMe &&
@@ -209,6 +223,7 @@ export function ConduiteScreen() {
         accessMe.access?.conduite_heures ||
         (accessMe.user?.soldeHeures || 0) > 0),
   )
+  const accessLoadFailed = !accessLoading && !accessMe
 
   useEffect(() => {
     if (conduiteUnlocked) void load()
@@ -234,6 +249,27 @@ export function ConduiteScreen() {
           <View style={styles.accessState}>
             <ActivityIndicator color={dark.green} />
             <Text style={styles.accessStateCopy}>Vérification de ton accès…</Text>
+          </View>
+          <View style={styles.footerPad}>
+            <LegalFooter />
+          </View>
+        </SafeAreaView>
+      </View>
+    )
+  }
+
+  if (accessLoadFailed) {
+    return (
+      <View style={styles.root}>
+        <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+          <ConduiteHeader onBack={goHome} onProfile={goProfile} />
+          <View style={styles.accessState}>
+            <Text style={styles.accessStateCopy}>
+              Impossible de vérifier ton accès. Vérifie ta connexion.
+            </Text>
+            <Pressable style={styles.accessButton} onPress={() => void loadAccess()}>
+              <Text style={styles.accessButtonText}>Réessayer</Text>
+            </Pressable>
           </View>
           <View style={styles.footerPad}>
             <LegalFooter />

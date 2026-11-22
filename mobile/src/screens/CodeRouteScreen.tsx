@@ -99,12 +99,14 @@ export function CodeRouteScreen() {
   const [modules, setModules] = useState<AccessModule[]>([])
   const [journey, setJourney] = useState<LearnerJourney | null>(null)
   const [accessLoading, setAccessLoading] = useState(true)
+  const [accessError, setAccessError] = useState<string | null>(null)
   const [checkoutOpen, setCheckoutOpen] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
 
   const loadAccess = useCallback(async (silent = false) => {
     if (!user) return
     if (!silent) setAccessLoading(true)
+    setAccessError(null)
     try {
       if (isOffline) {
         const cached = await import('../utils/contentCache').then((m) =>
@@ -125,10 +127,26 @@ export function CodeRouteScreen() {
       setAccessMe(me)
       setModules(catalog)
       setJourney(journeyData)
+      const { cacheSet } = await import('../utils/contentCache')
+      await cacheSet(`access:me:${user.id}`, me)
     } catch {
-      setAccessMe(null)
-      setModules([])
-      setJourney(null)
+      // Ne jamais afficher le paywall si on a déjà un accès en cache.
+      const cached = await import('../utils/contentCache').then((m) =>
+        m.cacheGet<AccessMe>(`access:me:${user.id}`, 7 * 24 * 60 * 60 * 1000),
+      )
+      if (cached?.data) {
+        setAccessMe(cached.data)
+        setAccessError('Connexion instable — accès affiché depuis le cache.')
+      } else {
+        setAccessMe((prev) => {
+          if (prev) {
+            setAccessError('Connexion instable — accès affiché depuis la session.')
+            return prev
+          }
+          setAccessError('Impossible de vérifier ton accès. Vérifie ta connexion.')
+          return null
+        })
+      }
     } finally {
       setAccessLoading(false)
       setRefreshing(false)
@@ -270,6 +288,27 @@ export function CodeRouteScreen() {
           <View style={styles.loadingPad}>
             <Text style={styles.accessStateCopy}>Vérification de ton accès…</Text>
             <SkeletonList count={3} />
+          </View>
+        </SafeAreaView>
+      </View>
+    )
+  }
+
+  if (accessError && !accessMe) {
+    return (
+      <View style={styles.root}>
+        <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+          {header}
+          <View style={styles.loadingPad}>
+            <Text style={styles.accessStateCopy}>{accessError}</Text>
+            <Pressable
+              style={styles.retryBtn}
+              onPress={() => void loadAccess()}
+              accessibilityRole="button"
+              accessibilityLabel="Réessayer"
+            >
+              <Text style={styles.retryBtnText}>Réessayer</Text>
+            </Pressable>
           </View>
         </SafeAreaView>
       </View>
@@ -547,6 +586,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingTop: 24,
     gap: 16,
+  },
+  retryBtn: {
+    alignSelf: 'flex-start',
+    backgroundColor: dark.green,
+    borderRadius: 14,
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+  },
+  retryBtnText: {
+    color: '#FFFFFF',
+    fontFamily: fonts.bodyBold,
+    fontSize: 15,
   },
   subscribeScroll: {
     paddingHorizontal: 24,

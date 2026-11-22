@@ -481,26 +481,53 @@ export function ReservationMobileMoneyCheckout({
                     <Text style={styles.backText}>Retour</Text>
                   </Pressable>
                 ) : null}
-                <Pressable
-                  style={[styles.payBtn, (busy || !phone.trim()) && styles.disabled]}
-                  disabled={busy || !phone.trim()}
-                  onPress={() => void submit()}
-                >
-                  {busy ? (
-                    <ActivityIndicator color="#fff" />
-                  ) : (
-                    <Text style={styles.payText}>
-                      Payer {formatPrice(amount)} ({paymentOperatorLabel(operator)})
-                    </Text>
-                  )}
-                </Pressable>
                 {step === 'waiting' ? (
-                  <Text style={styles.hint}>
-                    Une demande de retrait a été envoyée sur {phone || 'ton téléphone'} (
-                    {paymentOperatorLabel(operator)}).{'\n'}
-                    Ouvre la notification MTN/Moov/Celtiis et valide avec ton code secret.
-                  </Text>
-                ) : null}
+                  <>
+                    <Text style={styles.hint}>
+                      Une demande de retrait a été envoyée sur {phone || 'ton téléphone'} (
+                      {paymentOperatorLabel(operator)}).{'\n'}
+                      Ouvre la notification MTN/Moov/Celtiis et valide avec ton code secret.
+                    </Text>
+                    <Pressable
+                      style={[styles.payBtn, verifying && styles.disabled]}
+                      disabled={verifying}
+                      onPress={() => void verifyPaid()}
+                    >
+                      {verifying ? (
+                        <ActivityIndicator color="#fff" />
+                      ) : (
+                        <Text style={styles.payText}>J’ai payé, vérifier</Text>
+                      )}
+                    </Pressable>
+                    <Pressable
+                      style={styles.backBtn}
+                      disabled={busy || verifying}
+                      onPress={() => {
+                        stopPoll()
+                        setBusy(false)
+                        setStep('phone')
+                        setError(null)
+                        setSuccess(null)
+                      }}
+                    >
+                      <Text style={styles.backText}>Relancer un paiement</Text>
+                    </Pressable>
+                  </>
+                ) : (
+                  <Pressable
+                    style={[styles.payBtn, (busy || !phone.trim()) && styles.disabled]}
+                    disabled={busy || !phone.trim()}
+                    onPress={() => void submit()}
+                  >
+                    {busy ? (
+                      <ActivityIndicator color="#fff" />
+                    ) : (
+                      <Text style={styles.payText}>
+                        Payer {formatPrice(amount)} ({paymentOperatorLabel(operator)})
+                      </Text>
+                    )}
+                  </Pressable>
+                )}
               </View>
             ) : null}
           </ScrollView>

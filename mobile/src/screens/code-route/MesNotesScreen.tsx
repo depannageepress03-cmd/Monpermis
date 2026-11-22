@@ -144,13 +144,14 @@ export function MesNotesScreen() {
                 </View>
               ) : (
                 <View style={styles.list}>
-                  {journey.practiceExams.scores.map((score) => (
+                    {journey.practiceExams.scores.map((score) => (
                     <Row
                       key={score.id}
                       icon={ClipboardCheck}
                       title={`Examen n° ${score.examNumber}`}
                       subtitle={`${score.passed ? 'Réussi' : 'Non réussi'} · seuil ${score.passScore}/20`}
                       right={score.scoreLabel}
+                      rightTone={score.passed ? 'ok' : 'ko'}
                     />
                   ))}
                 </View>
@@ -176,6 +177,11 @@ export function MesNotesScreen() {
                         title={score.chapterName}
                         subtitle={`${score.correct}/${score.total} bonnes réponses`}
                         right={score.scoreLabel}
+                        rightTone={
+                          score.total > 0 && score.correct >= Math.ceil((14 / 20) * score.total)
+                            ? 'ok'
+                            : 'ko'
+                        }
                       />
                     ))}
                   </View>
@@ -233,6 +239,7 @@ export function MesNotesScreen() {
                       key={row.attemptId}
                       row={row}
                       featured={index === 0}
+                      passScore={passScore}
                       onPress={() => setSelected(row)}
                     />
                   ))}
@@ -323,6 +330,11 @@ export function MesNotesScreen() {
                         title={score.chapterName}
                         subtitle={`${score.correct}/${score.total} bonnes réponses`}
                         right={score.scoreLabel}
+                        rightTone={
+                          score.total > 0 && score.correct >= Math.ceil((14 / 20) * score.total)
+                            ? 'ok'
+                            : 'ko'
+                        }
                       />
                     ))}
                   </View>
@@ -363,16 +375,26 @@ function SectionHead({ title, action, onAction }: { title: string; action?: stri
 function ExamCard({
   row,
   featured,
+  passScore,
   onPress,
 }: {
   row: ResultExamRow
   featured: boolean
+  passScore: number
   onPress: () => void
 }) {
   const answered = percent(row.treated, row.total)
   const fg = featured ? '#fff' : RES.ink
   const sub = featured ? 'rgba(255,255,255,0.75)' : RES.muted
   const status = row.completed ? (row.passed ? 'Terminé · Réussi' : 'Terminé · Raté') : 'Non terminé'
+  const noteColor =
+    featured
+      ? fg
+      : row.note != null && row.note < passScore
+        ? RES.ko
+        : row.passed
+          ? RES.ok
+          : fg
 
   return (
     <Pressable
@@ -404,7 +426,7 @@ function ExamCard({
         <Text style={[styles.examLabel, { color: sub, marginTop: 0 }]}>
           {row.treated}/{row.total}
         </Text>
-        <Text style={[styles.examNote, { color: fg }]}>
+        <Text style={[styles.examNote, { color: noteColor }]}>
           {formatNote(row.note)}
           <Text style={{ fontSize: 11 }}>/20</Text>
         </Text>
@@ -449,13 +471,16 @@ function Row({
   subtitle,
   right,
   rightLabel,
+  rightTone,
 }: {
   icon: typeof HelpCircle
   title: string
   subtitle: string
   right: string
   rightLabel?: string
+  rightTone?: 'ok' | 'ko'
 }) {
+  const rightColor = rightTone === 'ok' ? RES.ok : rightTone === 'ko' ? RES.ko : RES.navy
   return (
     <View style={styles.row}>
       <View style={styles.rowIcon}>
@@ -470,7 +495,7 @@ function Row({
         </Text>
       </View>
       <View style={styles.rowRight}>
-        <Text style={styles.rowRightValue}>{right}</Text>
+        <Text style={[styles.rowRightValue, { color: rightColor }]}>{right}</Text>
         {rightLabel ? <Text style={styles.rowRightLabel}>{rightLabel}</Text> : null}
       </View>
     </View>

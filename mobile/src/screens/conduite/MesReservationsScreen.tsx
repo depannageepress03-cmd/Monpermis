@@ -370,6 +370,20 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: dark.textMuted,
   },
+  cancelBtn: {
+    alignSelf: 'flex-start',
+    marginTop: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: dark.coral,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  cancelBtnText: {
+    fontFamily: fonts.bodyBold,
+    fontSize: 13,
+    color: dark.coral,
+  },
   cancelLink: {
     alignSelf: 'flex-start',
     marginTop: 8,
@@ -380,6 +394,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: dark.coral,
   },
+
   empty: { alignItems: 'center', paddingTop: 40, gap: 10 },
   emptyTitle: {
     fontFamily: fonts.displayExtraBold,

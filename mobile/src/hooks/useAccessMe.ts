@@ -31,7 +31,7 @@ export function useAccessMe(options?: { revalidateOnFocus?: boolean }) {
         })
         return data
       } catch (err) {
-        setAccessMe(null)
+        // Garder le dernier accès connu : ne pas forcer le paywall sur une erreur réseau.
         setError(err instanceof Error ? err.message : 'Chargement impossible')
         return null
       } finally {
